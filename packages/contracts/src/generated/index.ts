@@ -38,6 +38,7 @@ import EngageReducer from "./engage_reducer";
 import LoadPlayerReducer from "./load_player_reducer";
 import MoveToReducer from "./move_to_reducer";
 import SelectTargetReducer from "./select_target_reducer";
+import UpgradeCannonReducer from "./upgrade_cannon_reducer";
 
 // Import all procedure arg schemas
 
@@ -46,6 +47,7 @@ import GameEventRow from "./game_event_table";
 import MapEntityRow from "./map_entity_table";
 import NpcShipRow from "./npc_ship_table";
 import PlayerIdentityRow from "./player_identity_table";
+import PlayerProgressionRow from "./player_progression_table";
 import PlayerShipRow from "./player_ship_table";
 import ResourceBalanceRow from "./resource_balance_table";
 import WorldStateRow from "./world_state_table";
@@ -98,6 +100,17 @@ const tablesSchema = __schema({
       { name: 'player_identity_owner_key', constraint: 'unique', columns: ['owner'] },
     ],
   }, PlayerIdentityRow),
+  playerProgression: __table({
+    name: 'player_progression',
+    indexes: [
+      { accessor: 'Owner', name: 'player_progression_owner_idx_btree', algorithm: 'btree', columns: [
+        'owner',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_progression_owner_key', constraint: 'unique', columns: ['owner'] },
+    ],
+  }, PlayerProgressionRow),
   playerShip: __table({
     name: 'player_ship',
     indexes: [
@@ -139,6 +152,7 @@ const reducersSchema = __reducers(
   __reducerSchema("load_player", LoadPlayerReducer),
   __reducerSchema("move_to", MoveToReducer),
   __reducerSchema("select_target", SelectTargetReducer),
+  __reducerSchema("upgrade_cannon", UpgradeCannonReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
@@ -155,6 +169,8 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "NpcShip": Omit<typeof tablesSchema.schemaType.tables["npcShip"], "accessorName"> & { readonly accessorName: "NpcShip" };
     /** @deprecated Use `playerIdentity` instead. This alias will be removed in the next major version. */
     readonly "PlayerIdentity": Omit<typeof tablesSchema.schemaType.tables["playerIdentity"], "accessorName"> & { readonly accessorName: "PlayerIdentity" };
+    /** @deprecated Use `playerProgression` instead. This alias will be removed in the next major version. */
+    readonly "PlayerProgression": Omit<typeof tablesSchema.schemaType.tables["playerProgression"], "accessorName"> & { readonly accessorName: "PlayerProgression" };
     /** @deprecated Use `playerShip` instead. This alias will be removed in the next major version. */
     readonly "PlayerShip": Omit<typeof tablesSchema.schemaType.tables["playerShip"], "accessorName"> & { readonly accessorName: "PlayerShip" };
     /** @deprecated Use `resourceBalance` instead. This alias will be removed in the next major version. */
@@ -183,6 +199,7 @@ const tableAccessorAliases = {
   "MapEntity": "mapEntity",
   "NpcShip": "npcShip",
   "PlayerIdentity": "playerIdentity",
+  "PlayerProgression": "playerProgression",
   "PlayerShip": "playerShip",
   "ResourceBalance": "resourceBalance",
   "WorldState": "worldState",
@@ -214,6 +231,8 @@ export type DbView = __DbViewBase & {
   readonly "NpcShip": __DbViewBase["npcShip"];
   /** @deprecated Use `playerIdentity` instead. This alias will be removed in the next major version. */
   readonly "PlayerIdentity": __DbViewBase["playerIdentity"];
+  /** @deprecated Use `playerProgression` instead. This alias will be removed in the next major version. */
+  readonly "PlayerProgression": __DbViewBase["playerProgression"];
   /** @deprecated Use `playerShip` instead. This alias will be removed in the next major version. */
   readonly "PlayerShip": __DbViewBase["playerShip"];
   /** @deprecated Use `resourceBalance` instead. This alias will be removed in the next major version. */
@@ -232,6 +251,8 @@ export type Tables = __TablesBase & {
   readonly "NpcShip": __TablesBase["npcShip"];
   /** @deprecated Use `playerIdentity` instead. This alias will be removed in the next major version. */
   readonly "PlayerIdentity": __TablesBase["playerIdentity"];
+  /** @deprecated Use `playerProgression` instead. This alias will be removed in the next major version. */
+  readonly "PlayerProgression": __TablesBase["playerProgression"];
   /** @deprecated Use `playerShip` instead. This alias will be removed in the next major version. */
   readonly "PlayerShip": __TablesBase["playerShip"];
   /** @deprecated Use `resourceBalance` instead. This alias will be removed in the next major version. */

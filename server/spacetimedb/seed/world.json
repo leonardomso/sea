@@ -9,5 +9,6 @@
   ],
   "npcShips": [
     { "entityId": 10, "x": 45, "y": -10, "health": 100, "cannonDamage": 5, "cannonCooldownTicks": 40, "goldReward": 100 }
-  ]
+  ],
+  "progression": { "initialLevel": 1, "initialCannonUpgradeLevel": 0, "cannonUpgradeBaseCost": 100, "cannonUpgradeCostStep": 100, "cannonDamagePerUpgrade": 5 }
 }

@@ -37,6 +37,8 @@ public sealed class WorldRulesTests
         Assert.Equal(20u, WorldRules.InitialCannonCooldownTicks);
         Assert.Equal(60f, WorldRules.CannonRange);
         Assert.Equal(100u, WorldRules.EnemyGoldReward);
+        Assert.Equal(1u, WorldRules.InitialProgressionLevel);
+        Assert.Equal(0u, WorldRules.InitialCannonUpgradeLevel);
     }
 
     [Theory]
@@ -70,5 +72,20 @@ public sealed class WorldRulesTests
     public void ApplyDamage_never_underflows(uint health, uint damage, uint expected)
     {
         Assert.Equal(expected, WorldRules.ApplyDamage(health, damage));
+    }
+
+    [Theory]
+    [InlineData(0u, 100u)]
+    [InlineData(1u, 200u)]
+    [InlineData(2u, 300u)]
+    public void CannonUpgradeCost_is_deterministic(uint level, uint expected)
+    {
+        Assert.Equal(expected, WorldRules.CannonUpgradeCost(level));
+    }
+
+    [Fact]
+    public void CannonDamageAfterUpgrade_adds_the_fixed_upgrade_bonus()
+    {
+        Assert.Equal(35u, WorldRules.CannonDamageAfterUpgrade(25, 2));
     }
 }

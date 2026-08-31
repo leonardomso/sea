@@ -51,6 +51,13 @@ export const PlayerIdentity = __t.object("PlayerIdentity", {
 });
 export type PlayerIdentity = __Infer<typeof PlayerIdentity>;
 
+export const PlayerProgression = __t.object("PlayerProgression", {
+  owner: __t.identity(),
+  level: __t.u32(),
+  cannonUpgradeLevel: __t.u32(),
+});
+export type PlayerProgression = __Infer<typeof PlayerProgression>;
+
 export const PlayerShip = __t.object("PlayerShip", {
   owner: __t.identity(),
   positionX: __t.f32(),

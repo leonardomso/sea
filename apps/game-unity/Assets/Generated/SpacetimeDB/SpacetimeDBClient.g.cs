@@ -31,6 +31,7 @@ namespace SpacetimeDB.Types
             AddTable(MapEntity = new(conn));
             AddTable(NpcShip = new(conn));
             AddTable(PlayerIdentity = new(conn));
+            AddTable(PlayerProgression = new(conn));
             AddTable(PlayerShip = new(conn));
             AddTable(ResourceBalance = new(conn));
             AddTable(WorldState = new(conn));
@@ -534,6 +535,7 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.MapEntity().ToSql(),
             new QueryBuilder().From.NpcShip().ToSql(),
             new QueryBuilder().From.PlayerIdentity().ToSql(),
+            new QueryBuilder().From.PlayerProgression().ToSql(),
             new QueryBuilder().From.PlayerShip().ToSql(),
             new QueryBuilder().From.ResourceBalance().ToSql(),
             new QueryBuilder().From.WorldState().ToSql(),
@@ -547,6 +549,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<MapEntity, MapEntityCols, MapEntityIxCols> MapEntity() => new("map_entity", new MapEntityCols("map_entity"), new MapEntityIxCols("map_entity"));
         public global::SpacetimeDB.Table<NpcShip, NpcShipCols, NpcShipIxCols> NpcShip() => new("npc_ship", new NpcShipCols("npc_ship"), new NpcShipIxCols("npc_ship"));
         public global::SpacetimeDB.Table<PlayerIdentity, PlayerIdentityCols, PlayerIdentityIxCols> PlayerIdentity() => new("player_identity", new PlayerIdentityCols("player_identity"), new PlayerIdentityIxCols("player_identity"));
+        public global::SpacetimeDB.Table<PlayerProgression, PlayerProgressionCols, PlayerProgressionIxCols> PlayerProgression() => new("player_progression", new PlayerProgressionCols("player_progression"), new PlayerProgressionIxCols("player_progression"));
         public global::SpacetimeDB.Table<PlayerShip, PlayerShipCols, PlayerShipIxCols> PlayerShip() => new("player_ship", new PlayerShipCols("player_ship"), new PlayerShipIxCols("player_ship"));
         public global::SpacetimeDB.Table<ResourceBalance, ResourceBalanceCols, ResourceBalanceIxCols> ResourceBalance() => new("resource_balance", new ResourceBalanceCols("resource_balance"), new ResourceBalanceIxCols("resource_balance"));
         public global::SpacetimeDB.Table<WorldState, WorldStateCols, WorldStateIxCols> WorldState() => new("world_state", new WorldStateCols("world_state"), new WorldStateIxCols("world_state"));
@@ -635,6 +638,7 @@ namespace SpacetimeDB.Types
                 Reducer.LoadPlayer args => Reducers.InvokeLoadPlayer(eventContext, args),
                 Reducer.MoveTo args => Reducers.InvokeMoveTo(eventContext, args),
                 Reducer.SelectTarget args => Reducers.InvokeSelectTarget(eventContext, args),
+                Reducer.UpgradeCannon args => Reducers.InvokeUpgradeCannon(eventContext, args),
                 _ => throw new ArgumentOutOfRangeException("Reducer", $"Unknown reducer {reducer}")
             };
         }

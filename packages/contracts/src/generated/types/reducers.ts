@@ -10,8 +10,10 @@ import EngageReducer from "../engage_reducer";
 import LoadPlayerReducer from "../load_player_reducer";
 import MoveToReducer from "../move_to_reducer";
 import SelectTargetReducer from "../select_target_reducer";
+import UpgradeCannonReducer from "../upgrade_cannon_reducer";
 
 export type EngageParams = __Infer<typeof EngageReducer>;
 export type LoadPlayerParams = __Infer<typeof LoadPlayerReducer>;
 export type MoveToParams = __Infer<typeof MoveToReducer>;
 export type SelectTargetParams = __Infer<typeof SelectTargetReducer>;
+export type UpgradeCannonParams = __Infer<typeof UpgradeCannonReducer>;

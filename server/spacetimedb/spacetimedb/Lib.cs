@@ -83,6 +83,15 @@ public static partial class Module
         public uint Gold;
     }
 
+    [SpacetimeDB.Table(Accessor = "PlayerProgression", Public = true)]
+    public partial struct PlayerProgression
+    {
+        [PrimaryKey]
+        public Identity Owner;
+        public uint Level;
+        public uint CannonUpgradeLevel;
+    }
+
     [SpacetimeDB.Table(Accessor = "GameEvent", Public = true)]
     public partial struct GameEvent
     {
@@ -206,6 +215,33 @@ public static partial class Module
     }
 
     [SpacetimeDB.Reducer]
+    public static void UpgradeCannon(ReducerContext ctx)
+    {
+        var progression = FindProgression(ctx, ctx.Sender);
+        var cost = WorldRules.CannonUpgradeCost(progression.CannonUpgradeLevel);
+        var balance = FindBalance(ctx, ctx.Sender);
+        if (balance.Gold < cost)
+        {
+            throw new Exception("The player cannot afford this cannon upgrade.");
+        }
+
+        var updatedBalance = balance;
+        updatedBalance.Gold -= cost;
+        ctx.Db.ResourceBalance.Owner.Update(updatedBalance);
+
+        var updatedProgression = progression;
+        updatedProgression.CannonUpgradeLevel++;
+        ctx.Db.PlayerProgression.Owner.Update(updatedProgression);
+
+        var ship = FindShip(ctx, ctx.Sender);
+        var upgradedShip = ship;
+        upgradedShip.CannonDamage += WorldRules.CannonDamagePerUpgrade;
+        ctx.Db.PlayerShip.Owner.Update(upgradedShip);
+
+        AppendEvent(ctx, ctx.Sender, "cannon_upgraded", $"level={updatedProgression.CannonUpgradeLevel},cost={cost}");
+    }
+
+    [SpacetimeDB.Reducer]
     public static void RunSimulationTick(ReducerContext ctx, SimulationTimer timer)
     {
         foreach (var world in ctx.Db.WorldState.Iter())
@@ -237,6 +273,7 @@ public static partial class Module
                 var existing = player;
                 existing.IsConnected = connected;
                 ctx.Db.PlayerIdentity.Owner.Update(existing);
+                EnsureProgression(ctx, owner);
                 return;
             }
         }
@@ -263,6 +300,12 @@ public static partial class Module
         {
             Owner = owner,
             Gold = WorldRules.InitialGold,
+        });
+        ctx.Db.PlayerProgression.Insert(new PlayerProgression
+        {
+            Owner = owner,
+            Level = WorldRules.InitialProgressionLevel,
+            CannonUpgradeLevel = WorldRules.InitialCannonUpgradeLevel,
         });
     }
 
@@ -316,6 +359,37 @@ public static partial class Module
         }
 
         throw new Exception("Player resource balance is missing.");
+    }
+
+    private static PlayerProgression FindProgression(ReducerContext ctx, Identity owner)
+    {
+        foreach (var progression in ctx.Db.PlayerProgression.Iter())
+        {
+            if (progression.Owner == owner)
+            {
+                return progression;
+            }
+        }
+
+        throw new Exception("Player progression is missing.");
+    }
+
+    private static void EnsureProgression(ReducerContext ctx, Identity owner)
+    {
+        foreach (var progression in ctx.Db.PlayerProgression.Iter())
+        {
+            if (progression.Owner == owner)
+            {
+                return;
+            }
+        }
+
+        ctx.Db.PlayerProgression.Insert(new PlayerProgression
+        {
+            Owner = owner,
+            Level = WorldRules.InitialProgressionLevel,
+            CannonUpgradeLevel = WorldRules.InitialCannonUpgradeLevel,
+        });
     }
 
     private static void ResolveCombat(ReducerContext ctx, ulong tick)
