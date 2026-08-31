@@ -74,6 +74,7 @@ services:
       dockerfile: apps/admin/Dockerfile
     environment:
       NODE_ENV: development
+      SEA_SPACETIMEDB_URL: http://spacetimedb:3000
     depends_on:
       spacetimedb:
         condition: service_healthy
