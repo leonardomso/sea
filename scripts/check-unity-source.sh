@@ -14,6 +14,7 @@ test -f "$unity_root/Assets/Scripts/SeaAuthTokenStore.cs"
 test -f "$unity_root/Assets/Scripts/SeaGameController.cs"
 test -f "$unity_root/Assets/Scripts/SeaShipMotion.cs"
 test -f "$unity_root/Assets/Scripts/SeaShipVisualFactory.cs"
+test -f "$unity_root/Assets/Scripts/SeaSubscriptionPlan.cs"
 test -f "$unity_root/Assets/Scripts/SeaWorldView.cs"
 test -f "$unity_root/Assets/Art/Ships/StarterShip/StarterShip.fbx"
 test -f "$project_root/packages/spacetimedb-unity/src/UnityTcpWebSocket.cs"
@@ -23,7 +24,12 @@ grep -q '^m_EditorVersion: 6000\.3\.23f1$' "$project_version"
 grep -q 'com.clockworklabs.spacetimedbsdk.*file:../../../packages/spacetimedb-unity' "$manifest"
 grep -q '^using System.Collections;$' "$project_root/packages/spacetimedb-unity/src/SpacetimeDBClient.cs"
 grep -q 'DbConnection\.Builder' "$unity_root/Assets/Scripts/SeaConnectionController.cs"
-grep -q 'Reducers\.MoveTo' "$unity_root/Assets/Scripts/SeaGameController.cs"
+grep -q 'Reducers\.SetCourse' "$unity_root/Assets/Scripts/SeaGameController.cs"
 grep -q 'Reducers\.Engage' "$unity_root/Assets/Scripts/SeaGameController.cs"
+
+if grep -R -q --include='*.cs' 'SubscribeToAllTables' "$unity_root/Assets/Scripts"; then
+  echo "Runtime Unity code must use scoped subscriptions." >&2
+  exit 1
+fi
 
 echo "Unity source checks passed for $(grep '^m_EditorVersion:' "$project_version")"

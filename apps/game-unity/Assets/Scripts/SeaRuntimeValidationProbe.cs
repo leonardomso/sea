@@ -27,26 +27,27 @@ namespace Sea.Client
                 return;
             }
 
-            foreach (var ship in connection.Connection.Db.PlayerShip.Iter())
+            var ownership = connection.Connection.Db.PlayerOwnership.Owner.Find(connection.LocalIdentity);
+            if (ownership == null)
             {
-                if (ship.Owner != connection.LocalIdentity)
-                {
-                    continue;
-                }
-
-                ObserveShip(ship);
                 return;
+            }
+
+            var ship = connection.Connection.Db.Ship.EntityId.Find(ownership.ShipEntityId);
+            if (ship != null)
+            {
+                ObserveShip(ship);
             }
         }
 
-        private void ObserveShip(PlayerShip ship)
+        private void ObserveShip(Ship ship)
         {
             var position = new Vector2(ship.PositionX, ship.PositionY);
             if (!moveRequested)
             {
                 start = position;
                 destination = new Vector2(Mathf.Min(position.x + 20f, 90f), position.y);
-                connection.Connection.Reducers.MoveTo(destination.x, destination.y);
+                connection.Connection.Reducers.SetCourse(destination.x, destination.y);
                 moveRequested = true;
                 return;
             }

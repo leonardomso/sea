@@ -41,13 +41,15 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.Col<PlayerProgression, SpacetimeDB.Identity> Owner { get; }
         public global::SpacetimeDB.Col<PlayerProgression, uint> Level { get; }
-        public global::SpacetimeDB.Col<PlayerProgression, uint> CannonUpgradeLevel { get; }
+        public global::SpacetimeDB.Col<PlayerProgression, ulong> Experience { get; }
+        public global::SpacetimeDB.Col<PlayerProgression, uint> Gold { get; }
 
         public PlayerProgressionCols(string tableName)
         {
             Owner = new global::SpacetimeDB.Col<PlayerProgression, SpacetimeDB.Identity>(tableName, "owner");
             Level = new global::SpacetimeDB.Col<PlayerProgression, uint>(tableName, "level");
-            CannonUpgradeLevel = new global::SpacetimeDB.Col<PlayerProgression, uint>(tableName, "cannon_upgrade_level");
+            Experience = new global::SpacetimeDB.Col<PlayerProgression, ulong>(tableName, "experience");
+            Gold = new global::SpacetimeDB.Col<PlayerProgression, uint>(tableName, "gold");
         }
     }
 

@@ -13,5 +13,6 @@ import {
 export default __t.row({
   owner: __t.identity().primaryKey(),
   level: __t.u32(),
-  cannonUpgradeLevel: __t.u32().name("cannon_upgrade_level"),
+  experience: __t.u64(),
+  gold: __t.u32(),
 });

@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Linq;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using UnityEngine;
@@ -18,6 +19,12 @@ namespace Sea.Client
         private bool connectAttemptInFlight;
         private bool attemptedWithToken;
         private int transientFailureCount;
+        private ulong subscribedPlayerEntityId;
+        private int subscribedChunkX = int.MinValue;
+        private int subscribedChunkY = int.MinValue;
+        private SubscriptionHandle initialSubscription;
+        private SubscriptionHandle playerSubscription;
+        private SubscriptionHandle spatialSubscription;
 
         public DbConnection Connection { get; private set; }
         public Identity LocalIdentity { get; private set; }
@@ -103,6 +110,7 @@ namespace Sea.Client
 
             connectAttemptInFlight = false;
             IsSubscribed = false;
+            ResetSubscriptions();
             Status = "Disconnected";
         }
 
@@ -116,19 +124,128 @@ namespace Sea.Client
             Status = "Connected; subscribing...";
 
             connection.OnUnhandledReducerError += HandleUnhandledReducerError;
-            connection.SubscriptionBuilder()
-                .OnApplied(HandleSubscriptionApplied)
-                .OnError(HandleSubscriptionError)
-                .SubscribeToAllTables();
+            connection.Db.PlayerOwnership.OnInsert += HandleOwnershipInserted;
+            connection.Db.PlayerOwnership.OnUpdate += HandleOwnershipUpdated;
+            connection.Db.Ship.OnInsert += HandleShipInserted;
+            connection.Db.Ship.OnUpdate += HandleShipUpdated;
 
-            connection.Reducers.LoadPlayer();
+            initialSubscription = connection.SubscriptionBuilder()
+                .OnApplied(HandleInitialSubscriptionApplied)
+                .OnError(HandleSubscriptionError)
+                .Subscribe(SeaSubscriptionPlan.Initial(ToIdentitySqlLiteral(identity)).ToArray());
         }
 
-        private void HandleSubscriptionApplied(SubscriptionEventContext context)
+        private void HandleInitialSubscriptionApplied(SubscriptionEventContext context)
         {
-            IsSubscribed = true;
-            Status = "Ready";
-            Debug.Log("Sea client ready.", this);
+            var ownership = context.Db.PlayerOwnership.Owner.Find(LocalIdentity);
+            if (ownership != null)
+            {
+                SubscribePlayerScope(Connection, ownership.ShipEntityId);
+            }
+            else
+            {
+                context.Reducers.LoadPlayer();
+            }
+        }
+
+        private void HandleOwnershipInserted(EventContext context, PlayerOwnership ownership)
+        {
+            if (ownership.Owner == LocalIdentity)
+            {
+                SubscribePlayerScope(Connection, ownership.ShipEntityId);
+            }
+        }
+
+        private void HandleOwnershipUpdated(
+            EventContext context,
+            PlayerOwnership _oldOwnership,
+            PlayerOwnership ownership)
+        {
+            if (ownership.Owner == LocalIdentity)
+            {
+                SubscribePlayerScope(Connection, ownership.ShipEntityId);
+            }
+        }
+
+        private void SubscribePlayerScope(DbConnection connection, ulong shipEntityId)
+        {
+            if (shipEntityId == 0 || subscribedPlayerEntityId == shipEntityId)
+            {
+                return;
+            }
+
+            subscribedPlayerEntityId = shipEntityId;
+            playerSubscription = connection.SubscriptionBuilder()
+                .OnApplied(context => HandlePlayerSubscriptionApplied(context, shipEntityId))
+                .OnError(HandleSubscriptionError)
+                .Subscribe(SeaSubscriptionPlan.Player(shipEntityId).ToArray());
+        }
+
+        private void HandlePlayerSubscriptionApplied(
+            SubscriptionEventContext context,
+            ulong shipEntityId)
+        {
+            var ship = context.Db.Ship.EntityId.Find(shipEntityId);
+            if (ship == null)
+            {
+                Status = "Player ship subscription returned no ship.";
+                return;
+            }
+
+            SubscribeSpatialScope(Connection, ship.ChunkX, ship.ChunkY);
+        }
+
+        private void HandleShipInserted(EventContext context, Ship ship)
+        {
+            RefreshSpatialScope(Connection, ship);
+        }
+
+        private void HandleShipUpdated(EventContext context, Ship _oldShip, Ship ship)
+        {
+            RefreshSpatialScope(Connection, ship);
+        }
+
+        private void RefreshSpatialScope(DbConnection connection, Ship ship)
+        {
+            if (ship.EntityId == subscribedPlayerEntityId &&
+                (ship.ChunkX != subscribedChunkX || ship.ChunkY != subscribedChunkY))
+            {
+                SubscribeSpatialScope(connection, ship.ChunkX, ship.ChunkY);
+            }
+        }
+
+        private void SubscribeSpatialScope(DbConnection connection, int chunkX, int chunkY)
+        {
+            if (chunkX == subscribedChunkX && chunkY == subscribedChunkY)
+            {
+                return;
+            }
+
+            var previousSubscription = spatialSubscription;
+            subscribedChunkX = chunkX;
+            subscribedChunkY = chunkY;
+            spatialSubscription = connection.SubscriptionBuilder()
+                .OnApplied(context =>
+                {
+                    if (previousSubscription != null && previousSubscription.IsActive)
+                    {
+                        previousSubscription.Unsubscribe();
+                    }
+
+                    IsSubscribed = true;
+                    Status = "Ready";
+                    Debug.Log("Sea client ready.", this);
+                })
+                .OnError(HandleSubscriptionError)
+                .Subscribe(SeaSubscriptionPlan.Spatial(chunkX, chunkY, radius: 1).ToArray());
+        }
+
+        private static string ToIdentitySqlLiteral(Identity identity)
+        {
+            var value = identity.ToString();
+            return value.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                ? value
+                : "0x" + value;
         }
 
         private void HandleSubscriptionError(ErrorContext context, Exception exception)
@@ -150,6 +267,7 @@ namespace Sea.Client
 
             IsSubscribed = false;
             HasIdentity = false;
+            ResetSubscriptions();
             RecoverFromFailure(exception);
         }
 
@@ -164,6 +282,7 @@ namespace Sea.Client
             Connection = null;
             IsSubscribed = false;
             HasIdentity = false;
+            ResetSubscriptions();
             Status = exception == null ? "Disconnected" : "Disconnected: " + exception.Message;
             if (!manualDisconnect)
             {
@@ -238,6 +357,16 @@ namespace Sea.Client
         private void OnDestroy()
         {
             Disconnect();
+        }
+
+        private void ResetSubscriptions()
+        {
+            initialSubscription = null;
+            playerSubscription = null;
+            spatialSubscription = null;
+            subscribedPlayerEntityId = 0;
+            subscribedChunkX = int.MinValue;
+            subscribedChunkY = int.MinValue;
         }
     }
 }

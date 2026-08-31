@@ -76,7 +76,7 @@ namespace Sea.Client
 
         private void CreateWorldGeometry()
         {
-            foreach (var entity in connection.Connection.Db.MapEntity.Iter())
+            foreach (var entity in connection.Connection.Db.WorldObject.Iter())
             {
                 if (entity.Kind == "harbor")
                 {
@@ -86,7 +86,7 @@ namespace Sea.Client
                 var geometry = GameObject.CreatePrimitive(entity.Kind == "island" ? PrimitiveType.Cylinder : PrimitiveType.Sphere);
                 geometry.name = $"Map {entity.Kind} {entity.EntityId}";
                 geometry.transform.position = ToWorld(entity.PositionX, entity.PositionY, 0f);
-                var radius = entity.InteractionRadius;
+                var radius = entity.Radius;
                 geometry.transform.localScale = entity.Kind == "island"
                     ? new Vector3(radius * 2f, 1.2f, radius * 2f)
                     : new Vector3(radius * 2f, 0.5f, radius * 2f);
@@ -98,7 +98,7 @@ namespace Sea.Client
 
         private void SyncMapEntities()
         {
-            foreach (var entity in connection.Connection.Db.MapEntity.Iter())
+            foreach (var entity in connection.Connection.Db.WorldObject.Iter())
             {
                 if (entity.Kind == "harbor")
                 {
@@ -116,8 +116,13 @@ namespace Sea.Client
 
         private void SyncEnemyShips()
         {
-            foreach (var enemy in connection.Connection.Db.NpcShip.Iter())
+            foreach (var enemy in connection.Connection.Db.Ship.Iter())
             {
+                if (enemy.Faction != "npc")
+                {
+                    continue;
+                }
+
                 if (!entities.TryGetValue(enemy.EntityId, out var enemyObject))
                 {
                     enemyObject = CreateShip($"Enemy Ship {enemy.EntityId}");
@@ -127,30 +132,33 @@ namespace Sea.Client
 
                 enemyObject.SetActive(enemy.IsActive);
                 targets[enemy.EntityId] = ToWorld(enemy.PositionX, enemy.PositionY, 1.2f);
-                UpdateHealthBar(enemyObject, enemy.Health, enemy.MaxHealth);
+                UpdateHealthBar(enemyObject, enemy.Hull, enemy.MaxHull);
             }
         }
 
         private void SyncPlayerShip()
         {
-            foreach (var ship in connection.Connection.Db.PlayerShip.Iter())
+            var ownership = connection.Connection.Db.PlayerOwnership.Owner.Find(connection.LocalIdentity);
+            if (ownership == null)
             {
-                if (ship.Owner != connection.LocalIdentity)
-                {
-                    continue;
-                }
-
-                if (playerObject == null)
-                {
-                    playerObject = CreateShip("Player Ship");
-                    playerObject.transform.position = ToWorld(ship.PositionX, ship.PositionY, 1.2f);
-                }
-
-                targets[0] = ToWorld(ship.PositionX, ship.PositionY, 1.2f);
-                UpdateHealthBar(playerObject, ship.Health, 100u);
-                UpdateTargetRing(ship);
-                break;
+                return;
             }
+
+            var ship = connection.Connection.Db.Ship.EntityId.Find(ownership.ShipEntityId);
+            if (ship == null)
+            {
+                return;
+            }
+
+            if (playerObject == null)
+            {
+                playerObject = CreateShip("Player Ship");
+                playerObject.transform.position = ToWorld(ship.PositionX, ship.PositionY, 1.2f);
+            }
+
+            targets[0] = ToWorld(ship.PositionX, ship.PositionY, 1.2f);
+            UpdateHealthBar(playerObject, ship.Hull, ship.MaxHull);
+            UpdateTargetRing(ship);
         }
 
         private void UpdateEntityTransforms()
@@ -196,9 +204,9 @@ namespace Sea.Client
             return SeaShipVisualFactory.Create(shipModel, name, ShipFootprint);
         }
 
-        private void UpdateTargetRing(PlayerShip ship)
+        private void UpdateTargetRing(Ship ship)
         {
-            if (!ship.HasSelectedTarget || !entities.TryGetValue(ship.SelectedTargetId, out var selectedObject))
+            if (ship.TargetEntityId == 0 || !entities.TryGetValue(ship.TargetEntityId, out var selectedObject))
             {
                 if (targetRing != null)
                 {

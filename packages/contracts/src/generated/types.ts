@@ -10,76 +10,160 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export const GameEvent = __t.object("GameEvent", {
+export const AbilityDefinition = __t.object("AbilityDefinition", {
+  abilityId: __t.string(),
+  cooldownTicks: __t.u32(),
+  durationTicks: __t.u32(),
+});
+export type AbilityDefinition = __Infer<typeof AbilityDefinition>;
+
+export const AmmoDefinition = __t.object("AmmoDefinition", {
+  ammoId: __t.string(),
+  hullDamage: __t.u32(),
+  sailDamage: __t.u32(),
+  cannonDamage: __t.u32(),
+  crewDamage: __t.u32(),
+  rangeMultiplier: __t.f32(),
+  appliedStatus: __t.string(),
+});
+export type AmmoDefinition = __Infer<typeof AmmoDefinition>;
+
+export const CombatContribution = __t.object("CombatContribution", {
+  contributionId: __t.u64(),
+  encounterId: __t.u64(),
+  contributorEntityId: __t.u64(),
+  damage: __t.u64(),
+  boarding: __t.u64(),
+  support: __t.u64(),
+  rewarded: __t.bool(),
+});
+export type CombatContribution = __Infer<typeof CombatContribution>;
+
+export const CombatEvent = __t.object("CombatEvent", {
   eventId: __t.u64(),
-  owner: __t.identity(),
+  ownerEntityId: __t.u64(),
   eventType: __t.string(),
   details: __t.string(),
   tick: __t.u64(),
-});
-export type GameEvent = __Infer<typeof GameEvent>;
-
-export const MapEntity = __t.object("MapEntity", {
-  entityId: __t.u64(),
-  kind: __t.string(),
-  positionX: __t.f32(),
-  positionY: __t.f32(),
-  interactionRadius: __t.f32(),
-  isTargetable: __t.bool(),
-  isActive: __t.bool(),
-  blocksMovement: __t.bool(),
-});
-export type MapEntity = __Infer<typeof MapEntity>;
-
-export const NpcShip = __t.object("NpcShip", {
-  entityId: __t.u64(),
-  positionX: __t.f32(),
-  positionY: __t.f32(),
-  health: __t.u32(),
-  maxHealth: __t.u32(),
-  cannonDamage: __t.u32(),
-  cannonCooldownTicks: __t.u32(),
-  nextAttackTick: __t.u64(),
-  goldReward: __t.u32(),
+  expiresAtTick: __t.u64(),
   isActive: __t.bool(),
 });
-export type NpcShip = __Infer<typeof NpcShip>;
+export type CombatEvent = __Infer<typeof CombatEvent>;
 
-export const PlayerIdentity = __t.object("PlayerIdentity", {
+export const Cooldown = __t.object("Cooldown", {
+  cooldownId: __t.u64(),
+  shipEntityId: __t.u64(),
+  cooldownType: __t.string(),
+  readyAtTick: __t.u64(),
+});
+export type Cooldown = __Infer<typeof Cooldown>;
+
+export const Inventory = __t.object("Inventory", {
+  inventoryId: __t.u64(),
+  shipEntityId: __t.u64(),
+  itemId: __t.string(),
+  quantity: __t.u32(),
+});
+export type Inventory = __Infer<typeof Inventory>;
+
+export const LevelDefinition = __t.object("LevelDefinition", {
+  level: __t.u32(),
+  requiredExperience: __t.u64(),
+});
+export type LevelDefinition = __Infer<typeof LevelDefinition>;
+
+export const Loot = __t.object("Loot", {
+  lootId: __t.u64(),
+  positionX: __t.f32(),
+  positionY: __t.f32(),
+  chunkX: __t.i32(),
+  chunkY: __t.i32(),
+  lootType: __t.string(),
+  quantity: __t.u32(),
+  isActive: __t.bool(),
+  expiresAtTick: __t.u64(),
+  claimedByEntityId: __t.u64(),
+});
+export type Loot = __Infer<typeof Loot>;
+
+export const NpcAi = __t.object("NpcAi", {
+  shipEntityId: __t.u64(),
+  archetypeId: __t.string(),
+  isActive: __t.bool(),
+  nextDecisionTick: __t.u64(),
+  homeSeed: __t.u64(),
+});
+export type NpcAi = __Infer<typeof NpcAi>;
+
+export const NpcDefinition = __t.object("NpcDefinition", {
+  npcId: __t.string(),
+  aggroRange: __t.f32(),
+  desiredRange: __t.f32(),
+  hull: __t.u32(),
+});
+export type NpcDefinition = __Infer<typeof NpcDefinition>;
+
+export const PlayerOwnership = __t.object("PlayerOwnership", {
   owner: __t.identity(),
+  shipEntityId: __t.u64(),
   isConnected: __t.bool(),
 });
-export type PlayerIdentity = __Infer<typeof PlayerIdentity>;
+export type PlayerOwnership = __Infer<typeof PlayerOwnership>;
 
 export const PlayerProgression = __t.object("PlayerProgression", {
   owner: __t.identity(),
   level: __t.u32(),
-  cannonUpgradeLevel: __t.u32(),
+  experience: __t.u64(),
+  gold: __t.u32(),
 });
 export type PlayerProgression = __Infer<typeof PlayerProgression>;
 
-export const PlayerShip = __t.object("PlayerShip", {
-  owner: __t.identity(),
+export const Ship = __t.object("Ship", {
+  entityId: __t.u64(),
+  archetypeId: __t.string(),
+  faction: __t.string(),
   positionX: __t.f32(),
   positionY: __t.f32(),
   destinationX: __t.f32(),
   destinationY: __t.f32(),
+  headingDegrees: __t.f32(),
+  speed: __t.f32(),
   isMoving: __t.bool(),
-  health: __t.u32(),
-  selectedTargetId: __t.u64(),
-  hasSelectedTarget: __t.bool(),
+  isActive: __t.bool(),
+  isAlive: __t.bool(),
   isEngaged: __t.bool(),
+  chunkX: __t.i32(),
+  chunkY: __t.i32(),
+  targetEntityId: __t.u64(),
+  selectedAmmoId: __t.string(),
+  selectedWeakPoint: __t.string(),
+  hull: __t.u32(),
+  maxHull: __t.u32(),
+  sails: __t.u32(),
+  maxSails: __t.u32(),
+  cannons: __t.u32(),
+  maxCannons: __t.u32(),
+  crew: __t.u32(),
+  maxCrew: __t.u32(),
   cannonDamage: __t.u32(),
   cannonCooldownTicks: __t.u32(),
-  nextCannonAttackTick: __t.u64(),
+  nextPortFireTick: __t.u64(),
+  nextStarboardFireTick: __t.u64(),
+  respawnAtTick: __t.u64(),
+  invulnerableUntilTick: __t.u64(),
 });
-export type PlayerShip = __Infer<typeof PlayerShip>;
+export type Ship = __Infer<typeof Ship>;
 
-export const ResourceBalance = __t.object("ResourceBalance", {
-  owner: __t.identity(),
-  gold: __t.u32(),
+export const ShipStatus = __t.object("ShipStatus", {
+  statusId: __t.u64(),
+  shipEntityId: __t.u64(),
+  statusType: __t.string(),
+  stacks: __t.u32(),
+  expiresAtTick: __t.u64(),
+  immunityUntilTick: __t.u64(),
+  isActive: __t.bool(),
 });
-export type ResourceBalance = __Infer<typeof ResourceBalance>;
+export type ShipStatus = __Infer<typeof ShipStatus>;
 
 export const SimulationTimer = __t.object("SimulationTimer", {
   scheduledId: __t.u64(),
@@ -87,9 +171,41 @@ export const SimulationTimer = __t.object("SimulationTimer", {
 });
 export type SimulationTimer = __Infer<typeof SimulationTimer>;
 
+export const Volley = __t.object("Volley", {
+  volleyId: __t.u64(),
+  sourceEntityId: __t.u64(),
+  targetEntityId: __t.u64(),
+  side: __t.string(),
+  ammoId: __t.string(),
+  weakPoint: __t.string(),
+  originX: __t.f32(),
+  originY: __t.f32(),
+  chunkX: __t.i32(),
+  chunkY: __t.i32(),
+  firedAtTick: __t.u64(),
+  impactAtTick: __t.u64(),
+  isActive: __t.bool(),
+});
+export type Volley = __Infer<typeof Volley>;
+
+export const WorldObject = __t.object("WorldObject", {
+  entityId: __t.u64(),
+  kind: __t.string(),
+  positionX: __t.f32(),
+  positionY: __t.f32(),
+  radius: __t.f32(),
+  chunkX: __t.i32(),
+  chunkY: __t.i32(),
+  isActive: __t.bool(),
+  blocksMovement: __t.bool(),
+});
+export type WorldObject = __Infer<typeof WorldObject>;
+
 export const WorldState = __t.object("WorldState", {
   id: __t.u32(),
   tick: __t.u64(),
   tickRateHz: __t.u32(),
+  nextEntityId: __t.u64(),
+  contentVersion: __t.u32(),
 });
 export type WorldState = __Infer<typeof WorldState>;

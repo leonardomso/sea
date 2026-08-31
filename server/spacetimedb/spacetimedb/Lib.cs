@@ -1,5 +1,5 @@
-using SpacetimeDB;
 using Sea.Server;
+using SpacetimeDB;
 
 public static partial class Module
 {
@@ -10,6 +10,8 @@ public static partial class Module
         public uint Id;
         public ulong Tick;
         public uint TickRateHz;
+        public ulong NextEntityId;
+        public uint ContentVersion;
     }
 
     [SpacetimeDB.Table(Accessor = "SimulationTimer", Scheduled = "RunSimulationTick", ScheduledAt = "ScheduledAt")]
@@ -21,69 +23,57 @@ public static partial class Module
         public ScheduleAt ScheduledAt;
     }
 
-    [SpacetimeDB.Table(Accessor = "PlayerIdentity", Public = true)]
-    public partial struct PlayerIdentity
+    [SpacetimeDB.Table(Accessor = "Ship", Public = true)]
+    [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByMoving", Columns = new[] { nameof(IsMoving) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByEngaged", Columns = new[] { nameof(IsEngaged) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByChunk", Columns = new[] { nameof(ChunkX), nameof(ChunkY) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByTarget", Columns = new[] { nameof(TargetEntityId) })]
+    public partial struct Ship
     {
         [PrimaryKey]
-        public Identity Owner;
-        public bool IsConnected;
-    }
-
-    [SpacetimeDB.Table(Accessor = "PlayerShip", Public = true)]
-    public partial struct PlayerShip
-    {
-        [PrimaryKey]
-        public Identity Owner;
+        public ulong EntityId;
+        public string ArchetypeId;
+        public string Faction;
         public float PositionX;
         public float PositionY;
         public float DestinationX;
         public float DestinationY;
+        public float HeadingDegrees;
+        public float Speed;
         public bool IsMoving;
-        public uint Health;
-        public ulong SelectedTargetId;
-        public bool HasSelectedTarget;
+        public bool IsActive;
+        public bool IsAlive;
         public bool IsEngaged;
+        public int ChunkX;
+        public int ChunkY;
+        public ulong TargetEntityId;
+        public string SelectedAmmoId;
+        public string SelectedWeakPoint;
+        public uint Hull;
+        public uint MaxHull;
+        public uint Sails;
+        public uint MaxSails;
+        public uint Cannons;
+        public uint MaxCannons;
+        public uint Crew;
+        public uint MaxCrew;
         public uint CannonDamage;
         public uint CannonCooldownTicks;
-        public ulong NextCannonAttackTick;
+        public ulong NextPortFireTick;
+        public ulong NextStarboardFireTick;
+        public ulong RespawnAtTick;
+        public ulong InvulnerableUntilTick;
     }
 
-    [SpacetimeDB.Table(Accessor = "NpcShip", Public = true)]
-    public partial struct NpcShip
-    {
-        [PrimaryKey]
-        public ulong EntityId;
-        public float PositionX;
-        public float PositionY;
-        public uint Health;
-        public uint MaxHealth;
-        public uint CannonDamage;
-        public uint CannonCooldownTicks;
-        public ulong NextAttackTick;
-        public uint GoldReward;
-        public bool IsActive;
-    }
-
-    [SpacetimeDB.Table(Accessor = "MapEntity", Public = true)]
-    public partial struct MapEntity
-    {
-        [PrimaryKey]
-        public ulong EntityId;
-        public string Kind;
-        public float PositionX;
-        public float PositionY;
-        public float InteractionRadius;
-        public bool IsTargetable;
-        public bool IsActive;
-        public bool BlocksMovement;
-    }
-
-    [SpacetimeDB.Table(Accessor = "ResourceBalance", Public = true)]
-    public partial struct ResourceBalance
+    [SpacetimeDB.Table(Accessor = "PlayerOwnership", Public = true)]
+    public partial struct PlayerOwnership
     {
         [PrimaryKey]
         public Identity Owner;
-        public uint Gold;
+        [Unique]
+        public ulong ShipEntityId;
+        public bool IsConnected;
     }
 
     [SpacetimeDB.Table(Accessor = "PlayerProgression", Public = true)]
@@ -92,39 +82,216 @@ public static partial class Module
         [PrimaryKey]
         public Identity Owner;
         public uint Level;
-        public uint CannonUpgradeLevel;
+        public ulong Experience;
+        public uint Gold;
     }
 
-    [SpacetimeDB.Table(Accessor = "GameEvent", Public = true)]
-    public partial struct GameEvent
+    [SpacetimeDB.Table(Accessor = "NpcAi", Public = true)]
+    [SpacetimeDB.Index.BTree(Accessor = "ByDecisionDue", Columns = new[] { nameof(IsActive), nameof(NextDecisionTick) })]
+    public partial struct NpcAi
+    {
+        [PrimaryKey]
+        public ulong ShipEntityId;
+        public string ArchetypeId;
+        public bool IsActive;
+        public ulong NextDecisionTick;
+        public ulong HomeSeed;
+    }
+
+    [SpacetimeDB.Table(Accessor = "Inventory", Public = true)]
+    [SpacetimeDB.Index.BTree(Accessor = "ByShip", Columns = new[] { nameof(ShipEntityId) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByShipItem", Columns = new[] { nameof(ShipEntityId), nameof(ItemId) })]
+    public partial struct Inventory
+    {
+        [PrimaryKey]
+        [AutoInc]
+        public ulong InventoryId;
+        public ulong ShipEntityId;
+        public string ItemId;
+        public uint Quantity;
+    }
+
+    [SpacetimeDB.Table(Accessor = "ShipStatus", Public = true)]
+    [SpacetimeDB.Index.BTree(Accessor = "ByShip", Columns = new[] { nameof(ShipEntityId) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
+    public partial struct ShipStatus
+    {
+        [PrimaryKey]
+        [AutoInc]
+        public ulong StatusId;
+        public ulong ShipEntityId;
+        public string StatusType;
+        public uint Stacks;
+        public ulong ExpiresAtTick;
+        public ulong ImmunityUntilTick;
+        public bool IsActive;
+    }
+
+    [SpacetimeDB.Table(Accessor = "Volley", Public = true)]
+    [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByTarget", Columns = new[] { nameof(TargetEntityId) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByChunk", Columns = new[] { nameof(ChunkX), nameof(ChunkY) })]
+    public partial struct Volley
+    {
+        [PrimaryKey]
+        [AutoInc]
+        public ulong VolleyId;
+        public ulong SourceEntityId;
+        public ulong TargetEntityId;
+        public string Side;
+        public string AmmoId;
+        public string WeakPoint;
+        public float OriginX;
+        public float OriginY;
+        public int ChunkX;
+        public int ChunkY;
+        public ulong FiredAtTick;
+        public ulong ImpactAtTick;
+        public bool IsActive;
+    }
+
+    [SpacetimeDB.Table(Accessor = "Loot", Public = true)]
+    [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByChunk", Columns = new[] { nameof(ChunkX), nameof(ChunkY) })]
+    public partial struct Loot
+    {
+        [PrimaryKey]
+        [AutoInc]
+        public ulong LootId;
+        public float PositionX;
+        public float PositionY;
+        public int ChunkX;
+        public int ChunkY;
+        public string LootType;
+        public uint Quantity;
+        public bool IsActive;
+        public ulong ExpiresAtTick;
+        public ulong ClaimedByEntityId;
+    }
+
+    [SpacetimeDB.Table(Accessor = "Cooldown", Public = true)]
+    [SpacetimeDB.Index.BTree(Accessor = "ByShip", Columns = new[] { nameof(ShipEntityId) })]
+    public partial struct Cooldown
+    {
+        [PrimaryKey]
+        [AutoInc]
+        public ulong CooldownId;
+        public ulong ShipEntityId;
+        public string CooldownType;
+        public ulong ReadyAtTick;
+    }
+
+    [SpacetimeDB.Table(Accessor = "CombatContribution", Public = true)]
+    [SpacetimeDB.Index.BTree(Accessor = "ByEncounter", Columns = new[] { nameof(EncounterId) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByContributor", Columns = new[] { nameof(ContributorEntityId) })]
+    public partial struct CombatContribution
+    {
+        [PrimaryKey]
+        [AutoInc]
+        public ulong ContributionId;
+        public ulong EncounterId;
+        public ulong ContributorEntityId;
+        public ulong Damage;
+        public ulong Boarding;
+        public ulong Support;
+        public bool Rewarded;
+    }
+
+    [SpacetimeDB.Table(Accessor = "CombatEvent", Public = true)]
+    [SpacetimeDB.Index.BTree(Accessor = "ByOwner", Columns = new[] { nameof(OwnerEntityId) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
+    public partial struct CombatEvent
     {
         [PrimaryKey]
         [AutoInc]
         public ulong EventId;
-        public Identity Owner;
+        public ulong OwnerEntityId;
         public string EventType;
         public string Details;
         public ulong Tick;
+        public ulong ExpiresAtTick;
+        public bool IsActive;
+    }
+
+    [SpacetimeDB.Table(Accessor = "WorldObject", Public = true)]
+    [SpacetimeDB.Index.BTree(Accessor = "ByChunk", Columns = new[] { nameof(ChunkX), nameof(ChunkY) })]
+    public partial struct WorldObject
+    {
+        [PrimaryKey]
+        public ulong EntityId;
+        public string Kind;
+        public float PositionX;
+        public float PositionY;
+        public float Radius;
+        public int ChunkX;
+        public int ChunkY;
+        public bool IsActive;
+        public bool BlocksMovement;
+    }
+
+    [SpacetimeDB.Table(Accessor = "AmmoDefinition", Public = true)]
+    public partial struct AmmoDefinition
+    {
+        [PrimaryKey]
+        public string AmmoId;
+        public uint HullDamage;
+        public uint SailDamage;
+        public uint CannonDamage;
+        public uint CrewDamage;
+        public float RangeMultiplier;
+        public string AppliedStatus;
+    }
+
+    [SpacetimeDB.Table(Accessor = "AbilityDefinition", Public = true)]
+    public partial struct AbilityDefinition
+    {
+        [PrimaryKey]
+        public string AbilityId;
+        public uint CooldownTicks;
+        public uint DurationTicks;
+    }
+
+    [SpacetimeDB.Table(Accessor = "NpcDefinition", Public = true)]
+    public partial struct NpcDefinition
+    {
+        [PrimaryKey]
+        public string NpcId;
+        public float AggroRange;
+        public float DesiredRange;
+        public uint Hull;
+    }
+
+    [SpacetimeDB.Table(Accessor = "LevelDefinition", Public = true)]
+    public partial struct LevelDefinition
+    {
+        [PrimaryKey]
+        public uint Level;
+        public ulong RequiredExperience;
     }
 
     [Reducer(ReducerKind.Init)]
     public static void Init(ReducerContext ctx)
     {
-        if (!HasWorldState(ctx))
+        if (ctx.Db.WorldState.Id.Find(1) is not null)
         {
-            ctx.Db.WorldState.Insert(new WorldState
-            {
-                Id = 1,
-                Tick = 0,
-                TickRateHz = WorldRules.TickRateHz,
-            });
-
-            SeedMap(ctx);
-            ctx.Db.SimulationTimer.Insert(new SimulationTimer
-            {
-                ScheduledAt = new ScheduleAt.Interval(TimeSpan.FromMilliseconds(1000d / WorldRules.TickRateHz)),
-            });
+            return;
         }
+
+        ctx.Db.WorldState.Insert(new WorldState
+        {
+            Id = 1,
+            Tick = 0,
+            TickRateHz = WorldRules.TickRateHz,
+            NextEntityId = 1000,
+            ContentVersion = 1,
+        });
+        SeedContent(ctx);
+        SeedWorld(ctx);
+        ctx.Db.SimulationTimer.Insert(new SimulationTimer
+        {
+            ScheduledAt = new ScheduleAt.Interval(
+                TimeSpan.FromMilliseconds(1000d / WorldRules.TickRateHz)),
+        });
     }
 
     [Reducer(ReducerKind.ClientConnected)]
@@ -142,125 +309,157 @@ public static partial class Module
     [SpacetimeDB.Reducer]
     public static void LoadPlayer(ReducerContext ctx)
     {
-        EnsurePlayer(ctx, ctx.Sender, true, PlayerLoadSource.ExplicitLoad);
+        if (ctx.Db.PlayerOwnership.Owner.Find(ctx.Sender) is PlayerOwnership ownership)
+        {
+            ownership.IsConnected = true;
+            ctx.Db.PlayerOwnership.Owner.Update(ownership);
+            EnsureProgression(ctx, ctx.Sender);
+            return;
+        }
+
+        var entityId = AllocateEntityId(ctx);
+        var ship = CreateShip(entityId, "player_sloop", "player", 0f, 0f);
+        ctx.Db.Ship.Insert(ship);
+        ctx.Db.PlayerOwnership.Insert(new PlayerOwnership
+        {
+            Owner = ctx.Sender,
+            ShipEntityId = entityId,
+            IsConnected = true,
+        });
+        ctx.Db.PlayerProgression.Insert(new PlayerProgression
+        {
+            Owner = ctx.Sender,
+            Level = 1,
+            Experience = 0,
+            Gold = 0,
+        });
+        SeedPlayerInventory(ctx, entityId);
+        AppendEvent(ctx, entityId, "player_loaded", $"entity_id={entityId}");
     }
 
     [SpacetimeDB.Reducer]
-    public static void MoveTo(ReducerContext ctx, float x, float y)
+    public static void SetCourse(ReducerContext ctx, float x, float y)
     {
         if (!WorldRules.IsValidMove(x, y))
         {
             throw new Exception("The requested position is outside the map.");
         }
 
-        foreach (var entity in ctx.Db.MapEntity.Iter())
+        foreach (var worldObject in ctx.Db.WorldObject.Iter())
         {
-            if (entity.IsActive && entity.BlocksMovement && WorldRules.IsBlocked(entity.Kind, entity.PositionX, entity.PositionY, entity.InteractionRadius, x, y))
+            if (worldObject.IsActive && worldObject.BlocksMovement &&
+                WorldRules.IsBlocked(
+                    worldObject.Kind,
+                    worldObject.PositionX,
+                    worldObject.PositionY,
+                    worldObject.Radius,
+                    x,
+                    y))
             {
                 throw new Exception("The requested position is blocked by map geometry.");
             }
         }
 
-        var ship = FindShip(ctx, ctx.Sender);
+        var ship = FindPlayerShip(ctx, ctx.Sender);
         ship.DestinationX = x;
         ship.DestinationY = y;
         ship.IsMoving = ship.PositionX != x || ship.PositionY != y;
-        ctx.Db.PlayerShip.Owner.Update(ship);
-        AppendEvent(ctx, ctx.Sender, "move_to", $"x={x:0.###},y={y:0.###}");
+        ctx.Db.Ship.EntityId.Update(ship);
+        AppendEvent(ctx, ship.EntityId, "set_course", $"x={x:0.###},y={y:0.###}");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void StopCourse(ReducerContext ctx)
+    {
+        var ship = FindPlayerShip(ctx, ctx.Sender);
+        ship.DestinationX = ship.PositionX;
+        ship.DestinationY = ship.PositionY;
+        ship.IsMoving = false;
+        ship.Speed = 0f;
+        ctx.Db.Ship.EntityId.Update(ship);
+        AppendEvent(ctx, ship.EntityId, "stop_course", "");
     }
 
     [SpacetimeDB.Reducer]
     public static void SelectTarget(ReducerContext ctx, ulong entityId)
     {
-        var entity = FindEntity(ctx, entityId);
-        if (!entity.IsActive || !entity.IsTargetable)
+        var target = FindShip(ctx, entityId);
+        if (!target.IsActive || !target.IsAlive || target.Faction == "player")
         {
-            throw new Exception("The selected entity cannot be targeted.");
+            throw new Exception("The selected ship cannot be targeted.");
         }
 
-        var ship = FindShip(ctx, ctx.Sender);
-        ship.SelectedTargetId = entityId;
-        ship.HasSelectedTarget = true;
+        var ship = FindPlayerShip(ctx, ctx.Sender);
+        ship.TargetEntityId = entityId;
         ship.IsEngaged = false;
-        ctx.Db.PlayerShip.Owner.Update(ship);
-        AppendEvent(ctx, ctx.Sender, "select_target", $"entity_id={entityId}");
+        ctx.Db.Ship.EntityId.Update(ship);
+        AppendEvent(ctx, ship.EntityId, "select_target", $"entity_id={entityId}");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void ClearTarget(ReducerContext ctx)
+    {
+        var ship = FindPlayerShip(ctx, ctx.Sender);
+        ship.TargetEntityId = 0;
+        ship.IsEngaged = false;
+        ctx.Db.Ship.EntityId.Update(ship);
+        AppendEvent(ctx, ship.EntityId, "clear_target", "");
     }
 
     [SpacetimeDB.Reducer]
     public static void Engage(ReducerContext ctx)
     {
-        var ship = FindShip(ctx, ctx.Sender);
-        if (!ship.HasSelectedTarget)
+        var ship = FindPlayerShip(ctx, ctx.Sender);
+        if (ship.TargetEntityId == 0)
         {
             throw new Exception("Select a target before engaging.");
         }
 
-        var entity = FindEntity(ctx, ship.SelectedTargetId);
-        if (!entity.IsActive || !entity.IsTargetable)
-        {
-            throw new Exception("The selected entity cannot be engaged.");
-        }
-
-        var npc = FindNpcShip(ctx, entity.EntityId);
-        if (!npc.IsActive)
+        var target = FindShip(ctx, ship.TargetEntityId);
+        if (!target.IsActive || !target.IsAlive)
         {
             throw new Exception("The selected enemy is no longer active.");
         }
 
         ship.IsEngaged = true;
-        ctx.Db.PlayerShip.Owner.Update(ship);
-        AppendEvent(ctx, ctx.Sender, "engage", $"entity_id={entity.EntityId}");
+        ctx.Db.Ship.EntityId.Update(ship);
+        AppendEvent(ctx, ship.EntityId, "engage", $"entity_id={target.EntityId}");
     }
+
+    [SpacetimeDB.Reducer]
+    public static void MoveTo(ReducerContext ctx, float x, float y) => SetCourse(ctx, x, y);
 
     [SpacetimeDB.Reducer]
     public static void UpgradeCannon(ReducerContext ctx)
     {
         var progression = FindProgression(ctx, ctx.Sender);
-        var cost = WorldRules.CannonUpgradeCost(progression.CannonUpgradeLevel);
-        var balance = FindBalance(ctx, ctx.Sender);
-        if (balance.Gold < cost)
+        var cost = checked(100u * progression.Level);
+        if (progression.Gold < cost)
         {
             throw new Exception("The player cannot afford this cannon upgrade.");
         }
 
-        var updatedBalance = balance;
-        updatedBalance.Gold -= cost;
-        ctx.Db.ResourceBalance.Owner.Update(updatedBalance);
-
-        var updatedProgression = progression;
-        updatedProgression.CannonUpgradeLevel++;
-        ctx.Db.PlayerProgression.Owner.Update(updatedProgression);
-
-        var ship = FindShip(ctx, ctx.Sender);
-        var upgradedShip = ship;
-        upgradedShip.CannonDamage += WorldRules.CannonDamagePerUpgrade;
-        ctx.Db.PlayerShip.Owner.Update(upgradedShip);
-
-        AppendEvent(ctx, ctx.Sender, "cannon_upgraded", $"level={updatedProgression.CannonUpgradeLevel},cost={cost}");
+        progression.Gold -= cost;
+        ctx.Db.PlayerProgression.Owner.Update(progression);
+        var ship = FindPlayerShip(ctx, ctx.Sender);
+        ship.CannonDamage += WorldRules.CannonDamagePerUpgrade;
+        ctx.Db.Ship.EntityId.Update(ship);
+        AppendEvent(ctx, ship.EntityId, "cannon_upgraded", $"cost={cost}");
     }
 
     [SpacetimeDB.Reducer]
-    public static void RunSimulationTick(ReducerContext ctx, SimulationTimer timer)
+    public static void RunSimulationTick(ReducerContext ctx, SimulationTimer _timer)
     {
-        foreach (var world in ctx.Db.WorldState.Iter())
+        if (ctx.Db.WorldState.Id.Find(1) is not WorldState world)
         {
-            var next = world;
-            next.Tick++;
-            ctx.Db.WorldState.Id.Update(next);
-            AdvancePlayerShips(ctx);
-            ResolveCombat(ctx, next.Tick);
             return;
         }
-    }
 
-    private static bool HasWorldState(ReducerContext ctx)
-    {
-        foreach (var _ in ctx.Db.WorldState.Iter())
-        {
-            return true;
-        }
-
-        return false;
+        world.Tick++;
+        ctx.Db.WorldState.Id.Update(world);
+        AdvanceMovingShips(ctx);
+        ResolvePrototypeCombat(ctx, world.Tick);
+        ExpireTransientRows(ctx, world.Tick);
     }
 
     private static void SetConnectionStateIfLoaded(
@@ -268,132 +467,83 @@ public static partial class Module
         Identity owner,
         bool connected)
     {
-        if (ctx.Db.PlayerIdentity.Owner.Find(owner) is not PlayerIdentity player)
+        if (ctx.Db.PlayerOwnership.Owner.Find(owner) is not PlayerOwnership ownership)
         {
             return;
         }
 
-        player.IsConnected = connected;
-        ctx.Db.PlayerIdentity.Owner.Update(player);
+        ownership.IsConnected = connected;
+        ctx.Db.PlayerOwnership.Owner.Update(ownership);
     }
 
-    private static void EnsurePlayer(
-        ReducerContext ctx,
-        Identity owner,
-        bool connected,
-        PlayerLoadSource source)
+    private static ulong AllocateEntityId(ReducerContext ctx)
     {
-        if (ctx.Db.PlayerIdentity.Owner.Find(owner) is PlayerIdentity player)
-        {
-            player.IsConnected = connected;
-            ctx.Db.PlayerIdentity.Owner.Update(player);
-            EnsureProgression(ctx, owner);
-            return;
-        }
+        var world = ctx.Db.WorldState.Id.Find(1) ??
+            throw new Exception("World state is missing.");
+        var entityId = world.NextEntityId;
+        world.NextEntityId++;
+        ctx.Db.WorldState.Id.Update(world);
+        return entityId;
+    }
 
-        if (!PlayerConnectionRules.MayCreatePlayer(source))
+    private static Ship CreateShip(
+        ulong entityId,
+        string archetypeId,
+        string faction,
+        float x,
+        float y)
+    {
+        return new Ship
         {
-            return;
-        }
-
-        ctx.Db.PlayerIdentity.Insert(new PlayerIdentity
-        {
-            Owner = owner,
-            IsConnected = connected,
-        });
-        ctx.Db.PlayerShip.Insert(new PlayerShip
-        {
-            Owner = owner,
-            PositionX = 0,
-            PositionY = 0,
-            DestinationX = 0,
-            DestinationY = 0,
+            EntityId = entityId,
+            ArchetypeId = archetypeId,
+            Faction = faction,
+            PositionX = x,
+            PositionY = y,
+            DestinationX = x,
+            DestinationY = y,
+            HeadingDegrees = 0f,
+            Speed = 0f,
             IsMoving = false,
-            Health = WorldRules.InitialHealth,
-            SelectedTargetId = 0,
-            HasSelectedTarget = false,
+            IsActive = true,
+            IsAlive = true,
             IsEngaged = false,
+            ChunkX = SpatialRules.ChunkCoordinate(x),
+            ChunkY = SpatialRules.ChunkCoordinate(y),
+            TargetEntityId = 0,
+            SelectedAmmoId = "round",
+            SelectedWeakPoint = "hull",
+            Hull = WorldRules.InitialHealth,
+            MaxHull = WorldRules.InitialHealth,
+            Sails = 100,
+            MaxSails = 100,
+            Cannons = 100,
+            MaxCannons = 100,
+            Crew = 100,
+            MaxCrew = 100,
             CannonDamage = WorldRules.InitialCannonDamage,
-            CannonCooldownTicks = WorldRules.InitialCannonCooldownTicks,
-            NextCannonAttackTick = 0,
-        });
-        ctx.Db.ResourceBalance.Insert(new ResourceBalance
-        {
-            Owner = owner,
-            Gold = WorldRules.InitialGold,
-        });
-        ctx.Db.PlayerProgression.Insert(new PlayerProgression
-        {
-            Owner = owner,
-            Level = WorldRules.InitialProgressionLevel,
-            CannonUpgradeLevel = WorldRules.InitialCannonUpgradeLevel,
-        });
+            CannonCooldownTicks = WorldRules.InitialCannonCooldownTicks / 2,
+            NextPortFireTick = 0,
+            NextStarboardFireTick = 0,
+            RespawnAtTick = 0,
+            InvulnerableUntilTick = 0,
+        };
     }
 
-    private static PlayerShip FindShip(ReducerContext ctx, Identity owner)
+    private static Ship FindPlayerShip(ReducerContext ctx, Identity owner)
     {
-        foreach (var ship in ctx.Db.PlayerShip.Iter())
-        {
-            if (ship.Owner == owner)
-            {
-                return ship;
-            }
-        }
-
-        throw new Exception("Player has not been loaded.");
+        var ownership = ctx.Db.PlayerOwnership.Owner.Find(owner) ??
+            throw new Exception("Player has not been loaded.");
+        return FindShip(ctx, ownership.ShipEntityId);
     }
 
-    private static MapEntity FindEntity(ReducerContext ctx, ulong entityId)
-    {
-        foreach (var entity in ctx.Db.MapEntity.Iter())
-        {
-            if (entity.EntityId == entityId)
-            {
-                return entity;
-            }
-        }
+    private static Ship FindShip(ReducerContext ctx, ulong entityId) =>
+        ctx.Db.Ship.EntityId.Find(entityId) ??
+        throw new Exception("The requested ship does not exist.");
 
-        throw new Exception("The requested map entity does not exist.");
-    }
-
-    private static NpcShip FindNpcShip(ReducerContext ctx, ulong entityId)
-    {
-        foreach (var npc in ctx.Db.NpcShip.Iter())
-        {
-            if (npc.EntityId == entityId)
-            {
-                return npc;
-            }
-        }
-
-        throw new Exception("The selected entity is not an enemy ship.");
-    }
-
-    private static ResourceBalance FindBalance(ReducerContext ctx, Identity owner)
-    {
-        foreach (var balance in ctx.Db.ResourceBalance.Iter())
-        {
-            if (balance.Owner == owner)
-            {
-                return balance;
-            }
-        }
-
-        throw new Exception("Player resource balance is missing.");
-    }
-
-    private static PlayerProgression FindProgression(ReducerContext ctx, Identity owner)
-    {
-        foreach (var progression in ctx.Db.PlayerProgression.Iter())
-        {
-            if (progression.Owner == owner)
-            {
-                return progression;
-            }
-        }
-
+    private static PlayerProgression FindProgression(ReducerContext ctx, Identity owner) =>
+        ctx.Db.PlayerProgression.Owner.Find(owner) ??
         throw new Exception("Player progression is missing.");
-    }
 
     private static void EnsureProgression(ReducerContext ctx, Identity owner)
     {
@@ -405,94 +555,18 @@ public static partial class Module
         ctx.Db.PlayerProgression.Insert(new PlayerProgression
         {
             Owner = owner,
-            Level = WorldRules.InitialProgressionLevel,
-            CannonUpgradeLevel = WorldRules.InitialCannonUpgradeLevel,
+            Level = 1,
+            Experience = 0,
+            Gold = 0,
         });
     }
 
-    private static void ResolveCombat(ReducerContext ctx, ulong tick)
-    {
-        foreach (var ship in ctx.Db.PlayerShip.Iter())
-        {
-            if (!ship.IsEngaged || !ship.HasSelectedTarget)
-            {
-                continue;
-            }
-
-            var npc = FindNpcShip(ctx, ship.SelectedTargetId);
-            if (!npc.IsActive)
-            {
-                var disengaged = ship;
-                disengaged.IsEngaged = false;
-                ctx.Db.PlayerShip.Owner.Update(disengaged);
-                continue;
-            }
-
-            var updatedShip = ship;
-            var shipChanged = false;
-            if (WorldRules.IsInRange(ship.PositionX, ship.PositionY, npc.PositionX, npc.PositionY, WorldRules.CannonRange) && tick >= ship.NextCannonAttackTick)
-            {
-                updatedShip.NextCannonAttackTick = tick + ship.CannonCooldownTicks;
-                shipChanged = true;
-
-                var damagedNpc = npc;
-                damagedNpc.Health = WorldRules.ApplyDamage(npc.Health, ship.CannonDamage);
-                ctx.Db.NpcShip.EntityId.Update(damagedNpc);
-                npc = damagedNpc;
-                AppendEvent(ctx, ship.Owner, "cannon_hit", $"entity_id={npc.EntityId},damage={ship.CannonDamage}");
-
-                if (damagedNpc.Health == 0)
-                {
-                    damagedNpc.IsActive = false;
-                    ctx.Db.NpcShip.EntityId.Update(damagedNpc);
-
-                    var entity = FindEntity(ctx, npc.EntityId);
-                    var inactiveEntity = entity;
-                    inactiveEntity.IsActive = false;
-                    ctx.Db.MapEntity.EntityId.Update(inactiveEntity);
-
-                    updatedShip.IsEngaged = false;
-                    shipChanged = true;
-                    AppendEvent(ctx, ship.Owner, "enemy_sunk", $"entity_id={npc.EntityId}");
-
-                    var balance = FindBalance(ctx, ship.Owner);
-                    var rewardedBalance = balance;
-                    rewardedBalance.Gold += npc.GoldReward;
-                    ctx.Db.ResourceBalance.Owner.Update(rewardedBalance);
-                    AppendEvent(ctx, ship.Owner, "reward_granted", $"gold={npc.GoldReward}");
-                }
-            }
-
-            if (npc.IsActive && WorldRules.IsInRange(ship.PositionX, ship.PositionY, npc.PositionX, npc.PositionY, WorldRules.CannonRange) && tick >= npc.NextAttackTick)
-            {
-                updatedShip.Health = WorldRules.ApplyDamage(ship.Health, npc.CannonDamage);
-                shipChanged = true;
-
-                var attackingNpc = npc;
-                attackingNpc.NextAttackTick = tick + npc.CannonCooldownTicks;
-                ctx.Db.NpcShip.EntityId.Update(attackingNpc);
-                AppendEvent(ctx, ship.Owner, "enemy_cannon_hit", $"entity_id={npc.EntityId},damage={npc.CannonDamage}");
-
-                if (updatedShip.Health == 0)
-                {
-                    updatedShip.IsEngaged = false;
-                    AppendEvent(ctx, ship.Owner, "player_sunk", $"entity_id={npc.EntityId}");
-                }
-            }
-
-            if (shipChanged)
-            {
-                ctx.Db.PlayerShip.Owner.Update(updatedShip);
-            }
-        }
-    }
-
-    private static void AdvancePlayerShips(ReducerContext ctx)
+    private static void AdvanceMovingShips(ReducerContext ctx)
     {
         var distancePerTick = WorldRules.PlayerShipSpeed / WorldRules.TickRateHz;
-        foreach (var ship in ctx.Db.PlayerShip.Iter())
+        foreach (var ship in ctx.Db.Ship.ByMoving.Filter(true))
         {
-            if (!ship.IsMoving)
+            if (!ship.IsActive || !ship.IsAlive)
             {
                 continue;
             }
@@ -506,87 +580,213 @@ public static partial class Module
             var moved = ship;
             moved.PositionX = step.X;
             moved.PositionY = step.Y;
+            moved.Speed = step.Arrived ? 0f : WorldRules.PlayerShipSpeed;
             moved.IsMoving = !step.Arrived;
-            ctx.Db.PlayerShip.Owner.Update(moved);
+            moved.ChunkX = SpatialRules.ChunkCoordinate(step.X);
+            moved.ChunkY = SpatialRules.ChunkCoordinate(step.Y);
+            ctx.Db.Ship.EntityId.Update(moved);
         }
     }
 
-    private static void SeedMap(ReducerContext ctx)
+    private static void ResolvePrototypeCombat(ReducerContext ctx, ulong tick)
     {
-        ctx.Db.MapEntity.Insert(new MapEntity
+        foreach (var ship in ctx.Db.Ship.ByEngaged.Filter(true))
         {
-            EntityId = 1,
-            Kind = "harbor",
-            PositionX = 0,
-            PositionY = 0,
-            InteractionRadius = 8,
-            IsTargetable = false,
-            IsActive = true,
-            BlocksMovement = false,
-        });
-        ctx.Db.NpcShip.Insert(new NpcShip
-        {
-            EntityId = 10,
-            PositionX = 45,
-            PositionY = -10,
-            Health = WorldRules.EnemyInitialHealth,
-            MaxHealth = WorldRules.EnemyInitialHealth,
-            CannonDamage = WorldRules.EnemyCannonDamage,
-            CannonCooldownTicks = WorldRules.EnemyCannonCooldownTicks,
-            NextAttackTick = 0,
-            GoldReward = WorldRules.EnemyGoldReward,
-            IsActive = true,
-        });
-        ctx.Db.MapEntity.Insert(new MapEntity
-        {
-            EntityId = 2,
-            Kind = "island",
-            PositionX = 35,
-            PositionY = 20,
-            InteractionRadius = 12,
-            IsTargetable = false,
-            IsActive = true,
-            BlocksMovement = true,
-        });
-        ctx.Db.MapEntity.Insert(new MapEntity
-        {
-            EntityId = 3,
-            Kind = "reef",
-            PositionX = -30,
-            PositionY = -25,
-            InteractionRadius = 10,
-            IsTargetable = false,
-            IsActive = true,
-            BlocksMovement = true,
-        });
-        ctx.Db.MapEntity.Insert(new MapEntity
-        {
-            EntityId = 10,
-            Kind = "training_target",
-            PositionX = 45,
-            PositionY = -10,
-            InteractionRadius = 15,
-            IsTargetable = true,
-            IsActive = true,
-            BlocksMovement = false,
-        });
+            if (!ship.IsActive || !ship.IsAlive || ship.TargetEntityId == 0)
+            {
+                continue;
+            }
+
+            if (ctx.Db.Ship.EntityId.Find(ship.TargetEntityId) is not Ship target ||
+                !target.IsActive || !target.IsAlive)
+            {
+                var disengaged = ship;
+                disengaged.IsEngaged = false;
+                disengaged.TargetEntityId = 0;
+                ctx.Db.Ship.EntityId.Update(disengaged);
+                continue;
+            }
+
+            if (!WorldRules.IsInRange(
+                    ship.PositionX,
+                    ship.PositionY,
+                    target.PositionX,
+                    target.PositionY,
+                    WorldRules.CannonRange) ||
+                tick < ship.NextPortFireTick)
+            {
+                continue;
+            }
+
+            var attacker = ship;
+            attacker.NextPortFireTick = tick + ship.CannonCooldownTicks;
+            var defender = target;
+            defender.Hull = WorldRules.ApplyDamage(target.Hull, ship.CannonDamage);
+            if (defender.Hull == 0)
+            {
+                defender.IsAlive = false;
+                defender.IsActive = false;
+                defender.IsMoving = false;
+                attacker.IsEngaged = false;
+                attacker.TargetEntityId = 0;
+                AppendEvent(ctx, attacker.EntityId, "enemy_sunk", $"entity_id={defender.EntityId}");
+            }
+            else
+            {
+                AppendEvent(ctx, attacker.EntityId, "cannon_hit", $"entity_id={defender.EntityId},damage={ship.CannonDamage}");
+            }
+
+            ctx.Db.Ship.EntityId.Update(defender);
+            ctx.Db.Ship.EntityId.Update(attacker);
+        }
     }
 
-    private static void AppendEvent(ReducerContext ctx, Identity owner, string eventType, string details)
+    private static void ExpireTransientRows(ReducerContext ctx, ulong tick)
     {
-        var tick = 0UL;
-        foreach (var world in ctx.Db.WorldState.Iter())
+        foreach (var gameEvent in ctx.Db.CombatEvent.ByActive.Filter(true))
         {
-            tick = world.Tick;
-            break;
+            if (EventRetentionRules.IsExpired(gameEvent.ExpiresAtTick, tick))
+            {
+                ctx.Db.CombatEvent.EventId.Delete(gameEvent.EventId);
+            }
         }
 
-        ctx.Db.GameEvent.Insert(new GameEvent
+        foreach (var loot in ctx.Db.Loot.ByActive.Filter(true))
         {
-            Owner = owner,
+            if (EventRetentionRules.IsExpired(loot.ExpiresAtTick, tick))
+            {
+                ctx.Db.Loot.LootId.Delete(loot.LootId);
+            }
+        }
+    }
+
+    private static void AppendEvent(
+        ReducerContext ctx,
+        ulong ownerEntityId,
+        string eventType,
+        string details)
+    {
+        var tick = ctx.Db.WorldState.Id.Find(1)?.Tick ?? 0;
+        ctx.Db.CombatEvent.Insert(new CombatEvent
+        {
+            OwnerEntityId = ownerEntityId,
             EventType = eventType,
             Details = details,
             Tick = tick,
+            ExpiresAtTick = tick + EventRetentionRules.LifetimeTicks,
+            IsActive = true,
+        });
+    }
+
+    private static void SeedPlayerInventory(ReducerContext ctx, ulong shipEntityId)
+    {
+        foreach (var ammunition in ContentCatalog.CreateDefault().Ammunition)
+        {
+            ctx.Db.Inventory.Insert(new Inventory
+            {
+                ShipEntityId = shipEntityId,
+                ItemId = ammunition.Id,
+                Quantity = 100,
+            });
+        }
+
+        ctx.Db.Inventory.Insert(new Inventory
+        {
+            ShipEntityId = shipEntityId,
+            ItemId = "repair_kit",
+            Quantity = 10,
+        });
+    }
+
+    private static void SeedContent(ReducerContext ctx)
+    {
+        var content = ContentCatalog.CreateDefault();
+        var errors = ContentCatalog.Validate(content);
+        if (errors.Count != 0)
+        {
+            throw new Exception(string.Join(" ", errors));
+        }
+
+        foreach (var ammunition in content.Ammunition)
+        {
+            ctx.Db.AmmoDefinition.Insert(new AmmoDefinition
+            {
+                AmmoId = ammunition.Id,
+                HullDamage = ammunition.HullDamage,
+                SailDamage = ammunition.SailDamage,
+                CannonDamage = ammunition.CannonDamage,
+                CrewDamage = ammunition.CrewDamage,
+                RangeMultiplier = ammunition.RangeMultiplier,
+                AppliedStatus = ammunition.AppliedStatus,
+            });
+        }
+
+        foreach (var ability in content.Abilities)
+        {
+            ctx.Db.AbilityDefinition.Insert(new AbilityDefinition
+            {
+                AbilityId = ability.Id,
+                CooldownTicks = ability.CooldownTicks,
+                DurationTicks = ability.DurationTicks,
+            });
+        }
+
+        foreach (var npc in content.Npcs)
+        {
+            ctx.Db.NpcDefinition.Insert(new NpcDefinition
+            {
+                NpcId = npc.Id,
+                AggroRange = npc.AggroRange,
+                DesiredRange = npc.DesiredRange,
+                Hull = npc.Hull,
+            });
+        }
+
+        ctx.Db.LevelDefinition.Insert(new LevelDefinition { Level = 1, RequiredExperience = 0 });
+        ctx.Db.LevelDefinition.Insert(new LevelDefinition { Level = 2, RequiredExperience = 500 });
+        ctx.Db.LevelDefinition.Insert(new LevelDefinition { Level = 3, RequiredExperience = 1_500 });
+    }
+
+    private static void SeedWorld(ReducerContext ctx)
+    {
+        InsertWorldObject(ctx, 1, "harbor", 0f, 0f, 8f, false);
+        InsertWorldObject(ctx, 2, "island", 35f, 20f, 12f, true);
+        InsertWorldObject(ctx, 3, "reef", -30f, -25f, 10f, true);
+
+        var trainingShip = CreateShip(10, "patrol", "npc", 45f, -10f);
+        trainingShip.Hull = WorldRules.EnemyInitialHealth;
+        trainingShip.MaxHull = WorldRules.EnemyInitialHealth;
+        ctx.Db.Ship.Insert(trainingShip);
+        ctx.Db.NpcAi.Insert(new NpcAi
+        {
+            ShipEntityId = trainingShip.EntityId,
+            ArchetypeId = "patrol",
+            IsActive = true,
+            NextDecisionTick = 0,
+            HomeSeed = 10,
+        });
+    }
+
+    private static void InsertWorldObject(
+        ReducerContext ctx,
+        ulong entityId,
+        string kind,
+        float x,
+        float y,
+        float radius,
+        bool blocksMovement)
+    {
+        ctx.Db.WorldObject.Insert(new WorldObject
+        {
+            EntityId = entityId,
+            Kind = kind,
+            PositionX = x,
+            PositionY = y,
+            Radius = radius,
+            ChunkX = SpatialRules.ChunkCoordinate(x),
+            ChunkY = SpatialRules.ChunkCoordinate(y),
+            IsActive = true,
+            BlocksMovement = blocksMovement,
         });
     }
 }

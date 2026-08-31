@@ -49,10 +49,10 @@ namespace Sea.Client
 
         public void SelectNextEnemy()
         {
-            var enemies = new System.Collections.Generic.List<NpcShip>();
-            foreach (var enemy in connection.Connection.Db.NpcShip.Iter())
+            var enemies = new System.Collections.Generic.List<Ship>();
+            foreach (var enemy in connection.Connection.Db.Ship.Iter())
             {
-                if (enemy.IsActive)
+                if (enemy.IsActive && enemy.IsAlive && enemy.Faction == "npc")
                 {
                     enemies.Add(enemy);
                 }
@@ -121,7 +121,7 @@ namespace Sea.Client
                 return;
             }
 
-            connection.Connection.Reducers.MoveTo(point.x, point.z);
+            connection.Connection.Reducers.SetCourse(point.x, point.z);
             LastAction = $"Sailing to {point.x:0}, {point.z:0}.";
         }
 
@@ -131,9 +131,9 @@ namespace Sea.Client
             var closestDistance = selectionRadius * selectionRadius;
             ulong? closestId = null;
 
-            foreach (var enemy in connection.Connection.Db.NpcShip.Iter())
+            foreach (var enemy in connection.Connection.Db.Ship.Iter())
             {
-                if (!enemy.IsActive)
+                if (!enemy.IsActive || !enemy.IsAlive || enemy.Faction != "npc")
                 {
                     continue;
                 }
@@ -169,15 +169,17 @@ namespace Sea.Client
                 var gold = GetLocalGold();
                 var state = ship.IsMoving ? "SAILING" : ship.IsEngaged ? "ENGAGED" : "READY";
                 GUI.Label(new Rect(margin + 16, Screen.height - 56, width - 32, 22),
-                    $"Hull {ship.Health}    Cannon {ship.CannonDamage}    Gold {gold}    {state}");
+                    $"Hull {ship.Hull}    Cannon {ship.CannonDamage}    Gold {gold}    {state}");
             }
         }
 
-        private bool TryGetLocalShip(out PlayerShip ship)
+        private bool TryGetLocalShip(out Ship ship)
         {
-            foreach (var candidate in connection.Connection.Db.PlayerShip.Iter())
+            var ownership = connection.Connection.Db.PlayerOwnership.Owner.Find(connection.LocalIdentity);
+            if (ownership != null)
             {
-                if (candidate.Owner == connection.LocalIdentity)
+                var candidate = connection.Connection.Db.Ship.EntityId.Find(ownership.ShipEntityId);
+                if (candidate != null)
                 {
                     ship = candidate;
                     return true;
@@ -190,15 +192,8 @@ namespace Sea.Client
 
         private uint GetLocalGold()
         {
-            foreach (var balance in connection.Connection.Db.ResourceBalance.Iter())
-            {
-                if (balance.Owner == connection.LocalIdentity)
-                {
-                    return balance.Gold;
-                }
-            }
-
-            return 0;
+            return connection.Connection.Db.PlayerProgression.Owner
+                .Find(connection.LocalIdentity)?.Gold ?? 0;
         }
     }
 }

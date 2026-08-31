@@ -161,6 +161,28 @@ namespace Sea.Tests
         }
 
         [Test]
+        public void Initial_subscription_plan_is_owner_scoped_and_never_unrestricted()
+        {
+            var queries = SeaSubscriptionPlan.Initial("0xabc123");
+
+            Assert.That(queries, Does.Contain("SELECT * FROM player_ownership WHERE owner = 0xabc123"));
+            Assert.That(queries, Does.Contain("SELECT * FROM world_state"));
+            Assert.That(queries.Any(query => query == "SELECT * FROM ship"), Is.False);
+        }
+
+        [Test]
+        public void Spatial_subscription_plan_is_bounded_to_nearby_chunks_and_active_rows()
+        {
+            var queries = SeaSubscriptionPlan.Spatial(chunkX: 4, chunkY: 2, radius: 1);
+
+            Assert.That(queries, Has.Some.Contains("chunk_x >= 3"));
+            Assert.That(queries, Has.Some.Contains("chunk_x <= 5"));
+            Assert.That(queries, Has.Some.Contains("chunk_y >= 1"));
+            Assert.That(queries, Has.Some.Contains("chunk_y <= 3"));
+            Assert.That(queries.All(query => query.Contains("is_active = true")), Is.True);
+        }
+
+        [Test]
         public void Auth_token_store_can_clear_a_stale_local_identity()
         {
             const string testKey = "sea.tests.identity-token";

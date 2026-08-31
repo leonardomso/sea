@@ -2,21 +2,37 @@ import { createServerFn } from "@tanstack/react-start";
 
 const databaseName = "sea-local";
 const tableColumns = {
-	player_identity: ["owner", "is_connected"],
-	player_ship: ["owner", "position_x", "position_y", "health", "is_engaged"],
-	npc_ship: ["entity_id", "health", "max_health", "gold_reward", "is_active"],
-	player_progression: ["owner", "level", "cannon_upgrade_level"],
-	resource_balance: ["owner", "gold"],
-	map_entity: [
+	player_ownership: ["owner", "ship_entity_id", "is_connected"],
+	ship: [
+		"entity_id",
+		"archetype_id",
+		"faction",
+		"position_x",
+		"position_y",
+		"hull",
+		"max_hull",
+		"sails",
+		"cannons",
+		"is_engaged",
+		"is_active",
+	],
+	npc_ai: ["ship_entity_id", "archetype_id", "is_active", "next_decision_tick"],
+	player_progression: ["owner", "level", "experience", "gold"],
+	world_object: [
 		"entity_id",
 		"kind",
 		"position_x",
 		"position_y",
-		"is_targetable",
 		"is_active",
 		"blocks_movement",
 	],
-	game_event: ["event_id", "owner", "event_type", "details", "tick"],
+	combat_event: [
+		"event_id",
+		"owner_entity_id",
+		"event_type",
+		"details",
+		"tick",
+	],
 } as const;
 
 type SqlResult = { rows?: unknown[] };

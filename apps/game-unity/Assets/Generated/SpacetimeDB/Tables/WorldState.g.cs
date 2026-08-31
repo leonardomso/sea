@@ -42,12 +42,16 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<WorldState, uint> Id { get; }
         public global::SpacetimeDB.Col<WorldState, ulong> Tick { get; }
         public global::SpacetimeDB.Col<WorldState, uint> TickRateHz { get; }
+        public global::SpacetimeDB.Col<WorldState, ulong> NextEntityId { get; }
+        public global::SpacetimeDB.Col<WorldState, uint> ContentVersion { get; }
 
         public WorldStateCols(string tableName)
         {
             Id = new global::SpacetimeDB.Col<WorldState, uint>(tableName, "id");
             Tick = new global::SpacetimeDB.Col<WorldState, ulong>(tableName, "tick");
             TickRateHz = new global::SpacetimeDB.Col<WorldState, uint>(tableName, "tick_rate_hz");
+            NextEntityId = new global::SpacetimeDB.Col<WorldState, ulong>(tableName, "next_entity_id");
+            ContentVersion = new global::SpacetimeDB.Col<WorldState, uint>(tableName, "content_version");
         }
     }
 

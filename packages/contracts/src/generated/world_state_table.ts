@@ -14,4 +14,6 @@ export default __t.row({
   id: __t.u32().primaryKey(),
   tick: __t.u64(),
   tickRateHz: __t.u32().name("tick_rate_hz"),
+  nextEntityId: __t.u64().name("next_entity_id"),
+  contentVersion: __t.u32().name("content_version"),
 });

@@ -17,18 +17,22 @@ namespace SpacetimeDB.Types
         public SpacetimeDB.Identity Owner;
         [DataMember(Name = "level")]
         public uint Level;
-        [DataMember(Name = "cannon_upgrade_level")]
-        public uint CannonUpgradeLevel;
+        [DataMember(Name = "experience")]
+        public ulong Experience;
+        [DataMember(Name = "gold")]
+        public uint Gold;
 
         public PlayerProgression(
             SpacetimeDB.Identity Owner,
             uint Level,
-            uint CannonUpgradeLevel
+            ulong Experience,
+            uint Gold
         )
         {
             this.Owner = Owner;
             this.Level = Level;
-            this.CannonUpgradeLevel = CannonUpgradeLevel;
+            this.Experience = Experience;
+            this.Gold = Gold;
         }
 
         public PlayerProgression()

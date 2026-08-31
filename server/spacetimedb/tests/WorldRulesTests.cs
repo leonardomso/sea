@@ -31,7 +31,7 @@ public sealed class WorldRulesTests
     {
         Assert.Equal(100u, WorldRules.InitialHealth);
         Assert.Equal(0u, WorldRules.InitialGold);
-        Assert.Equal(20u, WorldRules.TickRateHz);
+        Assert.Equal(10u, WorldRules.TickRateHz);
         Assert.Equal(25u, WorldRules.InitialCannonDamage);
         Assert.Equal(100u, WorldRules.EnemyInitialHealth);
         Assert.Equal(20u, WorldRules.InitialCannonCooldownTicks);
@@ -118,5 +118,40 @@ public sealed class WorldRulesTests
         bool expected)
     {
         Assert.Equal(expected, PlayerConnectionRules.MayCreatePlayer(source));
+    }
+
+    [Theory]
+    [InlineData(-100f, 0)]
+    [InlineData(-75.01f, 0)]
+    [InlineData(-75f, 1)]
+    [InlineData(0f, 4)]
+    [InlineData(100f, 7)]
+    public void ChunkCoordinate_partitions_the_map_into_bounded_cells(
+        float position,
+        int expected)
+    {
+        Assert.Equal(expected, SpatialRules.ChunkCoordinate(position));
+    }
+
+    [Theory]
+    [InlineData(100ul, 100ul, false)]
+    [InlineData(100ul, 101ul, true)]
+    public void Transient_events_expire_after_their_expiry_tick(
+        ulong expiresAtTick,
+        ulong currentTick,
+        bool expected)
+    {
+        Assert.Equal(expected, EventRetentionRules.IsExpired(expiresAtTick, currentTick));
+    }
+
+    [Fact]
+    public void Default_content_is_complete_unique_and_validated()
+    {
+        var content = ContentCatalog.CreateDefault();
+
+        Assert.Equal(4, content.Ammunition.Count);
+        Assert.Equal(4, content.Abilities.Count);
+        Assert.Equal(3, content.Npcs.Count);
+        Assert.Empty(ContentCatalog.Validate(content));
     }
 }

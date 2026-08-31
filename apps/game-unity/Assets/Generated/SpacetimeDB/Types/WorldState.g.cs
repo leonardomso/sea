@@ -19,16 +19,24 @@ namespace SpacetimeDB.Types
         public ulong Tick;
         [DataMember(Name = "tick_rate_hz")]
         public uint TickRateHz;
+        [DataMember(Name = "next_entity_id")]
+        public ulong NextEntityId;
+        [DataMember(Name = "content_version")]
+        public uint ContentVersion;
 
         public WorldState(
             uint Id,
             ulong Tick,
-            uint TickRateHz
+            uint TickRateHz,
+            ulong NextEntityId,
+            uint ContentVersion
         )
         {
             this.Id = Id;
             this.Tick = Tick;
             this.TickRateHz = TickRateHz;
+            this.NextEntityId = NextEntityId;
+            this.ContentVersion = ContentVersion;
         }
 
         public WorldState()

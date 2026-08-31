@@ -9,10 +9,11 @@ export const Route = createFileRoute("/")({
 function Home() {
 	const router = useRouter();
 	const snapshot = Route.useLoaderData();
-	const players = snapshot.tables.player_identity ?? [];
-	const ships = snapshot.tables.player_ship ?? [];
-	const enemies = snapshot.tables.npc_ship ?? [];
-	const events = snapshot.tables.game_event ?? [];
+	const players = snapshot.tables.player_ownership ?? [];
+	const allShips = snapshot.tables.ship ?? [];
+	const ships = allShips.filter((ship) => ship.faction === "player");
+	const enemies = allShips.filter((ship) => ship.faction === "npc");
+	const events = snapshot.tables.combat_event ?? [];
 
 	return (
 		<div className="app-shell">
@@ -88,17 +89,17 @@ function Home() {
 					<DataPanel
 						title="Connected players"
 						rows={players}
-						columns={["owner", "is_connected"]}
+						columns={["owner", "ship_entity_id", "is_connected"]}
 						empty="No players connected"
 					/>
 					<DataPanel
 						title="Player ships"
 						rows={ships}
 						columns={[
-							"owner",
+							"entity_id",
 							"position_x",
 							"position_y",
-							"health",
+							"hull",
 							"is_engaged",
 						]}
 						empty="No player ships"
@@ -108,9 +109,9 @@ function Home() {
 						rows={enemies}
 						columns={[
 							"entity_id",
-							"health",
-							"max_health",
-							"gold_reward",
+							"archetype_id",
+							"hull",
+							"max_hull",
 							"is_active",
 						]}
 						empty="No enemy ships"
@@ -118,7 +119,7 @@ function Home() {
 					<DataPanel
 						title="Recent events"
 						rows={events.slice(-8).reverse()}
-						columns={["event_type", "details", "tick"]}
+						columns={["owner_entity_id", "event_type", "details", "tick"]}
 						empty="No events recorded"
 					/>
 				</section>

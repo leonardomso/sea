@@ -14,7 +14,7 @@ identity_count() {
   curl --fail --silent --max-time 3 \
     --request POST \
     --header "content-type: text/plain" \
-    --data "SELECT * FROM player_identity" \
+    --data "SELECT * FROM player_ownership" \
     "http://127.0.0.1:3000/v1/database/sea-local/sql" >"$sql_result"
 
   node -e '

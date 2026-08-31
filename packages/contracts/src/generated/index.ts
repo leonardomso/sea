@@ -34,72 +34,198 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import ClearTargetReducer from "./clear_target_reducer";
 import EngageReducer from "./engage_reducer";
 import LoadPlayerReducer from "./load_player_reducer";
 import MoveToReducer from "./move_to_reducer";
 import SelectTargetReducer from "./select_target_reducer";
+import SetCourseReducer from "./set_course_reducer";
+import StopCourseReducer from "./stop_course_reducer";
 import UpgradeCannonReducer from "./upgrade_cannon_reducer";
 
 // Import all procedure arg schemas
 
 // Import all table schema definitions
-import GameEventRow from "./game_event_table";
-import MapEntityRow from "./map_entity_table";
-import NpcShipRow from "./npc_ship_table";
-import PlayerIdentityRow from "./player_identity_table";
+import AbilityDefinitionRow from "./ability_definition_table";
+import AmmoDefinitionRow from "./ammo_definition_table";
+import CombatContributionRow from "./combat_contribution_table";
+import CombatEventRow from "./combat_event_table";
+import CooldownRow from "./cooldown_table";
+import InventoryRow from "./inventory_table";
+import LevelDefinitionRow from "./level_definition_table";
+import LootRow from "./loot_table";
+import NpcAiRow from "./npc_ai_table";
+import NpcDefinitionRow from "./npc_definition_table";
+import PlayerOwnershipRow from "./player_ownership_table";
 import PlayerProgressionRow from "./player_progression_table";
-import PlayerShipRow from "./player_ship_table";
-import ResourceBalanceRow from "./resource_balance_table";
+import ShipRow from "./ship_table";
+import ShipStatusRow from "./ship_status_table";
+import VolleyRow from "./volley_table";
+import WorldObjectRow from "./world_object_table";
 import WorldStateRow from "./world_state_table";
 
 /** Type-only namespace exports for generated type groups. */
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
-  gameEvent: __table({
-    name: 'game_event',
+  abilityDefinition: __table({
+    name: 'ability_definition',
     indexes: [
-      { accessor: 'EventId', name: 'game_event_event_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'AbilityId', name: 'ability_definition_ability_id_idx_btree', algorithm: 'btree', columns: [
+        'abilityId',
+      ] },
+    ],
+    constraints: [
+      { name: 'ability_definition_ability_id_key', constraint: 'unique', columns: ['abilityId'] },
+    ],
+  }, AbilityDefinitionRow),
+  ammoDefinition: __table({
+    name: 'ammo_definition',
+    indexes: [
+      { accessor: 'AmmoId', name: 'ammo_definition_ammo_id_idx_btree', algorithm: 'btree', columns: [
+        'ammoId',
+      ] },
+    ],
+    constraints: [
+      { name: 'ammo_definition_ammo_id_key', constraint: 'unique', columns: ['ammoId'] },
+    ],
+  }, AmmoDefinitionRow),
+  combatContribution: __table({
+    name: 'combat_contribution',
+    indexes: [
+      { accessor: 'ContributionId', name: 'combat_contribution_contribution_id_idx_btree', algorithm: 'btree', columns: [
+        'contributionId',
+      ] },
+      { accessor: 'ByContributor', name: 'combat_contribution_contributor_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'contributorEntityId',
+      ] },
+      { accessor: 'ByEncounter', name: 'combat_contribution_encounter_id_idx_btree', algorithm: 'btree', columns: [
+        'encounterId',
+      ] },
+    ],
+    constraints: [
+      { name: 'combat_contribution_contribution_id_key', constraint: 'unique', columns: ['contributionId'] },
+    ],
+  }, CombatContributionRow),
+  combatEvent: __table({
+    name: 'combat_event',
+    indexes: [
+      { accessor: 'EventId', name: 'combat_event_event_id_idx_btree', algorithm: 'btree', columns: [
         'eventId',
       ] },
-    ],
-    constraints: [
-      { name: 'game_event_event_id_key', constraint: 'unique', columns: ['eventId'] },
-    ],
-  }, GameEventRow),
-  mapEntity: __table({
-    name: 'map_entity',
-    indexes: [
-      { accessor: 'EntityId', name: 'map_entity_entity_id_idx_btree', algorithm: 'btree', columns: [
-        'entityId',
+      { accessor: 'ByActive', name: 'combat_event_is_active_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+      ] },
+      { accessor: 'ByOwner', name: 'combat_event_owner_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'ownerEntityId',
       ] },
     ],
     constraints: [
-      { name: 'map_entity_entity_id_key', constraint: 'unique', columns: ['entityId'] },
+      { name: 'combat_event_event_id_key', constraint: 'unique', columns: ['eventId'] },
     ],
-  }, MapEntityRow),
-  npcShip: __table({
-    name: 'npc_ship',
+  }, CombatEventRow),
+  cooldown: __table({
+    name: 'cooldown',
     indexes: [
-      { accessor: 'EntityId', name: 'npc_ship_entity_id_idx_btree', algorithm: 'btree', columns: [
-        'entityId',
+      { accessor: 'CooldownId', name: 'cooldown_cooldown_id_idx_btree', algorithm: 'btree', columns: [
+        'cooldownId',
+      ] },
+      { accessor: 'ByShip', name: 'cooldown_ship_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'shipEntityId',
       ] },
     ],
     constraints: [
-      { name: 'npc_ship_entity_id_key', constraint: 'unique', columns: ['entityId'] },
+      { name: 'cooldown_cooldown_id_key', constraint: 'unique', columns: ['cooldownId'] },
     ],
-  }, NpcShipRow),
-  playerIdentity: __table({
-    name: 'player_identity',
+  }, CooldownRow),
+  inventory: __table({
+    name: 'inventory',
     indexes: [
-      { accessor: 'Owner', name: 'player_identity_owner_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'InventoryId', name: 'inventory_inventory_id_idx_btree', algorithm: 'btree', columns: [
+        'inventoryId',
+      ] },
+      { accessor: 'ByShip', name: 'inventory_ship_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'shipEntityId',
+      ] },
+      { accessor: 'ByShipItem', name: 'inventory_ship_entity_id_item_id_idx_btree', algorithm: 'btree', columns: [
+        'shipEntityId',
+        'itemId',
+      ] },
+    ],
+    constraints: [
+      { name: 'inventory_inventory_id_key', constraint: 'unique', columns: ['inventoryId'] },
+    ],
+  }, InventoryRow),
+  levelDefinition: __table({
+    name: 'level_definition',
+    indexes: [
+      { accessor: 'Level', name: 'level_definition_level_idx_btree', algorithm: 'btree', columns: [
+        'level',
+      ] },
+    ],
+    constraints: [
+      { name: 'level_definition_level_key', constraint: 'unique', columns: ['level'] },
+    ],
+  }, LevelDefinitionRow),
+  loot: __table({
+    name: 'loot',
+    indexes: [
+      { accessor: 'ByChunk', name: 'loot_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
+        'chunkX',
+        'chunkY',
+      ] },
+      { accessor: 'ByActive', name: 'loot_is_active_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+      ] },
+      { accessor: 'LootId', name: 'loot_loot_id_idx_btree', algorithm: 'btree', columns: [
+        'lootId',
+      ] },
+    ],
+    constraints: [
+      { name: 'loot_loot_id_key', constraint: 'unique', columns: ['lootId'] },
+    ],
+  }, LootRow),
+  npcAi: __table({
+    name: 'npc_ai',
+    indexes: [
+      { accessor: 'ByDecisionDue', name: 'npc_ai_is_active_next_decision_tick_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+        'nextDecisionTick',
+      ] },
+      { accessor: 'ShipEntityId', name: 'npc_ai_ship_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'shipEntityId',
+      ] },
+    ],
+    constraints: [
+      { name: 'npc_ai_ship_entity_id_key', constraint: 'unique', columns: ['shipEntityId'] },
+    ],
+  }, NpcAiRow),
+  npcDefinition: __table({
+    name: 'npc_definition',
+    indexes: [
+      { accessor: 'NpcId', name: 'npc_definition_npc_id_idx_btree', algorithm: 'btree', columns: [
+        'npcId',
+      ] },
+    ],
+    constraints: [
+      { name: 'npc_definition_npc_id_key', constraint: 'unique', columns: ['npcId'] },
+    ],
+  }, NpcDefinitionRow),
+  playerOwnership: __table({
+    name: 'player_ownership',
+    indexes: [
+      { accessor: 'Owner', name: 'player_ownership_owner_idx_btree', algorithm: 'btree', columns: [
         'owner',
       ] },
+      { accessor: 'ShipEntityId', name: 'player_ownership_ship_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'shipEntityId',
+      ] },
     ],
     constraints: [
-      { name: 'player_identity_owner_key', constraint: 'unique', columns: ['owner'] },
+      { name: 'player_ownership_owner_key', constraint: 'unique', columns: ['owner'] },
+      { name: 'player_ownership_ship_entity_id_key', constraint: 'unique', columns: ['shipEntityId'] },
     ],
-  }, PlayerIdentityRow),
+  }, PlayerOwnershipRow),
   playerProgression: __table({
     name: 'player_progression',
     indexes: [
@@ -111,28 +237,86 @@ const tablesSchema = __schema({
       { name: 'player_progression_owner_key', constraint: 'unique', columns: ['owner'] },
     ],
   }, PlayerProgressionRow),
-  playerShip: __table({
-    name: 'player_ship',
+  ship: __table({
+    name: 'ship',
     indexes: [
-      { accessor: 'Owner', name: 'player_ship_owner_idx_btree', algorithm: 'btree', columns: [
-        'owner',
+      { accessor: 'ByChunk', name: 'ship_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
+        'chunkX',
+        'chunkY',
+      ] },
+      { accessor: 'EntityId', name: 'ship_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'entityId',
+      ] },
+      { accessor: 'ByActive', name: 'ship_is_active_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+      ] },
+      { accessor: 'ByEngaged', name: 'ship_is_engaged_idx_btree', algorithm: 'btree', columns: [
+        'isEngaged',
+      ] },
+      { accessor: 'ByMoving', name: 'ship_is_moving_idx_btree', algorithm: 'btree', columns: [
+        'isMoving',
+      ] },
+      { accessor: 'ByTarget', name: 'ship_target_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'targetEntityId',
       ] },
     ],
     constraints: [
-      { name: 'player_ship_owner_key', constraint: 'unique', columns: ['owner'] },
+      { name: 'ship_entity_id_key', constraint: 'unique', columns: ['entityId'] },
     ],
-  }, PlayerShipRow),
-  resourceBalance: __table({
-    name: 'resource_balance',
+  }, ShipRow),
+  shipStatus: __table({
+    name: 'ship_status',
     indexes: [
-      { accessor: 'Owner', name: 'resource_balance_owner_idx_btree', algorithm: 'btree', columns: [
-        'owner',
+      { accessor: 'ByActive', name: 'ship_status_is_active_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+      ] },
+      { accessor: 'ByShip', name: 'ship_status_ship_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'shipEntityId',
+      ] },
+      { accessor: 'StatusId', name: 'ship_status_status_id_idx_btree', algorithm: 'btree', columns: [
+        'statusId',
       ] },
     ],
     constraints: [
-      { name: 'resource_balance_owner_key', constraint: 'unique', columns: ['owner'] },
+      { name: 'ship_status_status_id_key', constraint: 'unique', columns: ['statusId'] },
     ],
-  }, ResourceBalanceRow),
+  }, ShipStatusRow),
+  volley: __table({
+    name: 'volley',
+    indexes: [
+      { accessor: 'ByChunk', name: 'volley_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
+        'chunkX',
+        'chunkY',
+      ] },
+      { accessor: 'ByActive', name: 'volley_is_active_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+      ] },
+      { accessor: 'ByTarget', name: 'volley_target_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'targetEntityId',
+      ] },
+      { accessor: 'VolleyId', name: 'volley_volley_id_idx_btree', algorithm: 'btree', columns: [
+        'volleyId',
+      ] },
+    ],
+    constraints: [
+      { name: 'volley_volley_id_key', constraint: 'unique', columns: ['volleyId'] },
+    ],
+  }, VolleyRow),
+  worldObject: __table({
+    name: 'world_object',
+    indexes: [
+      { accessor: 'ByChunk', name: 'world_object_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
+        'chunkX',
+        'chunkY',
+      ] },
+      { accessor: 'EntityId', name: 'world_object_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'entityId',
+      ] },
+    ],
+    constraints: [
+      { name: 'world_object_entity_id_key', constraint: 'unique', columns: ['entityId'] },
+    ],
+  }, WorldObjectRow),
   worldState: __table({
     name: 'world_state',
     indexes: [
@@ -148,10 +332,13 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("clear_target", ClearTargetReducer),
   __reducerSchema("engage", EngageReducer),
   __reducerSchema("load_player", LoadPlayerReducer),
   __reducerSchema("move_to", MoveToReducer),
   __reducerSchema("select_target", SelectTargetReducer),
+  __reducerSchema("set_course", SetCourseReducer),
+  __reducerSchema("stop_course", StopCourseReducer),
   __reducerSchema("upgrade_cannon", UpgradeCannonReducer),
 );
 
@@ -161,20 +348,38 @@ const proceduresSchema = __procedures(
 
 type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "tables"> & {
   tables: typeof tablesSchema.schemaType.tables & {
-    /** @deprecated Use `gameEvent` instead. This alias will be removed in the next major version. */
-    readonly "GameEvent": Omit<typeof tablesSchema.schemaType.tables["gameEvent"], "accessorName"> & { readonly accessorName: "GameEvent" };
-    /** @deprecated Use `mapEntity` instead. This alias will be removed in the next major version. */
-    readonly "MapEntity": Omit<typeof tablesSchema.schemaType.tables["mapEntity"], "accessorName"> & { readonly accessorName: "MapEntity" };
-    /** @deprecated Use `npcShip` instead. This alias will be removed in the next major version. */
-    readonly "NpcShip": Omit<typeof tablesSchema.schemaType.tables["npcShip"], "accessorName"> & { readonly accessorName: "NpcShip" };
-    /** @deprecated Use `playerIdentity` instead. This alias will be removed in the next major version. */
-    readonly "PlayerIdentity": Omit<typeof tablesSchema.schemaType.tables["playerIdentity"], "accessorName"> & { readonly accessorName: "PlayerIdentity" };
+    /** @deprecated Use `abilityDefinition` instead. This alias will be removed in the next major version. */
+    readonly "AbilityDefinition": Omit<typeof tablesSchema.schemaType.tables["abilityDefinition"], "accessorName"> & { readonly accessorName: "AbilityDefinition" };
+    /** @deprecated Use `ammoDefinition` instead. This alias will be removed in the next major version. */
+    readonly "AmmoDefinition": Omit<typeof tablesSchema.schemaType.tables["ammoDefinition"], "accessorName"> & { readonly accessorName: "AmmoDefinition" };
+    /** @deprecated Use `combatContribution` instead. This alias will be removed in the next major version. */
+    readonly "CombatContribution": Omit<typeof tablesSchema.schemaType.tables["combatContribution"], "accessorName"> & { readonly accessorName: "CombatContribution" };
+    /** @deprecated Use `combatEvent` instead. This alias will be removed in the next major version. */
+    readonly "CombatEvent": Omit<typeof tablesSchema.schemaType.tables["combatEvent"], "accessorName"> & { readonly accessorName: "CombatEvent" };
+    /** @deprecated Use `cooldown` instead. This alias will be removed in the next major version. */
+    readonly "Cooldown": Omit<typeof tablesSchema.schemaType.tables["cooldown"], "accessorName"> & { readonly accessorName: "Cooldown" };
+    /** @deprecated Use `inventory` instead. This alias will be removed in the next major version. */
+    readonly "Inventory": Omit<typeof tablesSchema.schemaType.tables["inventory"], "accessorName"> & { readonly accessorName: "Inventory" };
+    /** @deprecated Use `levelDefinition` instead. This alias will be removed in the next major version. */
+    readonly "LevelDefinition": Omit<typeof tablesSchema.schemaType.tables["levelDefinition"], "accessorName"> & { readonly accessorName: "LevelDefinition" };
+    /** @deprecated Use `loot` instead. This alias will be removed in the next major version. */
+    readonly "Loot": Omit<typeof tablesSchema.schemaType.tables["loot"], "accessorName"> & { readonly accessorName: "Loot" };
+    /** @deprecated Use `npcAi` instead. This alias will be removed in the next major version. */
+    readonly "NpcAi": Omit<typeof tablesSchema.schemaType.tables["npcAi"], "accessorName"> & { readonly accessorName: "NpcAi" };
+    /** @deprecated Use `npcDefinition` instead. This alias will be removed in the next major version. */
+    readonly "NpcDefinition": Omit<typeof tablesSchema.schemaType.tables["npcDefinition"], "accessorName"> & { readonly accessorName: "NpcDefinition" };
+    /** @deprecated Use `playerOwnership` instead. This alias will be removed in the next major version. */
+    readonly "PlayerOwnership": Omit<typeof tablesSchema.schemaType.tables["playerOwnership"], "accessorName"> & { readonly accessorName: "PlayerOwnership" };
     /** @deprecated Use `playerProgression` instead. This alias will be removed in the next major version. */
     readonly "PlayerProgression": Omit<typeof tablesSchema.schemaType.tables["playerProgression"], "accessorName"> & { readonly accessorName: "PlayerProgression" };
-    /** @deprecated Use `playerShip` instead. This alias will be removed in the next major version. */
-    readonly "PlayerShip": Omit<typeof tablesSchema.schemaType.tables["playerShip"], "accessorName"> & { readonly accessorName: "PlayerShip" };
-    /** @deprecated Use `resourceBalance` instead. This alias will be removed in the next major version. */
-    readonly "ResourceBalance": Omit<typeof tablesSchema.schemaType.tables["resourceBalance"], "accessorName"> & { readonly accessorName: "ResourceBalance" };
+    /** @deprecated Use `ship` instead. This alias will be removed in the next major version. */
+    readonly "Ship": Omit<typeof tablesSchema.schemaType.tables["ship"], "accessorName"> & { readonly accessorName: "Ship" };
+    /** @deprecated Use `shipStatus` instead. This alias will be removed in the next major version. */
+    readonly "ShipStatus": Omit<typeof tablesSchema.schemaType.tables["shipStatus"], "accessorName"> & { readonly accessorName: "ShipStatus" };
+    /** @deprecated Use `volley` instead. This alias will be removed in the next major version. */
+    readonly "Volley": Omit<typeof tablesSchema.schemaType.tables["volley"], "accessorName"> & { readonly accessorName: "Volley" };
+    /** @deprecated Use `worldObject` instead. This alias will be removed in the next major version. */
+    readonly "WorldObject": Omit<typeof tablesSchema.schemaType.tables["worldObject"], "accessorName"> & { readonly accessorName: "WorldObject" };
     /** @deprecated Use `worldState` instead. This alias will be removed in the next major version. */
     readonly "WorldState": Omit<typeof tablesSchema.schemaType.tables["worldState"], "accessorName"> & { readonly accessorName: "WorldState" };
   };
@@ -195,13 +400,22 @@ const REMOTE_MODULE = {
 >;
 
 const tableAccessorAliases = {
-  "GameEvent": "gameEvent",
-  "MapEntity": "mapEntity",
-  "NpcShip": "npcShip",
-  "PlayerIdentity": "playerIdentity",
+  "AbilityDefinition": "abilityDefinition",
+  "AmmoDefinition": "ammoDefinition",
+  "CombatContribution": "combatContribution",
+  "CombatEvent": "combatEvent",
+  "Cooldown": "cooldown",
+  "Inventory": "inventory",
+  "LevelDefinition": "levelDefinition",
+  "Loot": "loot",
+  "NpcAi": "npcAi",
+  "NpcDefinition": "npcDefinition",
+  "PlayerOwnership": "playerOwnership",
   "PlayerProgression": "playerProgression",
-  "PlayerShip": "playerShip",
-  "ResourceBalance": "resourceBalance",
+  "Ship": "ship",
+  "ShipStatus": "shipStatus",
+  "Volley": "volley",
+  "WorldObject": "worldObject",
   "WorldState": "worldState",
 } as const;
 
@@ -223,40 +437,76 @@ function __withTableAccessorAliases<T extends object>(target: T, freeze = false)
 
 type __DbViewBase = __DbConnectionImpl<typeof REMOTE_MODULE>["db"];
 export type DbView = __DbViewBase & {
-  /** @deprecated Use `gameEvent` instead. This alias will be removed in the next major version. */
-  readonly "GameEvent": __DbViewBase["gameEvent"];
-  /** @deprecated Use `mapEntity` instead. This alias will be removed in the next major version. */
-  readonly "MapEntity": __DbViewBase["mapEntity"];
-  /** @deprecated Use `npcShip` instead. This alias will be removed in the next major version. */
-  readonly "NpcShip": __DbViewBase["npcShip"];
-  /** @deprecated Use `playerIdentity` instead. This alias will be removed in the next major version. */
-  readonly "PlayerIdentity": __DbViewBase["playerIdentity"];
+  /** @deprecated Use `abilityDefinition` instead. This alias will be removed in the next major version. */
+  readonly "AbilityDefinition": __DbViewBase["abilityDefinition"];
+  /** @deprecated Use `ammoDefinition` instead. This alias will be removed in the next major version. */
+  readonly "AmmoDefinition": __DbViewBase["ammoDefinition"];
+  /** @deprecated Use `combatContribution` instead. This alias will be removed in the next major version. */
+  readonly "CombatContribution": __DbViewBase["combatContribution"];
+  /** @deprecated Use `combatEvent` instead. This alias will be removed in the next major version. */
+  readonly "CombatEvent": __DbViewBase["combatEvent"];
+  /** @deprecated Use `cooldown` instead. This alias will be removed in the next major version. */
+  readonly "Cooldown": __DbViewBase["cooldown"];
+  /** @deprecated Use `inventory` instead. This alias will be removed in the next major version. */
+  readonly "Inventory": __DbViewBase["inventory"];
+  /** @deprecated Use `levelDefinition` instead. This alias will be removed in the next major version. */
+  readonly "LevelDefinition": __DbViewBase["levelDefinition"];
+  /** @deprecated Use `loot` instead. This alias will be removed in the next major version. */
+  readonly "Loot": __DbViewBase["loot"];
+  /** @deprecated Use `npcAi` instead. This alias will be removed in the next major version. */
+  readonly "NpcAi": __DbViewBase["npcAi"];
+  /** @deprecated Use `npcDefinition` instead. This alias will be removed in the next major version. */
+  readonly "NpcDefinition": __DbViewBase["npcDefinition"];
+  /** @deprecated Use `playerOwnership` instead. This alias will be removed in the next major version. */
+  readonly "PlayerOwnership": __DbViewBase["playerOwnership"];
   /** @deprecated Use `playerProgression` instead. This alias will be removed in the next major version. */
   readonly "PlayerProgression": __DbViewBase["playerProgression"];
-  /** @deprecated Use `playerShip` instead. This alias will be removed in the next major version. */
-  readonly "PlayerShip": __DbViewBase["playerShip"];
-  /** @deprecated Use `resourceBalance` instead. This alias will be removed in the next major version. */
-  readonly "ResourceBalance": __DbViewBase["resourceBalance"];
+  /** @deprecated Use `ship` instead. This alias will be removed in the next major version. */
+  readonly "Ship": __DbViewBase["ship"];
+  /** @deprecated Use `shipStatus` instead. This alias will be removed in the next major version. */
+  readonly "ShipStatus": __DbViewBase["shipStatus"];
+  /** @deprecated Use `volley` instead. This alias will be removed in the next major version. */
+  readonly "Volley": __DbViewBase["volley"];
+  /** @deprecated Use `worldObject` instead. This alias will be removed in the next major version. */
+  readonly "WorldObject": __DbViewBase["worldObject"];
   /** @deprecated Use `worldState` instead. This alias will be removed in the next major version. */
   readonly "WorldState": __DbViewBase["worldState"];
 };
 
 type __TablesBase = __QueryBuilder<typeof tablesSchema.schemaType>;
 export type Tables = __TablesBase & {
-  /** @deprecated Use `gameEvent` instead. This alias will be removed in the next major version. */
-  readonly "GameEvent": __TablesBase["gameEvent"];
-  /** @deprecated Use `mapEntity` instead. This alias will be removed in the next major version. */
-  readonly "MapEntity": __TablesBase["mapEntity"];
-  /** @deprecated Use `npcShip` instead. This alias will be removed in the next major version. */
-  readonly "NpcShip": __TablesBase["npcShip"];
-  /** @deprecated Use `playerIdentity` instead. This alias will be removed in the next major version. */
-  readonly "PlayerIdentity": __TablesBase["playerIdentity"];
+  /** @deprecated Use `abilityDefinition` instead. This alias will be removed in the next major version. */
+  readonly "AbilityDefinition": __TablesBase["abilityDefinition"];
+  /** @deprecated Use `ammoDefinition` instead. This alias will be removed in the next major version. */
+  readonly "AmmoDefinition": __TablesBase["ammoDefinition"];
+  /** @deprecated Use `combatContribution` instead. This alias will be removed in the next major version. */
+  readonly "CombatContribution": __TablesBase["combatContribution"];
+  /** @deprecated Use `combatEvent` instead. This alias will be removed in the next major version. */
+  readonly "CombatEvent": __TablesBase["combatEvent"];
+  /** @deprecated Use `cooldown` instead. This alias will be removed in the next major version. */
+  readonly "Cooldown": __TablesBase["cooldown"];
+  /** @deprecated Use `inventory` instead. This alias will be removed in the next major version. */
+  readonly "Inventory": __TablesBase["inventory"];
+  /** @deprecated Use `levelDefinition` instead. This alias will be removed in the next major version. */
+  readonly "LevelDefinition": __TablesBase["levelDefinition"];
+  /** @deprecated Use `loot` instead. This alias will be removed in the next major version. */
+  readonly "Loot": __TablesBase["loot"];
+  /** @deprecated Use `npcAi` instead. This alias will be removed in the next major version. */
+  readonly "NpcAi": __TablesBase["npcAi"];
+  /** @deprecated Use `npcDefinition` instead. This alias will be removed in the next major version. */
+  readonly "NpcDefinition": __TablesBase["npcDefinition"];
+  /** @deprecated Use `playerOwnership` instead. This alias will be removed in the next major version. */
+  readonly "PlayerOwnership": __TablesBase["playerOwnership"];
   /** @deprecated Use `playerProgression` instead. This alias will be removed in the next major version. */
   readonly "PlayerProgression": __TablesBase["playerProgression"];
-  /** @deprecated Use `playerShip` instead. This alias will be removed in the next major version. */
-  readonly "PlayerShip": __TablesBase["playerShip"];
-  /** @deprecated Use `resourceBalance` instead. This alias will be removed in the next major version. */
-  readonly "ResourceBalance": __TablesBase["resourceBalance"];
+  /** @deprecated Use `ship` instead. This alias will be removed in the next major version. */
+  readonly "Ship": __TablesBase["ship"];
+  /** @deprecated Use `shipStatus` instead. This alias will be removed in the next major version. */
+  readonly "ShipStatus": __TablesBase["shipStatus"];
+  /** @deprecated Use `volley` instead. This alias will be removed in the next major version. */
+  readonly "Volley": __TablesBase["volley"];
+  /** @deprecated Use `worldObject` instead. This alias will be removed in the next major version. */
+  readonly "WorldObject": __TablesBase["worldObject"];
   /** @deprecated Use `worldState` instead. This alias will be removed in the next major version. */
   readonly "WorldState": __TablesBase["worldState"];
 };
