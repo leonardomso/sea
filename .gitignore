@@ -1,0 +1,38 @@
+# Node and pnpm
+node_modules/
+.pnpm-store/
+dist/
+.turbo/
+.vite/
+*.tsbuildinfo
+
+# Local environment and logs
+.env
+.env.*
+!.env.example
+*.log
+
+# Docker and local data
+infra/**/data/
+docker-compose.override.yml
+
+# Unity generated folders
+apps/game-unity/[Ll]ibrary/
+apps/game-unity/[Tt]emp/
+apps/game-unity/[Oo]bj/
+apps/game-unity/[Bb]uild/
+apps/game-unity/[Bb]uilds/
+apps/game-unity/[Ll]ogs/
+apps/game-unity/[Uu]ser[Ss]ettings/
+apps/game-unity/MemoryCaptures/
+apps/game-unity/.vs/
+apps/game-unity/*.csproj
+apps/game-unity/*.sln
+apps/game-unity/*.userprefs
+
+# IDE and OS files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.DS_Store

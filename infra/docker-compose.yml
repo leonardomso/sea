@@ -1,0 +1,93 @@
+name: sea
+
+services:
+  spacetimedb:
+    image: clockworklabs/spacetime:${SPACETIME_VERSION:-v2.0.1}
+    # The named volume is initialized by Docker as root. This local-only
+    # service runs as root so SpacetimeDB can initialize its data directory.
+    user: "0:0"
+    entrypoint: ["spacetime"]
+    command:
+      - "--root-dir=/home/spacetime/data"
+      - "start"
+      - "--listen-addr=0.0.0.0:3000"
+    ports:
+      - "${SPACETIME_PORT:-3000}:3000"
+    volumes:
+      - spacetimedb-data:/home/spacetime/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/v1/ping >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sea_local}
+      POSTGRES_USER: ${POSTGRES_USER:-sea}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sea_local_only}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-sea_local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-sea_local_only}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  admin:
+    build:
+      context: ..
+      dockerfile: apps/admin/Dockerfile
+    environment:
+      NODE_ENV: development
+    depends_on:
+      spacetimedb:
+        condition: service_healthy
+    ports:
+      - "${ADMIN_PORT:-3001}:3001"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  spacetimedb-data:
+  postgres-data:
+  redis-data:
+  minio-data:
