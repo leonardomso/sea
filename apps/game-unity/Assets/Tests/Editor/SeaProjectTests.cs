@@ -27,6 +27,22 @@ namespace Sea.Tests
         }
 
         [Test]
+        public void Standalone_player_uses_a_safe_resizable_window()
+        {
+            Assert.That(PlayerSettings.fullScreenMode, Is.EqualTo(FullScreenMode.Windowed));
+            Assert.That(PlayerSettings.resizableWindow, Is.True);
+            Assert.That(PlayerSettings.defaultScreenWidth, Is.EqualTo(1280));
+            Assert.That(PlayerSettings.defaultScreenHeight, Is.EqualTo(720));
+        }
+
+        [Test]
+        public void Runtime_frame_policy_caps_foreground_and_background_work()
+        {
+            Assert.That(SeaFrameRatePolicy.TargetForFocus(true), Is.EqualTo(60));
+            Assert.That(SeaFrameRatePolicy.TargetForFocus(false), Is.EqualTo(15));
+        }
+
+        [Test]
         public void Generated_spacetime_bindings_are_present()
         {
             Assert.That(File.Exists("Assets/Generated/SpacetimeDB/SpacetimeDBClient.g.cs"), Is.True);
@@ -134,6 +150,14 @@ namespace Sea.Tests
             Assert.That(worldCamera, Is.Not.Null);
             Assert.That(worldCamera.transform.eulerAngles.x, Is.EqualTo(55f).Within(0.1f));
             Assert.That(worldCamera.orthographicSize, Is.EqualTo(45f).Within(0.1f));
+        }
+
+        [Test]
+        public void Main_scene_applies_the_frame_rate_policy()
+        {
+            EditorSceneManager.OpenScene("Assets/Scenes/Main.unity", OpenSceneMode.Single);
+
+            Assert.That(Object.FindFirstObjectByType<SeaFrameRateController>(), Is.Not.Null);
         }
 
         [Test]

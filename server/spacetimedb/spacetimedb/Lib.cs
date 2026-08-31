@@ -128,27 +128,21 @@ public static partial class Module
     }
 
     [Reducer(ReducerKind.ClientConnected)]
-    public static void ClientConnected(ReducerContext ctx) => EnsurePlayer(ctx, ctx.Sender, true);
+    public static void ClientConnected(ReducerContext ctx)
+    {
+        SetConnectionStateIfLoaded(ctx, ctx.Sender, true);
+    }
 
     [Reducer(ReducerKind.ClientDisconnected)]
     public static void ClientDisconnected(ReducerContext ctx)
     {
-        foreach (var player in ctx.Db.PlayerIdentity.Iter())
-        {
-            if (player.Owner == ctx.Sender)
-            {
-                var disconnected = player;
-                disconnected.IsConnected = false;
-                ctx.Db.PlayerIdentity.Owner.Update(disconnected);
-                return;
-            }
-        }
+        SetConnectionStateIfLoaded(ctx, ctx.Sender, false);
     }
 
     [SpacetimeDB.Reducer]
     public static void LoadPlayer(ReducerContext ctx)
     {
-        EnsurePlayer(ctx, ctx.Sender, true);
+        EnsurePlayer(ctx, ctx.Sender, true, PlayerLoadSource.ExplicitLoad);
     }
 
     [SpacetimeDB.Reducer]
@@ -269,18 +263,37 @@ public static partial class Module
         return false;
     }
 
-    private static void EnsurePlayer(ReducerContext ctx, Identity owner, bool connected)
+    private static void SetConnectionStateIfLoaded(
+        ReducerContext ctx,
+        Identity owner,
+        bool connected)
     {
-        foreach (var player in ctx.Db.PlayerIdentity.Iter())
+        if (ctx.Db.PlayerIdentity.Owner.Find(owner) is not PlayerIdentity player)
         {
-            if (player.Owner == owner)
-            {
-                var existing = player;
-                existing.IsConnected = connected;
-                ctx.Db.PlayerIdentity.Owner.Update(existing);
-                EnsureProgression(ctx, owner);
-                return;
-            }
+            return;
+        }
+
+        player.IsConnected = connected;
+        ctx.Db.PlayerIdentity.Owner.Update(player);
+    }
+
+    private static void EnsurePlayer(
+        ReducerContext ctx,
+        Identity owner,
+        bool connected,
+        PlayerLoadSource source)
+    {
+        if (ctx.Db.PlayerIdentity.Owner.Find(owner) is PlayerIdentity player)
+        {
+            player.IsConnected = connected;
+            ctx.Db.PlayerIdentity.Owner.Update(player);
+            EnsureProgression(ctx, owner);
+            return;
+        }
+
+        if (!PlayerConnectionRules.MayCreatePlayer(source))
+        {
+            return;
         }
 
         ctx.Db.PlayerIdentity.Insert(new PlayerIdentity
@@ -384,12 +397,9 @@ public static partial class Module
 
     private static void EnsureProgression(ReducerContext ctx, Identity owner)
     {
-        foreach (var progression in ctx.Db.PlayerProgression.Iter())
+        if (ctx.Db.PlayerProgression.Owner.Find(owner) is not null)
         {
-            if (progression.Owner == owner)
-            {
-                return;
-            }
+            return;
         }
 
         ctx.Db.PlayerProgression.Insert(new PlayerProgression

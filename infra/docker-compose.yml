@@ -73,7 +73,7 @@ services:
       context: ..
       dockerfile: apps/admin/Dockerfile
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       SEA_SPACETIMEDB_URL: http://spacetimedb:3000
     depends_on:
       spacetimedb:
@@ -81,7 +81,7 @@ services:
     ports:
       - "${ADMIN_PORT:-3001}:3001"
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(async r => process.exit(r.ok && (await r.json()).status === 'ok' ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 5s
       timeout: 3s
       retries: 12

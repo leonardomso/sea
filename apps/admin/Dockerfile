@@ -11,6 +11,12 @@ RUN pnpm install --frozen-lockfile
 
 COPY apps/admin apps/admin
 
+RUN pnpm --filter admin build
+
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3001
+
 EXPOSE 3001
 
-CMD ["pnpm", "--filter", "admin", "dev"]
+CMD ["node", "apps/admin/.output/server/index.mjs"]

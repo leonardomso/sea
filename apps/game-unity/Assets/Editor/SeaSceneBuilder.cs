@@ -20,6 +20,7 @@ namespace Sea.Editor
             var root = new GameObject("SeaGame");
             root.AddComponent<SeaConnectionController>();
             root.AddComponent<SeaConnectionOverlay>();
+            root.AddComponent<SeaFrameRateController>();
             root.AddComponent<SeaGameController>();
             root.AddComponent<SeaRuntimeValidationProbe>();
             var world = root.AddComponent<SeaWorldView>();

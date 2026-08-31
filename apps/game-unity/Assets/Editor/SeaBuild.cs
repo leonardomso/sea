@@ -23,6 +23,14 @@ namespace Sea.Editor
         private static void Build(BuildTarget target, string fallbackOutputPath)
         {
             PlayerSettings.runInBackground = true;
+            if (target == BuildTarget.StandaloneOSX)
+            {
+                PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
+                PlayerSettings.resizableWindow = true;
+                PlayerSettings.defaultScreenWidth = 1280;
+                PlayerSettings.defaultScreenHeight = 720;
+            }
+
             var outputPath = ReadOutputPath(fallbackOutputPath);
             var outputDirectory = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrEmpty(outputDirectory))

@@ -109,4 +109,14 @@ public sealed class WorldRulesTests
     {
         Assert.Equal(35u, WorldRules.CannonDamageAfterUpgrade(25, 2));
     }
+
+    [Theory]
+    [InlineData(PlayerLoadSource.ClientLifecycle, false)]
+    [InlineData(PlayerLoadSource.ExplicitLoad, true)]
+    public void Player_creation_is_reserved_for_explicit_loads(
+        PlayerLoadSource source,
+        bool expected)
+    {
+        Assert.Equal(expected, PlayerConnectionRules.MayCreatePlayer(source));
+    }
 }
