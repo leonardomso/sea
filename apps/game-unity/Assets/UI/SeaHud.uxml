@@ -56,12 +56,12 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="target-frame" class="target-frame chart-surface hidden">
-            <ui:VisualElement name="port-broadside" class="broadside-side port-side">
+            <ui:Button name="port-broadside" class="broadside-side port-side">
                 <ui:Label text="Q" class="key-cap" />
                 <ui:Label text="PORT" class="broadside-name" />
                 <ui:ProgressBar name="port-reload" low-value="0" high-value="1" value="1" class="reload-gauge" />
                 <ui:Label name="port-reload-text" text="READY" class="readiness" />
-            </ui:VisualElement>
+            </ui:Button>
 
             <ui:VisualElement class="target-core">
                 <ui:VisualElement class="target-heading-line">
@@ -92,12 +92,12 @@
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:VisualElement name="starboard-broadside" class="broadside-side starboard-side">
+            <ui:Button name="starboard-broadside" class="broadside-side starboard-side">
                 <ui:Label text="E" class="key-cap" />
                 <ui:Label text="STARBOARD" class="broadside-name" />
                 <ui:ProgressBar name="starboard-reload" low-value="0" high-value="1" value="1" class="reload-gauge" />
                 <ui:Label name="starboard-reload-text" text="READY" class="readiness" />
-            </ui:VisualElement>
+            </ui:Button>
         </ui:VisualElement>
 
         <ui:VisualElement class="bottom-deck">

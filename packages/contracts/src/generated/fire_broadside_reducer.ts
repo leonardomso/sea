@@ -10,4 +10,7 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default {};
+export default {
+  side: __t.string(),
+  weakPoint: __t.string(),
+};

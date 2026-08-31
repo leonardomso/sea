@@ -668,10 +668,11 @@ namespace SpacetimeDB.Types
             return reducer switch
             {
                 Reducer.ClearTarget args => Reducers.InvokeClearTarget(eventContext, args),
-                Reducer.Engage args => Reducers.InvokeEngage(eventContext, args),
+                Reducer.FireBroadside args => Reducers.InvokeFireBroadside(eventContext, args),
                 Reducer.LoadPlayer args => Reducers.InvokeLoadPlayer(eventContext, args),
                 Reducer.MoveTo args => Reducers.InvokeMoveTo(eventContext, args),
                 Reducer.SelectTarget args => Reducers.InvokeSelectTarget(eventContext, args),
+                Reducer.SetAmmo args => Reducers.InvokeSetAmmo(eventContext, args),
                 Reducer.SetCourse args => Reducers.InvokeSetCourse(eventContext, args),
                 Reducer.StopCourse args => Reducers.InvokeStopCourse(eventContext, args),
                 Reducer.UpgradeCannon args => Reducers.InvokeUpgradeCannon(eventContext, args),

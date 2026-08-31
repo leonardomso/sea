@@ -23,5 +23,9 @@ export default __t.row({
   chunkY: __t.i32().name("chunk_y"),
   firedAtTick: __t.u64().name("fired_at_tick"),
   impactAtTick: __t.u64().name("impact_at_tick"),
+  hullDamage: __t.u32().name("hull_damage"),
+  sailDamage: __t.u32().name("sail_damage"),
+  cannonDamage: __t.u32().name("cannon_damage"),
+  crewDamage: __t.u32().name("crew_damage"),
   isActive: __t.bool().name("is_active"),
 });

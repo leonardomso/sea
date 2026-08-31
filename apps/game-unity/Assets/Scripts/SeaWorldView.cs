@@ -36,6 +36,10 @@ namespace Sea.Client
         private Material wakeMaterial;
         private Material waterlineShadowMaterial;
         private Material fogMaterial;
+        private Material cannonballMaterial;
+        private Material combatEffectMaterial;
+        private SeaCombatPresenter combatPresenter;
+        private ulong playerEntityId;
         private LineRenderer courseLine;
         private LineRenderer destinationRing;
 
@@ -88,6 +92,7 @@ namespace Sea.Client
             SyncEnemyShips();
             SyncPlayerShip();
             UpdateEntityTransforms();
+            SyncCombatPresentation();
         }
 
         private void CreateMaterials()
@@ -110,6 +115,10 @@ namespace Sea.Client
             fogMaterial.SetFloat("_VisionRadius", VisionRadius);
             fogMaterial.SetFloat("_FadeWidth", 12f);
             fogMaterial.SetColor("_FogColor", new Color(0.015f, 0.05f, 0.065f, 0.96f));
+            cannonballMaterial = SeaMaterialFactory.Create(new Color(0.04f, 0.035f, 0.03f, 1f));
+            combatEffectMaterial = SeaMaterialFactory.CreateTransparent(
+                new Color(0.78f, 0.87f, 0.90f, 0.9f));
+            combatPresenter = new SeaCombatPresenter(cannonballMaterial, combatEffectMaterial);
         }
 
         private void CreateWater()
@@ -239,6 +248,8 @@ namespace Sea.Client
                 playerObject.transform.position = ToWorld(ship.PositionX, ship.PositionY, ShipRootHeight);
             }
 
+            playerEntityId = ship.EntityId;
+
             targets[0] = new PresentationTarget(
                 ToWorld(ship.PositionX, ship.PositionY, ShipRootHeight),
                 ship.HeadingDegrees,
@@ -249,6 +260,45 @@ namespace Sea.Client
             UpdateTargetRing(ship);
             UpdateCourseIndicator(ship);
             playerFeedback.SetMotion(ship.Speed, ship.MaximumSpeed);
+        }
+
+        private void SyncCombatPresentation()
+        {
+            var world = connection.Connection.Db.WorldState.Id.Find(1);
+            if (world == null || combatPresenter == null)
+            {
+                return;
+            }
+
+            combatPresenter.BeginFrame();
+            foreach (var volley in connection.Connection.Db.Volley.Iter())
+            {
+                if (!volley.IsActive)
+                {
+                    continue;
+                }
+
+                combatPresenter.Show(
+                    volley,
+                    world.Tick,
+                    FindShipTransform(volley.SourceEntityId),
+                    FindShipTransform(volley.TargetEntityId),
+                    shipFeedback.TryGetValue(volley.SourceEntityId, out var feedback)
+                        ? feedback
+                        : null);
+            }
+
+            combatPresenter.EndFrame();
+        }
+
+        private Transform FindShipTransform(ulong entityId)
+        {
+            if (entityId == playerEntityId)
+            {
+                return playerObject != null ? playerObject.transform : null;
+            }
+
+            return entities.TryGetValue(entityId, out var ship) ? ship.transform : null;
         }
 
         private void UpdateEntityTransforms()

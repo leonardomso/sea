@@ -156,6 +156,10 @@ public static partial class Module
         public int ChunkY;
         public ulong FiredAtTick;
         public ulong ImpactAtTick;
+        public uint HullDamage;
+        public uint SailDamage;
+        public uint CannonDamage;
+        public uint CrewDamage;
         public bool IsActive;
     }
 
@@ -445,23 +449,138 @@ public static partial class Module
     }
 
     [SpacetimeDB.Reducer]
-    public static void Engage(ReducerContext ctx)
+    public static void SetAmmo(ReducerContext ctx, string ammoId)
     {
+        if (ctx.Db.AmmoDefinition.AmmoId.Find(ammoId) is null)
+        {
+            throw new Exception("The selected ammunition does not exist.");
+        }
+
         var ship = FindPlayerShip(ctx, ctx.Sender);
-        if (ship.TargetEntityId == 0)
+        if (FindInventory(ctx, ship.EntityId, ammoId) is null)
         {
-            throw new Exception("Select a target before engaging.");
+            throw new Exception("The selected ammunition is not in this ship's inventory.");
         }
 
-        var target = FindShip(ctx, ship.TargetEntityId);
-        if (!target.IsActive || !target.IsAlive)
-        {
-            throw new Exception("The selected enemy is no longer active.");
-        }
-
-        ship.IsEngaged = true;
+        ship.SelectedAmmoId = ammoId;
         ctx.Db.Ship.EntityId.Update(ship);
-        AppendEvent(ctx, ship.EntityId, "engage", $"entity_id={target.EntityId}");
+        AppendEvent(ctx, ship.EntityId, "set_ammo", $"ammo={ammoId}");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void FireBroadside(ReducerContext ctx, string side, string weakPoint)
+    {
+        if (!Enum.TryParse<BroadsideSide>(side, ignoreCase: true, out var parsedSide) ||
+            !Enum.IsDefined(parsedSide))
+        {
+            throw new Exception("Broadside side must be port or starboard.");
+        }
+
+        if (!CombatRules.TryParseWeakPoint(weakPoint, out var parsedWeakPoint))
+        {
+            throw new Exception("Weak point must be hull, sails, or cannons.");
+        }
+
+        var world = ctx.Db.WorldState.Id.Find(1) ??
+            throw new Exception("World state is missing.");
+        var source = FindPlayerShip(ctx, ctx.Sender);
+        var target = source.TargetEntityId == 0
+            ? default(Ship?)
+            : ctx.Db.Ship.EntityId.Find(source.TargetEntityId);
+        var ammunition = ctx.Db.AmmoDefinition.AmmoId.Find(source.SelectedAmmoId) ??
+            throw new Exception("The selected ammunition definition is missing.");
+        var inventory = FindInventory(ctx, source.EntityId, source.SelectedAmmoId);
+        var readyAtTick = parsedSide == BroadsideSide.Port
+            ? source.NextPortFireTick
+            : source.NextStarboardFireTick;
+        var rejection = CombatRules.ValidateFire(new FireRequest
+        {
+            SourceAlive = source.IsActive && source.IsAlive,
+            TargetSelected = target.HasValue,
+            TargetAlive = target is Ship selected && selected.IsActive && selected.IsAlive,
+            Cannons = source.Cannons,
+            Ammunition = inventory?.Quantity ?? 0,
+            CurrentTick = world.Tick,
+            ReadyAtTick = readyAtTick,
+            SourceX = source.PositionX,
+            SourceY = source.PositionY,
+            SourceHeadingDegrees = source.HeadingDegrees,
+            TargetX = target?.PositionX ?? source.PositionX,
+            TargetY = target?.PositionY ?? source.PositionY,
+            MaximumRange = WorldRules.CannonRange,
+            RangeMultiplier = ammunition.RangeMultiplier,
+            Side = parsedSide,
+        });
+        if (rejection != FireRejection.None)
+        {
+            throw new Exception(FireRejectionMessage(rejection));
+        }
+
+        var selectedTarget = target!.Value;
+        var selectedInventory = inventory!.Value;
+        var damage = CombatRules.DamageProfile(
+            new AmmunitionContent
+            {
+                Id = ammunition.AmmoId,
+                HullDamage = ammunition.HullDamage,
+                SailDamage = ammunition.SailDamage,
+                CannonDamage = ammunition.CannonDamage,
+                CrewDamage = ammunition.CrewDamage,
+                RangeMultiplier = ammunition.RangeMultiplier,
+                AppliedStatus = ammunition.AppliedStatus,
+            },
+            parsedWeakPoint,
+            source.CannonDamage,
+            source.Cannons,
+            source.MaxCannons);
+        var distance = CombatRules.Distance(
+            source.PositionX,
+            source.PositionY,
+            selectedTarget.PositionX,
+            selectedTarget.PositionY);
+        var impactAtTick = world.Tick + CombatRules.VolleyTravelTicks(
+            distance,
+            CombatRules.ProjectileSpeed,
+            world.TickRateHz);
+
+        selectedInventory.Quantity--;
+        ctx.Db.Inventory.InventoryId.Update(selectedInventory);
+        source.SelectedWeakPoint = weakPoint.ToLowerInvariant();
+        source.IsEngaged = true;
+        if (parsedSide == BroadsideSide.Port)
+        {
+            source.NextPortFireTick = world.Tick + source.CannonCooldownTicks;
+        }
+        else
+        {
+            source.NextStarboardFireTick = world.Tick + source.CannonCooldownTicks;
+        }
+
+        ctx.Db.Ship.EntityId.Update(source);
+        ctx.Db.Volley.Insert(new Volley
+        {
+            SourceEntityId = source.EntityId,
+            TargetEntityId = selectedTarget.EntityId,
+            Side = side.ToLowerInvariant(),
+            AmmoId = ammunition.AmmoId,
+            WeakPoint = weakPoint.ToLowerInvariant(),
+            OriginX = source.PositionX,
+            OriginY = source.PositionY,
+            ChunkX = source.ChunkX,
+            ChunkY = source.ChunkY,
+            FiredAtTick = world.Tick,
+            ImpactAtTick = impactAtTick,
+            HullDamage = damage.Hull,
+            SailDamage = damage.Sails,
+            CannonDamage = damage.Cannons,
+            CrewDamage = damage.Crew,
+            IsActive = true,
+        });
+        AppendEvent(
+            ctx,
+            source.EntityId,
+            "broadside_fired",
+            $"target={selectedTarget.EntityId},side={side},ammo={ammunition.AmmoId},impact_tick={impactAtTick}");
     }
 
     [SpacetimeDB.Reducer]
@@ -497,7 +616,7 @@ public static partial class Module
         ctx.Db.WorldState.Id.Update(world);
         UpdateWind(ctx, world.Tick);
         AdvanceMovingShips(ctx);
-        ResolvePrototypeCombat(ctx, world.Tick);
+        ResolveVolleys(ctx, world.Tick);
         ExpireTransientRows(ctx, world.Tick);
     }
 
@@ -769,58 +888,87 @@ public static partial class Module
         return true;
     }
 
-    private static void ResolvePrototypeCombat(ReducerContext ctx, ulong tick)
+    private static void ResolveVolleys(ReducerContext ctx, ulong tick)
     {
-        foreach (var ship in ctx.Db.Ship.ByEngaged.Filter(true))
+        foreach (var volley in ctx.Db.Volley.ByActive.Filter(true))
         {
-            if (!ship.IsActive || !ship.IsAlive || ship.TargetEntityId == 0)
+            if (tick < volley.ImpactAtTick)
             {
                 continue;
             }
 
-            if (ctx.Db.Ship.EntityId.Find(ship.TargetEntityId) is not Ship target ||
-                !target.IsActive || !target.IsAlive)
+            if (ctx.Db.Ship.EntityId.Find(volley.TargetEntityId) is not Ship target ||
+                CombatRules.ResolveVolley(volley.ImpactAtTick, tick, target.IsActive && target.IsAlive) ==
+                VolleyResolution.Harmless)
             {
-                var disengaged = ship;
-                disengaged.IsEngaged = false;
-                disengaged.TargetEntityId = 0;
-                ctx.Db.Ship.EntityId.Update(disengaged);
+                ctx.Db.Volley.VolleyId.Delete(volley.VolleyId);
                 continue;
             }
 
-            if (!WorldRules.IsInRange(
-                    ship.PositionX,
-                    ship.PositionY,
-                    target.PositionX,
-                    target.PositionY,
-                    WorldRules.CannonRange) ||
-                tick < ship.NextPortFireTick)
-            {
-                continue;
-            }
-
-            var attacker = ship;
-            attacker.NextPortFireTick = tick + ship.CannonCooldownTicks;
             var defender = target;
-            defender.Hull = WorldRules.ApplyDamage(target.Hull, ship.CannonDamage);
+            defender.Hull = WorldRules.ApplyDamage(defender.Hull, volley.HullDamage);
+            defender.Sails = WorldRules.ApplyDamage(defender.Sails, volley.SailDamage);
+            defender.Cannons = WorldRules.ApplyDamage(defender.Cannons, volley.CannonDamage);
+            defender.Crew = WorldRules.ApplyDamage(defender.Crew, volley.CrewDamage);
             if (defender.Hull == 0)
             {
                 defender.IsAlive = false;
                 defender.IsActive = false;
                 defender.IsMoving = false;
-                attacker.IsEngaged = false;
-                attacker.TargetEntityId = 0;
-                AppendEvent(ctx, attacker.EntityId, "enemy_sunk", $"entity_id={defender.EntityId}");
+                defender.HasCourse = false;
+                ClearTargetLocks(ctx, defender.EntityId);
+                AppendEvent(ctx, volley.SourceEntityId, "enemy_sunk", $"entity_id={defender.EntityId}");
             }
             else
             {
-                AppendEvent(ctx, attacker.EntityId, "cannon_hit", $"entity_id={defender.EntityId},damage={ship.CannonDamage}");
+                AppendEvent(
+                    ctx,
+                    volley.SourceEntityId,
+                    "broadside_impact",
+                    $"entity_id={defender.EntityId},hull={volley.HullDamage},sails={volley.SailDamage},cannons={volley.CannonDamage},crew={volley.CrewDamage}");
             }
 
             ctx.Db.Ship.EntityId.Update(defender);
-            ctx.Db.Ship.EntityId.Update(attacker);
+            ctx.Db.Volley.VolleyId.Delete(volley.VolleyId);
         }
     }
+
+    private static void ClearTargetLocks(ReducerContext ctx, ulong targetEntityId)
+    {
+        foreach (var source in ctx.Db.Ship.ByTarget.Filter(targetEntityId))
+        {
+            var cleared = source;
+            cleared.TargetEntityId = 0;
+            cleared.IsEngaged = false;
+            ctx.Db.Ship.EntityId.Update(cleared);
+        }
+    }
+
+    private static Inventory? FindInventory(ReducerContext ctx, ulong shipEntityId, string itemId)
+    {
+        foreach (var item in ctx.Db.Inventory.ByShip.Filter(shipEntityId))
+        {
+            if (item.ItemId == itemId)
+            {
+                return item;
+            }
+        }
+
+        return null;
+    }
+
+    private static string FireRejectionMessage(FireRejection rejection) => rejection switch
+    {
+        FireRejection.SourceSunk => "A sunk ship cannot fire.",
+        FireRejection.NoTarget => "Select a target before firing.",
+        FireRejection.TargetSunk => "The selected target has already sunk.",
+        FireRejection.CannonsDisabled => "The ship's cannons are disabled.",
+        FireRejection.NoAmmunition => "No selected ammunition remains.",
+        FireRejection.Reloading => "That broadside is still reloading.",
+        FireRejection.OutOfRange => "The selected target is out of range.",
+        FireRejection.OutsideArc => "The selected target is outside that broadside arc.",
+        _ => "The broadside cannot fire.",
+    };
 
     private static void ExpireTransientRows(ReducerContext ctx, ulong tick)
     {

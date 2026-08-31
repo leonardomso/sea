@@ -12,17 +12,17 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteReducers : RemoteBase
     {
-        public delegate void EngageHandler(ReducerEventContext ctx);
-        public event EngageHandler? OnEngage;
+        public delegate void SetAmmoHandler(ReducerEventContext ctx, string ammoId);
+        public event SetAmmoHandler? OnSetAmmo;
 
-        public void Engage()
+        public void SetAmmo(string ammoId)
         {
-            conn.InternalCallReducer(new Reducer.Engage());
+            conn.InternalCallReducer(new Reducer.SetAmmo(ammoId));
         }
 
-        public bool InvokeEngage(ReducerEventContext ctx, Reducer.Engage args)
+        public bool InvokeSetAmmo(ReducerEventContext ctx, Reducer.SetAmmo args)
         {
-            if (OnEngage == null)
+            if (OnSetAmmo == null)
             {
                 if (InternalOnUnhandledReducerError != null)
                 {
@@ -34,8 +34,9 @@ namespace SpacetimeDB.Types
                 }
                 return false;
             }
-            OnEngage(
-                ctx
+            OnSetAmmo(
+                ctx,
+                args.AmmoId
             );
             return true;
         }
@@ -45,9 +46,22 @@ namespace SpacetimeDB.Types
     {
         [SpacetimeDB.Type]
         [DataContract]
-        public sealed partial class Engage : Reducer, IReducerArgs
+        public sealed partial class SetAmmo : Reducer, IReducerArgs
         {
-            string IReducerArgs.ReducerName => "engage";
+            [DataMember(Name = "ammo_id")]
+            public string AmmoId;
+
+            public SetAmmo(string AmmoId)
+            {
+                this.AmmoId = AmmoId;
+            }
+
+            public SetAmmo()
+            {
+                this.AmmoId = "";
+            }
+
+            string IReducerArgs.ReducerName => "set_ammo";
         }
     }
 }

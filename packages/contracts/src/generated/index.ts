@@ -35,10 +35,11 @@ import {
 
 // Import all reducer arg schemas
 import ClearTargetReducer from "./clear_target_reducer";
-import EngageReducer from "./engage_reducer";
+import FireBroadsideReducer from "./fire_broadside_reducer";
 import LoadPlayerReducer from "./load_player_reducer";
 import MoveToReducer from "./move_to_reducer";
 import SelectTargetReducer from "./select_target_reducer";
+import SetAmmoReducer from "./set_ammo_reducer";
 import SetCourseReducer from "./set_course_reducer";
 import StopCourseReducer from "./stop_course_reducer";
 import UpgradeCannonReducer from "./upgrade_cannon_reducer";
@@ -361,10 +362,11 @@ const tablesSchema = __schema({
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
   __reducerSchema("clear_target", ClearTargetReducer),
-  __reducerSchema("engage", EngageReducer),
+  __reducerSchema("fire_broadside", FireBroadsideReducer),
   __reducerSchema("load_player", LoadPlayerReducer),
   __reducerSchema("move_to", MoveToReducer),
   __reducerSchema("select_target", SelectTargetReducer),
+  __reducerSchema("set_ammo", SetAmmoReducer),
   __reducerSchema("set_course", SetCourseReducer),
   __reducerSchema("stop_course", StopCourseReducer),
   __reducerSchema("upgrade_cannon", UpgradeCannonReducer),

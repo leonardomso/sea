@@ -149,6 +149,12 @@ namespace Sea.Client
 
         public void SetSelectedAmmo(string ammoId)
         {
+            if (!IsReady)
+            {
+                return;
+            }
+
+            connection.Connection.Reducers.SetAmmo(ammoId);
             SelectedAmmoId = ammoId;
             LastAction = $"{ammoId.ToUpperInvariant()} shot selected.";
         }
@@ -157,6 +163,24 @@ namespace Sea.Client
         {
             SelectedWeakPoint = weakPoint;
             LastAction = $"Gunners aim for {weakPoint.ToUpperInvariant()}.";
+        }
+
+        public void FireBroadside(string side)
+        {
+            if (!IsReady)
+            {
+                return;
+            }
+
+            if (SelectedTargetId == 0 &&
+                (!TryGetLocalShip(out var ship) || ship.TargetEntityId == 0))
+            {
+                LastAction = "Select a target before firing.";
+                return;
+            }
+
+            connection.Connection.Reducers.FireBroadside(side, SelectedWeakPoint);
+            LastAction = $"{side.ToUpperInvariant()} broadside fired • {SelectedAmmoId.ToUpperInvariant()} • {SelectedWeakPoint.ToUpperInvariant()}";
         }
 
         public void RequestCombatIntent(string order)

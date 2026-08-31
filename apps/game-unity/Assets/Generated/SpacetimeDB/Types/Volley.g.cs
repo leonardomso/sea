@@ -37,6 +37,14 @@ namespace SpacetimeDB.Types
         public ulong FiredAtTick;
         [DataMember(Name = "impact_at_tick")]
         public ulong ImpactAtTick;
+        [DataMember(Name = "hull_damage")]
+        public uint HullDamage;
+        [DataMember(Name = "sail_damage")]
+        public uint SailDamage;
+        [DataMember(Name = "cannon_damage")]
+        public uint CannonDamage;
+        [DataMember(Name = "crew_damage")]
+        public uint CrewDamage;
         [DataMember(Name = "is_active")]
         public bool IsActive;
 
@@ -53,6 +61,10 @@ namespace SpacetimeDB.Types
             int ChunkY,
             ulong FiredAtTick,
             ulong ImpactAtTick,
+            uint HullDamage,
+            uint SailDamage,
+            uint CannonDamage,
+            uint CrewDamage,
             bool IsActive
         )
         {
@@ -68,6 +80,10 @@ namespace SpacetimeDB.Types
             this.ChunkY = ChunkY;
             this.FiredAtTick = FiredAtTick;
             this.ImpactAtTick = ImpactAtTick;
+            this.HullDamage = HullDamage;
+            this.SailDamage = SailDamage;
+            this.CannonDamage = CannonDamage;
+            this.CrewDamage = CrewDamage;
             this.IsActive = IsActive;
         }
 

@@ -10,6 +10,7 @@ namespace Sea.Client
         private Quaternion baseLocalRotation;
         private float phase;
         private float normalizedSpeed;
+        private float broadsideRecoil;
 
         public static bool ShouldEmitWake(float speed, float maximumSpeed) =>
             maximumSpeed > 0f && speed / maximumSpeed >= 0.04f;
@@ -47,6 +48,16 @@ namespace Sea.Client
             }
         }
 
+        public void PlayBroadside(string side)
+        {
+            broadsideRecoil = string.Equals(
+                side,
+                "port",
+                System.StringComparison.OrdinalIgnoreCase)
+                ? 1f
+                : -1f;
+        }
+
         private void LateUpdate()
         {
             if (visual == null)
@@ -58,8 +69,13 @@ namespace Sea.Client
             var heave = Mathf.Sin(time * 1.35f) * (0.06f + normalizedSpeed * 0.025f);
             var roll = Mathf.Sin(time * 1.05f) * (0.55f + normalizedSpeed * 0.45f);
             var pitch = Mathf.Sin(time * 1.62f + 0.8f) * (0.35f + normalizedSpeed * 0.25f);
-            visual.localPosition = baseLocalPosition + Vector3.up * heave;
-            visual.localRotation = baseLocalRotation * Quaternion.Euler(pitch, 0f, roll);
+            visual.localPosition = baseLocalPosition + Vector3.up * heave +
+                Vector3.right * (broadsideRecoil * 0.22f);
+            visual.localRotation = baseLocalRotation * Quaternion.Euler(
+                pitch,
+                0f,
+                roll + broadsideRecoil * 2.6f);
+            broadsideRecoil = Mathf.MoveTowards(broadsideRecoil, 0f, Time.deltaTime * 4.8f);
         }
 
         private TrailRenderer CreateWake(string name, float localX, Material material)

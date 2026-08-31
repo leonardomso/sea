@@ -81,6 +81,10 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Volley, int> ChunkY { get; }
         public global::SpacetimeDB.Col<Volley, ulong> FiredAtTick { get; }
         public global::SpacetimeDB.Col<Volley, ulong> ImpactAtTick { get; }
+        public global::SpacetimeDB.Col<Volley, uint> HullDamage { get; }
+        public global::SpacetimeDB.Col<Volley, uint> SailDamage { get; }
+        public global::SpacetimeDB.Col<Volley, uint> CannonDamage { get; }
+        public global::SpacetimeDB.Col<Volley, uint> CrewDamage { get; }
         public global::SpacetimeDB.Col<Volley, bool> IsActive { get; }
 
         public VolleyCols(string tableName)
@@ -97,6 +101,10 @@ namespace SpacetimeDB.Types
             ChunkY = new global::SpacetimeDB.Col<Volley, int>(tableName, "chunk_y");
             FiredAtTick = new global::SpacetimeDB.Col<Volley, ulong>(tableName, "fired_at_tick");
             ImpactAtTick = new global::SpacetimeDB.Col<Volley, ulong>(tableName, "impact_at_tick");
+            HullDamage = new global::SpacetimeDB.Col<Volley, uint>(tableName, "hull_damage");
+            SailDamage = new global::SpacetimeDB.Col<Volley, uint>(tableName, "sail_damage");
+            CannonDamage = new global::SpacetimeDB.Col<Volley, uint>(tableName, "cannon_damage");
+            CrewDamage = new global::SpacetimeDB.Col<Volley, uint>(tableName, "crew_damage");
             IsActive = new global::SpacetimeDB.Col<Volley, bool>(tableName, "is_active");
         }
     }

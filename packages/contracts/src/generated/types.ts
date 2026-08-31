@@ -216,6 +216,10 @@ export const Volley = __t.object("Volley", {
   chunkY: __t.i32(),
   firedAtTick: __t.u64(),
   impactAtTick: __t.u64(),
+  hullDamage: __t.u32(),
+  sailDamage: __t.u32(),
+  cannonDamage: __t.u32(),
+  crewDamage: __t.u32(),
   isActive: __t.bool(),
 });
 export type Volley = __Infer<typeof Volley>;

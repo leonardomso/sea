@@ -164,6 +164,8 @@ namespace Sea.Client
             HookButton("ammo-chain", () => game?.SetSelectedAmmo("chain"));
             HookButton("ammo-grapeshot", () => game?.SetSelectedAmmo("grapeshot"));
             HookButton("ammo-incendiary", () => game?.SetSelectedAmmo("incendiary"));
+            HookButton("port-broadside", () => game?.FireBroadside("port"));
+            HookButton("starboard-broadside", () => game?.FireBroadside("starboard"));
             HookButton("ability-full-sail", () => game?.RequestCombatIntent("Full Sail ordered."));
             HookButton("ability-brace", () => game?.RequestCombatIntent("Brace ordered."));
             HookButton("ability-pump", () => game?.RequestCombatIntent("Emergency Pump ordered."));

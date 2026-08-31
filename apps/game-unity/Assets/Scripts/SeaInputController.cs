@@ -198,8 +198,8 @@ namespace Sea.Client
             Bind("Pause", _ => SetMenuOpen(true));
             BindMenu("CloseMenu", _ => SetMenuOpen(false));
 
-            Bind("FirePort", _ => game?.RequestCombatIntent("Port broadside ordered."));
-            Bind("FireStarboard", _ => game?.RequestCombatIntent("Starboard broadside ordered."));
+            Bind("FirePort", _ => game?.FireBroadside("port"));
+            Bind("FireStarboard", _ => game?.FireBroadside("starboard"));
             Bind("AimHull", _ => game?.SetSelectedWeakPoint("hull"));
             Bind("AimSails", _ => game?.SetSelectedWeakPoint("sails"));
             Bind("AimCannons", _ => game?.SetSelectedWeakPoint("cannons"));

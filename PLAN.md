@@ -233,6 +233,9 @@ Commit: `feat(client): add combat controls and HUD`
 
 ### Phase 5: implement manual broadside combat
 
+Status: complete. Automated server, Unity, deployed-schema, macOS runtime,
+macOS production, and WebGL production gates pass locally.
+
 - Add target selection, weak-point choice, firing arcs, side-specific reloads,
   ammunition inventory, and guaranteed-hit traveling volleys.
 - Add all four ammunition types and authoritative impact resolution.

@@ -495,6 +495,88 @@ namespace Sea.Tests
         }
 
         [Test]
+        public void Manual_combat_bindings_replace_the_prototype_engage_reducer()
+        {
+            Assert.That(File.Exists(
+                "Assets/Generated/SpacetimeDB/Reducers/FireBroadside.g.cs"), Is.True);
+            Assert.That(File.Exists(
+                "Assets/Generated/SpacetimeDB/Reducers/SetAmmo.g.cs"), Is.True);
+            Assert.That(File.Exists(
+                "Assets/Generated/SpacetimeDB/Reducers/Engage.g.cs"), Is.False);
+        }
+
+        [Theory]
+        [TestCase(5ul, 10ul, 5ul, 0f)]
+        [TestCase(5ul, 10ul, 7ul, 0.4f)]
+        [TestCase(5ul, 10ul, 10ul, 1f)]
+        [TestCase(5ul, 10ul, 20ul, 1f)]
+        public void Volley_presentation_uses_authoritative_launch_and_impact_ticks(
+            ulong firedAtTick,
+            ulong impactAtTick,
+            ulong currentTick,
+            float expected)
+        {
+            Assert.That(SeaVolleyPresentationRules.Progress(
+                firedAtTick,
+                impactAtTick,
+                currentTick), Is.EqualTo(expected).Within(0.001f));
+        }
+
+        [Test]
+        public void Broadside_effects_spawn_on_the_ordered_side()
+        {
+            Assert.That(SeaVolleyPresentationRules.LocalSideOffset("port", 3f),
+                Is.EqualTo(new Vector3(-3f, 0f, 0f)));
+            Assert.That(SeaVolleyPresentationRules.LocalSideOffset("starboard", 3f),
+                Is.EqualTo(new Vector3(3f, 0f, 0f)));
+            Assert.That(SeaVolleyPresentationRules.IsInsideBroadsideArc(
+                Vector2.zero, 0f, Vector2.left * 10f, "port"), Is.True);
+            Assert.That(SeaVolleyPresentationRules.IsInsideBroadsideArc(
+                Vector2.zero, 0f, Vector2.right * 10f, "port"), Is.False);
+        }
+
+        [Test]
+        public void Combat_visual_pool_reuses_released_instances()
+        {
+            var pool = new SeaCombatVisualPool(() => new GameObject("Pooled combat visual"));
+            var first = pool.Acquire();
+
+            pool.Release(first);
+            var second = pool.Acquire();
+
+            Assert.That(second, Is.SameAs(first));
+            Assert.That(pool.CreatedCount, Is.EqualTo(1));
+            Object.DestroyImmediate(second);
+        }
+
+        [Test]
+        public void Aggregated_volley_visual_is_lightweight_and_trail_enabled()
+        {
+            var material = SeaMaterialFactory.Create(Color.black);
+            var volley = SeaCombatVisualFactory.CreateVolley(material);
+
+            Assert.That(volley.GetComponentsInChildren<MeshRenderer>(true), Has.Length.EqualTo(5));
+            Assert.That(volley.GetComponentsInChildren<TrailRenderer>(true), Has.Length.EqualTo(5));
+            Assert.That(volley.GetComponentsInChildren<Collider>(true), Is.Empty);
+            Object.DestroyImmediate(volley);
+            Object.DestroyImmediate(material);
+        }
+
+        [Test]
+        public void Combat_effect_visual_supports_particles_and_spatial_audio()
+        {
+            var material = SeaMaterialFactory.Create(Color.white);
+            var effect = SeaCombatVisualFactory.CreateEffect("Impact", material);
+            var audio = effect.GetComponent<AudioSource>();
+
+            Assert.That(effect.GetComponent<ParticleSystem>(), Is.Not.Null);
+            Assert.That(audio, Is.Not.Null);
+            Assert.That(audio.spatialBlend, Is.GreaterThan(0f));
+            Object.DestroyImmediate(effect);
+            Object.DestroyImmediate(material);
+        }
+
+        [Test]
         public void Opening_the_chart_menu_blocks_gameplay_without_pausing_the_world()
         {
             var controls = Object.Instantiate(AssetDatabase.LoadAssetAtPath<InputActionAsset>(
@@ -595,6 +677,8 @@ namespace Sea.Tests
             Assert.That(requiredElements.All(name => root.Q(name) != null), Is.True);
             Assert.That(root.Q<Button>("aim-hull").text, Is.EqualTo("1"));
             Assert.That(root.Q<Button>("ability-full-sail").text, Is.EqualTo("Z"));
+            Assert.That(root.Q<Button>("port-broadside"), Is.Not.Null);
+            Assert.That(root.Q<Button>("starboard-broadside"), Is.Not.Null);
         }
 
         [Test]
