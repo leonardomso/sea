@@ -17,21 +17,35 @@ test -f "$unity_root/Assets/Scripts/SeaShipVisualFactory.cs"
 test -f "$unity_root/Assets/Scripts/SeaSubscriptionPlan.cs"
 test -f "$unity_root/Assets/Scripts/SeaChartCoordinates.cs"
 test -f "$unity_root/Assets/Scripts/SeaChartCameraController.cs"
+test -f "$unity_root/Assets/Scripts/SeaInputController.cs"
+test -f "$unity_root/Assets/Scripts/SeaHudController.cs"
+test -f "$unity_root/Assets/Scripts/SeaHudViewModel.cs"
 test -f "$unity_root/Assets/Scripts/SeaWorldView.cs"
+test -f "$unity_root/Assets/Input/SeaControls.inputactions"
+test -f "$unity_root/Assets/UI/SeaHud.uxml"
+test -f "$unity_root/Assets/UI/SeaHud.uss"
 test -f "$unity_root/Assets/Art/Ships/StarterShip/StarterShip.fbx"
 test -f "$project_root/packages/spacetimedb-unity/src/UnityTcpWebSocket.cs"
 test -f "$unity_root/Assets/Generated/SpacetimeDB/SpacetimeDBClient.g.cs"
 
 grep -q '^m_EditorVersion: 6000\.3\.23f1$' "$project_version"
 grep -q 'com.clockworklabs.spacetimedbsdk.*file:../../../packages/spacetimedb-unity' "$manifest"
+grep -q 'com.unity.inputsystem.*1.15.0' "$manifest"
+grep -q '^  activeInputHandler: 1$' "$unity_root/ProjectSettings/ProjectSettings.asset"
 grep -q '^using System.Collections;$' "$project_root/packages/spacetimedb-unity/src/SpacetimeDBClient.cs"
 grep -q 'DbConnection\.Builder' "$unity_root/Assets/Scripts/SeaConnectionController.cs"
 grep -q 'Reducers\.SetCourse' "$unity_root/Assets/Scripts/SeaGameController.cs"
 grep -q 'Reducers\.StopCourse' "$unity_root/Assets/Scripts/SeaGameController.cs"
-grep -q 'Reducers\.Engage' "$unity_root/Assets/Scripts/SeaGameController.cs"
+grep -q 'FindActionMap("Gameplay"' "$unity_root/Assets/Scripts/SeaInputController.cs"
+grep -q 'name="port-broadside"' "$unity_root/Assets/UI/SeaHud.uxml"
 
 if grep -R -q --include='*.cs' 'SubscribeToAllTables' "$unity_root/Assets/Scripts"; then
   echo "Runtime Unity code must use scoped subscriptions." >&2
+  exit 1
+fi
+
+if grep -R -q --include='*.cs' -E 'void OnGUI\(|Input\.Get' "$unity_root/Assets/Scripts"; then
+  echo "Runtime Unity code must use UI Toolkit and the Input System exclusively." >&2
   exit 1
 fi
 

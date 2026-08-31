@@ -2,6 +2,8 @@
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.UIElements;
 using Sea.Client;
 
 namespace Sea.Editor
@@ -10,6 +12,10 @@ namespace Sea.Editor
     {
         private const string ScenePath = "Assets/Scenes/Main.unity";
         private const string ShipModelPath = "Assets/Art/Ships/StarterShip/StarterShip.fbx";
+        private const string InputActionsPath = "Assets/Input/SeaControls.inputactions";
+        private const string HudDocumentPath = "Assets/UI/SeaHud.uxml";
+        private const string HudStylePath = "Assets/UI/SeaHud.uss";
+        private const string PanelSettingsPath = "Assets/UI/SeaPanelSettings.asset";
 
         [MenuItem("Sea/Build Main Scene")]
         public static void CreateMainScene()
@@ -19,7 +25,6 @@ namespace Sea.Editor
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var root = new GameObject("SeaGame");
             root.AddComponent<SeaConnectionController>();
-            root.AddComponent<SeaConnectionOverlay>();
             root.AddComponent<SeaFrameRateController>();
             root.AddComponent<SeaChartCameraController>();
             root.AddComponent<SeaGameController>();
@@ -32,6 +37,21 @@ namespace Sea.Editor
             }
 
             world.ConfigureShipModel(shipModel);
+
+            var hudDocument = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(HudDocumentPath);
+            var hudStyle = AssetDatabase.LoadAssetAtPath<StyleSheet>(HudStylePath);
+            var inputActions = AssetDatabase.LoadAssetAtPath<InputActionAsset>(InputActionsPath);
+            if (hudDocument == null || hudStyle == null || inputActions == null)
+            {
+                throw new System.InvalidOperationException("HUD or input assets are missing.");
+            }
+
+            var uiDocument = root.AddComponent<UIDocument>();
+            uiDocument.panelSettings = EnsurePanelSettings();
+            uiDocument.visualTreeAsset = hudDocument;
+            uiDocument.sortingOrder = 100;
+            root.AddComponent<SeaHudController>().Configure(hudStyle);
+            root.AddComponent<SeaInputController>().Configure(inputActions);
 
             var cameraObject = new GameObject("Main Camera");
             var camera = cameraObject.AddComponent<Camera>();
@@ -56,6 +76,23 @@ namespace Sea.Editor
             };
             AssetDatabase.SaveAssets();
             Debug.Log("Sea main scene created at " + ScenePath);
+        }
+
+        private static PanelSettings EnsurePanelSettings()
+        {
+            var settings = AssetDatabase.LoadAssetAtPath<PanelSettings>(PanelSettingsPath);
+            if (settings == null)
+            {
+                settings = ScriptableObject.CreateInstance<PanelSettings>();
+                settings.name = "Sea Panel Settings";
+                AssetDatabase.CreateAsset(settings, PanelSettingsPath);
+            }
+
+            settings.scaleMode = PanelScaleMode.ScaleWithScreenSize;
+            settings.referenceResolution = new Vector2Int(1280, 720);
+            settings.match = 0.5f;
+            EditorUtility.SetDirty(settings);
+            return settings;
         }
 
         private static void EnsureDirectory(string path)

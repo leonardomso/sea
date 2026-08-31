@@ -1,0 +1,164 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:VisualElement name="sea-hud" class="sea-hud">
+        <ui:VisualElement class="top-watch">
+            <ui:VisualElement class="connection-cluster chart-surface">
+                <ui:Label text="LOCAL WATERS" class="eyebrow" />
+                <ui:VisualElement class="connection-line">
+                    <ui:VisualElement name="connection-beacon" class="connection-beacon" />
+                    <ui:Label name="connection-status" text="CONNECTING…" class="data-label" />
+                </ui:VisualElement>
+                <ui:Label text="STARTER COVE // CHART 01" class="micro-label" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="navigation-cluster chart-surface">
+                <ui:Label text="PRESENT POSITION" class="eyebrow centered" />
+                <ui:Label name="navigation-readout" text="—  •  000°  •  0.0 KN" class="navigation-readout" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="watch-actions chart-surface">
+                <ui:Button name="navigator-button" text="N  COORDINATE" class="chart-button" />
+                <ui:Button name="menu-button" text="ESC  CHART MENU" class="chart-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="target-frame" class="target-frame chart-surface hidden">
+            <ui:VisualElement name="port-broadside" class="broadside-side port-side">
+                <ui:Label text="Q" class="key-cap" />
+                <ui:Label text="PORT" class="broadside-name" />
+                <ui:ProgressBar name="port-reload" low-value="0" high-value="1" value="1" class="reload-gauge" />
+                <ui:Label name="port-reload-text" text="READY" class="readiness" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="target-core">
+                <ui:VisualElement class="target-heading-line">
+                    <ui:Label text="◁ 100°" class="arc-mark" />
+                    <ui:VisualElement class="target-reticle">
+                        <ui:Label text="TARGET" class="eyebrow centered" />
+                        <ui:Label name="target-name" text="NO TARGET" class="target-name" />
+                        <ui:Label name="target-range" text="— NM" class="micro-label centered" />
+                    </ui:VisualElement>
+                    <ui:Label text="100° ▷" class="arc-mark" />
+                </ui:VisualElement>
+                <ui:VisualElement class="target-bars">
+                    <ui:VisualElement class="instrument-row">
+                        <ui:Label text="HULL" class="instrument-label" />
+                        <ui:ProgressBar name="target-hull" low-value="0" high-value="1" class="instrument-bar hull-bar" />
+                        <ui:Label name="target-hull-text" text="—" class="instrument-value" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="instrument-row">
+                        <ui:Label text="SAILS" class="instrument-label" />
+                        <ui:ProgressBar name="target-sails" low-value="0" high-value="1" class="instrument-bar sails-bar" />
+                        <ui:Label name="target-sails-text" text="—" class="instrument-value" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="instrument-row">
+                        <ui:Label text="GUNS" class="instrument-label" />
+                        <ui:ProgressBar name="target-cannons" low-value="0" high-value="1" class="instrument-bar cannon-bar" />
+                        <ui:Label name="target-cannons-text" text="—" class="instrument-value" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement name="starboard-broadside" class="broadside-side starboard-side">
+                <ui:Label text="E" class="key-cap" />
+                <ui:Label text="STARBOARD" class="broadside-name" />
+                <ui:ProgressBar name="starboard-reload" low-value="0" high-value="1" value="1" class="reload-gauge" />
+                <ui:Label name="starboard-reload-text" text="READY" class="readiness" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement class="bottom-deck">
+            <ui:VisualElement class="player-ledger chart-surface">
+                <ui:VisualElement class="ledger-heading">
+                    <ui:Label name="level-label" text="LEVEL 1" class="eyebrow" />
+                    <ui:Label name="gold-label" text="0 ¤" class="data-label bronze-text" />
+                </ui:VisualElement>
+                <ui:VisualElement class="meter-heading">
+                    <ui:Label text="HULL INTEGRITY" class="micro-label" />
+                    <ui:Label name="hull-text" text="—" class="instrument-value" />
+                </ui:VisualElement>
+                <ui:ProgressBar name="player-hull" low-value="0" high-value="1" class="player-meter hull-bar" />
+                <ui:VisualElement class="meter-heading">
+                    <ui:Label text="EXPERIENCE" class="micro-label" />
+                    <ui:Label name="experience-text" text="—" class="instrument-value" />
+                </ui:VisualElement>
+                <ui:ProgressBar name="player-experience" low-value="0" high-value="1" class="player-meter xp-bar" />
+                <ui:Label name="last-action" text="Click water to set course." class="captain-log" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="gunnery-deck chart-surface">
+                <ui:VisualElement class="rail-heading">
+                    <ui:Label text="GUNNERY DECK" class="eyebrow" />
+                    <ui:Label name="ammo-count" text="ROUND • 0" class="data-label bronze-text" />
+                </ui:VisualElement>
+                <ui:VisualElement name="weak-point-rail" class="command-rail">
+                    <ui:Label text="AIM" class="rail-label" />
+                    <ui:Button name="aim-hull" text="1  HULL" class="command-slot selected" />
+                    <ui:Button name="aim-sails" text="2  SAILS" class="command-slot" />
+                    <ui:Button name="aim-cannons" text="3  GUNS" class="command-slot" />
+                </ui:VisualElement>
+                <ui:VisualElement name="ammo-rail" class="command-rail">
+                    <ui:Label text="SHOT" class="rail-label" />
+                    <ui:Button name="ammo-round" text="4  ROUND" class="command-slot selected" />
+                    <ui:Button name="ammo-chain" text="5  CHAIN" class="command-slot" />
+                    <ui:Button name="ammo-grapeshot" text="6  GRAPE" class="command-slot" />
+                    <ui:Button name="ammo-incendiary" text="7  FIRE" class="command-slot" />
+                </ui:VisualElement>
+                <ui:VisualElement name="ability-rail" class="command-rail ability-rail">
+                    <ui:Button name="ability-full-sail" text="Z  FULL SAIL" class="command-slot ability-slot" />
+                    <ui:Button name="ability-brace" text="X  BRACE" class="command-slot ability-slot" />
+                    <ui:Button name="ability-pump" text="C  PUMP" class="command-slot ability-slot" />
+                    <ui:Button name="ability-smoke" text="V  SMOKE" class="command-slot ability-slot" />
+                    <ui:Button name="repair" text="R  REPAIR" class="command-slot ability-slot" />
+                    <ui:Button name="board" text="B  BOARD" class="command-slot ability-slot" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="ship-orders chart-surface">
+                <ui:Label text="SHIP CONDITION" class="eyebrow" />
+                <ui:VisualElement name="status-strip" class="status-strip">
+                    <ui:Label name="status-text" text="CLEAR" class="status-clear" />
+                </ui:VisualElement>
+                <ui:Label name="channel-label" text="NO ACTIVE ORDER" class="micro-label" />
+                <ui:ProgressBar name="channel-progress" low-value="0" high-value="1" class="channel-progress" />
+                <ui:VisualElement class="order-shortcuts">
+                    <ui:Label text="TAB  CYCLE TARGET" class="micro-label" />
+                    <ui:Label text="T  CLEAR TARGET" class="micro-label" />
+                    <ui:Label text="SPACE  RECENTER" class="micro-label" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="coordinate-navigator" class="modal-scrim hidden">
+            <ui:VisualElement class="coordinate-dialog chart-surface">
+                <ui:Label text="SET CHART COURSE" class="dialog-title" />
+                <ui:Label text="ENTER A–BZ / 0–60  •  EXAMPLE AX 59" class="micro-label" />
+                <ui:TextField name="coordinate-input" value="AX 59" max-length="8" class="chart-input" />
+                <ui:Label name="coordinate-error" text="" class="error-text" />
+                <ui:VisualElement class="dialog-actions">
+                    <ui:Button name="coordinate-submit" text="SET COURSE" class="primary-button" />
+                    <ui:Button name="coordinate-cancel" text="CANCEL" class="chart-button" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="chart-menu" class="modal-scrim hidden">
+            <ui:VisualElement class="chart-menu chart-surface">
+                <ui:VisualElement class="menu-heading">
+                    <ui:VisualElement>
+                        <ui:Label text="CAPTAIN'S CHART" class="dialog-title" />
+                        <ui:Label text="WORLD CONTINUES WHILE THIS CHART IS OPEN" class="micro-label" />
+                    </ui:VisualElement>
+                    <ui:Button name="menu-close" text="ESC  RETURN" class="chart-button" />
+                </ui:VisualElement>
+                <ui:VisualElement class="menu-body">
+                    <ui:VisualElement class="menu-navigation">
+                        <ui:Button name="controls-tab" text="CONTROLS" class="menu-tab selected" />
+                        <ui:Button name="connection-tab" text="CONNECTION" class="menu-tab" />
+                        <ui:Button name="resume-button" text="RETURN TO CHART" class="primary-button resume-button" />
+                    </ui:VisualElement>
+                    <ui:ScrollView name="rebind-list" class="rebind-list" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

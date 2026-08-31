@@ -26,6 +26,9 @@ namespace Sea.Client
         [SerializeField] private float panSpeed = 45f;
         [SerializeField] private float zoomSpeed = 8f;
 
+        private Vector2 panInput;
+        private bool centeredOnPlayer;
+
         private void Awake()
         {
             chartCamera ??= Camera.main;
@@ -39,28 +42,43 @@ namespace Sea.Client
                 return;
             }
 
-            var horizontal = Input.GetAxisRaw("Horizontal");
-            var vertical = Input.GetAxisRaw("Vertical");
-            if (horizontal != 0f || vertical != 0f)
+            if (!centeredOnPlayer && TryGetPlayerShip(out var playerShip))
+            {
+                CenterOn(new Vector3(playerShip.PositionX, 0f, playerShip.PositionY));
+                centeredOnPlayer = true;
+            }
+
+            if (panInput.sqrMagnitude > 0f)
             {
                 var zoomScale = chartCamera.orthographicSize / 45f;
                 chartCamera.transform.position += SeaChartCameraRules.PanDelta(
-                    horizontal,
-                    vertical,
+                    panInput.x,
+                    panInput.y,
                     panSpeed * zoomScale,
                     Time.unscaledDeltaTime);
             }
+        }
 
-            var scroll = Input.mouseScrollDelta.y;
-            if (scroll != 0f)
+        public void SetPanInput(Vector2 value)
+        {
+            panInput = Vector2.ClampMagnitude(value, 1f);
+        }
+
+        public void Zoom(float scroll)
+        {
+            if (chartCamera != null && !Mathf.Approximately(scroll, 0f))
             {
                 chartCamera.orthographicSize = SeaChartCameraRules.ClampZoom(
                     chartCamera.orthographicSize - scroll * zoomSpeed);
             }
+        }
 
-            if (Input.GetKeyDown(KeyCode.Space) && TryGetPlayerShip(out var ship))
+        public void Recenter()
+        {
+            if (TryGetPlayerShip(out var ship))
             {
                 CenterOn(new Vector3(ship.PositionX, 0f, ship.PositionY));
+                centeredOnPlayer = true;
             }
         }
 

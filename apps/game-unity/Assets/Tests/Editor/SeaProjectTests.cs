@@ -7,6 +7,8 @@ using SpacetimeDB;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.UIElements;
 
 namespace Sea.Tests
 {
@@ -206,6 +208,156 @@ namespace Sea.Tests
             Assert.That(SeaChartCameraRules.ClampZoom(100f), Is.EqualTo(80f));
             Assert.That(SeaChartCameraRules.PanDelta(1f, -1f, 20f, 0.5f),
                 Is.EqualTo(new Vector3(10f, 0f, -10f)));
+        }
+
+        [Test]
+        public void Gameplay_input_map_exposes_every_locked_navigation_and_combat_command()
+        {
+            var controls = AssetDatabase.LoadAssetAtPath<InputActionAsset>(
+                "Assets/Input/SeaControls.inputactions");
+
+            Assert.That(controls, Is.Not.Null);
+            var gameplay = controls.FindActionMap("Gameplay", throwIfNotFound: true);
+            var requiredActions = new[]
+            {
+                "Point", "SetCourse", "StopCourse", "PanChart", "ZoomChart", "RecenterChart",
+                "OpenNavigator", "CycleTargetNext", "CycleTargetPrevious", "ClearTarget", "Pause",
+                "FirePort", "FireStarboard", "AimHull", "AimSails", "AimCannons", "AmmoRound",
+                "AmmoChain", "AmmoGrapeshot", "AmmoIncendiary", "FullSail", "Brace",
+                "EmergencyPump", "SmokeScreen", "Repair", "Board",
+            };
+
+            Assert.That(gameplay.actions.Select(action => action.name), Is.EquivalentTo(requiredActions));
+            Assert.That(controls.FindActionMap("Menu", throwIfNotFound: true), Is.Not.Null);
+        }
+
+        [Test]
+        public void Opening_the_chart_menu_blocks_gameplay_without_pausing_the_world()
+        {
+            var controls = Object.Instantiate(AssetDatabase.LoadAssetAtPath<InputActionAsset>(
+                "Assets/Input/SeaControls.inputactions"));
+            var host = new GameObject("Input mode test");
+            var input = host.AddComponent<SeaInputController>();
+            var originalTimeScale = Time.timeScale;
+
+            input.Configure(controls);
+            input.SetMenuOpen(true);
+
+            Assert.That(input.IsMenuOpen, Is.True);
+            Assert.That(controls.FindActionMap("Gameplay").enabled, Is.False);
+            Assert.That(controls.FindActionMap("Menu").enabled, Is.True);
+            Assert.That(Time.timeScale, Is.EqualTo(originalTimeScale));
+            Object.DestroyImmediate(host);
+            Object.DestroyImmediate(controls);
+        }
+
+        [Test]
+        public void Every_player_command_exposes_a_rebindable_keyboard_or_mouse_binding()
+        {
+            var controls = Object.Instantiate(AssetDatabase.LoadAssetAtPath<InputActionAsset>(
+                "Assets/Input/SeaControls.inputactions"));
+            var host = new GameObject("Rebind test");
+            var input = host.AddComponent<SeaInputController>();
+
+            input.Configure(controls);
+            var bindings = input.GetRebindableBindings();
+
+            var required = controls.FindActionMap("Gameplay").actions
+                .Where(action => action.name != "Point")
+                .Select(action => action.name)
+                .ToArray();
+            Assert.That(bindings.Select(binding => binding.ActionName).Distinct(), Is.SupersetOf(required));
+            Assert.That(bindings.All(binding => !string.IsNullOrWhiteSpace(binding.DisplayPath)), Is.True);
+            Object.DestroyImmediate(host);
+            Object.DestroyImmediate(controls);
+        }
+
+        [Test]
+        public void Combat_hud_view_model_formats_player_target_and_reload_state()
+        {
+            var model = SeaHudViewModel.From(new SeaHudSnapshot
+            {
+                IsReady = true,
+                Coordinate = "AX 59",
+                HeadingDegrees = 275f,
+                Speed = 12.5f,
+                Hull = 750,
+                MaxHull = 1000,
+                Experience = 1250,
+                CurrentLevelExperience = 1000,
+                NextLevelExperience = 2000,
+                TargetName = "RAIDER 7",
+                TargetHull = 300,
+                TargetMaxHull = 600,
+                TargetSails = 100,
+                TargetMaxSails = 400,
+                TargetCannons = 50,
+                TargetMaxCannons = 200,
+                PortReloadRemainingSeconds = 2f,
+                ReloadDurationSeconds = 4f,
+                StarboardReloadRemainingSeconds = 0f,
+            });
+
+            Assert.That(model.HullProgress, Is.EqualTo(0.75f));
+            Assert.That(model.ExperienceProgress, Is.EqualTo(0.25f));
+            Assert.That(model.HullText, Is.EqualTo("750 / 1,000"));
+            Assert.That(model.NavigationText, Is.EqualTo("AX 59  •  275°  •  12.5 KN"));
+            Assert.That(model.HasTarget, Is.True);
+            Assert.That(model.TargetHullProgress, Is.EqualTo(0.5f));
+            Assert.That(model.TargetSailsProgress, Is.EqualTo(0.25f));
+            Assert.That(model.TargetCannonsProgress, Is.EqualTo(0.25f));
+            Assert.That(model.PortReloadProgress, Is.EqualTo(0.5f));
+            Assert.That(model.StarboardReady, Is.True);
+        }
+
+        [Test]
+        public void Runtime_hud_contains_the_locked_chart_combat_instruments()
+        {
+            var document = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/SeaHud.uxml");
+            Assert.That(document, Is.Not.Null);
+            var root = document.CloneTree();
+
+            var requiredElements = new[]
+            {
+                "connection-status", "navigation-readout", "player-hull", "player-experience",
+                "target-frame", "target-hull", "target-sails", "target-cannons",
+                "port-broadside", "starboard-broadside", "weak-point-rail", "ammo-rail",
+                "ability-rail", "status-strip", "channel-progress", "coordinate-navigator",
+                "chart-menu", "rebind-list",
+            };
+
+            Assert.That(requiredElements.All(name => root.Q(name) != null), Is.True);
+        }
+
+        [Test]
+        public void Main_scene_hosts_the_input_system_and_runtime_hud_document()
+        {
+            EditorSceneManager.OpenScene("Assets/Scenes/Main.unity", OpenSceneMode.Single);
+
+            var input = Object.FindFirstObjectByType<SeaInputController>();
+            var hud = Object.FindFirstObjectByType<SeaHudController>();
+            var document = Object.FindFirstObjectByType<UIDocument>();
+
+            Assert.That(input, Is.Not.Null);
+            Assert.That(input.Actions, Is.Not.Null);
+            Assert.That(hud, Is.Not.Null);
+            Assert.That(document, Is.Not.Null);
+            Assert.That(document.visualTreeAsset, Is.SameAs(
+                AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/SeaHud.uxml")));
+            Assert.That(document.panelSettings, Is.Not.Null);
+            Assert.That(document.panelSettings.referenceResolution,
+                Is.EqualTo(new Vector2Int(1280, 720)));
+        }
+
+        [Test]
+        public void Runtime_client_has_no_legacy_input_or_immediate_mode_hud_path()
+        {
+            var runtimeSources = Directory.GetFiles("Assets/Scripts", "*.cs")
+                .Select(File.ReadAllText)
+                .ToArray();
+
+            Assert.That(runtimeSources.Any(source => source.Contains("void OnGUI(")), Is.False);
+            Assert.That(runtimeSources.Any(source => source.Contains("Input.Get")), Is.False);
         }
 
         [Test]
