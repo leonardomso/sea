@@ -46,6 +46,9 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<PlayerShip, ulong> SelectedTargetId { get; }
         public global::SpacetimeDB.Col<PlayerShip, bool> HasSelectedTarget { get; }
         public global::SpacetimeDB.Col<PlayerShip, bool> IsEngaged { get; }
+        public global::SpacetimeDB.Col<PlayerShip, uint> CannonDamage { get; }
+        public global::SpacetimeDB.Col<PlayerShip, uint> CannonCooldownTicks { get; }
+        public global::SpacetimeDB.Col<PlayerShip, ulong> NextCannonAttackTick { get; }
 
         public PlayerShipCols(string tableName)
         {
@@ -56,6 +59,9 @@ namespace SpacetimeDB.Types
             SelectedTargetId = new global::SpacetimeDB.Col<PlayerShip, ulong>(tableName, "selected_target_id");
             HasSelectedTarget = new global::SpacetimeDB.Col<PlayerShip, bool>(tableName, "has_selected_target");
             IsEngaged = new global::SpacetimeDB.Col<PlayerShip, bool>(tableName, "is_engaged");
+            CannonDamage = new global::SpacetimeDB.Col<PlayerShip, uint>(tableName, "cannon_damage");
+            CannonCooldownTicks = new global::SpacetimeDB.Col<PlayerShip, uint>(tableName, "cannon_cooldown_ticks");
+            NextCannonAttackTick = new global::SpacetimeDB.Col<PlayerShip, ulong>(tableName, "next_cannon_attack_tick");
         }
     }
 

@@ -40,6 +40,25 @@ public static partial class Module
         public ulong SelectedTargetId;
         public bool HasSelectedTarget;
         public bool IsEngaged;
+        public uint CannonDamage;
+        public uint CannonCooldownTicks;
+        public ulong NextCannonAttackTick;
+    }
+
+    [SpacetimeDB.Table(Accessor = "NpcShip", Public = true)]
+    public partial struct NpcShip
+    {
+        [PrimaryKey]
+        public ulong EntityId;
+        public float PositionX;
+        public float PositionY;
+        public uint Health;
+        public uint MaxHealth;
+        public uint CannonDamage;
+        public uint CannonCooldownTicks;
+        public ulong NextAttackTick;
+        public uint GoldReward;
+        public bool IsActive;
     }
 
     [SpacetimeDB.Table(Accessor = "MapEntity", Public = true)]
@@ -175,6 +194,12 @@ public static partial class Module
             throw new Exception("The selected entity cannot be engaged.");
         }
 
+        var npc = FindNpcShip(ctx, entity.EntityId);
+        if (!npc.IsActive)
+        {
+            throw new Exception("The selected enemy is no longer active.");
+        }
+
         ship.IsEngaged = true;
         ctx.Db.PlayerShip.Owner.Update(ship);
         AppendEvent(ctx, ctx.Sender, "engage", $"entity_id={entity.EntityId}");
@@ -188,6 +213,7 @@ public static partial class Module
             var next = world;
             next.Tick++;
             ctx.Db.WorldState.Id.Update(next);
+            ResolveCombat(ctx, next.Tick);
             return;
         }
     }
@@ -229,6 +255,9 @@ public static partial class Module
             SelectedTargetId = 0,
             HasSelectedTarget = false,
             IsEngaged = false,
+            CannonDamage = WorldRules.InitialCannonDamage,
+            CannonCooldownTicks = WorldRules.InitialCannonCooldownTicks,
+            NextCannonAttackTick = 0,
         });
         ctx.Db.ResourceBalance.Insert(new ResourceBalance
         {
@@ -263,6 +292,109 @@ public static partial class Module
         throw new Exception("The requested map entity does not exist.");
     }
 
+    private static NpcShip FindNpcShip(ReducerContext ctx, ulong entityId)
+    {
+        foreach (var npc in ctx.Db.NpcShip.Iter())
+        {
+            if (npc.EntityId == entityId)
+            {
+                return npc;
+            }
+        }
+
+        throw new Exception("The selected entity is not an enemy ship.");
+    }
+
+    private static ResourceBalance FindBalance(ReducerContext ctx, Identity owner)
+    {
+        foreach (var balance in ctx.Db.ResourceBalance.Iter())
+        {
+            if (balance.Owner == owner)
+            {
+                return balance;
+            }
+        }
+
+        throw new Exception("Player resource balance is missing.");
+    }
+
+    private static void ResolveCombat(ReducerContext ctx, ulong tick)
+    {
+        foreach (var ship in ctx.Db.PlayerShip.Iter())
+        {
+            if (!ship.IsEngaged || !ship.HasSelectedTarget)
+            {
+                continue;
+            }
+
+            var npc = FindNpcShip(ctx, ship.SelectedTargetId);
+            if (!npc.IsActive)
+            {
+                var disengaged = ship;
+                disengaged.IsEngaged = false;
+                ctx.Db.PlayerShip.Owner.Update(disengaged);
+                continue;
+            }
+
+            var updatedShip = ship;
+            var shipChanged = false;
+            if (WorldRules.IsInRange(ship.PositionX, ship.PositionY, npc.PositionX, npc.PositionY, WorldRules.CannonRange) && tick >= ship.NextCannonAttackTick)
+            {
+                updatedShip.NextCannonAttackTick = tick + ship.CannonCooldownTicks;
+                shipChanged = true;
+
+                var damagedNpc = npc;
+                damagedNpc.Health = WorldRules.ApplyDamage(npc.Health, ship.CannonDamage);
+                ctx.Db.NpcShip.EntityId.Update(damagedNpc);
+                npc = damagedNpc;
+                AppendEvent(ctx, ship.Owner, "cannon_hit", $"entity_id={npc.EntityId},damage={ship.CannonDamage}");
+
+                if (damagedNpc.Health == 0)
+                {
+                    damagedNpc.IsActive = false;
+                    ctx.Db.NpcShip.EntityId.Update(damagedNpc);
+
+                    var entity = FindEntity(ctx, npc.EntityId);
+                    var inactiveEntity = entity;
+                    inactiveEntity.IsActive = false;
+                    ctx.Db.MapEntity.EntityId.Update(inactiveEntity);
+
+                    updatedShip.IsEngaged = false;
+                    shipChanged = true;
+                    AppendEvent(ctx, ship.Owner, "enemy_sunk", $"entity_id={npc.EntityId}");
+
+                    var balance = FindBalance(ctx, ship.Owner);
+                    var rewardedBalance = balance;
+                    rewardedBalance.Gold += npc.GoldReward;
+                    ctx.Db.ResourceBalance.Owner.Update(rewardedBalance);
+                    AppendEvent(ctx, ship.Owner, "reward_granted", $"gold={npc.GoldReward}");
+                }
+            }
+
+            if (npc.IsActive && WorldRules.IsInRange(ship.PositionX, ship.PositionY, npc.PositionX, npc.PositionY, WorldRules.CannonRange) && tick >= npc.NextAttackTick)
+            {
+                updatedShip.Health = WorldRules.ApplyDamage(ship.Health, npc.CannonDamage);
+                shipChanged = true;
+
+                var attackingNpc = npc;
+                attackingNpc.NextAttackTick = tick + npc.CannonCooldownTicks;
+                ctx.Db.NpcShip.EntityId.Update(attackingNpc);
+                AppendEvent(ctx, ship.Owner, "enemy_cannon_hit", $"entity_id={npc.EntityId},damage={npc.CannonDamage}");
+
+                if (updatedShip.Health == 0)
+                {
+                    updatedShip.IsEngaged = false;
+                    AppendEvent(ctx, ship.Owner, "player_sunk", $"entity_id={npc.EntityId}");
+                }
+            }
+
+            if (shipChanged)
+            {
+                ctx.Db.PlayerShip.Owner.Update(updatedShip);
+            }
+        }
+    }
+
     private static void SeedMap(ReducerContext ctx)
     {
         ctx.Db.MapEntity.Insert(new MapEntity
@@ -275,6 +407,19 @@ public static partial class Module
             IsTargetable = false,
             IsActive = true,
             BlocksMovement = false,
+        });
+        ctx.Db.NpcShip.Insert(new NpcShip
+        {
+            EntityId = 10,
+            PositionX = 45,
+            PositionY = -10,
+            Health = WorldRules.EnemyInitialHealth,
+            MaxHealth = WorldRules.EnemyInitialHealth,
+            CannonDamage = WorldRules.EnemyCannonDamage,
+            CannonCooldownTicks = WorldRules.EnemyCannonCooldownTicks,
+            NextAttackTick = 0,
+            GoldReward = WorldRules.EnemyGoldReward,
+            IsActive = true,
         });
         ctx.Db.MapEntity.Insert(new MapEntity
         {

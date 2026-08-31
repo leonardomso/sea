@@ -11,55 +11,55 @@ namespace SpacetimeDB.Types
 {
     [SpacetimeDB.Type]
     [DataContract]
-    public sealed partial class PlayerShip
+    public sealed partial class NpcShip
     {
-        [DataMember(Name = "owner")]
-        public SpacetimeDB.Identity Owner;
+        [DataMember(Name = "entity_id")]
+        public ulong EntityId;
         [DataMember(Name = "position_x")]
         public float PositionX;
         [DataMember(Name = "position_y")]
         public float PositionY;
         [DataMember(Name = "health")]
         public uint Health;
-        [DataMember(Name = "selected_target_id")]
-        public ulong SelectedTargetId;
-        [DataMember(Name = "has_selected_target")]
-        public bool HasSelectedTarget;
-        [DataMember(Name = "is_engaged")]
-        public bool IsEngaged;
+        [DataMember(Name = "max_health")]
+        public uint MaxHealth;
         [DataMember(Name = "cannon_damage")]
         public uint CannonDamage;
         [DataMember(Name = "cannon_cooldown_ticks")]
         public uint CannonCooldownTicks;
-        [DataMember(Name = "next_cannon_attack_tick")]
-        public ulong NextCannonAttackTick;
+        [DataMember(Name = "next_attack_tick")]
+        public ulong NextAttackTick;
+        [DataMember(Name = "gold_reward")]
+        public uint GoldReward;
+        [DataMember(Name = "is_active")]
+        public bool IsActive;
 
-        public PlayerShip(
-            SpacetimeDB.Identity Owner,
+        public NpcShip(
+            ulong EntityId,
             float PositionX,
             float PositionY,
             uint Health,
-            ulong SelectedTargetId,
-            bool HasSelectedTarget,
-            bool IsEngaged,
+            uint MaxHealth,
             uint CannonDamage,
             uint CannonCooldownTicks,
-            ulong NextCannonAttackTick
+            ulong NextAttackTick,
+            uint GoldReward,
+            bool IsActive
         )
         {
-            this.Owner = Owner;
+            this.EntityId = EntityId;
             this.PositionX = PositionX;
             this.PositionY = PositionY;
             this.Health = Health;
-            this.SelectedTargetId = SelectedTargetId;
-            this.HasSelectedTarget = HasSelectedTarget;
-            this.IsEngaged = IsEngaged;
+            this.MaxHealth = MaxHealth;
             this.CannonDamage = CannonDamage;
             this.CannonCooldownTicks = CannonCooldownTicks;
-            this.NextCannonAttackTick = NextCannonAttackTick;
+            this.NextAttackTick = NextAttackTick;
+            this.GoldReward = GoldReward;
+            this.IsActive = IsActive;
         }
 
-        public PlayerShip()
+        public NpcShip()
         {
         }
     }

@@ -32,6 +32,11 @@ public sealed class WorldRulesTests
         Assert.Equal(100u, WorldRules.InitialHealth);
         Assert.Equal(0u, WorldRules.InitialGold);
         Assert.Equal(20u, WorldRules.TickRateHz);
+        Assert.Equal(25u, WorldRules.InitialCannonDamage);
+        Assert.Equal(100u, WorldRules.EnemyInitialHealth);
+        Assert.Equal(20u, WorldRules.InitialCannonCooldownTicks);
+        Assert.Equal(60f, WorldRules.CannonRange);
+        Assert.Equal(100u, WorldRules.EnemyGoldReward);
     }
 
     [Theory]
@@ -49,5 +54,21 @@ public sealed class WorldRulesTests
     public void IsBlocked_allows_non_blocking_or_distant_points(string kind, float entityX, float entityY, float radius, float x, float y)
     {
         Assert.False(WorldRules.IsBlocked(kind, entityX, entityY, radius, x, y));
+    }
+
+    [Fact]
+    public void IsInRange_uses_inclusive_distance()
+    {
+        Assert.True(WorldRules.IsInRange(0, 0, 3, 4, 5));
+        Assert.False(WorldRules.IsInRange(0, 0, 3, 4, 4.99f));
+    }
+
+    [Theory]
+    [InlineData(100u, 25u, 75u)]
+    [InlineData(25u, 25u, 0u)]
+    [InlineData(0u, 25u, 0u)]
+    public void ApplyDamage_never_underflows(uint health, uint damage, uint expected)
+    {
+        Assert.Equal(expected, WorldRules.ApplyDamage(health, damage));
     }
 }

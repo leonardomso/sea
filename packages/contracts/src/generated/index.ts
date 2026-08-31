@@ -44,6 +44,7 @@ import SelectTargetReducer from "./select_target_reducer";
 // Import all table schema definitions
 import GameEventRow from "./game_event_table";
 import MapEntityRow from "./map_entity_table";
+import NpcShipRow from "./npc_ship_table";
 import PlayerIdentityRow from "./player_identity_table";
 import PlayerShipRow from "./player_ship_table";
 import ResourceBalanceRow from "./resource_balance_table";
@@ -75,6 +76,17 @@ const tablesSchema = __schema({
       { name: 'map_entity_entity_id_key', constraint: 'unique', columns: ['entityId'] },
     ],
   }, MapEntityRow),
+  npcShip: __table({
+    name: 'npc_ship',
+    indexes: [
+      { accessor: 'EntityId', name: 'npc_ship_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'entityId',
+      ] },
+    ],
+    constraints: [
+      { name: 'npc_ship_entity_id_key', constraint: 'unique', columns: ['entityId'] },
+    ],
+  }, NpcShipRow),
   playerIdentity: __table({
     name: 'player_identity',
     indexes: [
@@ -139,6 +151,8 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "GameEvent": Omit<typeof tablesSchema.schemaType.tables["gameEvent"], "accessorName"> & { readonly accessorName: "GameEvent" };
     /** @deprecated Use `mapEntity` instead. This alias will be removed in the next major version. */
     readonly "MapEntity": Omit<typeof tablesSchema.schemaType.tables["mapEntity"], "accessorName"> & { readonly accessorName: "MapEntity" };
+    /** @deprecated Use `npcShip` instead. This alias will be removed in the next major version. */
+    readonly "NpcShip": Omit<typeof tablesSchema.schemaType.tables["npcShip"], "accessorName"> & { readonly accessorName: "NpcShip" };
     /** @deprecated Use `playerIdentity` instead. This alias will be removed in the next major version. */
     readonly "PlayerIdentity": Omit<typeof tablesSchema.schemaType.tables["playerIdentity"], "accessorName"> & { readonly accessorName: "PlayerIdentity" };
     /** @deprecated Use `playerShip` instead. This alias will be removed in the next major version. */
@@ -167,6 +181,7 @@ const REMOTE_MODULE = {
 const tableAccessorAliases = {
   "GameEvent": "gameEvent",
   "MapEntity": "mapEntity",
+  "NpcShip": "npcShip",
   "PlayerIdentity": "playerIdentity",
   "PlayerShip": "playerShip",
   "ResourceBalance": "resourceBalance",
@@ -195,6 +210,8 @@ export type DbView = __DbViewBase & {
   readonly "GameEvent": __DbViewBase["gameEvent"];
   /** @deprecated Use `mapEntity` instead. This alias will be removed in the next major version. */
   readonly "MapEntity": __DbViewBase["mapEntity"];
+  /** @deprecated Use `npcShip` instead. This alias will be removed in the next major version. */
+  readonly "NpcShip": __DbViewBase["npcShip"];
   /** @deprecated Use `playerIdentity` instead. This alias will be removed in the next major version. */
   readonly "PlayerIdentity": __DbViewBase["playerIdentity"];
   /** @deprecated Use `playerShip` instead. This alias will be removed in the next major version. */
@@ -211,6 +228,8 @@ export type Tables = __TablesBase & {
   readonly "GameEvent": __TablesBase["gameEvent"];
   /** @deprecated Use `mapEntity` instead. This alias will be removed in the next major version. */
   readonly "MapEntity": __TablesBase["mapEntity"];
+  /** @deprecated Use `npcShip` instead. This alias will be removed in the next major version. */
+  readonly "NpcShip": __TablesBase["npcShip"];
   /** @deprecated Use `playerIdentity` instead. This alias will be removed in the next major version. */
   readonly "PlayerIdentity": __TablesBase["playerIdentity"];
   /** @deprecated Use `playerShip` instead. This alias will be removed in the next major version. */

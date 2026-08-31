@@ -11,14 +11,14 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  owner: __t.identity().primaryKey(),
+  entityId: __t.u64().primaryKey().name("entity_id"),
   positionX: __t.f32().name("position_x"),
   positionY: __t.f32().name("position_y"),
   health: __t.u32(),
-  selectedTargetId: __t.u64().name("selected_target_id"),
-  hasSelectedTarget: __t.bool().name("has_selected_target"),
-  isEngaged: __t.bool().name("is_engaged"),
+  maxHealth: __t.u32().name("max_health"),
   cannonDamage: __t.u32().name("cannon_damage"),
   cannonCooldownTicks: __t.u32().name("cannon_cooldown_ticks"),
-  nextCannonAttackTick: __t.u64().name("next_cannon_attack_tick"),
+  nextAttackTick: __t.u64().name("next_attack_tick"),
+  goldReward: __t.u32().name("gold_reward"),
+  isActive: __t.bool().name("is_active"),
 });

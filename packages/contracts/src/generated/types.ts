@@ -31,6 +31,20 @@ export const MapEntity = __t.object("MapEntity", {
 });
 export type MapEntity = __Infer<typeof MapEntity>;
 
+export const NpcShip = __t.object("NpcShip", {
+  entityId: __t.u64(),
+  positionX: __t.f32(),
+  positionY: __t.f32(),
+  health: __t.u32(),
+  maxHealth: __t.u32(),
+  cannonDamage: __t.u32(),
+  cannonCooldownTicks: __t.u32(),
+  nextAttackTick: __t.u64(),
+  goldReward: __t.u32(),
+  isActive: __t.bool(),
+});
+export type NpcShip = __Infer<typeof NpcShip>;
+
 export const PlayerIdentity = __t.object("PlayerIdentity", {
   owner: __t.identity(),
   isConnected: __t.bool(),
@@ -45,6 +59,9 @@ export const PlayerShip = __t.object("PlayerShip", {
   selectedTargetId: __t.u64(),
   hasSelectedTarget: __t.bool(),
   isEngaged: __t.bool(),
+  cannonDamage: __t.u32(),
+  cannonCooldownTicks: __t.u32(),
+  nextCannonAttackTick: __t.u64(),
 });
 export type PlayerShip = __Infer<typeof PlayerShip>;
 
