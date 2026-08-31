@@ -33,20 +33,24 @@ function spacetimeUrl() {
 }
 
 async function fetchSql() {
-	const query = Object.keys(tableColumns)
-		.map((table) => `SELECT * FROM ${table}`)
-		.join("; ");
-	const response = await fetch(
-		`${spacetimeUrl()}/v1/database/${databaseName}/sql`,
-		{
-			method: "POST",
-			headers: { "content-type": "text/plain" },
-			body: query,
-		},
-	);
-	if (!response.ok)
-		throw new Error(`SpacetimeDB SQL request failed with ${response.status}`);
-	return (await response.json()) as SqlResult[];
+	const results: SqlResult[] = [];
+	for (const table of Object.keys(tableColumns)) {
+		const response = await fetch(
+			`${spacetimeUrl()}/v1/database/${databaseName}/sql`,
+			{
+				method: "POST",
+				headers: { "content-type": "text/plain" },
+				body: `SELECT * FROM ${table}`,
+			},
+		);
+		if (!response.ok)
+			throw new Error(
+				`SpacetimeDB SQL request for ${table} failed with ${response.status}`,
+			);
+		const statementResults = (await response.json()) as SqlResult[];
+		results.push(statementResults[0] ?? {});
+	}
+	return results;
 }
 
 function rowsForResult(
