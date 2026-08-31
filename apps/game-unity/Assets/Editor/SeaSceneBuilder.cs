@@ -19,6 +19,8 @@ namespace Sea.Editor
             var root = new GameObject("SeaGame");
             root.AddComponent<SeaConnectionController>();
             root.AddComponent<SeaConnectionOverlay>();
+            root.AddComponent<SeaGameController>();
+            root.AddComponent<SeaWorldView>();
 
             var cameraObject = new GameObject("Main Camera");
             var camera = cameraObject.AddComponent<Camera>();
