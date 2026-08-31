@@ -39,6 +39,9 @@ public static partial class Module
         public float PositionY;
         public float DestinationX;
         public float DestinationY;
+        public float WaypointX;
+        public float WaypointY;
+        public bool HasWaypoint;
         public float HeadingDegrees;
         public float Speed;
         public float MaximumSpeed;
@@ -381,24 +384,17 @@ public static partial class Module
             throw new Exception("The requested position is outside the map.");
         }
 
-        foreach (var worldObject in ctx.Db.WorldObject.Iter())
+        var ship = FindPlayerShip(ctx, ctx.Sender);
+        var blockers = NavigationBlockers(ctx);
+        if (NavigationRules.IsDestinationBlocked(x, y, blockers))
         {
-            if (worldObject.IsActive && worldObject.BlocksMovement &&
-                WorldRules.IsBlocked(
-                    worldObject.Kind,
-                    worldObject.PositionX,
-                    worldObject.PositionY,
-                    worldObject.Radius,
-                    x,
-                    y))
-            {
-                throw new Exception("The requested position is blocked by map geometry.");
-            }
+            AppendEvent(ctx, ship.EntityId, "course_ignored", "destination_is_land");
+            return;
         }
 
-        var ship = FindPlayerShip(ctx, ctx.Sender);
         ship.DestinationX = x;
         ship.DestinationY = y;
+        ConfigureNavigationWaypoint(ref ship, blockers);
         ship.HasCourse = ship.PositionX != x || ship.PositionY != y;
         ship.IsStopping = false;
         ship.IsMoving = ship.PositionX != x || ship.PositionY != y;
@@ -412,6 +408,9 @@ public static partial class Module
         var ship = FindPlayerShip(ctx, ctx.Sender);
         ship.DestinationX = ship.PositionX;
         ship.DestinationY = ship.PositionY;
+        ship.WaypointX = ship.PositionX;
+        ship.WaypointY = ship.PositionY;
+        ship.HasWaypoint = false;
         ship.HasCourse = false;
         ship.IsStopping = ship.Speed > 0f;
         ship.IsMoving = ship.Speed > 0f;
@@ -542,12 +541,15 @@ public static partial class Module
             PositionY = y,
             DestinationX = x,
             DestinationY = y,
+            WaypointX = x,
+            WaypointY = y,
+            HasWaypoint = false,
             HeadingDegrees = 0f,
             Speed = 0f,
             MaximumSpeed = WorldRules.PlayerShipSpeed,
             Acceleration = 3f,
             Deceleration = 4f,
-            TurnRateDegrees = 55f,
+            TurnRateDegrees = WorldRules.PlayerShipTurnRateDegrees,
             HasCourse = false,
             IsStopping = false,
             IsMoving = false,
@@ -611,6 +613,7 @@ public static partial class Module
     {
         var deltaSeconds = 1f / WorldRules.TickRateHz;
         var environment = ctx.Db.EnvironmentState.Id.Find(1);
+        var navigationBlockers = NavigationBlockers(ctx);
         foreach (var ship in ctx.Db.Ship.ByMoving.Filter(true))
         {
             if (!ship.IsActive || !ship.IsAlive)
@@ -618,37 +621,54 @@ public static partial class Module
                 continue;
             }
 
+            var routedShip = ship;
+            if (routedShip.HasWaypoint && NavigationRules.Distance(
+                    routedShip.PositionX,
+                    routedShip.PositionY,
+                    routedShip.WaypointX,
+                    routedShip.WaypointY) <= NavigationRules.WaypointArrivalRadius)
+            {
+                routedShip.HasWaypoint = false;
+                ConfigureNavigationWaypoint(ref routedShip, navigationBlockers);
+            }
+
+            var navigationX = routedShip.HasWaypoint
+                ? routedShip.WaypointX
+                : routedShip.DestinationX;
+            var navigationY = routedShip.HasWaypoint
+                ? routedShip.WaypointY
+                : routedShip.DestinationY;
             var windMultiplier = environment is EnvironmentState wind
                 ? EnvironmentRules.WindSpeedMultiplier(
-                    ship.HeadingDegrees,
+                    routedShip.HeadingDegrees,
                     wind.WindDirectionDegrees,
                     wind.WindStrength)
                 : 1f;
             var step = SailingRules.Step(
                 new SailingState(
-                    ship.PositionX,
-                    ship.PositionY,
-                    ship.HeadingDegrees,
-                    ship.Speed),
-                ship.DestinationX,
-                ship.DestinationY,
-                ship.IsStopping,
+                    routedShip.PositionX,
+                    routedShip.PositionY,
+                    routedShip.HeadingDegrees,
+                    routedShip.Speed),
+                navigationX,
+                navigationY,
+                routedShip.IsStopping,
                 new SailingParameters(
-                    ship.MaximumSpeed * windMultiplier,
-                    ship.Acceleration,
-                    ship.Deceleration,
-                    ship.TurnRateDegrees),
+                    routedShip.MaximumSpeed * windMultiplier,
+                    routedShip.Acceleration,
+                    routedShip.Deceleration,
+                    routedShip.TurnRateDegrees),
                 deltaSeconds);
             var current = CurrentVelocityAt(ctx, step.PositionX, step.PositionY);
             var nextX = step.PositionX + current.X * deltaSeconds;
             var nextY = step.PositionY + current.Y * deltaSeconds;
-            var moved = ship;
+            var moved = routedShip;
             moved.HeadingDegrees = step.HeadingDegrees;
             moved.Speed = step.Speed;
             moved.IsMoving = step.IsMoving;
-            moved.HasCourse = ship.HasCourse && !step.Arrived;
-            moved.IsStopping = ship.IsStopping && step.Speed > 0f;
-            if (IsNavigablePosition(ctx, ship.EntityId, nextX, nextY))
+            moved.HasCourse = routedShip.HasCourse && (!step.Arrived || routedShip.HasWaypoint);
+            moved.IsStopping = routedShip.IsStopping && step.Speed > 0f;
+            if (IsNavigablePosition(ctx, routedShip.EntityId, nextX, nextY))
             {
                 moved.PositionX = Math.Clamp(nextX, WorldRules.MapMin, WorldRules.MapMax);
                 moved.PositionY = Math.Clamp(nextY, WorldRules.MapMin, WorldRules.MapMax);
@@ -657,10 +677,11 @@ public static partial class Module
             {
                 moved.HasCourse = false;
                 moved.IsStopping = true;
-                moved.Speed = MathF.Max(0f, ship.Speed - ship.Deceleration * deltaSeconds);
+                moved.Speed = MathF.Max(0f, routedShip.Speed - routedShip.Deceleration * deltaSeconds);
                 moved.IsMoving = moved.Speed > 0f;
-                moved.DestinationX = ship.PositionX;
-                moved.DestinationY = ship.PositionY;
+                moved.DestinationX = routedShip.PositionX;
+                moved.DestinationY = routedShip.PositionY;
+                moved.HasWaypoint = false;
             }
 
             moved.ChunkX = SpatialRules.ChunkCoordinate(moved.PositionX);
@@ -912,6 +933,12 @@ public static partial class Module
         InsertWorldObject(ctx, 1, "harbor", 0f, 0f, 8f, false);
         InsertWorldObject(ctx, 2, "island", 35f, 20f, 12f, true);
         InsertWorldObject(ctx, 3, "reef", -30f, -25f, 10f, true);
+        InsertWorldObject(ctx, 4, "island", -46f, 43f, 16f, true);
+        InsertWorldObject(ctx, 5, "island", 61f, -48f, 15f, true);
+        InsertWorldObject(ctx, 6, "island", -63f, -58f, 11f, true);
+        InsertWorldObject(ctx, 7, "island", 4f, 70f, 9f, true);
+        InsertWorldObject(ctx, 8, "reef", 24f, -61f, 8f, true);
+        InsertWorldObject(ctx, 9, "reef", 68f, 58f, 9f, true);
 
         var trainingShip = CreateShip(10, "patrol", "npc", 45f, -10f);
         trainingShip.Hull = WorldRules.EnemyInitialHealth;
@@ -995,6 +1022,38 @@ public static partial class Module
         }
 
         return point;
+    }
+
+    private static List<NavigationBlocker> NavigationBlockers(ReducerContext ctx)
+    {
+        var blockers = new List<NavigationBlocker>();
+        foreach (var worldObject in ctx.Db.WorldObject.Iter())
+        {
+            if (worldObject.IsActive && worldObject.BlocksMovement)
+            {
+                blockers.Add(new NavigationBlocker(
+                    worldObject.PositionX,
+                    worldObject.PositionY,
+                    worldObject.Radius));
+            }
+        }
+
+        return blockers;
+    }
+
+    private static void ConfigureNavigationWaypoint(
+        ref Ship ship,
+        IReadOnlyCollection<NavigationBlocker> blockers)
+    {
+        ship.HasWaypoint = NavigationRules.TryFindDetour(
+            ship.PositionX,
+            ship.PositionY,
+            ship.DestinationX,
+            ship.DestinationY,
+            blockers,
+            out var waypoint);
+        ship.WaypointX = ship.HasWaypoint ? waypoint.X : ship.DestinationX;
+        ship.WaypointY = ship.HasWaypoint ? waypoint.Y : ship.DestinationY;
     }
 
     private static ulong IdentitySeed(Identity identity)

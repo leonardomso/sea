@@ -1,24 +1,58 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:VisualElement name="sea-hud" class="sea-hud">
-        <ui:VisualElement class="top-watch">
-            <ui:VisualElement class="connection-cluster chart-surface">
-                <ui:Label text="LOCAL WATERS" class="eyebrow" />
+        <ui:VisualElement class="top-watch chart-surface">
+            <ui:VisualElement class="resource-cluster">
+                <ui:VisualElement class="resource-chip">
+                    <ui:Label text="G" class="resource-icon gold-resource" />
+                    <ui:Label name="gold-label" text="0" class="resource-value" />
+                </ui:VisualElement>
+                <ui:VisualElement class="resource-chip">
+                    <ui:Label text="◆" class="resource-icon diamond-resource" />
+                    <ui:Label name="diamond-label" text="0" class="resource-value" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <ui:VisualElement class="header-tools">
+                <ui:Button name="navigator-button" text="N" tooltip="Coordinate navigator" class="header-tool" />
+                <ui:Button text="□" tooltip="Quests" class="header-tool" />
+                <ui:Button text="□" tooltip="Inventory" class="header-tool" />
+                <ui:Button text="□" tooltip="Ship" class="header-tool" />
+                <ui:Button name="menu-button" text="☰" tooltip="Chart menu" class="header-tool" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="header-status">
                 <ui:VisualElement class="connection-line">
                     <ui:VisualElement name="connection-beacon" class="connection-beacon" />
-                    <ui:Label name="connection-status" text="CONNECTING…" class="data-label" />
+                    <ui:Label name="connection-status" text="CONNECTING…" class="micro-label" />
                 </ui:VisualElement>
-                <ui:Label text="STARTER COVE // CHART 01" class="micro-label" />
-            </ui:VisualElement>
-
-            <ui:VisualElement class="navigation-cluster chart-surface">
-                <ui:Label text="PRESENT POSITION" class="eyebrow centered" />
                 <ui:Label name="navigation-readout" text="—  •  000°  •  0.0 KN" class="navigation-readout" />
             </ui:VisualElement>
+        </ui:VisualElement>
 
-            <ui:VisualElement class="watch-actions chart-surface">
-                <ui:Button name="navigator-button" text="N  COORDINATE" class="chart-button" />
-                <ui:Button name="menu-button" text="ESC  CHART MENU" class="chart-button" />
-            </ui:VisualElement>
+        <ui:VisualElement name="top-coordinate-ruler" class="coordinate-ruler top-coordinate-ruler">
+            <ui:Label name="top-coordinate-0" text="—" />
+            <ui:Label name="top-coordinate-1" text="—" />
+            <ui:Label name="top-coordinate-2" text="—" />
+            <ui:Label name="top-coordinate-3" text="—" />
+            <ui:Label name="top-coordinate-4" text="—" />
+            <ui:Label name="top-coordinate-5" text="—" />
+            <ui:Label name="top-coordinate-6" text="—" />
+            <ui:Label name="top-coordinate-7" text="—" />
+            <ui:Label name="top-coordinate-8" text="—" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="left-coordinate-ruler" class="coordinate-ruler left-coordinate-ruler">
+            <ui:Label name="left-coordinate-0" text="—" />
+            <ui:Label name="left-coordinate-1" text="—" />
+            <ui:Label name="left-coordinate-2" text="—" />
+            <ui:Label name="left-coordinate-3" text="—" />
+            <ui:Label name="left-coordinate-4" text="—" />
+            <ui:Label name="left-coordinate-5" text="—" />
+            <ui:Label name="left-coordinate-6" text="—" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="mini-map-frame" class="mini-map-frame">
+            <ui:Label text="STARTER COVE // LOCAL CHART" class="micro-label centered mini-map-title" />
         </ui:VisualElement>
 
         <ui:VisualElement name="target-frame" class="target-frame chart-surface hidden">
@@ -70,7 +104,7 @@
             <ui:VisualElement class="player-ledger chart-surface">
                 <ui:VisualElement class="ledger-heading">
                     <ui:Label name="level-label" text="LEVEL 1" class="eyebrow" />
-                    <ui:Label name="gold-label" text="0 ¤" class="data-label bronze-text" />
+                    <ui:Label text="CAPTAIN" class="micro-label" />
                 </ui:VisualElement>
                 <ui:VisualElement class="meter-heading">
                     <ui:Label text="HULL INTEGRITY" class="micro-label" />
@@ -92,24 +126,24 @@
                 </ui:VisualElement>
                 <ui:VisualElement name="weak-point-rail" class="command-rail">
                     <ui:Label text="AIM" class="rail-label" />
-                    <ui:Button name="aim-hull" text="1  HULL" class="command-slot selected" />
-                    <ui:Button name="aim-sails" text="2  SAILS" class="command-slot" />
-                    <ui:Button name="aim-cannons" text="3  GUNS" class="command-slot" />
+                    <ui:Button name="aim-hull" text="1" tooltip="Aim at hull" class="command-slot selected" />
+                    <ui:Button name="aim-sails" text="2" tooltip="Aim at sails" class="command-slot" />
+                    <ui:Button name="aim-cannons" text="3" tooltip="Aim at cannons" class="command-slot" />
                 </ui:VisualElement>
                 <ui:VisualElement name="ammo-rail" class="command-rail">
                     <ui:Label text="SHOT" class="rail-label" />
-                    <ui:Button name="ammo-round" text="4  ROUND" class="command-slot selected" />
-                    <ui:Button name="ammo-chain" text="5  CHAIN" class="command-slot" />
-                    <ui:Button name="ammo-grapeshot" text="6  GRAPE" class="command-slot" />
-                    <ui:Button name="ammo-incendiary" text="7  FIRE" class="command-slot" />
+                    <ui:Button name="ammo-round" text="4" tooltip="Round shot" class="command-slot selected" />
+                    <ui:Button name="ammo-chain" text="5" tooltip="Chain shot" class="command-slot" />
+                    <ui:Button name="ammo-grapeshot" text="6" tooltip="Grapeshot" class="command-slot" />
+                    <ui:Button name="ammo-incendiary" text="7" tooltip="Incendiary shot" class="command-slot" />
                 </ui:VisualElement>
                 <ui:VisualElement name="ability-rail" class="command-rail ability-rail">
-                    <ui:Button name="ability-full-sail" text="Z  FULL SAIL" class="command-slot ability-slot" />
-                    <ui:Button name="ability-brace" text="X  BRACE" class="command-slot ability-slot" />
-                    <ui:Button name="ability-pump" text="C  PUMP" class="command-slot ability-slot" />
-                    <ui:Button name="ability-smoke" text="V  SMOKE" class="command-slot ability-slot" />
-                    <ui:Button name="repair" text="R  REPAIR" class="command-slot ability-slot" />
-                    <ui:Button name="board" text="B  BOARD" class="command-slot ability-slot" />
+                    <ui:Button name="ability-full-sail" text="Z" tooltip="Full Sail" class="command-slot ability-slot" />
+                    <ui:Button name="ability-brace" text="X" tooltip="Brace" class="command-slot ability-slot" />
+                    <ui:Button name="ability-pump" text="C" tooltip="Emergency Pump" class="command-slot ability-slot" />
+                    <ui:Button name="ability-smoke" text="V" tooltip="Smoke Screen" class="command-slot ability-slot" />
+                    <ui:Button name="repair" text="R" tooltip="Repair" class="command-slot ability-slot" />
+                    <ui:Button name="board" text="B" tooltip="Board" class="command-slot ability-slot" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
@@ -131,7 +165,7 @@
         <ui:VisualElement name="coordinate-navigator" class="modal-scrim hidden">
             <ui:VisualElement class="coordinate-dialog chart-surface">
                 <ui:Label text="SET CHART COURSE" class="dialog-title" />
-                <ui:Label text="ENTER A–BZ / 0–60  •  EXAMPLE AX 59" class="micro-label" />
+                <ui:Label text="Y: AA–CZ  •  X: 0–60  •  EXAMPLE AX 59" class="micro-label" />
                 <ui:TextField name="coordinate-input" value="AX 59" max-length="8" class="chart-input" />
                 <ui:Label name="coordinate-error" text="" class="error-text" />
                 <ui:VisualElement class="dialog-actions">

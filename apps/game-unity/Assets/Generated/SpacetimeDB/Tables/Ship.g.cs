@@ -96,6 +96,9 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Ship, float> PositionY { get; }
         public global::SpacetimeDB.Col<Ship, float> DestinationX { get; }
         public global::SpacetimeDB.Col<Ship, float> DestinationY { get; }
+        public global::SpacetimeDB.Col<Ship, float> WaypointX { get; }
+        public global::SpacetimeDB.Col<Ship, float> WaypointY { get; }
+        public global::SpacetimeDB.Col<Ship, bool> HasWaypoint { get; }
         public global::SpacetimeDB.Col<Ship, float> HeadingDegrees { get; }
         public global::SpacetimeDB.Col<Ship, float> Speed { get; }
         public global::SpacetimeDB.Col<Ship, float> MaximumSpeed { get; }
@@ -137,6 +140,9 @@ namespace SpacetimeDB.Types
             PositionY = new global::SpacetimeDB.Col<Ship, float>(tableName, "position_y");
             DestinationX = new global::SpacetimeDB.Col<Ship, float>(tableName, "destination_x");
             DestinationY = new global::SpacetimeDB.Col<Ship, float>(tableName, "destination_y");
+            WaypointX = new global::SpacetimeDB.Col<Ship, float>(tableName, "waypoint_x");
+            WaypointY = new global::SpacetimeDB.Col<Ship, float>(tableName, "waypoint_y");
+            HasWaypoint = new global::SpacetimeDB.Col<Ship, bool>(tableName, "has_waypoint");
             HeadingDegrees = new global::SpacetimeDB.Col<Ship, float>(tableName, "heading_degrees");
             Speed = new global::SpacetimeDB.Col<Ship, float>(tableName, "speed");
             MaximumSpeed = new global::SpacetimeDB.Col<Ship, float>(tableName, "maximum_speed");

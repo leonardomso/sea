@@ -25,9 +25,13 @@ namespace Sea.Client
         private VisualElement starboardBroadside;
         private VisualElement coordinateNavigator;
         private VisualElement chartMenu;
+        private VisualElement miniMapFrame;
         private ScrollView rebindList;
         private TextField coordinateInput;
         private Label coordinateError;
+        private Camera chartCamera;
+        private readonly Label[] topCoordinateLabels = new Label[9];
+        private readonly Label[] leftCoordinateLabels = new Label[7];
         private float nextRefreshTime;
 
         public void Configure(StyleSheet hudStyleSheet)
@@ -60,6 +64,7 @@ namespace Sea.Client
 
             nextRefreshTime = Time.unscaledTime + RefreshIntervalSeconds;
             Apply(SeaHudViewModel.From(CaptureSnapshot()));
+            UpdateCoordinateRulers();
         }
 
         public bool IsPointerOverInterface(Vector2 screenPosition)
@@ -131,9 +136,20 @@ namespace Sea.Client
             starboardBroadside = root.Q("starboard-broadside");
             coordinateNavigator = root.Q("coordinate-navigator");
             chartMenu = root.Q("chart-menu");
+            miniMapFrame = root.Q("mini-map-frame");
             rebindList = root.Q<ScrollView>("rebind-list");
             coordinateInput = root.Q<TextField>("coordinate-input");
             coordinateError = root.Q<Label>("coordinate-error");
+            chartCamera = Camera.main;
+            for (var index = 0; index < topCoordinateLabels.Length; index++)
+            {
+                topCoordinateLabels[index] = root.Q<Label>($"top-coordinate-{index}");
+            }
+
+            for (var index = 0; index < leftCoordinateLabels.Length; index++)
+            {
+                leftCoordinateLabels[index] = root.Q<Label>($"left-coordinate-{index}");
+            }
 
             HookButton("navigator-button", OpenCoordinateNavigator);
             HookButton("menu-button", () => input?.SetMenuOpen(true));
@@ -405,6 +421,48 @@ namespace Sea.Client
             connection ??= FindFirstObjectByType<SeaConnectionController>();
             game ??= FindFirstObjectByType<SeaGameController>();
             input ??= FindFirstObjectByType<SeaInputController>();
+        }
+
+        private void UpdateCoordinateRulers()
+        {
+            if (chartCamera == null)
+            {
+                return;
+            }
+
+            for (var index = 0; index < topCoordinateLabels.Length; index++)
+            {
+                var viewportX = 0.04f + 0.74f * index / (topCoordinateLabels.Length - 1);
+                if (TryChartPoint(new Vector2(viewportX, 0.96f), out var point))
+                {
+                    topCoordinateLabels[index].text = SeaChartCoordinates.LabelAt(point.x, point.z)
+                        .Split(' ')[1];
+                }
+            }
+
+            for (var index = 0; index < leftCoordinateLabels.Length; index++)
+            {
+                var viewportY = 0.16f + 0.76f * index / (leftCoordinateLabels.Length - 1);
+                if (TryChartPoint(new Vector2(0.03f, viewportY), out var point))
+                {
+                    leftCoordinateLabels[leftCoordinateLabels.Length - 1 - index].text =
+                        SeaChartCoordinates.LabelAt(point.x, point.z).Split(' ')[0];
+                }
+            }
+        }
+
+        private bool TryChartPoint(Vector2 viewportPosition, out Vector3 point)
+        {
+            var ray = chartCamera.ViewportPointToRay(viewportPosition);
+            var plane = new Plane(Vector3.up, Vector3.zero);
+            if (plane.Raycast(ray, out var distance))
+            {
+                point = ray.GetPoint(distance);
+                return true;
+            }
+
+            point = default;
+            return false;
         }
 
         private static float RemainingSeconds(ulong readyTick, ulong currentTick, uint tickRate) =>

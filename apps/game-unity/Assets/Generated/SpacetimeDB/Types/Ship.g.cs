@@ -27,6 +27,12 @@ namespace SpacetimeDB.Types
         public float DestinationX;
         [DataMember(Name = "destination_y")]
         public float DestinationY;
+        [DataMember(Name = "waypoint_x")]
+        public float WaypointX;
+        [DataMember(Name = "waypoint_y")]
+        public float WaypointY;
+        [DataMember(Name = "has_waypoint")]
+        public bool HasWaypoint;
         [DataMember(Name = "heading_degrees")]
         public float HeadingDegrees;
         [DataMember(Name = "speed")]
@@ -98,6 +104,9 @@ namespace SpacetimeDB.Types
             float PositionY,
             float DestinationX,
             float DestinationY,
+            float WaypointX,
+            float WaypointY,
+            bool HasWaypoint,
             float HeadingDegrees,
             float Speed,
             float MaximumSpeed,
@@ -138,6 +147,9 @@ namespace SpacetimeDB.Types
             this.PositionY = PositionY;
             this.DestinationX = DestinationX;
             this.DestinationY = DestinationY;
+            this.WaypointX = WaypointX;
+            this.WaypointY = WaypointY;
+            this.HasWaypoint = HasWaypoint;
             this.HeadingDegrees = HeadingDegrees;
             this.Speed = Speed;
             this.MaximumSpeed = MaximumSpeed;

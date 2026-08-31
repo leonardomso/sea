@@ -18,11 +18,12 @@ public readonly struct ChartCell
 
 public static class ChartCoordinates
 {
+    private const int FirstLetterValue = 27;
     public const int ColumnCount = 78;
     public const int RowCount = 61;
     public const int MaximumRow = RowCount - 1;
-    public const float CellWidth = (WorldRules.MapMax - WorldRules.MapMin) / ColumnCount;
-    public const float CellHeight = (WorldRules.MapMax - WorldRules.MapMin) / RowCount;
+    public const float CellWidth = (WorldRules.MapMax - WorldRules.MapMin) / RowCount;
+    public const float CellHeight = (WorldRules.MapMax - WorldRules.MapMin) / ColumnCount;
 
     public static string ColumnLabel(int column)
     {
@@ -31,7 +32,7 @@ public static class ChartCoordinates
             throw new ArgumentOutOfRangeException(nameof(column));
         }
 
-        var value = column + 1;
+        var value = column + FirstLetterValue;
         Span<char> characters = stackalloc char[2];
         var index = characters.Length;
         while (value > 0)
@@ -63,7 +64,7 @@ public static class ChartCoordinates
             value = checked(value * 26 + character - 'A' + 1);
         }
 
-        column = value - 1;
+        column = value - FirstLetterValue;
         return column >= 0 && column < ColumnCount;
     }
 
@@ -106,8 +107,8 @@ public static class ChartCoordinates
         return new ChartCell(
             column,
             row,
-            WorldRules.MapMin + (column + 0.5f) * CellWidth,
-            WorldRules.MapMin + (row + 0.5f) * CellHeight);
+            WorldRules.MapMin + (row + 0.5f) * CellWidth,
+            WorldRules.MapMax - (column + 0.5f) * CellHeight);
     }
 
     public static string LabelAt(float x, float y)
@@ -118,11 +119,11 @@ public static class ChartCoordinates
         }
 
         var column = Math.Clamp(
-            (int)MathF.Floor((x - WorldRules.MapMin) / CellWidth),
+            (int)MathF.Floor((WorldRules.MapMax - y) / CellHeight),
             0,
             ColumnCount - 1);
         var row = Math.Clamp(
-            (int)MathF.Floor((y - WorldRules.MapMin) / CellHeight),
+            (int)MathF.Floor((x - WorldRules.MapMin) / CellWidth),
             0,
             MaximumRow);
         return $"{ColumnLabel(column)} {row}";
@@ -210,6 +211,7 @@ public static class SailingRules
         var deltaY = destinationY - state.PositionY;
         var remaining = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
         var heading = NormalizeAngle(state.HeadingDegrees);
+        var thrustAlignment = 1f;
         if (!stopping && remaining > 0.001f)
         {
             var desiredHeading = NormalizeAngle(
@@ -218,12 +220,16 @@ public static class SailingRules
                 heading,
                 desiredHeading,
                 parameters.TurnRateDegrees * deltaSeconds);
+            var headingErrorRadians = NormalizeSignedAngle(desiredHeading - heading) *
+                (MathF.PI / 180f);
+            thrustAlignment = MathF.Max(0f, MathF.Cos(headingErrorRadians));
         }
 
         var brakingSpeed = stopping
             ? 0f
             : MathF.Sqrt(MathF.Max(0f, 2f * parameters.Deceleration * remaining));
-        var targetSpeed = MathF.Min(parameters.MaximumSpeed, brakingSpeed);
+        var alignedMaximumSpeed = parameters.MaximumSpeed * thrustAlignment;
+        var targetSpeed = MathF.Min(alignedMaximumSpeed, brakingSpeed);
         var speedChange = targetSpeed > state.Speed
             ? parameters.Acceleration * deltaSeconds
             : parameters.Deceleration * deltaSeconds;
@@ -231,7 +237,10 @@ public static class SailingRules
         var averageSpeed = (state.Speed + speed) * 0.5f;
         var travel = averageSpeed * deltaSeconds;
 
-        if (!stopping && remaining <= MathF.Max(0.05f, travel) && speed <= parameters.Deceleration * deltaSeconds)
+        if (!stopping &&
+            ((remaining <= MathF.Max(0.05f, travel) &&
+              speed <= parameters.Deceleration * deltaSeconds) ||
+             (travel >= remaining && thrustAlignment >= 0.95f)))
         {
             return new AuthoritativeSailingStep(
                 destinationX,
@@ -313,6 +322,156 @@ public static class SailingRules
         angle = NormalizeAngle(angle);
         return angle > 180f ? angle - 360f : angle;
     }
+}
+
+public readonly struct NavigationBlocker
+{
+    public NavigationBlocker(float x, float y, float radius)
+    {
+        X = x;
+        Y = y;
+        Radius = radius;
+    }
+
+    public float X { get; }
+    public float Y { get; }
+    public float Radius { get; }
+}
+
+public static class NavigationRules
+{
+    public const float DetourClearance = 4f;
+    public const float WaypointArrivalRadius = 2.5f;
+
+    public static bool IsDestinationBlocked(
+        float x,
+        float y,
+        IReadOnlyCollection<NavigationBlocker> blockers) => blockers.Any(blocker =>
+        Distance(x, y, blocker.X, blocker.Y) <=
+        blocker.Radius + WorldRules.CollisionPadding);
+
+    public static bool TryFindDetour(
+        float startX,
+        float startY,
+        float destinationX,
+        float destinationY,
+        IReadOnlyCollection<NavigationBlocker> blockers,
+        out SpawnPoint waypoint)
+    {
+        waypoint = default;
+        var courseX = destinationX - startX;
+        var courseY = destinationY - startY;
+        var courseLength = MathF.Sqrt(courseX * courseX + courseY * courseY);
+        if (courseLength <= 0.001f)
+        {
+            return false;
+        }
+
+        var directionX = courseX / courseLength;
+        var directionY = courseY / courseLength;
+        NavigationBlocker? nearest = null;
+        var nearestProjection = float.MaxValue;
+        foreach (var blocker in blockers)
+        {
+            var collisionRadius = blocker.Radius + WorldRules.CollisionPadding;
+            if (!SailingRules.SegmentIntersectsCircle(
+                    startX,
+                    startY,
+                    destinationX,
+                    destinationY,
+                    blocker.X,
+                    blocker.Y,
+                    collisionRadius))
+            {
+                continue;
+            }
+
+            var projection = (blocker.X - startX) * directionX +
+                (blocker.Y - startY) * directionY;
+            if (projection >= 0f && projection < nearestProjection)
+            {
+                nearest = blocker;
+                nearestProjection = projection;
+            }
+        }
+
+        if (nearest is not NavigationBlocker obstacle)
+        {
+            return false;
+        }
+
+        var perpendicularX = -directionY;
+        var perpendicularY = directionX;
+        var offset = obstacle.Radius + WorldRules.CollisionPadding + DetourClearance;
+        var first = new SpawnPoint(
+            obstacle.X + perpendicularX * offset,
+            obstacle.Y + perpendicularY * offset);
+        var second = new SpawnPoint(
+            obstacle.X - perpendicularX * offset,
+            obstacle.Y - perpendicularY * offset);
+        var firstScore = CandidateScore(
+            startX, startY, destinationX, destinationY, first, blockers);
+        var secondScore = CandidateScore(
+            startX, startY, destinationX, destinationY, second, blockers);
+        if (!float.IsFinite(firstScore) && !float.IsFinite(secondScore))
+        {
+            return false;
+        }
+
+        waypoint = firstScore <= secondScore ? first : second;
+        return true;
+    }
+
+    public static float Distance(float fromX, float fromY, float toX, float toY)
+    {
+        var x = toX - fromX;
+        var y = toY - fromY;
+        return MathF.Sqrt(x * x + y * y);
+    }
+
+    private static float CandidateScore(
+        float startX,
+        float startY,
+        float destinationX,
+        float destinationY,
+        SpawnPoint candidate,
+        IReadOnlyCollection<NavigationBlocker> blockers)
+    {
+        if (!WorldRules.IsInsideMap(candidate.X, candidate.Y) ||
+            !SegmentIsClear(startX, startY, candidate.X, candidate.Y, blockers))
+        {
+            return float.PositiveInfinity;
+        }
+
+        var score = Distance(startX, startY, candidate.X, candidate.Y) +
+            Distance(candidate.X, candidate.Y, destinationX, destinationY);
+        if (!SegmentIsClear(
+                candidate.X,
+                candidate.Y,
+                destinationX,
+                destinationY,
+                blockers))
+        {
+            score += 10_000f;
+        }
+
+        return score;
+    }
+
+    private static bool SegmentIsClear(
+        float startX,
+        float startY,
+        float endX,
+        float endY,
+        IReadOnlyCollection<NavigationBlocker> blockers) => blockers.All(blocker =>
+        !SailingRules.SegmentIntersectsCircle(
+            startX,
+            startY,
+            endX,
+            endY,
+            blocker.X,
+            blocker.Y,
+            blocker.Radius + WorldRules.CollisionPadding));
 }
 
 public readonly struct SpawnBlocker

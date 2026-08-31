@@ -8,27 +8,64 @@ namespace Sea.Client
     {
         [SerializeField] private SeaConnectionController connection;
         [SerializeField] private GameObject shipModel;
+        [SerializeField] private Material shipMaterial;
+        [SerializeField] private Shader fogShader;
         [SerializeField] private float presentationMovementSpeed = 18f;
-        [SerializeField] private float turnSpeedDegrees = 120f;
-        [SerializeField] private float modelYawOffset = -90f;
+        [SerializeField] private float turnSpeedDegrees = 720f;
+        [SerializeField] private float modelYawOffset = 270f;
 
         private const float ShipFootprint = 10f;
+        private const int MainChartFogLayer = 8;
+        public const float VisionRadius = 44f;
+        public const float WaterSurfaceHeight = -0.35f;
+        public const float ShipRootHeight = -0.43f;
 
         private readonly Dictionary<ulong, GameObject> entities = new();
         private readonly Dictionary<ulong, GameObject> mapGeometry = new();
-        private readonly Dictionary<ulong, Vector3> targets = new();
+        private readonly Dictionary<ulong, PresentationTarget> targets = new();
+        private readonly Dictionary<ulong, SeaShipFeedback> shipFeedback = new();
         private GameObject playerObject;
+        private SeaShipFeedback playerFeedback;
         private GameObject targetRing;
         private Material waterMaterial;
-        private Material islandMaterial;
-        private Material reefMaterial;
-        private bool sceneCreated;
+        private Material sandMaterial;
+        private Material rockMaterial;
+        private Material landMaterial;
+        private Material shallowsMaterial;
+        private Material dockMaterial;
+        private Material wakeMaterial;
+        private Material waterlineShadowMaterial;
+        private Material fogMaterial;
+        private LineRenderer courseLine;
+        private LineRenderer destinationRing;
 
         public GameObject ShipModel => shipModel;
+        public Material ShipMaterial => shipMaterial;
+        public Shader FogShader => fogShader;
+        public float ModelYawOffset => modelYawOffset;
+        public float PresentationTurnSpeed => turnSpeedDegrees;
 
-        public void ConfigureShipModel(GameObject model)
+        public bool TryGetPlayerPresentationPosition(out Vector3 position)
+        {
+            if (playerObject == null)
+            {
+                position = default;
+                return false;
+            }
+
+            position = playerObject.transform.position;
+            return true;
+        }
+
+        public void ConfigureShipAssets(GameObject model, Material material)
         {
             shipModel = model;
+            shipMaterial = material;
+        }
+
+        public void ConfigureFogShader(Shader shader)
+        {
+            fogShader = shader;
         }
 
         private void Awake()
@@ -36,6 +73,7 @@ namespace Sea.Client
             connection ??= FindFirstObjectByType<SeaConnectionController>();
             CreateMaterials();
             CreateWater();
+            CreateFog();
         }
 
         private void Update()
@@ -45,12 +83,7 @@ namespace Sea.Client
                 return;
             }
 
-            if (!sceneCreated)
-            {
-                CreateWorldGeometry();
-                sceneCreated = true;
-            }
-
+            EnsureWorldGeometry();
             SyncMapEntities();
             SyncEnemyShips();
             SyncPlayerShip();
@@ -59,39 +92,89 @@ namespace Sea.Client
 
         private void CreateMaterials()
         {
-            waterMaterial = SeaMaterialFactory.Create(new Color(0.035f, 0.22f, 0.30f, 1f));
-            islandMaterial = SeaMaterialFactory.Create(new Color(0.48f, 0.34f, 0.18f, 1f));
-            reefMaterial = SeaMaterialFactory.Create(new Color(0.82f, 0.39f, 0.20f, 1f));
+            waterMaterial = SeaMaterialFactory.CreateChartWater();
+            sandMaterial = SeaMaterialFactory.Create(new Color(0.68f, 0.52f, 0.29f, 1f));
+            rockMaterial = SeaMaterialFactory.Create(new Color(0.19f, 0.20f, 0.18f, 1f));
+            landMaterial = SeaMaterialFactory.Create(new Color(0.16f, 0.31f, 0.20f, 1f));
+            shallowsMaterial = SeaMaterialFactory.Create(new Color(0.15f, 0.49f, 0.47f, 1f));
+            dockMaterial = SeaMaterialFactory.Create(new Color(0.30f, 0.17f, 0.08f, 1f));
+            wakeMaterial = SeaMaterialFactory.CreateTransparent(new Color(0.76f, 0.92f, 0.88f, 0.48f));
+            waterlineShadowMaterial = SeaMaterialFactory.CreateTransparent(new Color(0.01f, 0.06f, 0.07f, 0.32f));
+            fogShader ??= Shader.Find("Sea/Chart Fog");
+            if (fogShader == null)
+            {
+                throw new System.InvalidOperationException("The chart fog shader is missing.");
+            }
+
+            fogMaterial = new Material(fogShader) { name = "Player Vision Fog" };
+            fogMaterial.SetFloat("_VisionRadius", VisionRadius);
+            fogMaterial.SetFloat("_FadeWidth", 12f);
+            fogMaterial.SetColor("_FogColor", new Color(0.015f, 0.05f, 0.065f, 0.96f));
         }
 
         private void CreateWater()
         {
             var water = GameObject.CreatePrimitive(PrimitiveType.Plane);
             water.name = "Water Surface";
-            water.transform.position = new Vector3(0f, -0.2f, 0f);
-            water.transform.localScale = new Vector3(20f, 1f, 20f);
+            water.transform.position = new Vector3(0f, WaterSurfaceHeight, 0f);
+            water.transform.localScale = new Vector3(26f, 1f, 26f);
             water.GetComponent<Renderer>().sharedMaterial = waterMaterial;
             Destroy(water.GetComponent<Collider>());
+            CreateCourseIndicator();
         }
 
-        private void CreateWorldGeometry()
+        private void CreateFog()
+        {
+            var fog = GameObject.CreatePrimitive(PrimitiveType.Plane);
+            fog.name = "Player Vision Fog";
+            fog.layer = MainChartFogLayer;
+            fog.transform.position = new Vector3(0f, 8f, 0f);
+            fog.transform.localScale = new Vector3(26f, 1f, 26f);
+            var renderer = fog.GetComponent<Renderer>();
+            renderer.sharedMaterial = fogMaterial;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            Destroy(fog.GetComponent<Collider>());
+        }
+
+        private void EnsureWorldGeometry()
         {
             foreach (var entity in connection.Connection.Db.WorldObject.Iter())
             {
-                if (entity.Kind == "harbor")
+                if (mapGeometry.ContainsKey(entity.EntityId))
                 {
                     continue;
                 }
 
-                var geometry = GameObject.CreatePrimitive(entity.Kind == "island" ? PrimitiveType.Cylinder : PrimitiveType.Sphere);
-                geometry.name = $"Map {entity.Kind} {entity.EntityId}";
-                geometry.transform.position = ToWorld(entity.PositionX, entity.PositionY, 0f);
-                var radius = entity.Radius;
-                geometry.transform.localScale = entity.Kind == "island"
-                    ? new Vector3(radius * 2f, 1.2f, radius * 2f)
-                    : new Vector3(radius * 2f, 0.5f, radius * 2f);
-                geometry.GetComponent<Renderer>().sharedMaterial = entity.Kind == "island" ? islandMaterial : reefMaterial;
-                Destroy(geometry.GetComponent<Collider>());
+                var position = ToWorld(entity.PositionX, entity.PositionY, 0f);
+                var geometry = entity.Kind switch
+                {
+                    "island" => SeaWorldGeometryFactory.CreateIsland(
+                        $"Map island {entity.EntityId}",
+                        position,
+                        entity.Radius,
+                        sandMaterial,
+                        rockMaterial,
+                        landMaterial),
+                    "reef" => SeaWorldGeometryFactory.CreateReef(
+                        $"Map reef {entity.EntityId}",
+                        position,
+                        entity.Radius,
+                        shallowsMaterial,
+                        rockMaterial),
+                    "harbor" => SeaWorldGeometryFactory.CreateHarbor(
+                        $"Map harbor {entity.EntityId}",
+                        position,
+                        entity.Radius,
+                        shallowsMaterial,
+                        dockMaterial),
+                    _ => null,
+                };
+                if (geometry == null)
+                {
+                    continue;
+                }
+
                 mapGeometry[entity.EntityId] = geometry;
             }
         }
@@ -100,11 +183,6 @@ namespace Sea.Client
         {
             foreach (var entity in connection.Connection.Db.WorldObject.Iter())
             {
-                if (entity.Kind == "harbor")
-                {
-                    continue;
-                }
-
                 if (!mapGeometry.TryGetValue(entity.EntityId, out var geometry))
                 {
                     continue;
@@ -125,14 +203,18 @@ namespace Sea.Client
 
                 if (!entities.TryGetValue(enemy.EntityId, out var enemyObject))
                 {
-                    enemyObject = CreateShip($"Enemy Ship {enemy.EntityId}");
+                    enemyObject = CreateShip($"Enemy Ship {enemy.EntityId}", enemy.EntityId);
                     entities.Add(enemy.EntityId, enemyObject);
-                    enemyObject.transform.position = ToWorld(enemy.PositionX, enemy.PositionY, 1.2f);
+                    enemyObject.transform.position = ToWorld(enemy.PositionX, enemy.PositionY, ShipRootHeight);
                 }
 
                 enemyObject.SetActive(enemy.IsActive);
-                targets[enemy.EntityId] = ToWorld(enemy.PositionX, enemy.PositionY, 1.2f);
+                targets[enemy.EntityId] = new PresentationTarget(
+                    ToWorld(enemy.PositionX, enemy.PositionY, ShipRootHeight),
+                    enemy.HeadingDegrees,
+                    enemy.Speed);
                 UpdateHealthBar(enemyObject, enemy.Hull, enemy.MaxHull);
+                shipFeedback[enemy.EntityId].SetMotion(enemy.Speed, enemy.MaximumSpeed);
             }
         }
 
@@ -152,13 +234,21 @@ namespace Sea.Client
 
             if (playerObject == null)
             {
-                playerObject = CreateShip("Player Ship");
-                playerObject.transform.position = ToWorld(ship.PositionX, ship.PositionY, 1.2f);
+                playerObject = CreateShip("Player Ship", ship.EntityId);
+                playerFeedback = shipFeedback[ship.EntityId];
+                playerObject.transform.position = ToWorld(ship.PositionX, ship.PositionY, ShipRootHeight);
             }
 
-            targets[0] = ToWorld(ship.PositionX, ship.PositionY, 1.2f);
-            UpdateHealthBar(playerObject, ship.Hull, ship.MaxHull);
+            targets[0] = new PresentationTarget(
+                ToWorld(ship.PositionX, ship.PositionY, ShipRootHeight),
+                ship.HeadingDegrees,
+                ship.Speed);
+            fogMaterial.SetVector(
+                "_PlayerPosition",
+                new Vector4(ship.PositionX, ship.PositionY, 0f, 0f));
             UpdateTargetRing(ship);
+            UpdateCourseIndicator(ship);
+            playerFeedback.SetMotion(ship.Speed, ship.MaximumSpeed);
         }
 
         private void UpdateEntityTransforms()
@@ -171,11 +261,11 @@ namespace Sea.Client
                     {
                         SeaShipMotion.Step(
                             playerObject.transform,
-                            target.Value,
+                            target.Value.Position,
+                            target.Value.HeadingDegrees,
                             Time.deltaTime,
-                            presentationMovementSpeed,
-                            turnSpeedDegrees,
-                            modelYawOffset);
+                            Mathf.Max(presentationMovementSpeed, target.Value.Speed * 1.5f),
+                            turnSpeedDegrees);
                     }
 
                     continue;
@@ -185,23 +275,92 @@ namespace Sea.Client
                 {
                     SeaShipMotion.Step(
                         entityObject.transform,
-                        target.Value,
+                        target.Value.Position,
+                        target.Value.HeadingDegrees,
                         Time.deltaTime,
-                        presentationMovementSpeed,
-                        turnSpeedDegrees,
-                        modelYawOffset);
+                        Mathf.Max(presentationMovementSpeed, target.Value.Speed * 1.5f),
+                        turnSpeedDegrees);
                 }
             }
         }
 
-        private GameObject CreateShip(string name)
+        private GameObject CreateShip(string name, ulong entityId)
         {
             if (shipModel == null)
             {
-                throw new System.InvalidOperationException("The starter ship model is not configured.");
+                throw new System.InvalidOperationException("The Apricum ship model is not configured.");
             }
 
-            return SeaShipVisualFactory.Create(shipModel, name, ShipFootprint);
+            var ship = SeaShipVisualFactory.Create(
+                shipModel,
+                name,
+                ShipFootprint,
+                shipMaterial,
+                modelYawOffset);
+            var feedback = ship.AddComponent<SeaShipFeedback>();
+            feedback.Configure(
+                ship.transform.Find("Visual"),
+                wakeMaterial,
+                waterlineShadowMaterial,
+                entityId * 0.37f);
+            shipFeedback[entityId] = feedback;
+            return ship;
+        }
+
+        private void CreateCourseIndicator()
+        {
+            var routeObject = new GameObject("Plotted Course");
+            courseLine = routeObject.AddComponent<LineRenderer>();
+            courseLine.sharedMaterial = SeaMaterialFactory.CreateTransparent(
+                new Color(0.91f, 0.72f, 0.39f, 0.58f));
+            courseLine.positionCount = 2;
+            courseLine.startWidth = 0.13f;
+            courseLine.endWidth = 0.04f;
+            courseLine.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            var markerObject = new GameObject("Course Destination");
+            destinationRing = markerObject.AddComponent<LineRenderer>();
+            destinationRing.sharedMaterial = courseLine.sharedMaterial;
+            destinationRing.loop = true;
+            destinationRing.positionCount = 40;
+            destinationRing.startWidth = 0.14f;
+            destinationRing.endWidth = 0.14f;
+            destinationRing.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            courseLine.gameObject.SetActive(false);
+            destinationRing.gameObject.SetActive(false);
+        }
+
+        private void UpdateCourseIndicator(Ship ship)
+        {
+            var show = ship.HasCourse && playerObject != null;
+            courseLine.gameObject.SetActive(show);
+            destinationRing.gameObject.SetActive(show);
+            if (!show)
+            {
+                return;
+            }
+
+            var start = playerObject.transform.position + Vector3.up * 0.18f;
+            var destination = ToWorld(ship.DestinationX, ship.DestinationY, 0.08f);
+            courseLine.positionCount = ship.HasWaypoint ? 3 : 2;
+            courseLine.SetPosition(0, start);
+            if (ship.HasWaypoint)
+            {
+                courseLine.SetPosition(1, ToWorld(ship.WaypointX, ship.WaypointY, 0.08f));
+                courseLine.SetPosition(2, destination);
+            }
+            else
+            {
+                courseLine.SetPosition(1, destination);
+            }
+            const float markerRadius = 1.55f;
+            for (var index = 0; index < destinationRing.positionCount; index++)
+            {
+                var angle = index * Mathf.PI * 2f / destinationRing.positionCount;
+                destinationRing.SetPosition(
+                    index,
+                    destination + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * markerRadius);
+            }
         }
 
         private void UpdateTargetRing(Ship ship)
@@ -226,7 +385,10 @@ namespace Sea.Client
             }
 
             targetRing.SetActive(selectedObject.activeSelf);
-            targetRing.transform.position = selectedObject.transform.position + Vector3.down * 0.7f;
+            targetRing.transform.position = new Vector3(
+                selectedObject.transform.position.x,
+                WaterSurfaceHeight + 0.025f,
+                selectedObject.transform.position.z);
         }
 
         private void UpdateHealthBar(GameObject ship, uint health, uint maxHealth)
@@ -249,5 +411,19 @@ namespace Sea.Client
         }
 
         private static Vector3 ToWorld(float x, float y, float height) => new(x, height, y);
+
+        private readonly struct PresentationTarget
+        {
+            public PresentationTarget(Vector3 position, float headingDegrees, float speed)
+            {
+                Position = position;
+                HeadingDegrees = headingDegrees;
+                Speed = speed;
+            }
+
+            public Vector3 Position { get; }
+            public float HeadingDegrees { get; }
+            public float Speed { get; }
+        }
     }
 }

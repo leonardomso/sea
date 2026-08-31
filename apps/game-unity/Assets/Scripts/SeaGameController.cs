@@ -44,8 +44,22 @@ namespace Sea.Client
                 return;
             }
 
-            connection.Connection.Reducers.SetCourse(point.x, point.z);
-            LastAction = $"Course set • {SeaChartCoordinates.LabelAt(point.x, point.z)}";
+            var destination = SeaChartCoordinates.ClampToMap(new Vector2(point.x, point.z));
+            foreach (var worldObject in connection.Connection.Db.WorldObject.Iter())
+            {
+                if (worldObject.IsActive && worldObject.BlocksMovement &&
+                    SeaChartCoordinates.IsBlockedDestination(
+                        destination,
+                        new Vector2(worldObject.PositionX, worldObject.PositionY),
+                        worldObject.Radius))
+                {
+                    LastAction = "Land cannot be selected as a sailing destination.";
+                    return;
+                }
+            }
+
+            connection.Connection.Reducers.SetCourse(destination.x, destination.y);
+            LastAction = $"Course set • {SeaChartCoordinates.LabelAt(destination.x, destination.y)}";
         }
 
         public void StopCourse()
@@ -118,7 +132,7 @@ namespace Sea.Client
             error = string.Empty;
             if (!SeaChartCoordinates.TryCellCenter(coordinate, out var cell))
             {
-                error = "Enter A 0 through BZ 60.";
+                error = "Enter AA 0 through CZ 60.";
                 return false;
             }
 

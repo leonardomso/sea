@@ -45,13 +45,20 @@ playtest is the final gate after every automated check passes.
 | T | Clear the selected target |
 | Escape | Open the menu and disable gameplay input; the world continues |
 
-The map uses columns `A` through `BZ` and rows `0` through `60`. Columns
-increase west-to-east and rows increase south-to-north. Coordinate navigation
-accepts values such as `AX 59` and sails to the selected cell center.
+The map uses Y-axis bands `AA` through `CZ`, beginning with `AA` at the top,
+and X-axis numbers `0` through `60`, increasing left-to-right. Fixed coordinate
+rails frame the playable chart. Coordinate navigation accepts values such as
+`AX 59` and sails to the selected cell center.
+
+Minimap clicks move only the chart camera. Space returns to ship-follow mode,
+and player-centered fog of war hides world information beyond the local vision
+radius while leaving fixed interface and minimap instruments visible.
 
 Ship motion is server-authoritative at 10 Hz and presented at 60 FPS. Ships
 have heading, speed, acceleration, deceleration, turn rate, stopping distance,
 collision-aware course following, wind response, and current response.
+Player ships can reverse heading in 0.5 seconds to support arcade broadside and
+hit-and-run combat.
 
 ### Combat controls
 
@@ -204,10 +211,12 @@ Commit: `refactor(world): establish scalable combat state`
 
 ### Phase 3: build chart navigation and sailing physics
 
-- Add A-BZ/0-60 coordinate conversion and navigation.
+- Add AA-CZ Y-axis / 0-60 X-axis coordinate conversion and navigation, with AA
+  anchored at the top of the chart.
 - Implement course replacement, stopping, acceleration, turning, heading,
   collision avoidance, and deterministic safe spawning.
-- Add WASD camera panning, constrained zoom, recentering, and coordinate HUD.
+- Add WASD camera panning, constrained zoom, recentering, fixed coordinate rails,
+  camera-only minimap navigation, and player-centered fog of war.
 - Add wind and current foundations.
 
 Commit: `feat(sailing): add chart navigation and ship handling`

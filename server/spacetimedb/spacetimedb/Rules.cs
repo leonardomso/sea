@@ -35,6 +35,7 @@ public static class WorldRules
     public const uint CannonUpgradeCostStep = 100;
     public const uint CannonDamagePerUpgrade = 5;
     public const float PlayerShipSpeed = 12f;
+    public const float PlayerShipTurnRateDegrees = 360f;
 
     public readonly struct SailingStep
     {

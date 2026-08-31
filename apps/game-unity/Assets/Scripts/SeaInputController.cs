@@ -172,7 +172,10 @@ namespace Sea.Client
             Bind("Point", context => pointerPosition = context.ReadValue<Vector2>());
             Bind("SetCourse", _ =>
             {
-                if (hud == null || !hud.IsPointerOverInterface(pointerPosition))
+                if (chartCamera?.TryShowMiniMapPosition(pointerPosition) == true)
+                {
+                }
+                else if (hud == null || !hud.IsPointerOverInterface(pointerPosition))
                 {
                     game?.HandlePrimaryClick(pointerPosition);
                 }

@@ -7,7 +7,12 @@ namespace Sea.Client
     {
         private static Material fallbackMaterial;
 
-        public static GameObject Create(GameObject modelPrefab, string name, float targetFootprint)
+        public static GameObject Create(
+            GameObject modelPrefab,
+            string name,
+            float targetFootprint,
+            Material authoredMaterial = null,
+            float modelYawOffsetDegrees = 0f)
         {
             if (modelPrefab == null)
             {
@@ -22,7 +27,17 @@ namespace Sea.Client
             var root = new GameObject(name);
             var visual = UnityEngine.Object.Instantiate(modelPrefab, root.transform, false);
             visual.name = "Visual";
-            ApplyFallbackMaterialIfNeeded(visual);
+            var importedAxisRotation = visual.transform.localRotation;
+            visual.transform.localRotation =
+                Quaternion.Euler(0f, modelYawOffsetDegrees, 0f) * importedAxisRotation;
+            if (authoredMaterial != null)
+            {
+                ApplyMaterial(visual, authoredMaterial);
+            }
+            else
+            {
+                ApplyFallbackMaterialIfNeeded(visual);
+            }
 
             var initialBounds = CalculateRendererBounds(root);
             var initialFootprint = Mathf.Max(initialBounds.size.x, initialBounds.size.z);
@@ -40,6 +55,20 @@ namespace Sea.Client
                 scaledBounds.center.z);
 
             return root;
+        }
+
+        private static void ApplyMaterial(GameObject visual, Material material)
+        {
+            foreach (var renderer in visual.GetComponentsInChildren<Renderer>(true))
+            {
+                var materials = renderer.sharedMaterials;
+                for (var index = 0; index < materials.Length; index++)
+                {
+                    materials[index] = material;
+                }
+
+                renderer.sharedMaterials = materials;
+            }
         }
 
         private static void ApplyFallbackMaterialIfNeeded(GameObject visual)
@@ -62,16 +91,7 @@ namespace Sea.Client
                 fallbackMaterial.name = "Starter Ship Fallback";
             }
 
-            foreach (var renderer in renderers)
-            {
-                var materials = renderer.sharedMaterials;
-                for (var index = 0; index < materials.Length; index++)
-                {
-                    materials[index] = fallbackMaterial;
-                }
-
-                renderer.sharedMaterials = materials;
-            }
+            ApplyMaterial(visual, fallbackMaterial);
         }
 
         private static bool HasAuthoredColor(Material material)
