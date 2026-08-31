@@ -19,6 +19,12 @@ namespace Sea.Tests
         }
 
         [Test]
+        public void Standalone_player_keeps_network_recovery_running_when_unfocused()
+        {
+            Assert.That(PlayerSettings.runInBackground, Is.True);
+        }
+
+        [Test]
         public void Generated_spacetime_bindings_are_present()
         {
             Assert.That(File.Exists("Assets/Generated/SpacetimeDB/SpacetimeDBClient.g.cs"), Is.True);

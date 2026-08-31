@@ -22,6 +22,7 @@ namespace Sea.Editor
 
         private static void Build(BuildTarget target, string fallbackOutputPath)
         {
+            PlayerSettings.runInBackground = true;
             var outputPath = ReadOutputPath(fallbackOutputPath);
             var outputDirectory = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrEmpty(outputDirectory))
