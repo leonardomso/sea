@@ -1,8 +1,8 @@
-FROM node:latest-slim
+FROM node:latest
 
 WORKDIR /workspace
 
-RUN corepack enable && corepack prepare pnpm@11.19.0 --activate
+RUN npm install --global pnpm@11.19.0
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY apps/admin/package.json apps/admin/package.json
