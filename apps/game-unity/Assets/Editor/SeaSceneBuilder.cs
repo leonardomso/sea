@@ -21,6 +21,7 @@ namespace Sea.Editor
             root.AddComponent<SeaConnectionController>();
             root.AddComponent<SeaConnectionOverlay>();
             root.AddComponent<SeaFrameRateController>();
+            root.AddComponent<SeaChartCameraController>();
             root.AddComponent<SeaGameController>();
             root.AddComponent<SeaRuntimeValidationProbe>();
             var world = root.AddComponent<SeaWorldView>();

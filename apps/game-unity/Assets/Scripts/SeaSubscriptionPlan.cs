@@ -15,6 +15,7 @@ namespace Sea.Client
             return new[]
             {
                 "SELECT * FROM world_state",
+                "SELECT * FROM environment_state",
                 "SELECT * FROM ammo_definition",
                 "SELECT * FROM ability_definition",
                 "SELECT * FROM npc_definition",
@@ -57,6 +58,7 @@ namespace Sea.Client
                 $"SELECT * FROM ship WHERE is_active = true AND {bounds}",
                 $"SELECT * FROM volley WHERE is_active = true AND {bounds}",
                 $"SELECT * FROM loot WHERE is_active = true AND {bounds}",
+                $"SELECT * FROM current_zone WHERE is_active = true AND {bounds}",
             };
         }
     }

@@ -51,6 +51,8 @@ import AmmoDefinitionRow from "./ammo_definition_table";
 import CombatContributionRow from "./combat_contribution_table";
 import CombatEventRow from "./combat_event_table";
 import CooldownRow from "./cooldown_table";
+import CurrentZoneRow from "./current_zone_table";
+import EnvironmentStateRow from "./environment_state_table";
 import InventoryRow from "./inventory_table";
 import LevelDefinitionRow from "./level_definition_table";
 import LootRow from "./loot_table";
@@ -138,6 +140,32 @@ const tablesSchema = __schema({
       { name: 'cooldown_cooldown_id_key', constraint: 'unique', columns: ['cooldownId'] },
     ],
   }, CooldownRow),
+  currentZone: __table({
+    name: 'current_zone',
+    indexes: [
+      { accessor: 'ByChunk', name: 'current_zone_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
+        'chunkX',
+        'chunkY',
+      ] },
+      { accessor: 'ZoneId', name: 'current_zone_zone_id_idx_btree', algorithm: 'btree', columns: [
+        'zoneId',
+      ] },
+    ],
+    constraints: [
+      { name: 'current_zone_zone_id_key', constraint: 'unique', columns: ['zoneId'] },
+    ],
+  }, CurrentZoneRow),
+  environmentState: __table({
+    name: 'environment_state',
+    indexes: [
+      { accessor: 'Id', name: 'environment_state_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'environment_state_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, EnvironmentStateRow),
   inventory: __table({
     name: 'inventory',
     indexes: [
@@ -358,6 +386,10 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "CombatEvent": Omit<typeof tablesSchema.schemaType.tables["combatEvent"], "accessorName"> & { readonly accessorName: "CombatEvent" };
     /** @deprecated Use `cooldown` instead. This alias will be removed in the next major version. */
     readonly "Cooldown": Omit<typeof tablesSchema.schemaType.tables["cooldown"], "accessorName"> & { readonly accessorName: "Cooldown" };
+    /** @deprecated Use `currentZone` instead. This alias will be removed in the next major version. */
+    readonly "CurrentZone": Omit<typeof tablesSchema.schemaType.tables["currentZone"], "accessorName"> & { readonly accessorName: "CurrentZone" };
+    /** @deprecated Use `environmentState` instead. This alias will be removed in the next major version. */
+    readonly "EnvironmentState": Omit<typeof tablesSchema.schemaType.tables["environmentState"], "accessorName"> & { readonly accessorName: "EnvironmentState" };
     /** @deprecated Use `inventory` instead. This alias will be removed in the next major version. */
     readonly "Inventory": Omit<typeof tablesSchema.schemaType.tables["inventory"], "accessorName"> & { readonly accessorName: "Inventory" };
     /** @deprecated Use `levelDefinition` instead. This alias will be removed in the next major version. */
@@ -405,6 +437,8 @@ const tableAccessorAliases = {
   "CombatContribution": "combatContribution",
   "CombatEvent": "combatEvent",
   "Cooldown": "cooldown",
+  "CurrentZone": "currentZone",
+  "EnvironmentState": "environmentState",
   "Inventory": "inventory",
   "LevelDefinition": "levelDefinition",
   "Loot": "loot",
@@ -447,6 +481,10 @@ export type DbView = __DbViewBase & {
   readonly "CombatEvent": __DbViewBase["combatEvent"];
   /** @deprecated Use `cooldown` instead. This alias will be removed in the next major version. */
   readonly "Cooldown": __DbViewBase["cooldown"];
+  /** @deprecated Use `currentZone` instead. This alias will be removed in the next major version. */
+  readonly "CurrentZone": __DbViewBase["currentZone"];
+  /** @deprecated Use `environmentState` instead. This alias will be removed in the next major version. */
+  readonly "EnvironmentState": __DbViewBase["environmentState"];
   /** @deprecated Use `inventory` instead. This alias will be removed in the next major version. */
   readonly "Inventory": __DbViewBase["inventory"];
   /** @deprecated Use `levelDefinition` instead. This alias will be removed in the next major version. */
@@ -485,6 +523,10 @@ export type Tables = __TablesBase & {
   readonly "CombatEvent": __TablesBase["combatEvent"];
   /** @deprecated Use `cooldown` instead. This alias will be removed in the next major version. */
   readonly "Cooldown": __TablesBase["cooldown"];
+  /** @deprecated Use `currentZone` instead. This alias will be removed in the next major version. */
+  readonly "CurrentZone": __TablesBase["currentZone"];
+  /** @deprecated Use `environmentState` instead. This alias will be removed in the next major version. */
+  readonly "EnvironmentState": __TablesBase["environmentState"];
   /** @deprecated Use `inventory` instead. This alias will be removed in the next major version. */
   readonly "Inventory": __TablesBase["inventory"];
   /** @deprecated Use `levelDefinition` instead. This alias will be removed in the next major version. */

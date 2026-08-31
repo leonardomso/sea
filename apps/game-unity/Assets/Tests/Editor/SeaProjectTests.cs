@@ -161,6 +161,14 @@ namespace Sea.Tests
         }
 
         [Test]
+        public void Main_scene_keeps_chart_camera_controls_separate_from_ship_controls()
+        {
+            EditorSceneManager.OpenScene("Assets/Scenes/Main.unity", OpenSceneMode.Single);
+
+            Assert.That(Object.FindFirstObjectByType<SeaChartCameraController>(), Is.Not.Null);
+        }
+
+        [Test]
         public void Initial_subscription_plan_is_owner_scoped_and_never_unrestricted()
         {
             var queries = SeaSubscriptionPlan.Initial("0xabc123");
@@ -180,6 +188,24 @@ namespace Sea.Tests
             Assert.That(queries, Has.Some.Contains("chunk_y >= 1"));
             Assert.That(queries, Has.Some.Contains("chunk_y <= 3"));
             Assert.That(queries.All(query => query.Contains("is_active = true")), Is.True);
+        }
+
+        [Test]
+        public void Client_chart_coordinates_match_the_server_contract()
+        {
+            Assert.That(SeaChartCoordinates.TryCellCenter("AX 59", out var center), Is.True);
+            Assert.That(center.Column, Is.EqualTo(49));
+            Assert.That(center.Row, Is.EqualTo(59));
+            Assert.That(SeaChartCoordinates.LabelAt(center.X, center.Y), Is.EqualTo("AX 59"));
+        }
+
+        [Test]
+        public void Chart_camera_rules_clamp_zoom_and_do_not_issue_ship_commands()
+        {
+            Assert.That(SeaChartCameraRules.ClampZoom(5f), Is.EqualTo(20f));
+            Assert.That(SeaChartCameraRules.ClampZoom(100f), Is.EqualTo(80f));
+            Assert.That(SeaChartCameraRules.PanDelta(1f, -1f, 20f, 0.5f),
+                Is.EqualTo(new Vector3(10f, 0f, -10f)));
         }
 
         [Test]

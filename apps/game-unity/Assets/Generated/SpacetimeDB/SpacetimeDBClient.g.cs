@@ -32,6 +32,8 @@ namespace SpacetimeDB.Types
             AddTable(CombatContribution = new(conn));
             AddTable(CombatEvent = new(conn));
             AddTable(Cooldown = new(conn));
+            AddTable(CurrentZone = new(conn));
+            AddTable(EnvironmentState = new(conn));
             AddTable(Inventory = new(conn));
             AddTable(LevelDefinition = new(conn));
             AddTable(Loot = new(conn));
@@ -545,6 +547,8 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.CombatContribution().ToSql(),
             new QueryBuilder().From.CombatEvent().ToSql(),
             new QueryBuilder().From.Cooldown().ToSql(),
+            new QueryBuilder().From.CurrentZone().ToSql(),
+            new QueryBuilder().From.EnvironmentState().ToSql(),
             new QueryBuilder().From.Inventory().ToSql(),
             new QueryBuilder().From.LevelDefinition().ToSql(),
             new QueryBuilder().From.Loot().ToSql(),
@@ -568,6 +572,8 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<CombatContribution, CombatContributionCols, CombatContributionIxCols> CombatContribution() => new("combat_contribution", new CombatContributionCols("combat_contribution"), new CombatContributionIxCols("combat_contribution"));
         public global::SpacetimeDB.Table<CombatEvent, CombatEventCols, CombatEventIxCols> CombatEvent() => new("combat_event", new CombatEventCols("combat_event"), new CombatEventIxCols("combat_event"));
         public global::SpacetimeDB.Table<Cooldown, CooldownCols, CooldownIxCols> Cooldown() => new("cooldown", new CooldownCols("cooldown"), new CooldownIxCols("cooldown"));
+        public global::SpacetimeDB.Table<CurrentZone, CurrentZoneCols, CurrentZoneIxCols> CurrentZone() => new("current_zone", new CurrentZoneCols("current_zone"), new CurrentZoneIxCols("current_zone"));
+        public global::SpacetimeDB.Table<EnvironmentState, EnvironmentStateCols, EnvironmentStateIxCols> EnvironmentState() => new("environment_state", new EnvironmentStateCols("environment_state"), new EnvironmentStateIxCols("environment_state"));
         public global::SpacetimeDB.Table<Inventory, InventoryCols, InventoryIxCols> Inventory() => new("inventory", new InventoryCols("inventory"), new InventoryIxCols("inventory"));
         public global::SpacetimeDB.Table<LevelDefinition, LevelDefinitionCols, LevelDefinitionIxCols> LevelDefinition() => new("level_definition", new LevelDefinitionCols("level_definition"), new LevelDefinitionIxCols("level_definition"));
         public global::SpacetimeDB.Table<Loot, LootCols, LootIxCols> Loot() => new("loot", new LootCols("loot"), new LootIxCols("loot"));

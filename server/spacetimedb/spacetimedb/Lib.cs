@@ -41,6 +41,12 @@ public static partial class Module
         public float DestinationY;
         public float HeadingDegrees;
         public float Speed;
+        public float MaximumSpeed;
+        public float Acceleration;
+        public float Deceleration;
+        public float TurnRateDegrees;
+        public bool HasCourse;
+        public bool IsStopping;
         public bool IsMoving;
         public bool IsActive;
         public bool IsAlive;
@@ -229,6 +235,34 @@ public static partial class Module
         public bool BlocksMovement;
     }
 
+    [SpacetimeDB.Table(Accessor = "EnvironmentState", Public = true)]
+    public partial struct EnvironmentState
+    {
+        [PrimaryKey]
+        public uint Id;
+        public ulong Seed;
+        public ulong WindEpoch;
+        public float WindDirectionDegrees;
+        public float WindStrength;
+        public ulong NextWindChangeTick;
+    }
+
+    [SpacetimeDB.Table(Accessor = "CurrentZone", Public = true)]
+    [SpacetimeDB.Index.BTree(Accessor = "ByChunk", Columns = new[] { nameof(ChunkX), nameof(ChunkY) })]
+    public partial struct CurrentZone
+    {
+        [PrimaryKey]
+        public ulong ZoneId;
+        public float PositionX;
+        public float PositionY;
+        public float Radius;
+        public float DirectionDegrees;
+        public float Strength;
+        public int ChunkX;
+        public int ChunkY;
+        public bool IsActive;
+    }
+
     [SpacetimeDB.Table(Accessor = "AmmoDefinition", Public = true)]
     public partial struct AmmoDefinition
     {
@@ -287,6 +321,7 @@ public static partial class Module
         });
         SeedContent(ctx);
         SeedWorld(ctx);
+        SeedEnvironment(ctx);
         ctx.Db.SimulationTimer.Insert(new SimulationTimer
         {
             ScheduledAt = new ScheduleAt.Interval(
@@ -318,7 +353,8 @@ public static partial class Module
         }
 
         var entityId = AllocateEntityId(ctx);
-        var ship = CreateShip(entityId, "player_sloop", "player", 0f, 0f);
+        var spawn = FindSafeSpawn(ctx, IdentitySeed(ctx.Sender));
+        var ship = CreateShip(entityId, "player_sloop", "player", spawn.X, spawn.Y);
         ctx.Db.Ship.Insert(ship);
         ctx.Db.PlayerOwnership.Insert(new PlayerOwnership
         {
@@ -363,6 +399,8 @@ public static partial class Module
         var ship = FindPlayerShip(ctx, ctx.Sender);
         ship.DestinationX = x;
         ship.DestinationY = y;
+        ship.HasCourse = ship.PositionX != x || ship.PositionY != y;
+        ship.IsStopping = false;
         ship.IsMoving = ship.PositionX != x || ship.PositionY != y;
         ctx.Db.Ship.EntityId.Update(ship);
         AppendEvent(ctx, ship.EntityId, "set_course", $"x={x:0.###},y={y:0.###}");
@@ -374,8 +412,9 @@ public static partial class Module
         var ship = FindPlayerShip(ctx, ctx.Sender);
         ship.DestinationX = ship.PositionX;
         ship.DestinationY = ship.PositionY;
-        ship.IsMoving = false;
-        ship.Speed = 0f;
+        ship.HasCourse = false;
+        ship.IsStopping = ship.Speed > 0f;
+        ship.IsMoving = ship.Speed > 0f;
         ctx.Db.Ship.EntityId.Update(ship);
         AppendEvent(ctx, ship.EntityId, "stop_course", "");
     }
@@ -457,6 +496,7 @@ public static partial class Module
 
         world.Tick++;
         ctx.Db.WorldState.Id.Update(world);
+        UpdateWind(ctx, world.Tick);
         AdvanceMovingShips(ctx);
         ResolvePrototypeCombat(ctx, world.Tick);
         ExpireTransientRows(ctx, world.Tick);
@@ -504,6 +544,12 @@ public static partial class Module
             DestinationY = y,
             HeadingDegrees = 0f,
             Speed = 0f,
+            MaximumSpeed = WorldRules.PlayerShipSpeed,
+            Acceleration = 3f,
+            Deceleration = 4f,
+            TurnRateDegrees = 55f,
+            HasCourse = false,
+            IsStopping = false,
             IsMoving = false,
             IsActive = true,
             IsAlive = true,
@@ -563,7 +609,8 @@ public static partial class Module
 
     private static void AdvanceMovingShips(ReducerContext ctx)
     {
-        var distancePerTick = WorldRules.PlayerShipSpeed / WorldRules.TickRateHz;
+        var deltaSeconds = 1f / WorldRules.TickRateHz;
+        var environment = ctx.Db.EnvironmentState.Id.Find(1);
         foreach (var ship in ctx.Db.Ship.ByMoving.Filter(true))
         {
             if (!ship.IsActive || !ship.IsAlive)
@@ -571,21 +618,134 @@ public static partial class Module
                 continue;
             }
 
-            var step = WorldRules.AdvanceTowards(
-                ship.PositionX,
-                ship.PositionY,
+            var windMultiplier = environment is EnvironmentState wind
+                ? EnvironmentRules.WindSpeedMultiplier(
+                    ship.HeadingDegrees,
+                    wind.WindDirectionDegrees,
+                    wind.WindStrength)
+                : 1f;
+            var step = SailingRules.Step(
+                new SailingState(
+                    ship.PositionX,
+                    ship.PositionY,
+                    ship.HeadingDegrees,
+                    ship.Speed),
                 ship.DestinationX,
                 ship.DestinationY,
-                distancePerTick);
+                ship.IsStopping,
+                new SailingParameters(
+                    ship.MaximumSpeed * windMultiplier,
+                    ship.Acceleration,
+                    ship.Deceleration,
+                    ship.TurnRateDegrees),
+                deltaSeconds);
+            var current = CurrentVelocityAt(ctx, step.PositionX, step.PositionY);
+            var nextX = step.PositionX + current.X * deltaSeconds;
+            var nextY = step.PositionY + current.Y * deltaSeconds;
             var moved = ship;
-            moved.PositionX = step.X;
-            moved.PositionY = step.Y;
-            moved.Speed = step.Arrived ? 0f : WorldRules.PlayerShipSpeed;
-            moved.IsMoving = !step.Arrived;
-            moved.ChunkX = SpatialRules.ChunkCoordinate(step.X);
-            moved.ChunkY = SpatialRules.ChunkCoordinate(step.Y);
+            moved.HeadingDegrees = step.HeadingDegrees;
+            moved.Speed = step.Speed;
+            moved.IsMoving = step.IsMoving;
+            moved.HasCourse = ship.HasCourse && !step.Arrived;
+            moved.IsStopping = ship.IsStopping && step.Speed > 0f;
+            if (IsNavigablePosition(ctx, ship.EntityId, nextX, nextY))
+            {
+                moved.PositionX = Math.Clamp(nextX, WorldRules.MapMin, WorldRules.MapMax);
+                moved.PositionY = Math.Clamp(nextY, WorldRules.MapMin, WorldRules.MapMax);
+            }
+            else
+            {
+                moved.HasCourse = false;
+                moved.IsStopping = true;
+                moved.Speed = MathF.Max(0f, ship.Speed - ship.Deceleration * deltaSeconds);
+                moved.IsMoving = moved.Speed > 0f;
+                moved.DestinationX = ship.PositionX;
+                moved.DestinationY = ship.PositionY;
+            }
+
+            moved.ChunkX = SpatialRules.ChunkCoordinate(moved.PositionX);
+            moved.ChunkY = SpatialRules.ChunkCoordinate(moved.PositionY);
             ctx.Db.Ship.EntityId.Update(moved);
         }
+    }
+
+    private static void UpdateWind(ReducerContext ctx, ulong tick)
+    {
+        if (ctx.Db.EnvironmentState.Id.Find(1) is not EnvironmentState environment ||
+            tick < environment.NextWindChangeTick)
+        {
+            return;
+        }
+
+        environment.WindEpoch++;
+        var wind = EnvironmentRules.WindForEpoch(environment.Seed, environment.WindEpoch);
+        environment.WindDirectionDegrees = wind.DirectionDegrees;
+        environment.WindStrength = wind.Strength;
+        environment.NextWindChangeTick = tick + EnvironmentRules.WindEpochTicks;
+        ctx.Db.EnvironmentState.Id.Update(environment);
+    }
+
+    private static (float X, float Y) CurrentVelocityAt(
+        ReducerContext ctx,
+        float x,
+        float y)
+    {
+        var velocityX = 0f;
+        var velocityY = 0f;
+        foreach (var zone in ctx.Db.CurrentZone.Iter())
+        {
+            if (!zone.IsActive ||
+                !WorldRules.IsInRange(x, y, zone.PositionX, zone.PositionY, zone.Radius))
+            {
+                continue;
+            }
+
+            var velocity = EnvironmentRules.DirectionalVelocity(
+                zone.DirectionDegrees,
+                zone.Strength);
+            velocityX += velocity.X;
+            velocityY += velocity.Y;
+        }
+
+        return (velocityX, velocityY);
+    }
+
+    private static bool IsNavigablePosition(
+        ReducerContext ctx,
+        ulong movingEntityId,
+        float x,
+        float y)
+    {
+        if (!WorldRules.IsInsideMap(x, y))
+        {
+            return false;
+        }
+
+        foreach (var worldObject in ctx.Db.WorldObject.Iter())
+        {
+            if (worldObject.IsActive && worldObject.BlocksMovement &&
+                WorldRules.IsBlocked(
+                    worldObject.Kind,
+                    worldObject.PositionX,
+                    worldObject.PositionY,
+                    worldObject.Radius,
+                    x,
+                    y))
+            {
+                return false;
+            }
+        }
+
+        foreach (var ship in ctx.Db.Ship.ByActive.Filter(true))
+        {
+            if (ship.EntityId != movingEntityId && ship.IsAlive &&
+                WorldRules.IsInRange(x, y, ship.PositionX, ship.PositionY, 4f))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static void ResolvePrototypeCombat(ReducerContext ctx, ulong tick)
@@ -765,6 +925,88 @@ public static partial class Module
             NextDecisionTick = 0,
             HomeSeed = 10,
         });
+    }
+
+    private static void SeedEnvironment(ReducerContext ctx)
+    {
+        const ulong seed = 0x5EA2026;
+        var wind = EnvironmentRules.WindForEpoch(seed, 0);
+        ctx.Db.EnvironmentState.Insert(new EnvironmentState
+        {
+            Id = 1,
+            Seed = seed,
+            WindEpoch = 0,
+            WindDirectionDegrees = wind.DirectionDegrees,
+            WindStrength = wind.Strength,
+            NextWindChangeTick = EnvironmentRules.WindEpochTicks,
+        });
+        InsertCurrentZone(ctx, 1, -55f, 35f, 28f, 70f, 1.25f);
+        InsertCurrentZone(ctx, 2, 55f, -45f, 24f, 235f, 1f);
+    }
+
+    private static void InsertCurrentZone(
+        ReducerContext ctx,
+        ulong zoneId,
+        float x,
+        float y,
+        float radius,
+        float directionDegrees,
+        float strength)
+    {
+        ctx.Db.CurrentZone.Insert(new CurrentZone
+        {
+            ZoneId = zoneId,
+            PositionX = x,
+            PositionY = y,
+            Radius = radius,
+            DirectionDegrees = directionDegrees,
+            Strength = strength,
+            ChunkX = SpatialRules.ChunkCoordinate(x),
+            ChunkY = SpatialRules.ChunkCoordinate(y),
+            IsActive = true,
+        });
+    }
+
+    private static SpawnPoint FindSafeSpawn(ReducerContext ctx, ulong seed)
+    {
+        var blockers = new List<SpawnBlocker>();
+        foreach (var worldObject in ctx.Db.WorldObject.Iter())
+        {
+            if (worldObject.IsActive && worldObject.BlocksMovement)
+            {
+                blockers.Add(new SpawnBlocker(
+                    worldObject.PositionX,
+                    worldObject.PositionY,
+                    worldObject.Radius));
+            }
+        }
+
+        foreach (var ship in ctx.Db.Ship.ByActive.Filter(true))
+        {
+            if (ship.IsAlive)
+            {
+                blockers.Add(new SpawnBlocker(ship.PositionX, ship.PositionY, 4f));
+            }
+        }
+
+        if (!SpawnRules.TryFindSafePosition(seed, blockers, out var point))
+        {
+            throw new Exception("No safe player spawn is available.");
+        }
+
+        return point;
+    }
+
+    private static ulong IdentitySeed(Identity identity)
+    {
+        var seed = 1469598103934665603UL;
+        foreach (var character in identity.ToString())
+        {
+            seed ^= character;
+            seed = unchecked(seed * 1099511628211UL);
+        }
+
+        return seed;
     }
 
     private static void InsertWorldObject(

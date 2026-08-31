@@ -98,6 +98,12 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Ship, float> DestinationY { get; }
         public global::SpacetimeDB.Col<Ship, float> HeadingDegrees { get; }
         public global::SpacetimeDB.Col<Ship, float> Speed { get; }
+        public global::SpacetimeDB.Col<Ship, float> MaximumSpeed { get; }
+        public global::SpacetimeDB.Col<Ship, float> Acceleration { get; }
+        public global::SpacetimeDB.Col<Ship, float> Deceleration { get; }
+        public global::SpacetimeDB.Col<Ship, float> TurnRateDegrees { get; }
+        public global::SpacetimeDB.Col<Ship, bool> HasCourse { get; }
+        public global::SpacetimeDB.Col<Ship, bool> IsStopping { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsMoving { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsActive { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsAlive { get; }
@@ -133,6 +139,12 @@ namespace SpacetimeDB.Types
             DestinationY = new global::SpacetimeDB.Col<Ship, float>(tableName, "destination_y");
             HeadingDegrees = new global::SpacetimeDB.Col<Ship, float>(tableName, "heading_degrees");
             Speed = new global::SpacetimeDB.Col<Ship, float>(tableName, "speed");
+            MaximumSpeed = new global::SpacetimeDB.Col<Ship, float>(tableName, "maximum_speed");
+            Acceleration = new global::SpacetimeDB.Col<Ship, float>(tableName, "acceleration");
+            Deceleration = new global::SpacetimeDB.Col<Ship, float>(tableName, "deceleration");
+            TurnRateDegrees = new global::SpacetimeDB.Col<Ship, float>(tableName, "turn_rate_degrees");
+            HasCourse = new global::SpacetimeDB.Col<Ship, bool>(tableName, "has_course");
+            IsStopping = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_stopping");
             IsMoving = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_moving");
             IsActive = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_active");
             IsAlive = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_alive");

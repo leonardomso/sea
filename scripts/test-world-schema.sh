@@ -18,32 +18,38 @@ query_table() {
     "$database_url" >"$runtime_directory/$table_name.json"
 }
 
-for table_name in world_state ship ammo_definition ability_definition npc_definition combat_event; do
+for table_name in world_state ship ammo_definition ability_definition npc_definition combat_event environment_state current_zone; do
   query_table "$table_name"
 done
 
 node - "$runtime_directory" <<'NODE'
 const fs = require("node:fs");
 const runtimeDirectory = process.argv[2];
-const rows = (table) =>
-  JSON.parse(fs.readFileSync(`${runtimeDirectory}/${table}.json`, "utf8"))[0]?.rows ?? [];
+const rows = (table) => {
+  const result = JSON.parse(fs.readFileSync(`${runtimeDirectory}/${table}.json`, "utf8"))[0];
+  const columns = result?.schema?.elements?.map((element) => element.name?.some) ?? [];
+  return (result?.rows ?? []).map((row) =>
+    Object.fromEntries(columns.map((column, index) => [column, row[index]])));
+};
 
 const world = rows("world_state");
-if (world.length !== 1 || world[0][2] !== 10 || world[0][4] !== 1) {
+if (world.length !== 1 || world[0].tick_rate_hz !== 10 || world[0].content_version !== 1) {
   throw new Error("World state does not expose the 10 Hz versioned simulation contract.");
 }
 
 const ships = rows("ship");
-if (ships.length < 1 || !ships.every((ship) => ship[0] > 0 && ship[10] === true)) {
+if (ships.length < 1 || !ships.every((ship) => ship.entity_id > 0 && ship.is_active === true)) {
   throw new Error("Unified active ship state is missing or invalid.");
 }
-if (!ships.some((ship) => ship[2] === "npc")) {
+if (!ships.some((ship) => ship.faction === "npc")) {
   throw new Error("The unified ship table does not contain the seeded NPC ship.");
 }
 
 if (rows("ammo_definition").length !== 4) throw new Error("Expected four ammunition definitions.");
 if (rows("ability_definition").length !== 4) throw new Error("Expected four ability definitions.");
 if (rows("npc_definition").length !== 3) throw new Error("Expected three NPC definitions.");
+if (rows("environment_state").length !== 1) throw new Error("Expected one deterministic wind state.");
+if (rows("current_zone").length !== 2) throw new Error("Expected two seeded current zones.");
 if (rows("combat_event").length > 100) throw new Error("Transient combat events are not bounded.");
 NODE
 

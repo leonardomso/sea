@@ -58,6 +58,29 @@ export const Cooldown = __t.object("Cooldown", {
 });
 export type Cooldown = __Infer<typeof Cooldown>;
 
+export const CurrentZone = __t.object("CurrentZone", {
+  zoneId: __t.u64(),
+  positionX: __t.f32(),
+  positionY: __t.f32(),
+  radius: __t.f32(),
+  directionDegrees: __t.f32(),
+  strength: __t.f32(),
+  chunkX: __t.i32(),
+  chunkY: __t.i32(),
+  isActive: __t.bool(),
+});
+export type CurrentZone = __Infer<typeof CurrentZone>;
+
+export const EnvironmentState = __t.object("EnvironmentState", {
+  id: __t.u32(),
+  seed: __t.u64(),
+  windEpoch: __t.u64(),
+  windDirectionDegrees: __t.f32(),
+  windStrength: __t.f32(),
+  nextWindChangeTick: __t.u64(),
+});
+export type EnvironmentState = __Infer<typeof EnvironmentState>;
+
 export const Inventory = __t.object("Inventory", {
   inventoryId: __t.u64(),
   shipEntityId: __t.u64(),
@@ -128,6 +151,12 @@ export const Ship = __t.object("Ship", {
   destinationY: __t.f32(),
   headingDegrees: __t.f32(),
   speed: __t.f32(),
+  maximumSpeed: __t.f32(),
+  acceleration: __t.f32(),
+  deceleration: __t.f32(),
+  turnRateDegrees: __t.f32(),
+  hasCourse: __t.bool(),
+  isStopping: __t.bool(),
   isMoving: __t.bool(),
   isActive: __t.bool(),
   isAlive: __t.bool(),

@@ -31,6 +31,18 @@ namespace SpacetimeDB.Types
         public float HeadingDegrees;
         [DataMember(Name = "speed")]
         public float Speed;
+        [DataMember(Name = "maximum_speed")]
+        public float MaximumSpeed;
+        [DataMember(Name = "acceleration")]
+        public float Acceleration;
+        [DataMember(Name = "deceleration")]
+        public float Deceleration;
+        [DataMember(Name = "turn_rate_degrees")]
+        public float TurnRateDegrees;
+        [DataMember(Name = "has_course")]
+        public bool HasCourse;
+        [DataMember(Name = "is_stopping")]
+        public bool IsStopping;
         [DataMember(Name = "is_moving")]
         public bool IsMoving;
         [DataMember(Name = "is_active")]
@@ -88,6 +100,12 @@ namespace SpacetimeDB.Types
             float DestinationY,
             float HeadingDegrees,
             float Speed,
+            float MaximumSpeed,
+            float Acceleration,
+            float Deceleration,
+            float TurnRateDegrees,
+            bool HasCourse,
+            bool IsStopping,
             bool IsMoving,
             bool IsActive,
             bool IsAlive,
@@ -122,6 +140,12 @@ namespace SpacetimeDB.Types
             this.DestinationY = DestinationY;
             this.HeadingDegrees = HeadingDegrees;
             this.Speed = Speed;
+            this.MaximumSpeed = MaximumSpeed;
+            this.Acceleration = Acceleration;
+            this.Deceleration = Deceleration;
+            this.TurnRateDegrees = TurnRateDegrees;
+            this.HasCourse = HasCourse;
+            this.IsStopping = IsStopping;
             this.IsMoving = IsMoving;
             this.IsActive = IsActive;
             this.IsAlive = IsAlive;

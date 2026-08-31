@@ -15,6 +15,8 @@ test -f "$unity_root/Assets/Scripts/SeaGameController.cs"
 test -f "$unity_root/Assets/Scripts/SeaShipMotion.cs"
 test -f "$unity_root/Assets/Scripts/SeaShipVisualFactory.cs"
 test -f "$unity_root/Assets/Scripts/SeaSubscriptionPlan.cs"
+test -f "$unity_root/Assets/Scripts/SeaChartCoordinates.cs"
+test -f "$unity_root/Assets/Scripts/SeaChartCameraController.cs"
 test -f "$unity_root/Assets/Scripts/SeaWorldView.cs"
 test -f "$unity_root/Assets/Art/Ships/StarterShip/StarterShip.fbx"
 test -f "$project_root/packages/spacetimedb-unity/src/UnityTcpWebSocket.cs"
@@ -25,6 +27,7 @@ grep -q 'com.clockworklabs.spacetimedbsdk.*file:../../../packages/spacetimedb-un
 grep -q '^using System.Collections;$' "$project_root/packages/spacetimedb-unity/src/SpacetimeDBClient.cs"
 grep -q 'DbConnection\.Builder' "$unity_root/Assets/Scripts/SeaConnectionController.cs"
 grep -q 'Reducers\.SetCourse' "$unity_root/Assets/Scripts/SeaGameController.cs"
+grep -q 'Reducers\.StopCourse' "$unity_root/Assets/Scripts/SeaGameController.cs"
 grep -q 'Reducers\.Engage' "$unity_root/Assets/Scripts/SeaGameController.cs"
 
 if grep -R -q --include='*.cs' 'SubscribeToAllTables' "$unity_root/Assets/Scripts"; then
