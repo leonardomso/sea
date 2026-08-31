@@ -118,6 +118,16 @@ sea/
 
 Unity is part of the monorepo, but it is not forced into the JavaScript package workspace. JavaScript and TypeScript workspaces use pnpm. Repository-wide commands can be exposed through a root task runner or Makefile.
 
+## Execution status
+
+- Phases 0–2 are committed and their documented automated checks pass.
+- Phase 3 has its Unity project scaffold, pinned SDK, generated bindings, and connection flow committed. Unity import, EditMode tests, and platform builds remain pending until the Unity editor and modules are installed.
+- Phases 4–6 have authoritative server rules, tests, generated bindings, and a Unity client gameplay shell committed. Server module build and 23 server tests pass; Unity acceptance remains pending for the same editor prerequisite.
+- Phase 7 has a read-only TanStack Start operations dashboard committed. Admin checks/builds and Compose configuration pass; live Docker stack verification is pending while the local Docker daemon is unavailable to this shell.
+- Phase 8 is intentionally still pending and remains the only manual gameplay gate.
+
+The canonical automated command is `pnpm verify`. It includes the repository checks and fails rather than skipping Unity platform verification when the required editor is unavailable.
+
 ## Phases
 
 Each phase ends with automated verification, a diff review, and one conventional commit. No phase is considered complete because code exists. It is complete when its acceptance checks pass.

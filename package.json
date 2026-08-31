@@ -15,6 +15,8 @@
     "unity:test": "unity test apps/game-unity --mode EditMode --output apps/game-unity/Build/test-results.xml -- -nographics",
     "unity:build:webgl": "unity build apps/game-unity --target WebGL --execute-method Sea.Editor.SeaBuild.PerformWebGLBuild --output-path apps/game-unity/Build/WebGL --no-tail",
     "unity:build:macos": "unity build apps/game-unity --target StandaloneOSX --execute-method Sea.Editor.SeaBuild.PerformMacOSBuild --output-path apps/game-unity/Build/Sea.app --no-tail",
+    "unity:source-check": "./scripts/check-unity-source.sh",
+    "unity:verify": "./scripts/verify-unity.sh",
     "server:build": "./scripts/spacetime.sh build --module-path server/spacetimedb/spacetimedb",
     "server:generate:csharp": "./scripts/spacetime.sh generate --lang csharp --module-path server/spacetimedb/spacetimedb --out-dir apps/game-unity/Assets/Generated/SpacetimeDB",
     "server:generate:typescript": "./scripts/spacetime.sh generate --lang typescript --module-path server/spacetimedb/spacetimedb --out-dir packages/contracts/src/generated",
@@ -22,6 +24,6 @@
     "server:reset": "./scripts/reset-spacetime.sh",
     "server:test": "./scripts/dotnet.sh test server/spacetimedb/tests/Sea.Server.Tests.csproj",
     "check": "pnpm infra:config && pnpm admin:check && pnpm --filter @sea/contracts check",
-    "verify": "pnpm check && pnpm server:build && pnpm server:test"
+    "verify": "pnpm check && pnpm server:build && pnpm server:test && pnpm unity:verify"
   }
 }
