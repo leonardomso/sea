@@ -19,8 +19,8 @@
     <AssemblyVersion>2.8.3</AssemblyVersion>
     <Version>2.8.3</Version>
     <DefaultItemExcludes>$(DefaultItemExcludes);*~/**</DefaultItemExcludes>
-    <!-- We want to save DLLs for Unity which doesn't support NuGet. -->
-    <RestorePackagesPath>packages</RestorePackagesPath>
+    <!-- Keep command-line restores isolated from the Unity-vendored package files and their importer metadata. -->
+    <RestorePackagesPath>obj~/packages</RestorePackagesPath>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
   </PropertyGroup>
 

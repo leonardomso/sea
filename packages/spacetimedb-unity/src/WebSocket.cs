@@ -37,12 +37,25 @@ namespace SpacetimeDB
         private readonly byte[] _receiveBuffer = new byte[MAXMessageSize];
         private readonly ConcurrentQueue<Action> dispatchQueue = new();
 
+#if !(UNITY_5_3_OR_NEWER && (!UNITY_WEBGL || UNITY_EDITOR))
         protected ClientWebSocket Ws = new();
+#endif
         private CancellationTokenSource? _connectCts;
+#if UNITY_5_3_OR_NEWER && (!UNITY_WEBGL || UNITY_EDITOR)
+        private readonly UnityTcpWebSocket unityTransport;
+#endif
 
         public WebSocket(ConnectOptions options)
         {
             _options = options;
+#if UNITY_5_3_OR_NEWER && (!UNITY_WEBGL || UNITY_EDITOR)
+            unityTransport = new UnityTcpWebSocket(options.Protocol);
+            unityTransport.OnConnect += () => dispatchQueue.Enqueue(() => OnConnect?.Invoke());
+            unityTransport.OnMessage += (message, timestamp) => OnMessage?.Invoke(message, timestamp);
+            unityTransport.OnClose += exception => dispatchQueue.Enqueue(() => OnClose?.Invoke(exception));
+            unityTransport.OnConnectError += exception => dispatchQueue.Enqueue(() => OnConnectError?.Invoke(exception));
+            unityTransport.OnSendError += exception => dispatchQueue.Enqueue(() => OnSendError?.Invoke(exception));
+#endif
 #if UNITY_WEBGL && !UNITY_EDITOR
             InitializeWebGL();
 #endif
@@ -64,6 +77,10 @@ namespace SpacetimeDB
         private bool _cancelConnectRequested = false;
         public bool IsConnected => _isConnected;
         public bool IsConnecting => _isConnecting;
+#elif UNITY_5_3_OR_NEWER
+        public bool IsConnected => unityTransport.IsConnected;
+        public bool IsConnecting => unityTransport.IsConnecting;
+        public bool IsNoneState => unityTransport.IsNoneState;
 #else 
         public bool IsConnected { get { return Ws != null && Ws.State == WebSocketState.Open; } }
         public bool IsConnecting { get { return Ws != null && Ws.State == WebSocketState.Connecting; } }
@@ -188,6 +205,8 @@ namespace SpacetimeDB
                 _isConnecting = false;
             }
         // Events will be handled via UnitySendMessage callbacks
+#elif UNITY_5_3_OR_NEWER
+            await unityTransport.Connect(auth, host, nameOrAddress, connectionId, compression, light, confirmedReads);
 #else
             var uri = $"{host}/v1/database/{nameOrAddress}/subscribe?connection_id={connectionId}&compression={compression}";
             if (light)
@@ -396,6 +415,8 @@ namespace SpacetimeDB
             // No CTS on WebGL. Mark cancel intent so that when socket id arrives or open fires,
             // we immediately close and avoid reporting a connected state.
             _cancelConnectRequested = true;
+#elif UNITY_5_3_OR_NEWER
+            unityTransport.Abort();
 #else
             try { _connectCts?.Cancel(); } catch { /* ignore */ }
 #endif
@@ -416,13 +437,16 @@ namespace SpacetimeDB
                 // We don't yet have a socket id; remember to cancel once it arrives/opens.
                 _cancelConnectRequested = true;
             }
+            return Task.CompletedTask;
+#elif UNITY_5_3_OR_NEWER
+            return unityTransport.Close();
 #else
             if (Ws?.State == WebSocketState.Open)
             {
                 return Ws.CloseAsync(code, "Disconnecting normally.", CancellationToken.None);
             }
-#endif
             return Task.CompletedTask;
+#endif
         }
 
         /// <summary>
@@ -442,6 +466,8 @@ namespace SpacetimeDB
                 // No socket yet; ensure we close immediately once it opens.
                 _cancelConnectRequested = true;
             }
+#elif UNITY_5_3_OR_NEWER
+            unityTransport.Abort();
 #else
             try
             {
@@ -454,8 +480,10 @@ namespace SpacetimeDB
 #endif
         }
 
+#if !(UNITY_5_3_OR_NEWER && (!UNITY_WEBGL || UNITY_EDITOR))
         private Task? senderTask;
         private readonly ConcurrentQueue<ClientMessage> messageSendQueue = new();
+#endif
 
         /// <summary>
         /// This sender guarantees that that messages are sent out in the order they are received. Our websocket
@@ -477,6 +505,17 @@ namespace SpacetimeDB
                 UnityEngine.Debug.LogError($"WebSocket send error: {e}");
                 dispatchQueue.Enqueue(() => OnSendError?.Invoke(e));
             }
+#elif UNITY_5_3_OR_NEWER
+            try
+            {
+                var messageBSATN = new ClientMessage.BSATN();
+                var encodedMessage = IStructuralReadWrite.ToBytes(messageBSATN, message);
+                unityTransport.SendBinary(encodedMessage);
+            }
+            catch (Exception e)
+            {
+                dispatchQueue.Enqueue(() => OnSendError?.Invoke(e));
+            }
 #else
             lock (messageSendQueue)
             {
@@ -486,6 +525,7 @@ namespace SpacetimeDB
 #endif
         }
 
+#if !(UNITY_5_3_OR_NEWER && (!UNITY_WEBGL || UNITY_EDITOR))
         private async Task ProcessSendQueue()
         {
             try
@@ -515,10 +555,15 @@ namespace SpacetimeDB
                 if (OnSendError != null) dispatchQueue.Enqueue(() => OnSendError(e));
             }
         }
+#endif
 
         public WebSocketState GetState()
         {
+#if UNITY_5_3_OR_NEWER && (!UNITY_WEBGL || UNITY_EDITOR)
+            return unityTransport.State;
+#else
             return Ws!.State;
+#endif
         }
 
 #if UNITY_WEBGL && !UNITY_EDITOR

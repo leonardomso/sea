@@ -9,6 +9,9 @@ dist/
 # .NET generated output
 **/bin/
 **/obj/
+packages/spacetimedb-unity/bin~/
+packages/spacetimedb-unity/obj~/
+packages/spacetimedb-unity/tests~/obj~/
 
 # Local environment and logs
 .env

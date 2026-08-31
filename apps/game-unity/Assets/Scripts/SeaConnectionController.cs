@@ -11,10 +11,13 @@ namespace Sea.Client
         [SerializeField] private string serverUrl = "http://127.0.0.1:3000";
         [SerializeField] private string databaseName = "sea-local";
         [SerializeField] private bool connectOnStart = true;
-        [SerializeField] private float reconnectDelaySeconds = 2f;
 
+        private readonly SeaAuthTokenStore authTokens = new();
         private Coroutine reconnectCoroutine;
         private bool manualDisconnect;
+        private bool connectAttemptInFlight;
+        private bool attemptedWithToken;
+        private int transientFailureCount;
 
         public DbConnection Connection { get; private set; }
         public Identity LocalIdentity { get; private set; }
@@ -34,7 +37,7 @@ namespace Sea.Client
 
         private void Update()
         {
-            if (Connection != null && Connection.IsActive)
+            if (Connection != null)
             {
                 Connection.FrameTick();
             }
@@ -45,12 +48,18 @@ namespace Sea.Client
             manualDisconnect = false;
             IsSubscribed = false;
 
+            if (connectAttemptInFlight)
+            {
+                return;
+            }
+
             if (Connection != null && Connection.IsActive)
             {
                 Status = "Connected";
                 return;
             }
 
+            connectAttemptInFlight = true;
             Status = "Connecting...";
 
             var builder = DbConnection.Builder()
@@ -60,8 +69,9 @@ namespace Sea.Client
                 .WithUri(serverUrl)
                 .WithDatabaseName(databaseName);
 
-            var token = AuthToken.Token;
-            if (!string.IsNullOrWhiteSpace(token))
+            var token = authTokens.Token;
+            attemptedWithToken = !string.IsNullOrWhiteSpace(token);
+            if (attemptedWithToken)
             {
                 builder.WithToken(token);
             }
@@ -91,14 +101,16 @@ namespace Sea.Client
                 Connection = null;
             }
 
+            connectAttemptInFlight = false;
             IsSubscribed = false;
             Status = "Disconnected";
         }
 
         private void HandleConnected(DbConnection connection, Identity identity, string token)
         {
-            AuthToken.SaveToken(token);
-            PlayerPrefs.Save();
+            connectAttemptInFlight = false;
+            transientFailureCount = 0;
+            authTokens.Save(token);
             LocalIdentity = identity;
             HasIdentity = true;
             Status = "Connected; subscribing...";
@@ -116,6 +128,7 @@ namespace Sea.Client
         {
             IsSubscribed = true;
             Status = "Ready";
+            Debug.Log("Sea client ready.", this);
         }
 
         private void HandleSubscriptionError(ErrorContext context, Exception exception)
@@ -127,26 +140,35 @@ namespace Sea.Client
 
         private void HandleConnectionError(Exception exception)
         {
-            Status = "Connection error: " + exception.Message;
-            Debug.LogException(exception, this);
-            ScheduleReconnect();
+            connectAttemptInFlight = false;
+            var failedConnection = Connection;
+            Connection = null;
+            if (failedConnection != null)
+            {
+                failedConnection.Disconnect();
+            }
+
+            IsSubscribed = false;
+            HasIdentity = false;
+            RecoverFromFailure(exception);
         }
 
         private void HandleDisconnected(DbConnection connection, Exception exception)
         {
-            if (Connection == connection)
+            connectAttemptInFlight = false;
+            if (Connection != connection)
             {
-                Connection = null;
+                return;
             }
 
+            Connection = null;
             IsSubscribed = false;
+            HasIdentity = false;
             Status = exception == null ? "Disconnected" : "Disconnected: " + exception.Message;
-            if (exception != null)
+            if (!manualDisconnect)
             {
-                Debug.LogException(exception, this);
+                RecoverFromFailure(exception ?? new Exception("The server closed the connection."));
             }
-
-            ScheduleReconnect();
         }
 
         private void HandleUnhandledReducerError(ReducerEventContext context, Exception exception)
@@ -155,17 +177,57 @@ namespace Sea.Client
             Debug.LogException(exception, this);
         }
 
-        private void ScheduleReconnect()
+        private void RecoverFromFailure(Exception exception)
         {
-            if (!manualDisconnect && reconnectCoroutine == null && isActiveAndEnabled)
+            var decision = SeaConnectionRecoveryPolicy.Decide(
+                exception,
+                attemptedWithToken,
+                transientFailureCount);
+
+            switch (decision.Action)
             {
-                reconnectCoroutine = StartCoroutine(ReconnectAfterDelay());
+                case SeaConnectionRecoveryAction.ClearIdentityAndRetry:
+                    authTokens.Clear();
+                    attemptedWithToken = false;
+                    Status = "Cached identity expired; reconnecting...";
+                    Debug.LogWarning("Cached identity rejected; retrying anonymously.", this);
+                    ScheduleReconnect(0f);
+                    break;
+                case SeaConnectionRecoveryAction.RetryAfterDelay:
+                    transientFailureCount++;
+                    Status = $"Connection unavailable; retrying in {decision.DelaySeconds:0}s...";
+                    Debug.LogWarning($"Connection failed; retrying in {decision.DelaySeconds:0}s: {exception.Message}", this);
+                    ScheduleReconnect(decision.DelaySeconds);
+                    break;
+                case SeaConnectionRecoveryAction.Stop:
+                    manualDisconnect = true;
+                    Status = "Connection stopped: " + exception.Message;
+                    Debug.LogError(Status, this);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
             }
         }
 
-        private IEnumerator ReconnectAfterDelay()
+        private void ScheduleReconnect(float delaySeconds)
         {
-            yield return new WaitForSeconds(reconnectDelaySeconds);
+            if (!manualDisconnect && reconnectCoroutine == null && isActiveAndEnabled)
+            {
+                reconnectCoroutine = StartCoroutine(ReconnectAfterDelay(delaySeconds));
+            }
+        }
+
+        private IEnumerator ReconnectAfterDelay(float delaySeconds)
+        {
+            if (delaySeconds > 0f)
+            {
+                yield return new WaitForSeconds(delaySeconds);
+            }
+            else
+            {
+                yield return null;
+            }
+
             reconnectCoroutine = null;
             if (!manualDisconnect)
             {

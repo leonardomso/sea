@@ -40,11 +40,14 @@ The Unity project uses the exact editor patch recorded in `apps/game-unity/Proje
 ```sh
 pnpm unity:scene
 pnpm unity:test
+pnpm unity:test:runtime
 pnpm unity:build:webgl
 pnpm unity:build:macos
 ```
 
 `pnpm unity:scene` regenerates the main scene and build settings through an editor method. WebGL output is written to `apps/game-unity/Build/WebGL`; the macOS player is written to `apps/game-unity/Build/Sea.app`. Build outputs and Unity's regenerable folders are ignored by Git.
+
+`pnpm unity:test:runtime` requires the local SpacetimeDB service and a published `sea-local` database. It launches the built macOS player headlessly with a stale test identity and verifies that the client recovers, subscribes, reaches `Ready`, and starts without fatal shader errors. The original local identity preference is restored when the test exits.
 
 ## SpacetimeDB module
 

@@ -49,18 +49,11 @@ namespace Sea.Client
 
         private void CreateMaterials()
         {
-            waterMaterial = CreateMaterial(new Color(0.035f, 0.22f, 0.30f, 1f));
-            islandMaterial = CreateMaterial(new Color(0.48f, 0.34f, 0.18f, 1f));
-            reefMaterial = CreateMaterial(new Color(0.82f, 0.39f, 0.20f, 1f));
-            playerMaterial = CreateMaterial(new Color(0.24f, 0.87f, 0.78f, 1f));
-            enemyMaterial = CreateMaterial(new Color(0.94f, 0.31f, 0.28f, 1f));
-        }
-
-        private static Material CreateMaterial(Color color)
-        {
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            var material = new Material(shader) { color = color };
-            return material;
+            waterMaterial = SeaMaterialFactory.Create(new Color(0.035f, 0.22f, 0.30f, 1f));
+            islandMaterial = SeaMaterialFactory.Create(new Color(0.48f, 0.34f, 0.18f, 1f));
+            reefMaterial = SeaMaterialFactory.Create(new Color(0.82f, 0.39f, 0.20f, 1f));
+            playerMaterial = SeaMaterialFactory.Create(new Color(0.24f, 0.87f, 0.78f, 1f));
+            enemyMaterial = SeaMaterialFactory.Create(new Color(0.94f, 0.31f, 0.28f, 1f));
         }
 
         private void CreateWater()
@@ -199,7 +192,7 @@ namespace Sea.Client
                 targetRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
                 targetRing.name = "Selected Target Ring";
                 targetRing.transform.localScale = new Vector3(4.5f, 0.04f, 4.5f);
-                targetRing.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(1f, 0.85f, 0.25f, 1f));
+                targetRing.GetComponent<Renderer>().sharedMaterial = SeaMaterialFactory.Create(new Color(1f, 0.85f, 0.25f, 1f));
                 Destroy(targetRing.GetComponent<Collider>());
             }
 
@@ -215,7 +208,7 @@ namespace Sea.Client
                 bar = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
                 bar.name = "Health";
                 bar.SetParent(ship.transform, false);
-                bar.GetComponent<Renderer>().sharedMaterial = CreateMaterial(new Color(0.28f, 0.95f, 0.45f, 1f));
+                bar.GetComponent<Renderer>().sharedMaterial = SeaMaterialFactory.Create(new Color(0.28f, 0.95f, 0.45f, 1f));
                 Destroy(bar.GetComponent<Collider>());
             }
 

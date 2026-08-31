@@ -13,6 +13,7 @@
     "infra:up": "docker compose -f infra/docker-compose.yml up -d --build",
     "unity:scene": "unity run apps/game-unity -- -executeMethod Sea.Editor.SeaSceneBuilder.CreateMainScene",
     "unity:test": "unity test apps/game-unity --mode EditMode --output apps/game-unity/Build/test-results.xml",
+    "unity:test:runtime": "./scripts/test-unity-runtime.sh",
     "unity:build:webgl": "unity build apps/game-unity --target WebGL --execute-method Sea.Editor.SeaBuild.PerformWebGLBuild --output-path apps/game-unity/Build/WebGL --no-tail",
     "unity:build:macos": "unity build apps/game-unity --target StandaloneOSX --execute-method Sea.Editor.SeaBuild.PerformMacOSBuild --output-path apps/game-unity/Build/Sea.app --no-tail",
     "unity:source-check": "./scripts/check-unity-source.sh",

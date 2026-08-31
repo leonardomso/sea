@@ -16,6 +16,7 @@ namespace Sea.Editor
 
         public static void PerformMacOSBuild()
         {
+            PlayerSettings.SetScriptingBackend(BuildTargetGroup.Standalone, ScriptingImplementation.IL2CPP);
             Build(BuildTarget.StandaloneOSX, "Build/Sea.app");
         }
 
