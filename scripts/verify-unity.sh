@@ -9,6 +9,6 @@ if ! command -v unity >/dev/null 2>&1; then
   exit 2
 fi
 
-unity test apps/game-unity --mode EditMode --output apps/game-unity/Build/test-results.xml -- -nographics
+unity test apps/game-unity --mode EditMode --output apps/game-unity/Build/test-results.xml
 unity build apps/game-unity --target WebGL --execute-method Sea.Editor.SeaBuild.PerformWebGLBuild --output-path apps/game-unity/Build/WebGL --no-tail
 unity build apps/game-unity --target StandaloneOSX --execute-method Sea.Editor.SeaBuild.PerformMacOSBuild --output-path apps/game-unity/Build/Sea.app --no-tail

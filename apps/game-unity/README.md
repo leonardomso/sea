@@ -2,7 +2,7 @@
 
 The client targets Unity `6000.3.23f1` on Apple Silicon, using URP and an orthographic 2.5D presentation. The project supports WebGL and macOS builds. The editor runs on the host machine; the local backend and admin services remain separate.
 
-The SpacetimeDB Unity SDK is pinned to `v2.8.3`, matching the CLI used to generate `Assets/Generated/SpacetimeDB`.
+The SpacetimeDB Unity SDK is based on upstream `v2.8.3`, matching the CLI used to generate `Assets/Generated/SpacetimeDB`. It is vendored under `packages/spacetimedb-unity` with one compatibility import for Unity 6 WebGL compilation; newer unreleased upstream branches change the client API and are not used.
 
 ## Local validation
 

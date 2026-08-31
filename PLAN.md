@@ -121,9 +121,9 @@ Unity is part of the monorepo, but it is not forced into the JavaScript package 
 ## Execution status
 
 - Phases 0–2 are committed and their documented automated checks pass.
-- Phase 3 has its Unity project scaffold, pinned SDK, generated bindings, and connection flow committed. Unity import, EditMode tests, and platform builds remain pending until the Unity editor and modules are installed.
-- Phases 4–6 have authoritative server rules, tests, generated bindings, and a Unity client gameplay shell committed. Server module build and 23 server tests pass; Unity acceptance remains pending for the same editor prerequisite.
-- Phase 7 has a read-only TanStack Start operations dashboard committed. Admin checks/builds, Compose configuration, live service health, and an admin-to-SpacetimeDB data smoke test pass. The Docker-backed test-image pull is still slow on this machine; the same 23 server tests pass with the host .NET 8 SDK.
+- Phase 3 is complete: the Unity project scaffold, pinned SDK compatibility package, generated bindings, connection flow, Unity import, EditMode tests, WebGL build, and macOS build all pass.
+- Phases 4–6 are complete: authoritative server rules, tests, generated bindings, and the Unity client gameplay shell all pass their automated gates. The server suite has 23 passing tests and both platform builds remain green.
+- Phase 7 is complete: the read-only TanStack Start operations dashboard, Compose configuration, live service health, admin-to-SpacetimeDB data smoke test, and canonical `pnpm verify` command all pass.
 - Phase 8 is intentionally still pending and remains the only manual gameplay gate.
 
 The canonical automated command is `pnpm verify`. It includes the repository checks and fails rather than skipping Unity platform verification when the required editor is unavailable.
