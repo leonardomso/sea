@@ -1,389 +1,358 @@
-# Sea game project plan
+# Sea core combat and performance roadmap
 
-## Project intent
+## Product goal
 
-Build an original browser game inspired by the broad gameplay loop of Seafight:
+Build a fast, local-only PvE combat vertical slice using Seafight's navigation
+and interaction language while keeping the code, balance, visual identity,
+artwork, names, audio, and interface original.
 
-- Explore a top-down tropical sea.
-- Select and engage computer-controlled enemies.
-- Fire automatically after engagement when the target is in range and the cannon cooldown is ready.
-- Earn resources.
-- Improve one player ship.
+The validation build must prove that sailing and combat feel responsive before
+larger MMO systems are introduced. It uses one map, one player ship, twelve
+roaming NPC ships, manual broadside combat, tactical recovery, environmental
+hazards, loot, death and respawning, and XP progression.
 
-The first objective is validation. We want to prove that the core loop is enjoyable, that the local architecture works, and that the project can grow without replacing its foundation.
+Development remains AI-driven and local-only. Every phase ends with automated
+verification, diff review, and one conventional commit. The user's manual
+playtest is the final gate after every automated check passes.
 
-The game may share genre mechanics with Seafight, but it must use original branding, maps, writing, artwork, audio, and other creative content.
+## Locked decisions
 
-## Current decisions
+### Stack and delivery
 
-### Product and validation
+- Unity `6000.3.23f1` is the macOS and WebGL client.
+- SpacetimeDB `2.8.3` is the authoritative backend and persistent game store.
+- TanStack Start and TanStack Router provide the local read-only admin panel.
+- Docker Compose runs SpacetimeDB, PostgreSQL 18, Redis, MinIO, and admin.
+- PostgreSQL, Redis, and MinIO stay outside the authoritative combat path.
+- There is no cloud deployment in this roadmap.
+- Anonymous local identity remains acceptable.
+- Schema replacement may reset local SpacetimeDB data.
+- PvP, bosses, playable parties, group UI, quests, economy expansion, and
+  additional maps are deferred.
 
-- The eventual goal is a serious product that could launch publicly.
-- The current work is a validation project because the team is new to game development.
-- Development is AI-driven. AI may create code, infrastructure, tests, documentation, and commits.
-- The user reviews each phase and runs the final manual playtest.
-- Manual gameplay testing is the last step of the complete plan. Intermediate phase gates use automated checks.
-- The validation build must prove:
-  - The core loop is playable for 10–15 minutes.
-  - The full local stack works.
-  - WebGL and macOS builds work.
-  - The architecture supports future multiplayer and progression.
-- Final visual similarity to Seafight is not an early go/no-go requirement.
+### Navigation and chart controls
 
-### Client
+| Input | Behavior |
+| --- | --- |
+| Left-click water | Set or replace the ship's course |
+| Right-click water | Stop the course and decelerate |
+| Left-click NPC | Select that target |
+| WASD | Pan the chart without steering the ship |
+| Mouse wheel | Zoom the chart |
+| Space | Recenter the chart on the player ship |
+| N | Open coordinate navigation |
+| Tab / Shift+Tab | Cycle targets forward or backward |
+| T | Clear the selected target |
+| Escape | Open the menu and disable gameplay input; the world continues |
 
-- Unity 6.3 LTS, using the newest compatible patch available when the project is created.
-- Unity is the primary client for WebGL and macOS desktop builds.
-- The world uses an orthographic 2.5D presentation with 3D ships and islands, 2D ocean effects, and a fixed top-down camera.
-- Use standard Unity GameObjects and MonoBehaviours, organized behind separate domain and gameplay systems.
-- Support WebGL and macOS first. Add Windows later.
-- The Unity Editor runs on the host machine. Docker runs the backend and local web services.
+The map uses columns `A` through `BZ` and rows `0` through `60`. Columns
+increase west-to-east and rows increase south-to-north. Coordinate navigation
+accepts values such as `AX 59` and sails to the selected cell center.
 
-### Backend
+Ship motion is server-authoritative at 10 Hz and presented at 60 FPS. Ships
+have heading, speed, acceleration, deceleration, turn rate, stopping distance,
+collision-aware course following, wind response, and current response.
 
-- SpacetimeDB is the authoritative backend and persistent game state store.
-- The SpacetimeDB server module uses C#.
-- Unity sends intent commands such as `move_to`, `select_target`, and `engage`.
-- SpacetimeDB validates commands and owns movement, collision, targeting, combat, NPC behavior, damage, rewards, and progression.
-- The world simulation uses a fixed server tick, initially targeting 20–30 updates per second.
-- Unity interpolates received state for smooth rendering.
-- Use anonymous local identities for the validation build.
-- Do not run Nakama alongside SpacetimeDB. They would both compete to own the authoritative backend role.
+### Combat controls
 
-### Data and content
+| Input | Behavior |
+| --- | --- |
+| Q | Fire port broadside |
+| E | Fire starboard broadside |
+| 1 / 2 / 3 | Aim at Hull / Sails / Cannons |
+| 4 / 5 / 6 / 7 | Select Round / Chain / Grapeshot / Incendiary ammunition |
+| Z | Full Sail |
+| X | Brace |
+| C | Emergency Pump |
+| V | Smoke Screen |
+| R | Start or cancel repair |
+| B | Start or cancel boarding |
 
-- Version-controlled data files are the source of truth for map gameplay data, ship stats, NPC definitions, loot, and balance values.
-- The server seeds this data into SpacetimeDB.
-- Unity owns visual scene assets.
-- Server-readable data defines walkable water, islands, reefs, ports, spawn points, and other gameplay geometry.
-- Runtime player state lives in SpacetimeDB.
-- Local data persists across restarts by default.
-- An explicit reset command wipes and reseeds local data.
+All controls use Unity's Input System and are rebindable.
 
-### Local infrastructure
+The player selects a target and weak point, then manually chooses the firing
+side. Port and starboard have independent 100-degree firing arcs and reload
+timers. A legal shot creates one server-authoritative aggregate volley. Damage
+resolves only when the volley reaches the target, and a legally fired volley
+cannot miss. It becomes harmless only if the target has already sunk.
 
-Docker Compose starts the complete local environment using current image channels:
+The client presents each volley with pooled cannonballs, staggered muzzle
+flashes, smoke, recoil, water trails, impacts, and spatial audio.
 
-- SpacetimeDB.
-- PostgreSQL, reserved for future reporting, analytics, or back-office data unless a concrete use is approved.
-- Redis, available for future caching, queues, rate limiting, or coordination.
-- MinIO, as the local S3-compatible object-storage replacement for Cloudflare R2.
-- The TanStack Start admin panel.
+### Ammunition and weak points
 
-Cloudflare, R2, and cloud servers are not part of the current deployment scope. Production configuration can be documented later without being activated now.
+- Round shot deals balanced hull damage and can cause flooding.
+- Chain shot deals heavy sail damage and can slow a ship.
+- Grapeshot deals short-range crew and boarding-protection damage.
+- Incendiary shot deals lower impact damage and applies burning.
+- Hull reaching zero sinks the ship.
+- Sail damage reduces acceleration, maximum speed, and turn rate; zero sail
+  health disables acceleration.
+- Cannon damage increases reload time and reduces volley damage; zero cannon
+  health disables firing until repaired.
 
-### Admin
+### Tactical systems
 
-- Use TanStack Start with `@tanstack/react-start`.
-- Use TanStack Router with file-based routes under `src/routes`.
-- The first admin panel is read-only.
-- Initial views show service health, connected players, ships, positions, and recent events.
-- The admin panel must use protected backend/admin operations. It must not write directly to database tables.
+- Full Sail increases speed and acceleration by 35% for five seconds.
+- Brace reduces incoming damage by 40% for four seconds.
+- Emergency Pump removes flooding and restores hull gradually.
+- Smoke Screen prevents new long-range locks for four seconds; existing
+  volleys still land.
+- Burning, flooding, slowed, and disabled-sails effects have server-owned
+  stacks, durations, expiry, and immunity windows.
+- Repair consumes one kit, disables firing and boarding, caps movement at 50%,
+  and restores hull and subsystems progressively for five seconds. Incoming
+  damage interrupts it.
+- Boarding requires the target below 25% hull, close range, and an
+  uninterrupted three-second channel. Resolution compares boarding power with
+  remaining crew protection.
+- Successful boarding grants bonus loot. Failure starts a cooldown and
+  temporarily reduces boarding power.
 
-### Assets
+### World and progression
 
-- The validation build may use temporary licensed or free assets.
-- Art must be replaceable without changing gameplay code.
-- The final commercial art pipeline remains a later decision.
+- Deterministic global wind modifies speed by heading.
+- Current zones add directional velocity.
+- Moving storms reduce turning and weapon effectiveness and periodically deal
+  damage.
+- Reefs block courses; shoals slow ships and can cause flooding.
+- NPC deaths create floating crates collected by sailing through their pickup
+  radius. Each crate can be claimed exactly once.
+- A sunk player respawns after five seconds at a random safe navigable
+  coordinate with 50% hull and five seconds of invulnerability.
+- The HUD shows player HP and XP, target hull/sails/cannons, statuses, reloads,
+  ammunition, abilities, coordinates, and repair or boarding progress.
+- XP comes from combat contribution, kills, boarding, and configured loot.
+- Four patrol ships are neutral until attacked.
+- Four raiders close distance and attack sails and crew.
+- Four gunships maintain broadside range and use incendiary ammunition.
+- NPC decisions run at 2 Hz while movement runs at 10 Hz.
+- Sunk NPCs respawn after 30 seconds at deterministic valid positions.
 
-## Repository shape
+## Architecture contracts
 
-```text
-sea/
-  apps/
-    admin/                    # TanStack Start + TanStack Router
-    game-unity/               # Unity project
+- Use one indexed authoritative ship model for players and NPCs, supported by
+  focused tables for ownership, AI, inventories, effects, volleys, loot,
+  cooldowns, and contributions.
+- Index active, moving, engaged, chunk, owner, and target state. Scheduled
+  reducers process active rows only and never scan persisted offline players.
+- `ClientConnected` may update an existing player but must never create one.
+  Only `LoadPlayer` creates game state.
+- Clients subscribe only to their player state, nearby chunks, nearby ships,
+  active volleys, nearby loot, and HUD data.
+- Transient combat events expire by tick and cannot grow without bounds.
+- Balance, NPC, ammunition, ability, and map definitions are validated,
+  version-controlled content.
+- The server alone owns movement, collision, firing validation, ammunition,
+  impacts, damage, effects, repairs, boarding, loot, XP, death, respawning, and
+  rewards.
 
-  server/
-    spacetimedb/              # C# server module and seed data
+Public intent reducers:
 
-  packages/
-    contracts/                # Shared names, schemas, and generated metadata
-    tooling/                  # Repository scripts and verification helpers
+- `LoadPlayer`
+- `SetCourse` and `StopCourse`
+- `SelectTarget` and `ClearTarget`
+- `SetAmmo`
+- `FireBroadside`
+- `StartRepair` and `CancelRepair`
+- `StartBoarding` and `CancelBoarding`
+- `ActivateAbility`
 
-  infra/
-    docker-compose.yml
-    minio/
-    postgres/
-    redis/
-
-  docs/
-  scripts/
-  PLAN.md
-  README.md
-  .env.example
-  .gitignore
-  .gitattributes
-```
-
-Unity is part of the monorepo, but it is not forced into the JavaScript package workspace. JavaScript and TypeScript workspaces use pnpm. Repository-wide commands can be exposed through a root task runner or Makefile.
-
-## Execution status
-
-- Phases 0–2 are committed and their documented automated checks pass.
-- Phase 3 is complete: the Unity project scaffold, pinned SDK compatibility package, generated bindings, connection flow, Unity import, EditMode tests, WebGL build, and macOS build all pass.
-- Phases 4–6 are complete: authoritative server rules, tests, generated bindings, and the Unity client gameplay shell all pass their automated gates. The server suite has 23 passing tests and both platform builds remain green.
-- Phase 7 is complete: the read-only TanStack Start operations dashboard, Compose configuration, live service health, admin-to-SpacetimeDB data smoke test, and canonical `pnpm verify` command all pass.
-- Phase 8 is intentionally still pending and remains the only manual gameplay gate.
-
-The canonical automated command is `pnpm verify`. It includes the repository checks and fails rather than skipping Unity platform verification when the required editor is unavailable.
+Contribution records support damage, boarding, and future support credit.
+Shared rewards reserve 30% for equal eligible participation and distribute 70%
+by contribution, with a 5% eligibility threshold. Group management and
+playable multiplayer remain deferred.
 
 ## Phases
 
-Each phase ends with automated verification, a diff review, and one conventional commit. No phase is considered complete because code exists. It is complete when its acceptance checks pass.
+### Phase 0: replace the project plan
 
-### Phase 0: plan and decisions
+- Replace the previous passive-combat plan with this roadmap.
+- Review scope, exclusions, performance gates, and commit boundaries.
 
-Deliverables:
+Commit: `docs(plan): define core combat roadmap`
 
-- This `PLAN.md`.
-- Confirmed stack and architecture decisions.
-- Explicit list of deferred decisions.
+### Phase 1: eliminate the runtime resource failure
 
-Acceptance:
-
-- The plan is reviewed and approved.
-- No implementation is included in the phase commit.
-
-Commit:
-
-```text
-docs(plan): define local game architecture and phases
-```
-
-### Phase 1: repository and local environment foundation
-
-Deliverables:
-
-- Monorepo directories.
-- pnpm workspace for TypeScript applications and tools.
-- Docker Compose with current service image channels, health checks, named volumes, and local configuration.
-- Local SpacetimeDB service.
-- PostgreSQL, Redis, and MinIO services.
-- TanStack Start admin shell.
-- Root commands for starting, stopping, resetting, checking, and inspecting the local environment.
-- Git ignore and Git LFS policy for Unity and large binary assets.
-- Environment examples with no committed secrets.
-
-Automated acceptance:
-
-- Compose configuration validates.
-- All local services become healthy.
-- Admin package installs, typechecks, and builds.
-- Reset and seed commands are deterministic.
-
-Commit example:
-
-```text
-build(infra): add reproducible local development stack
-```
-
-### Phase 2: SpacetimeDB module and contracts
-
-Deliverables:
-
-- C# SpacetimeDB module.
-- Initial tables for identity, player ship, map entities, resources, and events.
-- Reducers for connecting, loading a player, moving, selecting a target, and engaging.
-- Fixed-tick simulation skeleton.
-- Version-controlled seed data.
-- Generated C# bindings for Unity.
-- Generated TypeScript bindings for the admin panel.
-
-Automated acceptance:
-
-- Module builds and publishes locally.
-- Reducer and validation tests pass.
-- A clean reset recreates the same initial state.
-- Generated bindings are reproducible.
-
-Commit example:
-
-```text
-feat(server): add authoritative world contracts
-```
-
-### Phase 3: Unity project and connection
-
-Deliverables:
-
-- Unity 6.3 LTS project with the exact patch recorded by Unity’s `ProjectVersion.txt`.
-- URP-based orthographic 2.5D setup.
-- WebGL and macOS build profiles.
-- SpacetimeDB C# SDK integration.
-- Anonymous local identity and reconnect handling.
-- Generated binding import workflow.
-- Basic connection and subscription screen.
-
-Automated acceptance:
-
-- Unity imports the project in batch mode.
-- Unity compiles scripts without errors.
-- WebGL build completes.
-- macOS build completes.
-- Connection and binding smoke tests pass against the local server.
-
-Commit example:
-
-```text
-feat(client): connect Unity builds to local SpacetimeDB
-```
-
-### Phase 4: map and sailing foundation
-
-Deliverables:
-
-- One tropical map.
-- Harbor, open water, islands, reefs, and spawn points.
-- One player ship.
-- Click-to-move input.
-- `move_to` intent command.
-- Server-side movement, bounds, collision, and fixed-tick updates.
-- Client interpolation and camera behavior.
-
-Automated acceptance:
-
-- Movement rules pass unit and integration tests.
-- Invalid movement commands are rejected.
-- The client renders server state rather than owning authoritative position.
-- WebGL and macOS builds remain green.
-
-Commit example:
-
-```text
-feat(world): add authoritative sailing on the first map
-```
-
-### Phase 5: targeting and combat
-
-Deliverables:
-
-- One computer-controlled enemy ship.
-- Mouse and keyboard target selection.
-- Explicit engage action.
-- Automatic cannon fire after engagement.
-- Range checks, cooldowns, damage, sinking, and combat events.
-- Player and enemy health state.
-- Combat feedback, projectiles, impact effects, and sound placeholders.
-
-Automated acceptance:
-
-- Targeting and engagement rules pass tests.
-- Cooldowns, range, damage, and rewards pass tests.
-- Clients cannot apply damage directly.
-- NPC behavior is deterministic under a fixed test seed.
-- WebGL and macOS builds remain green.
-
-Commit example:
-
-```text
-feat(combat): add authoritative cannon combat
-```
-
-### Phase 6: rewards and one upgrade path
-
-Deliverables:
-
-- One resource currency.
-- Enemy reward table.
-- Player progression record.
-- One ship upgrade, such as cannon damage, hull strength, or range.
-- Persistence across local restarts.
-- Explicit reset and reseed workflow.
-
-Automated acceptance:
-
-- Rewards are granted exactly once.
-- Upgrade costs and effects pass tests.
-- Persistence and reset integration tests pass.
-- Unauthorized state changes are rejected.
-- WebGL and macOS builds remain green.
-
-Commit example:
-
-```text
-feat(progression): add persistent rewards and first ship upgrade
-```
-
-### Phase 7: read-only admin and full automated verification
-
-Deliverables:
-
-- Admin service-health view.
-- Connected-player and ship views.
-- Current positions and recent event views.
-- Local logs and basic error reporting.
-- One root verification command covering Compose, SpacetimeDB, admin, Unity scripts, WebGL, and macOS builds.
-
-Automated acceptance:
-
-- The full local stack starts from a clean checkout.
-- The full verification command passes.
-- Both Unity builds complete from the same source revision.
-- Admin data matches server state.
-- A reset returns the environment to the documented seed state.
-
-Commit example:
-
-```text
-feat(admin): add read-only local operations dashboard
-```
-
-### Phase 8: final manual validation
-
-Deliverables:
-
-- Run the WebGL build locally.
-- Run the macOS build locally.
-- Play through the complete loop for 10–15 minutes.
-- Confirm sailing, exploration, targeting, combat, rewards, and the upgrade work together.
-- Record findings and decide whether to continue, revise, or stop.
+- Prevent anonymous admin and SQL connections from creating players.
+- Add a lightweight admin health endpoint that never loads dashboard data.
+- Run Docker admin as a production build; keep Vite development host-only.
+- Reset and reseed contaminated local SpacetimeDB data.
+- Make macOS development builds windowed, resizable, 1280x720 by default,
+  foreground-capped at 60 FPS, and background-capped at 15 FPS.
+- Add identity-leak, idle-resource, connection, and window regression tests.
 
 Acceptance:
 
-- The user completes the manual playtest.
-- The result is recorded in a validation note.
-- A go/no-go decision is made for the next development cycle.
+- Repeated health checks create zero identities or ships.
+- Idle scheduled reducers finish inside their tick interval.
+- The complete local stack does not saturate Docker CPU.
+- The visible game cannot open as forced borderless fullscreen.
 
-Commit example:
+Commit: `fix(runtime): eliminate local resource runaway`
 
-```text
-docs(validation): record first playable assessment
-```
+### Phase 2: establish scalable world and combat state
 
-## Verification policy
+- Introduce unified ship contracts, indexed active access, bounded events,
+  spatial chunks, and content definitions.
+- Move simulation to 10 Hz with 60 FPS client presentation.
+- Replace full-table scans and `SubscribeToAllTables`.
+- Regenerate Unity and TypeScript bindings.
+- Reset local data as the explicit development migration.
 
-Before every phase commit:
+Commit: `refactor(world): establish scalable combat state`
 
-1. Run the phase-specific automated checks.
-2. Run the repository-wide automated checks available at that phase.
-3. Review the diff for unrelated changes, generated-file drift, and secrets.
-4. Confirm the conventional commit message.
-5. Commit only after all automated checks pass.
+### Phase 3: build chart navigation and sailing physics
 
-The final manual test is intentionally not used as an intermediate implementation gate. Automated tests must cover game rules and integration behavior as far as possible. Manual play is reserved for judging whether the finished loop is actually fun.
+- Add A-BZ/0-60 coordinate conversion and navigation.
+- Implement course replacement, stopping, acceleration, turning, heading,
+  collision avoidance, and deterministic safe spawning.
+- Add WASD camera panning, constrained zoom, recentering, and coordinate HUD.
+- Add wind and current foundations.
 
-## Deferred decisions
+Commit: `feat(sailing): add chart navigation and ship handling`
 
-These decisions do not block Phase 0, but must be resolved before the phase that needs them:
+### Phase 4: replace prototype input and HUD
 
-- Exact Unity 6.3 LTS patch and required WebGL/macOS modules. Resolved for Phase 3 as `6000.3.23f1` on Apple Silicon with WebGL and macOS IL2CPP support.
-- Exact SpacetimeDB runtime and CLI version pairing. Resolved for Phase 3 as CLI/runtime `2.8.3` with the Unity SDK pinned to `v2.8.3`.
-- When local image channels should be replaced with tested digests for production.
-- Whether the SpacetimeDB CLI runs on the host or through a Docker wrapper.
-- Exact Unity package list and asset import pipeline. Phase 3 uses the URP blank template package set, a pinned SpacetimeDB Git package, and generated bindings under `Assets/Generated/SpacetimeDB`.
-- Final licensed art and audio sources.
-- Long-term account providers beyond anonymous local identity.
-- Production hosting provider and multi-server topology.
-- When PostgreSQL and Redis gain their first real consumers.
-- Commercial licensing review for every external dependency and asset.
+- Add Unity Input System Gameplay and Menu action maps.
+- Replace immediate-mode GUI with the combat HUD and pause/settings menu.
+- Add HP/XP bars, subsystem bars, hotbar, ammunition, cooldowns, coordinates,
+  and progress channels.
+- Disable gameplay actions while menus are open without pausing the world.
+
+Commit: `feat(client): add combat controls and HUD`
+
+### Phase 5: implement manual broadside combat
+
+- Add target selection, weak-point choice, firing arcs, side-specific reloads,
+  ammunition inventory, and guaranteed-hit traveling volleys.
+- Add all four ammunition types and authoritative impact resolution.
+- Add pooled broadside, projectile, splash, impact, recoil, and audio feedback.
+- Remove automatic engagement and automatic fire.
+
+Commit: `feat(combat): add manual broadside volleys`
+
+### Phase 6: add tactical damage and recovery
+
+- Add subsystem damage and all four status effects.
+- Add Full Sail, Brace, Emergency Pump, and Smoke Screen.
+- Add channelled repair and boarding.
+- Activate storms, currents, reefs, and shoals as gameplay hazards.
+
+Commit: `feat(combat): add tactical damage and recovery`
+
+### Phase 7: add roaming NPC combat, loot, death, and XP
+
+- Seed four patrols, four raiders, and four gunships.
+- Add deterministic roaming, aggro, broadside positioning, weak-point choice,
+  retreat, repair, and NPC respawning.
+- Add sail-over loot, exactly-once claims, XP, sinking, safe random respawn,
+  and temporary protection.
+- NPCs obey the same movement, arcs, ammunition, effects, and hazards as the
+  player.
+
+Commit: `feat(world): add roaming combat and progression`
+
+### Phase 8: lock group reward contracts
+
+- Add contribution accounting and shared reward calculations without playable
+  groups.
+- Cover disconnects, late joins, eligibility, boarding credit, duplicates, and
+  rounding.
+- Preserve interfaces for future party membership and multiplayer clients.
+
+Commit: `feat(combat): add shared reward contracts`
+
+### Phase 9: performance hardening and soak testing
+
+- Pool ships, volleys, impacts, health bars, statuses, and loot visuals.
+- Remove steady-state per-frame allocations.
+- Add interest-based subscriptions and chunk transitions.
+- Profile server reducers, Unity frame time, rendering, memory, garbage
+  collection, and Docker idle load.
+- Add automated 15-minute sailing, combat, and respawn soak scenarios.
+
+Performance gates:
+
+- Stable 60 FPS at 1920x1080 with 100 visible ships and combat effects on the
+  M1 Pro.
+- Frame-time p95 is at most 16.7 ms.
+- No sustained gameplay allocations after warm-up.
+- Server tick p95 is below 10 ms with 1,000 dormant and 100 active ships.
+- Identity count stays constant through health checks and admin refreshes.
+- Aggregate local container CPU averages below 25% after warm-up.
+- Runtime memory grows by less than 5% during the soak test.
+- Local firing feedback and authoritative acknowledgement arrive within 150
+  ms.
+
+Commit: `perf(runtime): enforce combat performance budgets`
+
+### Phase 10: complete verification and manual validation
+
+Automated gates run first:
+
+- Server unit, property, reducer integration, deterministic AI, and reward
+  tests.
+- Unity EditMode and PlayMode tests.
+- macOS runtime scenarios.
+- WebGL browser smoke scenarios.
+- Full-stack health and identity-leak checks.
+- Performance and soak suites.
+- WebGL and macOS production builds.
+- Canonical `pnpm verify` from a clean state.
+
+Only after every automated gate passes:
+
+- Launch the complete local stack.
+- Launch the macOS player in a safe window.
+- The user performs a 10-15 minute playtest covering sailing, broadside
+  positioning, ammunition, abilities, repairs, boarding, effects, hazards,
+  loot, death, respawn, and XP.
+- Record the go/no-go result.
+
+Commit: `docs(validation): record core combat playtest`
+
+## Test policy
+
+Tests exercise public rules, reducers, generated contracts, Unity inputs and
+presentation, local health endpoints, and built-player behavior. They do not
+assert private implementation details.
+
+Required scenarios include:
+
+- Coordinate boundaries, invalid labels, and cell-center conversion.
+- Safe spawn positions outside islands, storms, ships, and hazards.
+- Course changes, stops, collision, acceleration, turning, and camera
+  independence.
+- Arc boundaries, wrong-side fire, reloads, empty ammunition, disabled
+  cannons, and dead targets.
+- Guaranteed impacts and a target sinking before impact.
+- Every ammunition and weak-point combination.
+- Effect stacking, expiry, immunity, repair, and ability interactions.
+- Interrupted repairs and boarding, range loss, consumption, success, and
+  failure.
+- Loot contention and exactly-once rewards.
+- Death during channels or volleys, safe respawn, and invulnerability expiry.
+- Deterministic NPC behavior under fixed seeds.
+- Menu input blocking while the authoritative world advances.
+- Contribution eligibility, reward splits, duplicates, and rounding.
+- No player creation from SQL, admin, health, or non-game connections.
+
+Before each phase commit:
+
+1. Demonstrate the phase's red regression gate.
+2. Implement vertically until the gate is green.
+3. Run phase-specific and repository-wide checks.
+4. Review the diff for unrelated changes, generated drift, secrets, and debug
+   instrumentation.
+5. Commit only the completed phase with a conventional commit message.
 
 ## Reference research
 
-- [Seafight](https://www.seafight.com/?aid=632)
-- [Seafight DevBlog](https://us1.seafight.com/devBlog/)
-- [Unity 6 releases](https://unity.com/releases/unity-6)
-- [SpacetimeDB Unity tutorial](https://spacetimedb.com/docs/tutorials/unity/)
-- [SpacetimeDB self-hosting and Docker](https://spacetimedb.com/docs/intro/faq/)
-- [TanStack Start](https://tanstack.com/start/latest)
-- [TanStack Router](https://tanstack.com/router/latest)
+- [Seafight controls](https://board-en.seafight.com/threads/options-overview.1858/)
+- [Seafight sea chart and HP/EP](https://board-en.seafight.com/threads/sea-chart-overview.172255/)
+- [Seafight boarding](https://board-en.seafight.com/threads/boarding.1044/)
+- [Seafight ammunition](https://board-en.seafight.com/threads/ammunition.9856/)
+- [Seafight sail-over loot](https://board-en.seafight.com/threads/glitters.1969/)
+- [Unity Input System](https://docs.unity3d.com/Packages/com.unity.inputsystem@latest)
+- [SpacetimeDB documentation](https://spacetimedb.com/docs/)
