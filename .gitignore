@@ -6,6 +6,10 @@ dist/
 .vite/
 *.tsbuildinfo
 
+# .NET generated output
+**/bin/
+**/obj/
+
 # Local environment and logs
 .env
 .env.*

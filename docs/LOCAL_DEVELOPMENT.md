@@ -1,6 +1,6 @@
 # Local development
 
-Phase 1 keeps the entire backend environment local.
+The entire backend environment is local. Docker Compose runs the services, while the SpacetimeDB CLI and .NET test SDK are invoked from current Docker images through repository scripts. The module targets .NET 8 for macOS-compatible WASI tooling.
 
 ## Start
 
@@ -32,5 +32,17 @@ pnpm admin:dev
 - PostgreSQL and Redis are reserved for future consumers.
 - MinIO provides local S3-compatible object storage.
 - The Unity Editor and Unity builds run outside Docker.
+
+## SpacetimeDB module
+
+```sh
+pnpm server:build
+pnpm server:test
+pnpm server:publish
+pnpm server:generate:csharp
+pnpm server:generate:typescript
+```
+
+Use `pnpm server:reset` when you intentionally want to clear and republish the local module data. It removes only the SpacetimeDB container and named volume; PostgreSQL, Redis, MinIO, and admin state are preserved.
 
 Local Compose services follow current image channels. This keeps validation close to the latest supported releases; before production work begins, we will replace these channels with tested image digests.

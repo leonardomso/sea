@@ -11,7 +11,13 @@
     "infra:logs": "docker compose -f infra/docker-compose.yml logs -f",
     "infra:reset": "docker compose -f infra/docker-compose.yml down -v",
     "infra:up": "docker compose -f infra/docker-compose.yml up -d --build",
-    "check": "pnpm infra:config && pnpm admin:check",
-    "verify": "pnpm check"
+    "server:build": "./scripts/spacetime.sh build --module-path server/spacetimedb/spacetimedb",
+    "server:generate:csharp": "./scripts/spacetime.sh generate --lang csharp --module-path server/spacetimedb/spacetimedb --out-dir apps/game-unity/Assets/Generated/SpacetimeDB",
+    "server:generate:typescript": "./scripts/spacetime.sh generate --lang typescript --module-path server/spacetimedb/spacetimedb --out-dir packages/contracts/src/generated",
+    "server:publish": "./scripts/spacetime.sh publish sea-local --server http://host.docker.internal:3000 --anonymous --yes --module-path server/spacetimedb/spacetimedb",
+    "server:reset": "./scripts/reset-spacetime.sh",
+    "server:test": "./scripts/dotnet.sh test server/spacetimedb/tests/Sea.Server.Tests.csproj",
+    "check": "pnpm infra:config && pnpm admin:check && pnpm --filter @sea/contracts check",
+    "verify": "pnpm check && pnpm server:build && pnpm server:test"
   }
 }

@@ -1,0 +1,318 @@
+using SpacetimeDB;
+using Sea.Server;
+
+public static partial class Module
+{
+    [SpacetimeDB.Table(Accessor = "WorldState", Public = true)]
+    public partial struct WorldState
+    {
+        [PrimaryKey]
+        public uint Id;
+        public ulong Tick;
+        public uint TickRateHz;
+    }
+
+    [SpacetimeDB.Table(Accessor = "SimulationTimer", Scheduled = "RunSimulationTick", ScheduledAt = "ScheduledAt")]
+    public partial struct SimulationTimer
+    {
+        [PrimaryKey]
+        [AutoInc]
+        public ulong ScheduledId;
+        public ScheduleAt ScheduledAt;
+    }
+
+    [SpacetimeDB.Table(Accessor = "PlayerIdentity", Public = true)]
+    public partial struct PlayerIdentity
+    {
+        [PrimaryKey]
+        public Identity Owner;
+        public bool IsConnected;
+    }
+
+    [SpacetimeDB.Table(Accessor = "PlayerShip", Public = true)]
+    public partial struct PlayerShip
+    {
+        [PrimaryKey]
+        public Identity Owner;
+        public float PositionX;
+        public float PositionY;
+        public uint Health;
+        public ulong SelectedTargetId;
+        public bool HasSelectedTarget;
+        public bool IsEngaged;
+    }
+
+    [SpacetimeDB.Table(Accessor = "MapEntity", Public = true)]
+    public partial struct MapEntity
+    {
+        [PrimaryKey]
+        public ulong EntityId;
+        public string Kind;
+        public float PositionX;
+        public float PositionY;
+        public float InteractionRadius;
+        public bool IsTargetable;
+        public bool IsActive;
+    }
+
+    [SpacetimeDB.Table(Accessor = "ResourceBalance", Public = true)]
+    public partial struct ResourceBalance
+    {
+        [PrimaryKey]
+        public Identity Owner;
+        public uint Gold;
+    }
+
+    [SpacetimeDB.Table(Accessor = "GameEvent", Public = true)]
+    public partial struct GameEvent
+    {
+        [PrimaryKey]
+        [AutoInc]
+        public ulong EventId;
+        public Identity Owner;
+        public string EventType;
+        public string Details;
+        public ulong Tick;
+    }
+
+    [Reducer(ReducerKind.Init)]
+    public static void Init(ReducerContext ctx)
+    {
+        if (!HasWorldState(ctx))
+        {
+            ctx.Db.WorldState.Insert(new WorldState
+            {
+                Id = 1,
+                Tick = 0,
+                TickRateHz = WorldRules.TickRateHz,
+            });
+
+            SeedMap(ctx);
+            ctx.Db.SimulationTimer.Insert(new SimulationTimer
+            {
+                ScheduledAt = new ScheduleAt.Interval(TimeSpan.FromMilliseconds(1000d / WorldRules.TickRateHz)),
+            });
+        }
+    }
+
+    [Reducer(ReducerKind.ClientConnected)]
+    public static void ClientConnected(ReducerContext ctx) => EnsurePlayer(ctx, ctx.Sender, true);
+
+    [Reducer(ReducerKind.ClientDisconnected)]
+    public static void ClientDisconnected(ReducerContext ctx)
+    {
+        foreach (var player in ctx.Db.PlayerIdentity.Iter())
+        {
+            if (player.Owner == ctx.Sender)
+            {
+                var disconnected = player;
+                disconnected.IsConnected = false;
+                ctx.Db.PlayerIdentity.Owner.Update(disconnected);
+                return;
+            }
+        }
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void LoadPlayer(ReducerContext ctx)
+    {
+        EnsurePlayer(ctx, ctx.Sender, true);
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void MoveTo(ReducerContext ctx, float x, float y)
+    {
+        if (!WorldRules.IsValidMove(x, y))
+        {
+            throw new Exception("The requested position is outside the map.");
+        }
+
+        var ship = FindShip(ctx, ctx.Sender);
+        ship.PositionX = x;
+        ship.PositionY = y;
+        ctx.Db.PlayerShip.Owner.Update(ship);
+        AppendEvent(ctx, ctx.Sender, "move_to", $"x={x:0.###},y={y:0.###}");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void SelectTarget(ReducerContext ctx, ulong entityId)
+    {
+        var entity = FindEntity(ctx, entityId);
+        if (!entity.IsActive || !entity.IsTargetable)
+        {
+            throw new Exception("The selected entity cannot be targeted.");
+        }
+
+        var ship = FindShip(ctx, ctx.Sender);
+        ship.SelectedTargetId = entityId;
+        ship.HasSelectedTarget = true;
+        ship.IsEngaged = false;
+        ctx.Db.PlayerShip.Owner.Update(ship);
+        AppendEvent(ctx, ctx.Sender, "select_target", $"entity_id={entityId}");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void Engage(ReducerContext ctx)
+    {
+        var ship = FindShip(ctx, ctx.Sender);
+        if (!ship.HasSelectedTarget)
+        {
+            throw new Exception("Select a target before engaging.");
+        }
+
+        var entity = FindEntity(ctx, ship.SelectedTargetId);
+        if (!entity.IsActive || !entity.IsTargetable)
+        {
+            throw new Exception("The selected entity cannot be engaged.");
+        }
+
+        ship.IsEngaged = true;
+        ctx.Db.PlayerShip.Owner.Update(ship);
+        AppendEvent(ctx, ctx.Sender, "engage", $"entity_id={entity.EntityId}");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void RunSimulationTick(ReducerContext ctx, SimulationTimer timer)
+    {
+        foreach (var world in ctx.Db.WorldState.Iter())
+        {
+            var next = world;
+            next.Tick++;
+            ctx.Db.WorldState.Id.Update(next);
+            return;
+        }
+    }
+
+    private static bool HasWorldState(ReducerContext ctx)
+    {
+        foreach (var _ in ctx.Db.WorldState.Iter())
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static void EnsurePlayer(ReducerContext ctx, Identity owner, bool connected)
+    {
+        foreach (var player in ctx.Db.PlayerIdentity.Iter())
+        {
+            if (player.Owner == owner)
+            {
+                var existing = player;
+                existing.IsConnected = connected;
+                ctx.Db.PlayerIdentity.Owner.Update(existing);
+                return;
+            }
+        }
+
+        ctx.Db.PlayerIdentity.Insert(new PlayerIdentity
+        {
+            Owner = owner,
+            IsConnected = connected,
+        });
+        ctx.Db.PlayerShip.Insert(new PlayerShip
+        {
+            Owner = owner,
+            PositionX = 0,
+            PositionY = 0,
+            Health = WorldRules.InitialHealth,
+            SelectedTargetId = 0,
+            HasSelectedTarget = false,
+            IsEngaged = false,
+        });
+        ctx.Db.ResourceBalance.Insert(new ResourceBalance
+        {
+            Owner = owner,
+            Gold = WorldRules.InitialGold,
+        });
+    }
+
+    private static PlayerShip FindShip(ReducerContext ctx, Identity owner)
+    {
+        foreach (var ship in ctx.Db.PlayerShip.Iter())
+        {
+            if (ship.Owner == owner)
+            {
+                return ship;
+            }
+        }
+
+        throw new Exception("Player has not been loaded.");
+    }
+
+    private static MapEntity FindEntity(ReducerContext ctx, ulong entityId)
+    {
+        foreach (var entity in ctx.Db.MapEntity.Iter())
+        {
+            if (entity.EntityId == entityId)
+            {
+                return entity;
+            }
+        }
+
+        throw new Exception("The requested map entity does not exist.");
+    }
+
+    private static void SeedMap(ReducerContext ctx)
+    {
+        ctx.Db.MapEntity.Insert(new MapEntity
+        {
+            EntityId = 1,
+            Kind = "harbor",
+            PositionX = 0,
+            PositionY = 0,
+            InteractionRadius = 8,
+            IsTargetable = false,
+            IsActive = true,
+        });
+        ctx.Db.MapEntity.Insert(new MapEntity
+        {
+            EntityId = 2,
+            Kind = "island",
+            PositionX = 35,
+            PositionY = 20,
+            InteractionRadius = 12,
+            IsTargetable = false,
+            IsActive = true,
+        });
+        ctx.Db.MapEntity.Insert(new MapEntity
+        {
+            EntityId = 3,
+            Kind = "reef",
+            PositionX = -30,
+            PositionY = -25,
+            InteractionRadius = 10,
+            IsTargetable = false,
+            IsActive = true,
+        });
+        ctx.Db.MapEntity.Insert(new MapEntity
+        {
+            EntityId = 10,
+            Kind = "training_target",
+            PositionX = 45,
+            PositionY = -10,
+            InteractionRadius = 15,
+            IsTargetable = true,
+            IsActive = true,
+        });
+    }
+
+    private static void AppendEvent(ReducerContext ctx, Identity owner, string eventType, string details)
+    {
+        var tick = 0UL;
+        foreach (var world in ctx.Db.WorldState.Iter())
+        {
+            tick = world.Tick;
+            break;
+        }
+
+        ctx.Db.GameEvent.Insert(new GameEvent
+        {
+            Owner = owner,
+            EventType = eventType,
+            Details = details,
+            Tick = tick,
+        });
+    }
+}

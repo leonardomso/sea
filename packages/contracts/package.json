@@ -2,5 +2,14 @@
   "name": "@sea/contracts",
   "private": true,
   "version": "0.0.0",
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "spacetimedb": "2.8.3"
+  },
+  "devDependencies": {
+    "typescript": "latest"
+  }
 }
