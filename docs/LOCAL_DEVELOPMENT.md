@@ -33,6 +33,19 @@ pnpm admin:dev
 - MinIO provides local S3-compatible object storage.
 - The Unity Editor and Unity builds run outside Docker.
 
+## Unity client
+
+The Unity project uses the exact editor patch recorded in `apps/game-unity/ProjectSettings/ProjectVersion.txt`. The client package manifest pins the SpacetimeDB Unity SDK to the same `v2.8.3` release used by the generated bindings.
+
+```sh
+pnpm unity:scene
+pnpm unity:test
+pnpm unity:build:webgl
+pnpm unity:build:macos
+```
+
+`pnpm unity:scene` regenerates the main scene and build settings through an editor method. WebGL output is written to `apps/game-unity/Build/WebGL`; the macOS player is written to `apps/game-unity/Build/Sea.app`. Build outputs and Unity's regenerable folders are ignored by Git.
+
 ## SpacetimeDB module
 
 ```sh

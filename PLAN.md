@@ -357,11 +357,11 @@ The final manual test is intentionally not used as an intermediate implementatio
 
 These decisions do not block Phase 0, but must be resolved before the phase that needs them:
 
-- Exact Unity 6.3 LTS patch and required WebGL/macOS modules.
-- Exact SpacetimeDB runtime and CLI version pairing.
+- Exact Unity 6.3 LTS patch and required WebGL/macOS modules. Resolved for Phase 3 as `6000.3.23f1` on Apple Silicon with WebGL and macOS IL2CPP support.
+- Exact SpacetimeDB runtime and CLI version pairing. Resolved for Phase 3 as CLI/runtime `2.8.3` with the Unity SDK pinned to `v2.8.3`.
 - When local image channels should be replaced with tested digests for production.
 - Whether the SpacetimeDB CLI runs on the host or through a Docker wrapper.
-- Exact Unity package list and asset import pipeline.
+- Exact Unity package list and asset import pipeline. Phase 3 uses the URP blank template package set, a pinned SpacetimeDB Git package, and generated bindings under `Assets/Generated/SpacetimeDB`.
 - Final licensed art and audio sources.
 - Long-term account providers beyond anonymous local identity.
 - Production hosting provider and multi-server topology.
