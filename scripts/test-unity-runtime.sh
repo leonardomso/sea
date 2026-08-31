@@ -36,13 +36,14 @@ fi
 
 defaults write "$preference_domain" "$token_key" -string "invalid-local-runtime-test-token"
 
-"$game_binary" -batchmode -nographics -logFile "$runtime_log" >/dev/null 2>&1 &
+"$game_binary" -batchmode -nographics -seaRuntimeMoveTest -logFile "$runtime_log" >/dev/null 2>&1 &
 game_pid=$!
 
-ready=false
-for _ in {1..30}; do
-  if rg -q "Sea client ready\." "$runtime_log" 2>/dev/null; then
-    ready=true
+validated=false
+for _ in {1..45}; do
+  if rg -q "Sea client ready\." "$runtime_log" 2>/dev/null \
+    && rg -q "Sea runtime observed progressive sailing\." "$runtime_log" 2>/dev/null; then
+    validated=true
     break
   fi
 
@@ -53,17 +54,18 @@ for _ in {1..30}; do
   sleep 1
 done
 
-if [ "$ready" != true ]; then
-  echo "Unity runtime did not become ready." >&2
+if [ "$validated" != true ]; then
+  echo "Unity runtime did not become ready and demonstrate progressive sailing." >&2
   tail -n 120 "$runtime_log" >&2 || true
   exit 1
 fi
 
 rg -q "Cached identity rejected; retrying anonymously\." "$runtime_log"
 rg -q "Sea client ready\." "$runtime_log"
+rg -q "Sea runtime observed progressive sailing\." "$runtime_log"
 if rg -q "No runtime-compatible shader|ArgumentNullException: Value cannot be null.*shader|Unhandled Exception|Fatal error" "$runtime_log"; then
   echo "Unity runtime reported a fatal or shader error." >&2
   tail -n 120 "$runtime_log" >&2
   exit 1
 fi
-echo "Unity runtime recovered a stale identity and reached Ready."
+echo "Unity runtime recovered a stale identity, reached Ready, and demonstrated progressive sailing."

@@ -36,6 +36,9 @@ public static partial class Module
         public Identity Owner;
         public float PositionX;
         public float PositionY;
+        public float DestinationX;
+        public float DestinationY;
+        public bool IsMoving;
         public uint Health;
         public ulong SelectedTargetId;
         public bool HasSelectedTarget;
@@ -165,8 +168,9 @@ public static partial class Module
         }
 
         var ship = FindShip(ctx, ctx.Sender);
-        ship.PositionX = x;
-        ship.PositionY = y;
+        ship.DestinationX = x;
+        ship.DestinationY = y;
+        ship.IsMoving = ship.PositionX != x || ship.PositionY != y;
         ctx.Db.PlayerShip.Owner.Update(ship);
         AppendEvent(ctx, ctx.Sender, "move_to", $"x={x:0.###},y={y:0.###}");
     }
@@ -249,6 +253,7 @@ public static partial class Module
             var next = world;
             next.Tick++;
             ctx.Db.WorldState.Id.Update(next);
+            AdvancePlayerShips(ctx);
             ResolveCombat(ctx, next.Tick);
             return;
         }
@@ -288,6 +293,9 @@ public static partial class Module
             Owner = owner,
             PositionX = 0,
             PositionY = 0,
+            DestinationX = 0,
+            DestinationY = 0,
+            IsMoving = false,
             Health = WorldRules.InitialHealth,
             SelectedTargetId = 0,
             HasSelectedTarget = false,
@@ -466,6 +474,30 @@ public static partial class Module
             {
                 ctx.Db.PlayerShip.Owner.Update(updatedShip);
             }
+        }
+    }
+
+    private static void AdvancePlayerShips(ReducerContext ctx)
+    {
+        var distancePerTick = WorldRules.PlayerShipSpeed / WorldRules.TickRateHz;
+        foreach (var ship in ctx.Db.PlayerShip.Iter())
+        {
+            if (!ship.IsMoving)
+            {
+                continue;
+            }
+
+            var step = WorldRules.AdvanceTowards(
+                ship.PositionX,
+                ship.PositionY,
+                ship.DestinationX,
+                ship.DestinationY,
+                distancePerTick);
+            var moved = ship;
+            moved.PositionX = step.X;
+            moved.PositionY = step.Y;
+            moved.IsMoving = !step.Arrived;
+            ctx.Db.PlayerShip.Owner.Update(moved);
         }
     }
 

@@ -167,8 +167,9 @@ namespace Sea.Client
             if (TryGetLocalShip(out var ship))
             {
                 var gold = GetLocalGold();
+                var state = ship.IsMoving ? "SAILING" : ship.IsEngaged ? "ENGAGED" : "READY";
                 GUI.Label(new Rect(margin + 16, Screen.height - 56, width - 32, 22),
-                    $"Hull {ship.Health}    Cannon {ship.CannonDamage}    Gold {gold}    {(ship.IsEngaged ? "ENGAGED" : "READY")}");
+                    $"Hull {ship.Health}    Cannon {ship.CannonDamage}    Gold {gold}    {state}");
             }
         }
 

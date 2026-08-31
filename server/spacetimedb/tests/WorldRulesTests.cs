@@ -39,6 +39,27 @@ public sealed class WorldRulesTests
         Assert.Equal(100u, WorldRules.EnemyGoldReward);
         Assert.Equal(1u, WorldRules.InitialProgressionLevel);
         Assert.Equal(0u, WorldRules.InitialCannonUpgradeLevel);
+        Assert.Equal(12f, WorldRules.PlayerShipSpeed);
+    }
+
+    [Fact]
+    public void AdvanceTowards_moves_over_time_without_teleporting()
+    {
+        var step = WorldRules.AdvanceTowards(0f, 0f, 3f, 4f, 2f);
+
+        Assert.Equal(1.2f, step.X, 3);
+        Assert.Equal(1.6f, step.Y, 3);
+        Assert.False(step.Arrived);
+    }
+
+    [Fact]
+    public void AdvanceTowards_stops_exactly_at_the_destination()
+    {
+        var step = WorldRules.AdvanceTowards(0f, 0f, 3f, 4f, 5f);
+
+        Assert.Equal(3f, step.X);
+        Assert.Equal(4f, step.Y);
+        Assert.True(step.Arrived);
     }
 
     [Theory]

@@ -42,6 +42,9 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<PlayerShip, SpacetimeDB.Identity> Owner { get; }
         public global::SpacetimeDB.Col<PlayerShip, float> PositionX { get; }
         public global::SpacetimeDB.Col<PlayerShip, float> PositionY { get; }
+        public global::SpacetimeDB.Col<PlayerShip, float> DestinationX { get; }
+        public global::SpacetimeDB.Col<PlayerShip, float> DestinationY { get; }
+        public global::SpacetimeDB.Col<PlayerShip, bool> IsMoving { get; }
         public global::SpacetimeDB.Col<PlayerShip, uint> Health { get; }
         public global::SpacetimeDB.Col<PlayerShip, ulong> SelectedTargetId { get; }
         public global::SpacetimeDB.Col<PlayerShip, bool> HasSelectedTarget { get; }
@@ -55,6 +58,9 @@ namespace SpacetimeDB.Types
             Owner = new global::SpacetimeDB.Col<PlayerShip, SpacetimeDB.Identity>(tableName, "owner");
             PositionX = new global::SpacetimeDB.Col<PlayerShip, float>(tableName, "position_x");
             PositionY = new global::SpacetimeDB.Col<PlayerShip, float>(tableName, "position_y");
+            DestinationX = new global::SpacetimeDB.Col<PlayerShip, float>(tableName, "destination_x");
+            DestinationY = new global::SpacetimeDB.Col<PlayerShip, float>(tableName, "destination_y");
+            IsMoving = new global::SpacetimeDB.Col<PlayerShip, bool>(tableName, "is_moving");
             Health = new global::SpacetimeDB.Col<PlayerShip, uint>(tableName, "health");
             SelectedTargetId = new global::SpacetimeDB.Col<PlayerShip, ulong>(tableName, "selected_target_id");
             HasSelectedTarget = new global::SpacetimeDB.Col<PlayerShip, bool>(tableName, "has_selected_target");

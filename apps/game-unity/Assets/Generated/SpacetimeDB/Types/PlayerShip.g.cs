@@ -19,6 +19,12 @@ namespace SpacetimeDB.Types
         public float PositionX;
         [DataMember(Name = "position_y")]
         public float PositionY;
+        [DataMember(Name = "destination_x")]
+        public float DestinationX;
+        [DataMember(Name = "destination_y")]
+        public float DestinationY;
+        [DataMember(Name = "is_moving")]
+        public bool IsMoving;
         [DataMember(Name = "health")]
         public uint Health;
         [DataMember(Name = "selected_target_id")]
@@ -38,6 +44,9 @@ namespace SpacetimeDB.Types
             SpacetimeDB.Identity Owner,
             float PositionX,
             float PositionY,
+            float DestinationX,
+            float DestinationY,
+            bool IsMoving,
             uint Health,
             ulong SelectedTargetId,
             bool HasSelectedTarget,
@@ -50,6 +59,9 @@ namespace SpacetimeDB.Types
             this.Owner = Owner;
             this.PositionX = PositionX;
             this.PositionY = PositionY;
+            this.DestinationX = DestinationX;
+            this.DestinationY = DestinationY;
+            this.IsMoving = IsMoving;
             this.Health = Health;
             this.SelectedTargetId = SelectedTargetId;
             this.HasSelectedTarget = HasSelectedTarget;

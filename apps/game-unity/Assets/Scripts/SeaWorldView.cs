@@ -7,7 +7,12 @@ namespace Sea.Client
     public sealed class SeaWorldView : MonoBehaviour
     {
         [SerializeField] private SeaConnectionController connection;
-        [SerializeField] private float interpolationSpeed = 10f;
+        [SerializeField] private GameObject shipModel;
+        [SerializeField] private float presentationMovementSpeed = 18f;
+        [SerializeField] private float turnSpeedDegrees = 120f;
+        [SerializeField] private float modelYawOffset = -90f;
+
+        private const float ShipFootprint = 10f;
 
         private readonly Dictionary<ulong, GameObject> entities = new();
         private readonly Dictionary<ulong, GameObject> mapGeometry = new();
@@ -17,9 +22,14 @@ namespace Sea.Client
         private Material waterMaterial;
         private Material islandMaterial;
         private Material reefMaterial;
-        private Material playerMaterial;
-        private Material enemyMaterial;
         private bool sceneCreated;
+
+        public GameObject ShipModel => shipModel;
+
+        public void ConfigureShipModel(GameObject model)
+        {
+            shipModel = model;
+        }
 
         private void Awake()
         {
@@ -44,7 +54,7 @@ namespace Sea.Client
             SyncMapEntities();
             SyncEnemyShips();
             SyncPlayerShip();
-            InterpolateObjects();
+            UpdateEntityTransforms();
         }
 
         private void CreateMaterials()
@@ -52,8 +62,6 @@ namespace Sea.Client
             waterMaterial = SeaMaterialFactory.Create(new Color(0.035f, 0.22f, 0.30f, 1f));
             islandMaterial = SeaMaterialFactory.Create(new Color(0.48f, 0.34f, 0.18f, 1f));
             reefMaterial = SeaMaterialFactory.Create(new Color(0.82f, 0.39f, 0.20f, 1f));
-            playerMaterial = SeaMaterialFactory.Create(new Color(0.24f, 0.87f, 0.78f, 1f));
-            enemyMaterial = SeaMaterialFactory.Create(new Color(0.94f, 0.31f, 0.28f, 1f));
         }
 
         private void CreateWater()
@@ -112,8 +120,9 @@ namespace Sea.Client
             {
                 if (!entities.TryGetValue(enemy.EntityId, out var enemyObject))
                 {
-                    enemyObject = CreateShip($"Enemy Ship {enemy.EntityId}", enemyMaterial);
+                    enemyObject = CreateShip($"Enemy Ship {enemy.EntityId}");
                     entities.Add(enemy.EntityId, enemyObject);
+                    enemyObject.transform.position = ToWorld(enemy.PositionX, enemy.PositionY, 1.2f);
                 }
 
                 enemyObject.SetActive(enemy.IsActive);
@@ -133,7 +142,8 @@ namespace Sea.Client
 
                 if (playerObject == null)
                 {
-                    playerObject = CreateShip("Player Ship", playerMaterial);
+                    playerObject = CreateShip("Player Ship");
+                    playerObject.transform.position = ToWorld(ship.PositionX, ship.PositionY, 1.2f);
                 }
 
                 targets[0] = ToWorld(ship.PositionX, ship.PositionY, 1.2f);
@@ -143,7 +153,7 @@ namespace Sea.Client
             }
         }
 
-        private void InterpolateObjects()
+        private void UpdateEntityTransforms()
         {
             foreach (var target in targets)
             {
@@ -151,7 +161,13 @@ namespace Sea.Client
                 {
                     if (playerObject != null)
                     {
-                        playerObject.transform.position = Vector3.Lerp(playerObject.transform.position, target.Value, Time.deltaTime * interpolationSpeed);
+                        SeaShipMotion.Step(
+                            playerObject.transform,
+                            target.Value,
+                            Time.deltaTime,
+                            presentationMovementSpeed,
+                            turnSpeedDegrees,
+                            modelYawOffset);
                     }
 
                     continue;
@@ -159,20 +175,25 @@ namespace Sea.Client
 
                 if (entities.TryGetValue(target.Key, out var entityObject))
                 {
-                    entityObject.transform.position = Vector3.Lerp(entityObject.transform.position, target.Value, Time.deltaTime * interpolationSpeed);
+                    SeaShipMotion.Step(
+                        entityObject.transform,
+                        target.Value,
+                        Time.deltaTime,
+                        presentationMovementSpeed,
+                        turnSpeedDegrees,
+                        modelYawOffset);
                 }
             }
         }
 
-        private GameObject CreateShip(string name, Material material)
+        private GameObject CreateShip(string name)
         {
-            var ship = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            ship.name = name;
-            ship.transform.localScale = new Vector3(2.2f, 0.7f, 4.2f);
-            ship.transform.rotation = Quaternion.Euler(0f, 0f, 90f);
-            ship.GetComponent<Renderer>().sharedMaterial = material;
-            Destroy(ship.GetComponent<Collider>());
-            return ship;
+            if (shipModel == null)
+            {
+                throw new System.InvalidOperationException("The starter ship model is not configured.");
+            }
+
+            return SeaShipVisualFactory.Create(shipModel, name, ShipFootprint);
         }
 
         private void UpdateTargetRing(PlayerShip ship)
@@ -205,14 +226,17 @@ namespace Sea.Client
             var bar = ship.transform.Find("Health");
             if (bar == null)
             {
+                var modelBounds = SeaShipVisualFactory.CalculateRendererBounds(ship);
+                var modelTop = ship.transform.InverseTransformPoint(
+                    new Vector3(modelBounds.center.x, modelBounds.max.y, modelBounds.center.z));
                 bar = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
                 bar.name = "Health";
                 bar.SetParent(ship.transform, false);
                 bar.GetComponent<Renderer>().sharedMaterial = SeaMaterialFactory.Create(new Color(0.28f, 0.95f, 0.45f, 1f));
                 Destroy(bar.GetComponent<Collider>());
+                bar.localPosition = new Vector3(0f, modelTop.y + 0.6f, 0f);
             }
 
-            bar.localPosition = new Vector3(0f, 1.1f, 0f);
             bar.localScale = new Vector3(4f * Mathf.Clamp01(maxHealth == 0 ? 0f : (float)health / maxHealth), 0.12f, 0.12f);
         }
 

@@ -20,6 +20,21 @@ public static class WorldRules
     public const uint CannonUpgradeBaseCost = 100;
     public const uint CannonUpgradeCostStep = 100;
     public const uint CannonDamagePerUpgrade = 5;
+    public const float PlayerShipSpeed = 12f;
+
+    public readonly struct SailingStep
+    {
+        public SailingStep(float x, float y, bool arrived)
+        {
+            X = x;
+            Y = y;
+            Arrived = arrived;
+        }
+
+        public float X { get; }
+        public float Y { get; }
+        public bool Arrived { get; }
+    }
 
     public static bool IsInsideMap(float x, float y) =>
         float.IsFinite(x) &&
@@ -30,6 +45,30 @@ public static class WorldRules
         y <= MapMax;
 
     public static bool IsValidMove(float x, float y) => IsInsideMap(x, y);
+
+    public static SailingStep AdvanceTowards(
+        float currentX,
+        float currentY,
+        float destinationX,
+        float destinationY,
+        float maximumDistance)
+    {
+        if (!float.IsFinite(maximumDistance) || maximumDistance <= 0f)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maximumDistance));
+        }
+
+        var deltaX = destinationX - currentX;
+        var deltaY = destinationY - currentY;
+        var distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
+        if (distance <= maximumDistance)
+        {
+            return new SailingStep(destinationX, destinationY, true);
+        }
+
+        var scale = maximumDistance / distance;
+        return new SailingStep(currentX + deltaX * scale, currentY + deltaY * scale, false);
+    }
 
     public static bool IsBlocked(string kind, float entityX, float entityY, float radius, float x, float y)
     {
