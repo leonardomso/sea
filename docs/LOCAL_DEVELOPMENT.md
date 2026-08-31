@@ -32,3 +32,5 @@ pnpm admin:dev
 - PostgreSQL and Redis are reserved for future consumers.
 - MinIO provides local S3-compatible object storage.
 - The Unity Editor and Unity builds run outside Docker.
+
+Local Compose services follow current image channels. This keeps validation close to the latest supported releases; before production work begins, we will replace these channels with tested image digests.

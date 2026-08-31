@@ -62,7 +62,7 @@ The game may share genre mechanics with Seafight, but it must use original brand
 
 ### Local infrastructure
 
-Docker Compose starts the complete local environment:
+Docker Compose starts the complete local environment using current image channels:
 
 - SpacetimeDB.
 - PostgreSQL, reserved for future reporting, analytics, or back-office data unless a concrete use is approved.
@@ -147,7 +147,7 @@ Deliverables:
 
 - Monorepo directories.
 - pnpm workspace for TypeScript applications and tools.
-- Docker Compose with pinned service images, health checks, named volumes, and local configuration.
+- Docker Compose with current service image channels, health checks, named volumes, and local configuration.
 - Local SpacetimeDB service.
 - PostgreSQL, Redis, and MinIO services.
 - TanStack Start admin shell.
@@ -359,6 +359,7 @@ These decisions do not block Phase 0, but must be resolved before the phase that
 
 - Exact Unity 6.3 LTS patch and required WebGL/macOS modules.
 - Exact SpacetimeDB runtime and CLI version pairing.
+- When local image channels should be replaced with tested digests for production.
 - Whether the SpacetimeDB CLI runs on the host or through a Docker wrapper.
 - Exact Unity package list and asset import pipeline.
 - Final licensed art and audio sources.

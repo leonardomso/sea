@@ -1,5 +1,14 @@
 # SpacetimeDB server module
 
-This directory will contain the C# SpacetimeDB module.
+This directory contains the C# SpacetimeDB module for the local validation build.
 
-Phase 1 only reserves the module boundary. The module, schema, seed data, generated bindings, reducers, and tests are introduced in Phase 2.
+The module owns player identity, ship state, map entities, resources, events, intent reducers, and the fixed-tick simulation skeleton. `seed/world.json` documents the deterministic starter map; the compiled module seed is intentionally deterministic because SpacetimeDB reducers cannot read files at runtime.
+
+The repository follows the current SpacetimeDB 2.x Docker image and matching 2.x C# runtime package. The CLI can be run from the same image while the host toolchain is being finalized:
+
+```sh
+docker run --rm --user 501:20 -e HOME=/tmp \
+  -v "$PWD:/workspace" -w /workspace \
+  clockworklabs/spacetime:latest \
+  build --module-path server/spacetimedb/spacetimedb
+```

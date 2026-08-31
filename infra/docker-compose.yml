@@ -2,7 +2,7 @@ name: sea
 
 services:
   spacetimedb:
-    image: clockworklabs/spacetime:${SPACETIME_VERSION:-v2.0.1}
+    image: clockworklabs/spacetime:${SPACETIME_VERSION:-latest}
     # The named volume is initialized by Docker as root. This local-only
     # service runs as root so SpacetimeDB can initialize its data directory.
     user: "0:0"
@@ -23,7 +23,7 @@ services:
       start_period: 10s
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-sea_local}
       POSTGRES_USER: ${POSTGRES_USER:-sea}
@@ -39,7 +39,7 @@ services:
       retries: 12
 
   redis:
-    image: redis:7.4-alpine
+    image: redis:latest
     command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "${REDIS_PORT:-6379}:6379"
@@ -52,7 +52,7 @@ services:
       retries: 12
 
   minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    image: minio/minio:latest
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-sea_local}

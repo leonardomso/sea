@@ -7,7 +7,7 @@ The project is currently in the local validation phase. The repository is a mono
 ## Local prerequisites
 
 - Docker Desktop with Docker Compose.
-- Node.js 22 or newer.
+- Current Node.js LTS or newer.
 - pnpm 11 or newer.
 - Unity 6.3 LTS with Web Build Support and macOS Build Support.
 - Git LFS for large binary assets.
