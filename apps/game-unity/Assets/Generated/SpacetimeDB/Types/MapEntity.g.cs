@@ -27,6 +27,8 @@ namespace SpacetimeDB.Types
         public bool IsTargetable;
         [DataMember(Name = "is_active")]
         public bool IsActive;
+        [DataMember(Name = "blocks_movement")]
+        public bool BlocksMovement;
 
         public MapEntity(
             ulong EntityId,
@@ -35,7 +37,8 @@ namespace SpacetimeDB.Types
             float PositionY,
             float InteractionRadius,
             bool IsTargetable,
-            bool IsActive
+            bool IsActive,
+            bool BlocksMovement
         )
         {
             this.EntityId = EntityId;
@@ -45,6 +48,7 @@ namespace SpacetimeDB.Types
             this.InteractionRadius = InteractionRadius;
             this.IsTargetable = IsTargetable;
             this.IsActive = IsActive;
+            this.BlocksMovement = BlocksMovement;
         }
 
         public MapEntity()

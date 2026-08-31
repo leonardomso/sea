@@ -33,4 +33,21 @@ public sealed class WorldRulesTests
         Assert.Equal(0u, WorldRules.InitialGold);
         Assert.Equal(20u, WorldRules.TickRateHz);
     }
+
+    [Theory]
+    [InlineData("island", 35f, 20f, 12f, 35f, 20f)]
+    [InlineData("reef", -30f, -25f, 10f, -39f, -25f)]
+    public void IsBlocked_rejects_points_inside_blocking_geometry(string kind, float entityX, float entityY, float radius, float x, float y)
+    {
+        Assert.True(WorldRules.IsBlocked(kind, entityX, entityY, radius, x, y));
+    }
+
+    [Theory]
+    [InlineData("harbor", 0f, 0f, 8f, 0f, 0f)]
+    [InlineData("training_target", 45f, -10f, 15f, 45f, -10f)]
+    [InlineData("island", 35f, 20f, 12f, 48f, 20f)]
+    public void IsBlocked_allows_non_blocking_or_distant_points(string kind, float entityX, float entityY, float radius, float x, float y)
+    {
+        Assert.False(WorldRules.IsBlocked(kind, entityX, entityY, radius, x, y));
+    }
 }

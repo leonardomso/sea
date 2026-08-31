@@ -46,6 +46,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<MapEntity, float> InteractionRadius { get; }
         public global::SpacetimeDB.Col<MapEntity, bool> IsTargetable { get; }
         public global::SpacetimeDB.Col<MapEntity, bool> IsActive { get; }
+        public global::SpacetimeDB.Col<MapEntity, bool> BlocksMovement { get; }
 
         public MapEntityCols(string tableName)
         {
@@ -56,6 +57,7 @@ namespace SpacetimeDB.Types
             InteractionRadius = new global::SpacetimeDB.Col<MapEntity, float>(tableName, "interaction_radius");
             IsTargetable = new global::SpacetimeDB.Col<MapEntity, bool>(tableName, "is_targetable");
             IsActive = new global::SpacetimeDB.Col<MapEntity, bool>(tableName, "is_active");
+            BlocksMovement = new global::SpacetimeDB.Col<MapEntity, bool>(tableName, "blocks_movement");
         }
     }
 

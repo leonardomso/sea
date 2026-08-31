@@ -27,6 +27,7 @@ export const MapEntity = __t.object("MapEntity", {
   interactionRadius: __t.f32(),
   isTargetable: __t.bool(),
   isActive: __t.bool(),
+  blocksMovement: __t.bool(),
 });
 export type MapEntity = __Infer<typeof MapEntity>;
 

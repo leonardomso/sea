@@ -18,4 +18,5 @@ export default __t.row({
   interactionRadius: __t.f32().name("interaction_radius"),
   isTargetable: __t.bool().name("is_targetable"),
   isActive: __t.bool().name("is_active"),
+  blocksMovement: __t.bool().name("blocks_movement"),
 });

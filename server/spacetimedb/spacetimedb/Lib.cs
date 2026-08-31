@@ -53,6 +53,7 @@ public static partial class Module
         public float InteractionRadius;
         public bool IsTargetable;
         public bool IsActive;
+        public bool BlocksMovement;
     }
 
     [SpacetimeDB.Table(Accessor = "ResourceBalance", Public = true)]
@@ -125,6 +126,14 @@ public static partial class Module
         if (!WorldRules.IsValidMove(x, y))
         {
             throw new Exception("The requested position is outside the map.");
+        }
+
+        foreach (var entity in ctx.Db.MapEntity.Iter())
+        {
+            if (entity.IsActive && entity.BlocksMovement && WorldRules.IsBlocked(entity.Kind, entity.PositionX, entity.PositionY, entity.InteractionRadius, x, y))
+            {
+                throw new Exception("The requested position is blocked by map geometry.");
+            }
         }
 
         var ship = FindShip(ctx, ctx.Sender);
@@ -265,6 +274,7 @@ public static partial class Module
             InteractionRadius = 8,
             IsTargetable = false,
             IsActive = true,
+            BlocksMovement = false,
         });
         ctx.Db.MapEntity.Insert(new MapEntity
         {
@@ -275,6 +285,7 @@ public static partial class Module
             InteractionRadius = 12,
             IsTargetable = false,
             IsActive = true,
+            BlocksMovement = true,
         });
         ctx.Db.MapEntity.Insert(new MapEntity
         {
@@ -285,6 +296,7 @@ public static partial class Module
             InteractionRadius = 10,
             IsTargetable = false,
             IsActive = true,
+            BlocksMovement = true,
         });
         ctx.Db.MapEntity.Insert(new MapEntity
         {
@@ -295,6 +307,7 @@ public static partial class Module
             InteractionRadius = 15,
             IsTargetable = true,
             IsActive = true,
+            BlocksMovement = false,
         });
     }
 
