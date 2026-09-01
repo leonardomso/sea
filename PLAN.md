@@ -1,370 +1,653 @@
-# Sea core combat and performance roadmap
+# Sea scalability and PvE completion plan
 
 ## Product goal
 
-Build a fast, local-only PvE combat vertical slice using Seafight's navigation
-and interaction language while keeping the code, balance, visual identity,
-artwork, names, audio, and interface original.
+Build a fast, local-only PvE combat vertical slice with shared multiplayer,
+original presentation, and enough measured capacity to support the next MMO
+features without rewriting the core game.
 
-The validation build must prove that sailing and combat feel responsive before
-larger MMO systems are introduced. It uses one map, one player ship, twelve
-roaming NPC ships, manual broadside combat, tactical recovery, environmental
-hazards, loot, death and respawning, and XP progression.
+The finished build has one SpacetimeDB world, four real local clients, twelve
+roaming NPCs, manual broadside combat, tactical recovery, hazards, loot, death,
+respawning, XP, and shared rewards. It must also prove 5,000 connected players
+and 1,000 active ships distributed across one map.
 
-Development remains AI-driven and local-only. Every phase ends with automated
-verification, diff review, and one conventional commit. The user's manual
-playtest is the final gate after every automated check passes.
+Development stays local. Every phase ends with automated verification, diff
+review, and one conventional commit. The user's manual playtest remains the
+last gate.
+
+## Completed foundation
+
+Phases 0 through 6 are complete at base commit `a5e1670`.
+
+| Phase | Result | Commit |
+| --- | --- | --- |
+| 0 | Core combat roadmap | `e2fd19b` |
+| 1 | Local resource runaway fixes | `697f18a` |
+| 2 | Unified world and combat state | `704ba22` |
+| 3 | Chart navigation and ship handling | `3d92909` |
+| 3 follow-up | Apricum sailing and chart polish | `0097b3b` |
+| 4 | Combat controls and HUD | `a156db5` |
+| 5 | Manual broadside volleys | `c6dcbe1` |
+| 6 | Tactical damage and recovery | `a5e1670` |
 
 ## Locked decisions
 
-### Stack and delivery
+### Scope
 
-- Unity `6000.3.23f1` is the macOS and WebGL client.
-- SpacetimeDB `2.8.3` is the authoritative backend and persistent game store.
+- Unity `6000.3.23f1` remains the macOS and WebGL client.
+- SpacetimeDB remains the authoritative backend and game store.
 - TanStack Start and TanStack Router provide the local read-only admin panel.
 - Docker Compose runs SpacetimeDB, PostgreSQL 18, Redis, MinIO, and admin.
 - PostgreSQL, Redis, and MinIO stay outside the authoritative combat path.
 - There is no cloud deployment in this roadmap.
 - Anonymous local identity remains acceptable.
 - Schema replacement may reset local SpacetimeDB data.
-- PvP, bosses, playable parties, group UI, quests, economy expansion, and
-  additional maps are deferred.
+- PvP, parties, party UI, chat, accounts, bosses, quests, guilds, additional
+  maps, and economy expansion remain deferred.
+- Four real local clients share PvE. Synthetic clients prove larger capacity.
+- Players can inspect other player ships but cannot attack or board them.
+- Ships do not collide or block one another. Islands and reefs still block
+  movement.
+- Apricum and other user-provided models are the only imported game art.
+- Original procedural materials and effects may fill missing presentation
+  roles.
 
-### Navigation and chart controls
+### Capacity and presentation
 
-| Input | Behavior |
-| --- | --- |
-| Left-click water | Set or replace the ship's course |
-| Right-click water | Stop the course and decelerate |
-| Left-click NPC | Select that target |
-| WASD | Pan the chart without steering the ship |
-| Mouse wheel | Zoom the chart |
-| Space | Recenter the chart on the player ship |
-| N | Open coordinate navigation |
-| Tab / Shift+Tab | Cycle targets forward or backward |
-| T | Clear the selected target |
-| Escape | Open the menu and disable gameplay input; the world continues |
+- The final local load test connects 5,000 loaded players.
+- It keeps 4,000 ships dormant and distributes 1,000 active ships across the
+  map.
+- The macOS client holds 60 FPS at 1920x1080 with 250 visible ships.
+- The WebGL client holds 60 FPS at 1920x1080 with 100 visible ships.
+- Long load, mutation, and 15-minute soak tests run in Phase 18 and final
+  verification. Earlier phases run normal verification and short performance
+  smoke tests.
 
-The map uses Y-axis bands `AA` through `CZ`, beginning with `AA` at the top,
-and X-axis numbers `0` through `60`, increasing left-to-right. Fixed coordinate
-rails frame the playable chart. Coordinate navigation accepts values such as
-`AX 59` and sails to the selected cell center.
+### Existing gameplay
 
-Minimap clicks move only the chart camera. Space returns to ship-follow mode,
-and player-centered fog of war hides world information beyond the local vision
-radius while leaving fixed interface and minimap instruments visible.
+- Left-click water sets or replaces the ship's course.
+- Right-click water stops the course and decelerates.
+- Left-click NPC selects that target.
+- WASD pans the chart without steering the ship.
+- Mouse wheel zooms the chart. Space recenters on the player.
+- Minimap clicks move only the chart camera.
+- The map uses Y-axis bands `AA` through `CZ` and X-axis numbers `0` through
+  `60`.
+- Ship motion is authoritative at 10 Hz and presented at 60 FPS.
+- Q and E fire manual port and starboard broadsides.
+- Ammunition, weak points, abilities, repair, boarding, statuses, hazards,
+  fog, coordinates, and the combat HUD keep their current rules unless a phase
+  below changes them explicitly.
 
-Ship motion is server-authoritative at 10 Hz and presented at 60 FPS. Ships
-have heading, speed, acceleration, deceleration, turn rate, stopping distance,
-collision-aware course following, wind response, and current response.
-Player ships can reverse heading in 0.5 seconds to support arcade broadside and
-hit-and-run combat.
+## Public contracts and architecture
 
-### Combat controls
+### Command model
 
-| Input | Behavior |
-| --- | --- |
-| Q | Fire port broadside |
-| E | Fire starboard broadside |
-| 1 / 2 / 3 | Aim at Hull / Sails / Cannons |
-| 4 / 5 / 6 / 7 | Select Round / Chain / Grapeshot / Incendiary ammunition |
-| Z | Full Sail |
-| X | Brace |
-| C | Emergency Pump |
-| V | Smoke Screen |
-| R | Start or cancel repair |
-| B | Start or cancel boarding |
+Keep `LoadPlayer` and progression reducers separate. Replace individual
+gameplay reducers with:
 
-All controls use Unity's Input System and are rebindable.
+```csharp
+IssueShipCommand(CommandEnvelope envelope)
+```
 
-The player selects a target and weak point, then manually chooses the firing
-side. Port and starboard have independent 100-degree firing arcs and reload
-timers. A legal shot creates one server-authoritative aggregate volley. Damage
-resolves only when the volley reaches the target, and a legally fired volley
-cannot miss. It becomes harmless only if the target has already sunk.
+`CommandEnvelope` contains a monotonically increasing `CommandId` scoped to the
+player identity and one `ShipCommand` SpacetimeDB tagged union.
 
-The client presents each volley with pooled cannonballs, staggered muzzle
-flashes, smoke, recoil, water trails, impacts, and spatial audio.
+`ShipCommand` variants:
 
-### Ammunition and weak points
-
-- Round shot deals balanced hull damage and can cause flooding.
-- Chain shot deals heavy sail damage and can slow a ship.
-- Grapeshot deals short-range crew and boarding-protection damage.
-- Incendiary shot deals lower impact damage and applies burning.
-- Hull reaching zero sinks the ship.
-- Sail damage reduces acceleration, maximum speed, and turn rate; zero sail
-  health disables acceleration.
-- Cannon damage increases reload time and reduces volley damage; zero cannon
-  health disables firing until repaired.
-
-### Tactical systems
-
-- Full Sail increases speed and acceleration by 35% for five seconds.
-- Brace reduces incoming damage by 40% for four seconds.
-- Emergency Pump removes flooding and restores hull gradually.
-- Smoke Screen prevents new long-range locks for four seconds; existing
-  volleys still land.
-- Burning, flooding, slowed, and disabled-sails effects have server-owned
-  stacks, durations, expiry, and immunity windows.
-- Repair consumes one kit, disables firing and boarding, caps movement at 50%,
-  and restores hull and subsystems progressively for five seconds. Incoming
-  damage interrupts it.
-- Boarding requires the target below 25% hull, close range, and an
-  uninterrupted three-second channel. Resolution compares boarding power with
-  remaining crew protection.
-- Successful boarding grants bonus loot. Failure starts a cooldown and
-  temporarily reduces boarding power.
-
-### World and progression
-
-- Deterministic global wind modifies speed by heading.
-- Current zones add directional velocity.
-- Moving storms reduce turning and weapon effectiveness and periodically deal
-  damage.
-- Reefs block courses; shoals slow ships and can cause flooding.
-- NPC deaths create floating crates collected by sailing through their pickup
-  radius. Each crate can be claimed exactly once.
-- A sunk player respawns after five seconds at a random safe navigable
-  coordinate with 50% hull and five seconds of invulnerability.
-- The HUD shows player HP and XP, target hull/sails/cannons, statuses, reloads,
-  ammunition, abilities, coordinates, and repair or boarding progress.
-- XP comes from combat contribution, kills, boarding, and configured loot.
-- Four patrol ships are neutral until attacked.
-- Four raiders close distance and attack sails and crew.
-- Four gunships maintain broadside range and use incendiary ammunition.
-- NPC decisions run at 2 Hz while movement runs at 10 Hz.
-- Sunk NPCs respawn after 30 seconds at deterministic valid positions.
-
-## Architecture contracts
-
-- Use one indexed authoritative ship model for players and NPCs, supported by
-  focused tables for ownership, AI, inventories, effects, volleys, loot,
-  cooldowns, and contributions.
-- Index active, moving, engaged, chunk, owner, and target state. Scheduled
-  reducers process active rows only and never scan persisted offline players.
-- `ClientConnected` may update an existing player but must never create one.
-  Only `LoadPlayer` creates game state.
-- Clients subscribe only to their player state, nearby chunks, nearby ships,
-  active volleys, nearby loot, and HUD data.
-- Transient combat events expire by tick and cannot grow without bounds.
-- Balance, NPC, ammunition, ability, and map definitions are validated,
-  version-controlled content.
-- The server alone owns movement, collision, firing validation, ammunition,
-  impacts, damage, effects, repairs, boarding, loot, XP, death, respawning, and
-  rewards.
-
-Public intent reducers:
-
-- `LoadPlayer`
-- `SetCourse` and `StopCourse`
-- `SelectTarget` and `ClearTarget`
+- `SetCourse`
+- `StopCourse`
+- `SelectTarget`
+- `ClearTarget`
 - `SetAmmo`
 - `FireBroadside`
-- `StartRepair` and `CancelRepair`
-- `StartBoarding` and `CancelBoarding`
 - `ActivateAbility`
+- `StartRepair`
+- `StartBoarding`
+- `CancelChannel`
 
-Contribution records support damage, boarding, and future support credit.
-Shared rewards reserve 30% for equal eligible participation and distribute 70%
-by contribution, with a 5% eligibility threshold. Group management and
-playable multiplayer remain deferred.
+Remove old public gameplay reducers after Unity and generated TypeScript code
+move to `IssueShipCommand`. Remove the legacy `MoveTo` alias.
 
-## Phases
+Authoritative ship modes:
 
-### Phase 0: replace the project plan
+- `Operational`
+- `Repairing`
+- `Boarding`
+- `Sunk`
 
-- Replace the previous passive-combat plan with this roadmap.
-- Review scope, exclusions, performance gates, and commit boundaries.
+Movement, targeting, ammunition, cooldowns, subsystem health, and statuses stay
+separate from ship mode. Firing is a command, not a mode.
 
-Commit: `docs(plan): define core combat roadmap`
+Rules by mode:
 
-### Phase 1: eliminate the runtime resource failure
+- Operational ships may use all valid commands.
+- Repairing ships may move at reduced speed, stop, select or clear a target,
+  and cancel the channel. They cannot fire, board, or activate abilities.
+- Boarding ships may move, stop, select or clear a target, and cancel the
+  channel. They cannot fire, repair, or activate abilities.
+- Sunk ships cannot issue gameplay commands.
+- Damage interrupts repair.
+- Boarding failure, range loss, cancellation, or completion returns the ship
+  to `Operational`.
+- Respawning returns a sunk ship to `Operational` and adds temporary
+  invulnerability.
+- NPC AI uses the same command policy and effect executor as players.
 
-- Prevent anonymous admin and SQL connections from creating players.
-- Add a lightweight admin health endpoint that never loads dashboard data.
-- Run Docker admin as a production build; keep Vite development host-only.
-- Reset and reseed contaminated local SpacetimeDB data.
-- Make macOS development builds windowed, resizable, 1280x720 by default,
-  foreground-capped at 60 FPS, and background-capped at 15 FPS.
-- Add identity-leak, idle-resource, connection, and window regression tests.
+The pure command policy returns a `CommandDecision` with acceptance, a stable
+rejection code, the next ship mode, and reducer effects. Expected gameplay
+rejection records a command result without changing gameplay state. Only
+corrupt state and broken invariants throw exceptions.
+
+Add:
+
+- `PlayerCommandState` with the last processed command ID and result.
+- `CommandResultEvent` as a SpacetimeDB event table.
+- Owner-filtered access to command results.
+- Duplicate handling that returns the stored result without applying effects
+  twice.
+- Stale command rejection for IDs older than the stored ID.
+
+### Server simulation
+
+Keep the 10 Hz simulation tick. Each system processes only indexed work that is
+active and due.
+
+Add indexes for:
+
+- Active and moving ships by chunk.
+- Status by ship and type.
+- Status work by active state and next process tick.
+- Volleys by active state and impact tick.
+- Channels by active state and next process tick.
+- Loot by active state and expiry tick.
+- NPC decisions by active state and next decision tick.
+- Respawns by state and respawn tick.
+- Cooldowns by ship and type.
+
+Use integer codes for hot-path status, ability, ammunition, weak-point, faction,
+and mode values. Keep display names and balance values in content definition
+tables.
+
+Remove:
+
+- Ship-to-ship movement blocking.
+- Full active-ship scans from movement.
+- Full world-object scans from each ship update.
+- Full active-row scans for work that is not due.
+- Persisted transient combat events and their cleanup scan.
+- String comparisons inside movement, damage, status, and cooldown loops.
+
+Query islands, reefs, storms, shoals, currents, ships, volleys, and loot by
+chunk. Calculate island detours when a course changes. Apply all systems to one
+in-memory ship result and write the ship row once per tick.
+
+Use SpacetimeDB event tables for short-lived command and presentation events.
+Use indexed regular tables for state that must survive reconnects.
+
+### Unity client
+
+Split Unity into assembly definitions for client models, networking, input,
+presentation, UI, Editor tools, EditMode tests, PlayMode tests, and performance
+tests.
+
+Use VContainer with one application lifetime scope. Plain C# services use
+constructor injection. MonoBehaviours remain thin scene and rendering adapters.
+Runtime code must not use `FindFirstObjectByType`.
+
+SpacetimeDB insert, update, delete, and event callbacks maintain client state.
+Per-frame work is limited to visible transform interpolation, active effects,
+camera movement, and input sampling. Runtime `Update` methods must not scan
+subscribed tables.
+
+Use:
+
+- Direct package references for Burst, Collections, Mathematics, Performance
+  Testing, Addressables, Memory Profiler, Profile Analyzer, and Code Coverage.
+- Burst jobs for plain-data interpolation and visibility calculations.
+- Pools for ships, health bars, target rings, cannonballs, smoke, impacts,
+  status icons, and loot.
+- Shared materials and `MaterialPropertyBlock`.
+- LOD and distance culling.
+- Dirty-state HUD updates.
+- Profiler markers around networking, interpolation, presentation, HUD,
+  minimap, and effects.
+
+The macOS client renders at most 250 ship presentations. WebGL renders at most
+100. Targeted ships and active volley endpoints remain visible while relevant.
+
+### Version policy
+
+At the start of Phase 8:
+
+- Resolve the newest stable versions compatible with Unity `6000.3.23f1` and
+  the local macOS SpacetimeDB toolchain.
+- Do not use preview packages.
+- Pin exact NuGet, npm, Unity, Docker, and tool versions.
+- Pin Docker images by immutable digest after selecting a stable tag.
+- Use one SpacetimeDB release for the image, CLI, C# runtime, Unity SDK, and
+  TypeScript SDK.
+- Keep the SpacetimeDB module on .NET 8 for this roadmap.
+- Use .NET 10 inside Docker for load tests.
+- Remove `latest`, `2.*`, and other floating production references.
+- Commit generated bindings and lockfile changes with their owning phase.
+
+## Implementation phases
+
+### Phase 7: replace the roadmap
+
+Status: complete.
+
+- Replace the previous unfinished roadmap with this plan.
+- Record completed Phases 0 through 6 and their commits.
+- Record scale, rendering, multiplayer, collision, test, dependency, and asset
+  decisions.
+- Review only. Do not change gameplay code.
 
 Acceptance:
 
-- Repeated health checks create zero identities or ships.
-- Idle scheduled reducers finish inside their tick interval.
-- The complete local stack does not saturate Docker CPU.
-- The visible game cannot open as forced borderless fullscreen.
+- `PLAN.md` matches the repository and commit history.
+- Every unfinished phase has one commit and acceptance gate.
+- The worktree contains only the plan change.
 
-Commit: `fix(runtime): eliminate local resource runaway`
+Commit: `docs(plan): define scalable combat completion roadmap`
 
-### Phase 2: establish scalable world and combat state
+### Phase 8: pin the toolchain and add quality tools
 
-- Introduce unified ship contracts, indexed active access, bounded events,
-  spatial chunks, and content definitions.
-- Move simulation to 10 Hz with 60 FPS client presentation.
-- Replace full-table scans and `SubscribeToAllTables`.
+- Align all SpacetimeDB components to one stable release.
+- Pin PostgreSQL 18, Redis, MinIO, Node, pnpm, .NET SDK, and Docker images.
+- Add direct Unity references for Burst, Collections, Mathematics, Performance
+  Testing, Addressables, Memory Profiler, Profile Analyzer, and Code Coverage.
+- Add VContainer with an exact package tag.
+- Add FsCheck.Xunit and Coverlet to server tests.
+- Add separate BenchmarkDotNet and NBomber projects under test tooling.
+- Add Stryker.NET and ReportGenerator through a local .NET tool manifest.
+- Add analyzers, nullable checks, warnings-as-errors, format verification,
+  binding drift checks, and handwritten file-size checks.
+- Reject handwritten production and test C# files above 500 lines. Exclude
+  generated and imported package code.
+- Define `pnpm verify` as the normal phase gate.
+- Define `pnpm verify:full` as the final heavy gate.
+
+Acceptance:
+
+- No floating dependency or Docker image remains.
+- A clean checkout resolves the same versions.
+- Existing gameplay and tests stay green.
+- `pnpm verify` does not rewrite tracked files.
+
+Commit: `build(tooling): pin performance and test dependencies`
+
+### Phase 9: split server and Unity responsibilities
+
+- Split the SpacetimeDB partial module into schema, reducers, simulation,
+  content, commands, rewards, and event files.
+- Keep pure rules in the module source tree. Link them into test and benchmark
+  projects without SpacetimeDB runtime types.
+- Split sailing, navigation, spawn, tactical, combat, and content rules into
+  focused files.
+- Split the large Unity Editor test file by subsystem.
+- Add Unity assembly definitions and dependency rules.
+- Add a VContainer application lifetime scope.
+- Replace scene searches with injected services or explicit scene adapters.
+- Keep behavior unchanged.
+
+Acceptance:
+
+- No handwritten C# file exceeds 500 lines.
+- Pure rules compile without SpacetimeDB or Unity dependencies.
+- Unity assemblies have no circular references.
+- Current tests, builds, and runtime smoke checks pass unchanged.
+
+Commit: `refactor(architecture): split game runtime boundaries`
+
+### Phase 10: build the full test foundation
+
+- Add an isolated SpacetimeDB integration runner that publishes the real
+  module, creates identities, invokes reducers, and reads committed rows.
+- Give every integration test its own database or reset boundary.
+- Add FsCheck generators for ships, commands, targets, statuses, ammunition,
+  coordinates, and tick sequences.
+- Add deterministic replay. A seed and command log must produce the same state
+  hash.
+- Add Unity PlayMode setup for the real scene, input, camera, UI, object
+  creation, and teardown.
+- Add Unity performance fixtures with warm-up, measurement, profiler markers,
+  and GC collection.
+- Add BenchmarkDotNet baselines for navigation, commands, spatial lookup,
+  statuses, and rewards.
+- Add an NBomber adapter that connects through the real SpacetimeDB C# SDK.
+- Add coverage reports that exclude generated bindings, imported SDK code, and
+  generated scenes.
+
+Acceptance:
+
+- Integration tests catch a deliberately rejected reducer call.
+- Property failures report the seed and smallest failing input.
+- Replay tests detect state differences.
+- PlayMode and performance tests run from scripts without manual Unity work.
+- Existing test cases remain present after file splitting.
+
+Commit: `test(runtime): add reducer and property harnesses`
+
+### Phase 11: centralize authoritative ship commands
+
+- Add `CommandEnvelope`, `ShipCommand`, `ShipMode`, `CommandDecision`, and typed
+  rejection codes.
+- Implement one allocation-free command transition table.
+- Add one executor for accepted command effects.
+- Send player and NPC actions through the same executor.
+- Add `PlayerCommandState` and `CommandResultEvent`.
+- Add duplicate and stale command handling.
+- Replace expected reducer exceptions with command rejections.
+- Move Unity to monotonic command IDs and authoritative acknowledgements.
+- Remove optimistic success messages.
 - Regenerate Unity and TypeScript bindings.
-- Reset local data as the explicit development migration.
+- Reset local SpacetimeDB data.
 
-Commit: `refactor(world): establish scalable combat state`
+Required tests:
 
-### Phase 3: build chart navigation and sailing physics
+- Every command against every ship mode.
+- Duplicate and stale command IDs.
+- Repair and boarding cancellation.
+- Damage interruption and sunk-ship rejection.
+- Invalid targets, blocked courses, reloads, empty ammo, disabled cannons,
+  cooldowns, and missing resources.
+- No state change after rejection.
+- Exactly one application after a retry.
 
-- Add AA-CZ Y-axis / 0-60 X-axis coordinate conversion and navigation, with AA
-  anchored at the top of the chart.
-- Implement course replacement, stopping, acceleration, turning, heading,
-  collision avoidance, and deterministic safe spawning.
-- Add WASD camera panning, constrained zoom, recentering, fixed coordinate rails,
-  camera-only minimap navigation, and player-centered fog of war.
-- Add wind and current foundations.
+Acceptance:
 
-Commit: `feat(sailing): add chart navigation and ship handling`
+- Gameplay reducers do not duplicate mode validation.
+- Expected rejection never reaches the unhandled reducer error callback.
+- The client reports success only after server acceptance.
+- NPC and player commands return the same decision from the same snapshot.
 
-### Phase 4: replace prototype input and HUD
+Commit: `refactor(combat): centralize authoritative ship commands`
 
-- Add Unity Input System Gameplay and Menu action maps.
-- Replace immediate-mode GUI with the combat HUD and pause/settings menu.
-- Add HP/XP bars, subsystem bars, hotbar, ammunition, cooldowns, coordinates,
-  and progress channels.
-- Disable gameplay actions while menus are open without pausing the world.
+### Phase 12: make the server simulation scale by indexed work
 
-Commit: `feat(client): add combat controls and HUD`
+- Remove all ship-to-ship collision checks.
+- Add due-tick and spatial indexes.
+- Convert transient combat messages to event tables.
+- Process only moving ships and due statuses, channels, volleys, NPC decisions,
+  respawns, and loot expiry.
+- Query hazards and currents from nearby chunks.
+- Calculate navigation blockers when a course changes.
+- Aggregate ship changes before one row update.
+- Remove string comparisons from hot simulation code.
+- Keep dormant ships out of movement, AI, hazard, and combat work.
+- Add sampled timing output for the load runner.
 
-### Phase 5: implement manual broadside combat
+Required tests:
 
-Status: complete. Automated server, Unity, deployed-schema, macOS runtime,
-macOS production, and WebGL production gates pass locally.
+- Ships pass through each other without blocking.
+- Islands and reefs still block movement.
+- Due rows run on the exact tick and non-due rows stay untouched.
+- Status, channel, volley, loot, and respawn work runs once.
+- Dormant and offline ships are not processed by active systems.
+- Fixed-seed output remains deterministic.
 
-- Add target selection, weak-point choice, firing arcs, side-specific reloads,
-  ammunition inventory, and guaranteed-hit traveling volleys.
-- Add all four ammunition types and authoritative impact resolution.
-- Add pooled broadside, projectile, splash, impact, recoil, and audio feedback.
-- Remove automatic engagement and automatic fire.
+Acceptance:
 
-Commit: `feat(combat): add manual broadside volleys`
+- A short 100-client and 100-active-ship run has no tick overruns.
+- Server tick p95 stays below 10 ms in that run.
+- Movement has no full active-ship scan inside its per-ship work.
+- Regular transient event cleanup no longer exists.
 
-### Phase 6: add tactical damage and recovery
+Commit: `perf(server): index active simulation work`
 
-- Add subsystem damage and all four status effects.
-- Add Full Sail, Brace, Emergency Pump, and Smoke Screen.
-- Add channelled repair and boarding.
-- Activate storms, currents, reefs, and shoals as gameplay hazards.
+### Phase 13: add stable shared-world subscriptions
 
-Commit: `feat(combat): add tactical damage and recovery`
+- Replace broad subscriptions with owner, spatial, target, volley, loot,
+  world-object, and HUD queries.
+- Move world objects into spatial subscriptions.
+- Add subscription generation IDs so old callbacks cannot replace new state.
+- Add chunk hysteresis and a short debounce.
+- Keep selected targets and active volley endpoints subscribed outside the
+  nearby area.
+- Remove stale Unity views through delete callbacks.
+- Add four local profiles and scripts for one macOS client plus three WebGL or
+  headless clients.
+- Show player ships to each other.
+- Exclude players from hostile target cycling.
+- Reject firing and boarding against players.
+- Keep health and admin checks unable to create identities or ships.
 
-### Phase 7: add roaming NPC combat, loot, death, and XP
+Required tests:
+
+- Fast chunk crossings and out-of-order subscription callbacks.
+- A target crossing an area boundary during a volley.
+- Disconnect and reconnect during repair, boarding, death, and respawn.
+- Four clients seeing the same ships and world objects.
+- No duplicate view after subscription replacement.
+- No rows outside declared interest queries.
+
+Acceptance:
+
+- Four real local clients connect and move in one world.
+- Clients see each other inside interest range.
+- Clients do not receive all ships or all world objects.
+- Subscription churn does not duplicate or lose the player ship.
+
+Commit: `feat(networking): add stable shared-world interest`
+
+### Phase 14: make Unity presentation event-driven
+
+- Replace per-frame table scans with row callback registries.
+- Keep transform interpolation, active effects, camera, and input in per-frame
+  loops.
+- Pool ships, health bars, target rings, status icons, loot, cannonballs,
+  smoke, splashes, and impacts.
+- Use shared materials and `MaterialPropertyBlock`.
+- Cache pooled component references.
+- Update the HUD only when source rows or command results change.
+- Run interpolation and visibility through Burst-compatible plain data.
+- Cap visible ships at 250 on macOS and 100 on WebGL.
+- Add near, medium, distant, and hidden presentation levels.
+- Add profiler markers and allocation checks.
+
+Required tests:
+
+- Insert, update, delete, unsubscribe, and resubscribe lifecycle.
+- Pool exhaustion and growth limits.
+- Reuse without stale health, target, status, or material state.
+- Dirty-state HUD updates.
+- No table iteration from `Update`.
+- Stable interpolation across uneven 10 Hz updates.
+- Fog and camera movement do not reveal unsubscribed entities.
+
+Acceptance:
+
+- Owned client code allocates zero bytes per idle frame after warm-up.
+- Pooled combat presentation allocates nothing after warm-up.
+- A 100-ship macOS smoke test stays at 60 FPS.
+- Draw calls and material instances remain bounded.
+
+Commit: `perf(client): make Unity presentation event driven`
+
+### Phase 15: finish roaming combat and progression
 
 - Seed four patrols, four raiders, and four gunships.
-- Add deterministic roaming, aggro, broadside positioning, weak-point choice,
-  retreat, repair, and NPC respawning.
-- Add sail-over loot, exactly-once claims, XP, sinking, safe random respawn,
-  and temporary protection.
-- NPCs obey the same movement, arcs, ammunition, effects, and hazards as the
-  player.
+- Run NPC decisions at 2 Hz through indexed due work.
+- Add deterministic roaming, aggro, range control, weak-point and ammunition
+  choice, retreat, repair, and respawn behavior.
+- Send NPC actions through the player command policy.
+- Add sail-over loot with atomic exactly-once claims.
+- Add player and NPC sinking.
+- Respawn players after five seconds at a safe position with 50 percent hull
+  and five seconds of invulnerability.
+- Respawn NPCs after 30 seconds.
+- Add XP from contribution, kills, boarding, and configured loot.
+- Add data-driven level thresholds and HUD updates.
+
+Required tests:
+
+- Fixed-seed decisions and movement.
+- Patrol, raider, and gunship behavior.
+- NPC arcs, reloads, ammunition, statuses, repairs, and hazards.
+- Loot contention between clients.
+- Death during channels and in-flight volleys.
+- Safe respawn and invulnerability expiry.
+- XP boundaries, level changes, and duplicate prevention.
+
+Acceptance:
+
+- Twelve NPCs roam and fight without manual setup.
+- NPC behavior replays from the same seed.
+- Four clients can damage and loot one NPC without duplicate rewards.
+- Gameplay remains server-owned.
 
 Commit: `feat(world): add roaming combat and progression`
 
-### Phase 8: lock group reward contracts
+### Phase 16: add shared PvE rewards
 
-- Add contribution accounting and shared reward calculations without playable
-  groups.
-- Cover disconnects, late joins, eligibility, boarding credit, duplicates, and
-  rounding.
-- Preserve interfaces for future party membership and multiplayer clients.
+- Track damage, boarding, and future support contribution per encounter.
+- Mark players eligible at 5 percent contribution.
+- Reserve 30 percent for equal distribution among eligible players.
+- Distribute 70 percent by contribution.
+- Use deterministic integer rounding. Assign any remainder by contribution
+  rank, then entity ID.
+- Close encounters once and make settlement idempotent.
+- Support disconnects, reconnects, late joins, death, boarding, and NPC
+  respawn.
+- Add reward feedback to each eligible client's HUD.
+- Do not add parties, party UI, chat, or PvP.
+
+Required tests:
+
+- One, two, four, and many contributors.
+- Exact and below-threshold contribution.
+- Equal contribution and rounding ties.
+- Disconnected, dead, and late players.
+- Boarding credit and duplicate settlement.
+- NPC respawn starting a new encounter.
+
+Acceptance:
+
+- Four real clients receive the expected split.
+- Reward totals match the configured pool.
+- Replaying settlement cannot grant a second reward.
 
 Commit: `feat(combat): add shared reward contracts`
 
-### Phase 9: performance hardening and soak testing
+### Phase 17: finish the owned-asset presentation
 
-- Pool ships, volleys, impacts, health bars, statuses, and loot visuals.
-- Remove steady-state per-frame allocations.
-- Add interest-based subscriptions and chunk transitions.
-- Profile server reducers, Unity frame time, rendering, memory, garbage
-  collection, and Docker idle load.
-- Add automated 15-minute sailing, combat, and respawn soak scenarios.
+- Put Apricum and other user-provided ships behind Addressables.
+- Validate FBX scale, forward axis, pivot, texture import, materials, and bounds.
+- Use Apricum for the player and owned material variants for NPCs until more
+  models arrive.
+- Add near and medium LODs plus a distant silhouette.
+- Add replaceable Addressable slots for ships, islands, reefs, harbors, loot,
+  projectiles, impacts, UI icons, and audio.
+- Improve water, shoreline depth, island visibility, wakes, contact shadows,
+  broadsides, impacts, storms, and fog with original materials and effects.
+- Clean HUD spacing, readability, reload feedback, command results, target
+  state, and shared rewards.
+- Fail automated checks for missing textures, pink materials, wrong
+  orientation, and broken Addressables.
+- Do not import Seafight SWFs, copied assets, or unlicensed content.
 
-Performance gates:
+Acceptance:
 
-- Stable 60 FPS at 1920x1080 with 100 visible ships and combat effects on the
-  M1 Pro.
-- Frame-time p95 is at most 16.7 ms.
-- No sustained gameplay allocations after warm-up.
-- Server tick p95 is below 10 ms with 1,000 dormant and 100 active ships.
-- Identity count stays constant through health checks and admin refreshes.
-- Aggregate local container CPU averages below 25% after warm-up.
-- Runtime memory grows by less than 5% during the soak test.
-- Local firing feedback and authoritative acknowledgement arrive within 150
-  ms.
+- Apricum keeps its colors and textures in macOS and WebGL.
+- Every ship faces its movement direction.
+- LOD changes do not create orientation or scale jumps.
+- Build logs contain no missing asset or shader errors.
+- The scene uses owned assets only.
 
-Commit: `perf(runtime): enforce combat performance budgets`
+Commit: `feat(client): add scalable owned-asset presentation`
 
-### Phase 10: complete verification and manual validation
+### Phase 18: run full performance hardening
 
-Automated gates run first:
+- Run BenchmarkDotNet and optimize measured server algorithms.
+- Run NBomber with 5,000 loaded and connected clients.
+- Keep 4,000 ships dormant and distribute 1,000 active ships across the map.
+- Run four real local clients in shared PvE.
+- Run 15-minute server and client soaks.
+- Run macOS and WebGL performance tests.
+- Run coverage, mutation, replay, identity, Docker, production build, and
+  binding drift checks.
+- Fix failed gates inside this phase, then repeat the full suite.
+- Keep raw reports in ignored build output. Commit stable summaries only.
 
-- Server unit, property, reducer integration, deterministic AI, and reward
-  tests.
-- Unity EditMode and PlayMode tests.
-- macOS runtime scenarios.
-- WebGL browser smoke scenarios.
-- Full-stack health and identity-leak checks.
-- Performance and soak suites.
-- WebGL and macOS production builds.
-- Canonical `pnpm verify` from a clean state.
+Final gates:
+
+- At least 99.9 percent of 5,000 clients remain connected.
+- 1,000 active ships remain distributed and simulated at 10 Hz.
+- Server tick p95 is at most 10 ms and p99 is at most 20 ms.
+- Command acknowledgement p95 is at most 150 ms and p99 at most 250 ms.
+- Server and load runner stay below 85 percent sustained CPU each.
+- Memory grows by less than 5 percent after warm-up.
+- Dormant ships create no movement or AI work.
+- Health and admin refreshes create zero identities and ships.
+- macOS frame-time p95 is at most 16.7 ms with 250 visible ships.
+- WebGL frame-time p95 is at most 16.7 ms with 100 visible ships.
+- Client frame-time p99 is at most 25 ms.
+- Owned client code allocates zero bytes per idle frame after warm-up.
+- Pools do not grow after warm-up capacity.
+- Runtime errors, unhandled reducer errors, missing assets, and duplicate
+  rewards remain zero.
+- Pure domain line coverage is at least 95 percent and branch coverage at
+  least 90 percent.
+- Command policy mutation score is at least 90 percent. Authorization,
+  resources, death, rewards, and idempotency have no surviving mutation.
+- `pnpm verify:full` passes from a clean checkout.
+
+Commit: `perf(runtime): prove local multiplayer budgets`
+
+### Phase 19: complete final validation
+
+Run automated gates first:
+
+- `pnpm verify`
+- `pnpm verify:full`
+- Clean macOS and WebGL production builds.
+- Four-client shared PvE smoke test.
+- Final Docker health and identity audit.
 
 Only after every automated gate passes:
 
-- Launch the complete local stack.
-- Launch the macOS player in a safe window.
-- The user performs a 10-15 minute playtest covering sailing, broadside
-  positioning, ammunition, abilities, repairs, boarding, effects, hazards,
-  loot, death, respawn, and XP.
-- Record the go/no-go result.
+- Launch the complete local Docker stack.
+- Launch the macOS game in a safe window.
+- Launch the other local clients needed for shared PvE.
+- The user performs a 10 to 15 minute playtest.
+- Cover sailing, camera, minimap, island navigation, targeting, broadsides,
+  ammunition, abilities, repair, boarding, statuses, hazards, NPC roles, loot,
+  death, respawn, XP, and shared rewards.
+- Record each finding as pass, fail, or deferred.
+- Fix failures in their owning code phase before recording a go result.
 
 Commit: `docs(validation): record core combat playtest`
 
 ## Test policy
 
-Tests exercise public rules, reducers, generated contracts, Unity inputs and
-presentation, local health endpoints, and built-player behavior. They do not
-assert private implementation details.
+Before every phase commit:
 
-Required scenarios include:
+1. Add or update the regression test first.
+2. Confirm the new test fails for the expected reason.
+3. Implement the phase.
+4. Run phase-specific tests.
+5. Run `pnpm verify`.
+6. Review the diff for unrelated changes, generated drift, secrets, debug code,
+   and asset licensing.
+7. Commit only when the phase is complete.
 
-- Coordinate boundaries, invalid labels, and cell-center conversion.
-- Safe spawn positions outside islands, storms, ships, and hazards.
-- Course changes, stops, collision, acceleration, turning, and camera
-  independence.
-- Arc boundaries, wrong-side fire, reloads, empty ammunition, disabled
-  cannons, and dead targets.
-- Guaranteed impacts and a target sinking before impact.
-- Every ammunition and weak-point combination.
-- Effect stacking, expiry, immunity, repair, and ability interactions.
-- Interrupted repairs and boarding, range loss, consumption, success, and
-  failure.
-- Loot contention and exactly-once rewards.
-- Death during channels or volleys, safe respawn, and invulnerability expiry.
-- Deterministic NPC behavior under fixed seeds.
-- Menu input blocking while the authoritative world advances.
-- Contribution eligibility, reward splits, duplicates, and rounding.
-- No player creation from SQL, admin, health, or non-game connections.
+The suite covers:
 
-Before each phase commit:
-
-1. Demonstrate the phase's red regression gate.
-2. Implement vertically until the gate is green.
-3. Run phase-specific and repository-wide checks.
-4. Review the diff for unrelated changes, generated drift, secrets, and debug
-   instrumentation.
-5. Commit only the completed phase with a conventional commit message.
-
-## Reference research
-
-- [Seafight controls](https://board-en.seafight.com/threads/options-overview.1858/)
-- [Seafight sea chart and HP/EP](https://board-en.seafight.com/threads/sea-chart-overview.172255/)
-- [Seafight boarding](https://board-en.seafight.com/threads/boarding.1044/)
-- [Seafight ammunition](https://board-en.seafight.com/threads/ammunition.9856/)
-- [Seafight sail-over loot](https://board-en.seafight.com/threads/glitters.1969/)
-- [Unity Input System](https://docs.unity3d.com/Packages/com.unity.inputsystem@latest)
-- [SpacetimeDB documentation](https://spacetimedb.com/docs/)
+- Every ship mode and command combination.
+- Command retries, stale IDs, rejection, acknowledgement, and reconnect.
+- Coordinates, courses, island detours, acceleration, turning, stopping, wind,
+  and currents.
+- Arc boundaries, ammunition, weak points, reloads, volleys, and dead targets.
+- Statuses, abilities, repair, boarding, interruption, and cancellation.
+- NPC decisions, aggro, positioning, retreat, repair, sinking, and respawn.
+- Loot, XP, contribution, settlement, and duplicate prevention.
+- Multi-client subscriptions, chunk changes, stale callbacks, targets, and
+  volley endpoints.
+- Unity pooling, interpolation, HUD state, camera, fog, input, assets, and scene
+  lifecycle.
+- Server tick time, command latency, connections, frame time, memory,
+  allocations, draw calls, and Docker resources.
+- macOS and WebGL production builds.
+- No player creation from health, admin, SQL, or non-game connections.
