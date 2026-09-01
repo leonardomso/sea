@@ -122,14 +122,21 @@ namespace Sea.Client
             Debug.LogException(error, this);
         }
 
-        private void HandleVolleyInserted(EventContext _context, Volley volley) =>
+        private void HandleVolleyInserted(EventContext _context, Volley volley)
+        {
             TrackVolley(Connection, volley);
+            NotifyVolleyChanged(volley);
+        }
 
-        private void HandleVolleyUpdated(EventContext _context, Volley _oldVolley, Volley volley) =>
+        private void HandleVolleyUpdated(EventContext _context, Volley _oldVolley, Volley volley)
+        {
             TrackVolley(Connection, volley);
+            NotifyVolleyChanged(volley);
+        }
 
         private void HandleVolleyDeleted(EventContext _context, Volley volley)
         {
+            VolleyLeftInterest?.Invoke(volley.VolleyId);
             if (relevantVolleys.Remove(volley.VolleyId))
             {
                 RefreshFocusScope(Connection);
@@ -242,6 +249,7 @@ namespace Sea.Client
         private void HandleShipDeleted(EventContext _context, Ship ship)
         {
             ShipLeftInterest?.Invoke(ship.EntityId);
+            NotifyHudStateChanged();
             if (ship.EntityId == selectedTargetEntityId)
             {
                 selectedTargetEntityId = 0;

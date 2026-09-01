@@ -12,7 +12,9 @@
     "Sea.Generated",
     "com.clockworklabs.spacetimedbsdk",
     "Unity.InputSystem",
-    "VContainer"
+    "VContainer",
+    "Unity.Collections",
+    "Unity.Mathematics"
   ],
   "includePlatforms": ["Editor"],
   "optionalUnityReferences": ["TestAssemblies"],

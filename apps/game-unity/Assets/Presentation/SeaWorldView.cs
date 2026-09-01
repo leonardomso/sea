@@ -1,11 +1,21 @@
 using System.Collections.Generic;
 using SpacetimeDB.Types;
+using Unity.Collections;
+using Unity.Mathematics;
 using UnityEngine;
+using Unity.Profiling;
 
 namespace Sea.Client
 {
     public sealed partial class SeaWorldView : MonoBehaviour
     {
+        private static readonly ProfilerMarker VisibilityMarker =
+            new("Sea.Presentation.Visibility");
+        private static readonly ProfilerMarker InterpolationMarker =
+            new("Sea.Presentation.Interpolation");
+        private static readonly ProfilerMarker EffectsMarker =
+            new("Sea.Presentation.Effects");
+
         [SerializeField] private SeaConnectionController connection;
         [SerializeField] private GameObject shipModel;
         [SerializeField] private Material shipMaterial;
@@ -15,6 +25,7 @@ namespace Sea.Client
         [SerializeField] private float modelYawOffset = 270f;
 
         private const float ShipFootprint = 10f;
+        private const int MaximumTrackedShipRows = 6000;
         private const int MainChartFogLayer = 8;
         public const float VisionRadius = 44f;
         public const float WaterSurfaceHeight = -0.35f;
@@ -22,8 +33,16 @@ namespace Sea.Client
 
         private readonly Dictionary<ulong, GameObject> entities = new();
         private readonly Dictionary<ulong, GameObject> mapGeometry = new();
-        private readonly Dictionary<ulong, PresentationTarget> targets = new();
+        private readonly SeaRowRegistry<ulong, Ship> shipRows = new();
+        private readonly SeaRowRegistry<ulong, Volley> volleyRows = new();
+        private readonly Dictionary<ulong, SeaInterpolationBuffer> targets = new();
         private readonly Dictionary<ulong, SeaShipFeedback> shipFeedback = new();
+        private readonly List<SeaVisibilityCandidate> visibilityCandidates = new(256);
+        private readonly HashSet<ulong> desiredPresentations = new();
+        private readonly List<ulong> releaseEntityIds = new(256);
+        private readonly ulong[] visibilityEntityIds = new ulong[MaximumTrackedShipRows];
+        private NativeArray<float2> visibilityPositions;
+        private NativeArray<float> visibilitySquaredDistances;
         private GameObject playerObject;
         private SeaShipFeedback playerFeedback;
         private GameObject targetRing;
@@ -40,8 +59,16 @@ namespace Sea.Client
         private Material combatEffectMaterial;
         private Material shoalMaterial;
         private Material stormMaterial;
+        private Material healthMaterial;
+        private Material silhouetteMaterial;
+        private Material targetMaterial;
         private SeaCombatPresenter combatPresenter;
+        private SeaBoundedPool<GameObject> shipPool;
         private ulong playerEntityId;
+        private ulong worldTick;
+        private Ship localShip;
+        private Vector3 previousVisibilityOrigin = new(float.PositiveInfinity, 0f, 0f);
+        private bool visibilityDirty = true;
         private LineRenderer courseLine;
         private LineRenderer destinationRing;
 
@@ -86,6 +113,21 @@ namespace Sea.Client
             CreateMaterials();
             CreateWater();
             CreateFog();
+            var visibleLimit = SeaPresentationRules.VisibleShipLimit(
+                SeaPresentationRules.CurrentPlatform());
+            shipPool = new SeaBoundedPool<GameObject>(
+                CreatePooledShip,
+                ResetPooledShip,
+                initialCapacity: 4,
+                maximumCapacity: visibleLimit);
+            visibilityPositions = new NativeArray<float2>(
+                MaximumTrackedShipRows,
+                Allocator.Persistent,
+                NativeArrayOptions.UninitializedMemory);
+            visibilitySquaredDistances = new NativeArray<float>(
+                MaximumTrackedShipRows,
+                Allocator.Persistent,
+                NativeArrayOptions.UninitializedMemory);
         }
 
         private void Update()
@@ -95,12 +137,21 @@ namespace Sea.Client
                 return;
             }
 
-            EnsureWorldGeometry();
-            SyncMapEntities();
-            SyncEnemyShips();
-            SyncPlayerShip();
-            UpdateEntityTransforms();
-            SyncCombatPresentation();
+            using (VisibilityMarker.Auto())
+            {
+                ReconcileVisibility();
+            }
+
+            using (InterpolationMarker.Auto())
+            {
+                UpdateEntityTransforms();
+            }
+
+            UpdateLocalPresentation();
+            using (EffectsMarker.Auto())
+            {
+                SyncCombatPresentation();
+            }
         }
 
         private void CreateMaterials()
@@ -130,6 +181,9 @@ namespace Sea.Client
                 new Color(0.18f, 0.78f, 0.68f, 0.34f));
             stormMaterial = SeaMaterialFactory.CreateTransparent(
                 new Color(0.10f, 0.14f, 0.18f, 0.82f));
+            healthMaterial = SeaMaterialFactory.Create(Color.white);
+            silhouetteMaterial = SeaMaterialFactory.Create(Color.white);
+            targetMaterial = SeaMaterialFactory.Create(new Color(1f, 0.85f, 0.25f, 1f));
             combatPresenter = new SeaCombatPresenter(cannonballMaterial, combatEffectMaterial);
         }
 
@@ -158,143 +212,15 @@ namespace Sea.Client
             Destroy(fog.GetComponent<Collider>());
         }
 
-        private void EnsureWorldGeometry()
-        {
-            foreach (var entity in connection.Connection.Db.WorldObject.Iter())
-            {
-                if (mapGeometry.ContainsKey(entity.EntityId))
-                {
-                    continue;
-                }
-
-                var position = ToWorld(entity.PositionX, entity.PositionY, 0f);
-                var geometry = entity.Kind switch
-                {
-                    "island" => SeaWorldGeometryFactory.CreateIsland(
-                        $"Map island {entity.EntityId}",
-                        position,
-                        entity.Radius,
-                        sandMaterial,
-                        rockMaterial,
-                        landMaterial),
-                    "reef" => SeaWorldGeometryFactory.CreateReef(
-                        $"Map reef {entity.EntityId}",
-                        position,
-                        entity.Radius,
-                        shallowsMaterial,
-                        rockMaterial),
-                    "harbor" => SeaWorldGeometryFactory.CreateHarbor(
-                        $"Map harbor {entity.EntityId}",
-                        position,
-                        entity.Radius,
-                        shallowsMaterial,
-                        dockMaterial),
-                    "shoal" => SeaWorldGeometryFactory.CreateShoal(
-                        $"Map shoal {entity.EntityId}",
-                        position,
-                        entity.Radius,
-                        shoalMaterial),
-                    "storm" => SeaWorldGeometryFactory.CreateStorm(
-                        $"Map storm {entity.EntityId}",
-                        position,
-                        entity.Radius,
-                        stormMaterial),
-                    _ => null,
-                };
-                if (geometry == null)
-                {
-                    continue;
-                }
-
-                mapGeometry[entity.EntityId] = geometry;
-            }
-        }
-
-        private void SyncMapEntities()
-        {
-            foreach (var entity in connection.Connection.Db.WorldObject.Iter())
-            {
-                if (!mapGeometry.TryGetValue(entity.EntityId, out var geometry))
-                {
-                    continue;
-                }
-
-                geometry.SetActive(entity.IsActive);
-                geometry.transform.position = ToWorld(entity.PositionX, entity.PositionY, 0f);
-            }
-        }
-
-        private void SyncEnemyShips()
-        {
-            foreach (var enemy in connection.Connection.Db.Ship.Iter())
-            {
-                if (enemy.FactionCode != 2)
-                {
-                    continue;
-                }
-
-                if (!entities.TryGetValue(enemy.EntityId, out var enemyObject))
-                {
-                    enemyObject = CreateShip($"Enemy Ship {enemy.EntityId}", enemy.EntityId);
-                    entities.Add(enemy.EntityId, enemyObject);
-                    enemyObject.transform.position = ToWorld(enemy.PositionX, enemy.PositionY, ShipRootHeight);
-                }
-
-                enemyObject.SetActive(enemy.IsActive);
-                targets[enemy.EntityId] = new PresentationTarget(
-                    ToWorld(enemy.PositionX, enemy.PositionY, ShipRootHeight),
-                    enemy.HeadingDegrees,
-                    enemy.Speed);
-                UpdateHealthBar(enemyObject, enemy.Hull, enemy.MaxHull);
-                shipFeedback[enemy.EntityId].SetMotion(enemy.Speed, enemy.MaximumSpeed);
-            }
-        }
-
-        private void SyncPlayerShip()
-        {
-            var ownership = connection.Connection.Db.PlayerOwnership.Owner.Find(connection.LocalIdentity);
-            if (ownership == null)
-            {
-                return;
-            }
-
-            var ship = connection.Connection.Db.Ship.EntityId.Find(ownership.ShipEntityId);
-            if (ship == null)
-            {
-                return;
-            }
-
-            if (playerObject == null)
-            {
-                playerObject = CreateShip("Player Ship", ship.EntityId);
-                playerFeedback = shipFeedback[ship.EntityId];
-                playerObject.transform.position = ToWorld(ship.PositionX, ship.PositionY, ShipRootHeight);
-            }
-
-            playerEntityId = ship.EntityId;
-
-            targets[0] = new PresentationTarget(
-                ToWorld(ship.PositionX, ship.PositionY, ShipRootHeight),
-                ship.HeadingDegrees,
-                ship.Speed);
-            fogMaterial.SetVector(
-                "_PlayerPosition",
-                new Vector4(ship.PositionX, ship.PositionY, 0f, 0f));
-            UpdateTargetRing(ship);
-            UpdateCourseIndicator(ship);
-            playerFeedback.SetMotion(ship.Speed, ship.MaximumSpeed);
-        }
-
         private void SyncCombatPresentation()
         {
-            var world = connection.Connection.Db.WorldState.Id.Find(1);
-            if (world == null || combatPresenter == null)
+            if (combatPresenter == null)
             {
                 return;
             }
 
             combatPresenter.BeginFrame();
-            foreach (var volley in connection.Connection.Db.Volley.Iter())
+            foreach (var volley in volleyRows.Values)
             {
                 if (!volley.IsActive)
                 {
@@ -303,7 +229,7 @@ namespace Sea.Client
 
                 combatPresenter.Show(
                     volley,
-                    world.Tick,
+                    worldTick,
                     FindShipTransform(volley.SourceEntityId),
                     FindShipTransform(volley.TargetEntityId),
                     shipFeedback.TryGetValue(volley.SourceEntityId, out var feedback)
@@ -328,36 +254,37 @@ namespace Sea.Client
         {
             foreach (var target in targets)
             {
-                if (target.Key == 0)
+                if (entities.TryGetValue(target.Key, out var entityObject) &&
+                    shipRows.TryGetValue(target.Key, out var ship))
                 {
-                    if (playerObject != null)
-                    {
-                        SeaShipMotion.Step(
-                            playerObject.transform,
-                            target.Value.Position,
-                            target.Value.HeadingDegrees,
-                            Time.deltaTime,
-                            Mathf.Max(presentationMovementSpeed, target.Value.Speed * 1.5f),
-                            turnSpeedDegrees);
-                    }
-
-                    continue;
-                }
-
-                if (entities.TryGetValue(target.Key, out var entityObject))
-                {
+                    var sample = target.Value.Sample(
+                        Time.realtimeSinceStartupAsDouble,
+                        interpolationDelay: 0.1d);
                     SeaShipMotion.Step(
                         entityObject.transform,
-                        target.Value.Position,
-                        target.Value.HeadingDegrees,
+                        sample.Position,
+                        sample.HeadingDegrees,
                         Time.deltaTime,
-                        Mathf.Max(presentationMovementSpeed, target.Value.Speed * 1.5f),
+                        Mathf.Max(presentationMovementSpeed, ship.Speed * 1.5f),
                         turnSpeedDegrees);
                 }
             }
         }
 
         private GameObject CreateShip(string name, ulong entityId)
+        {
+            if (!shipPool.TryAcquire(out var ship))
+            {
+                return null;
+            }
+
+            var presentation = ship.GetComponent<SeaShipPresentation>();
+            presentation.Bind(entityId, name);
+            shipFeedback[entityId] = presentation.Feedback;
+            return ship;
+        }
+
+        private GameObject CreatePooledShip()
         {
             if (shipModel == null)
             {
@@ -366,18 +293,47 @@ namespace Sea.Client
 
             var ship = SeaShipVisualFactory.Create(
                 shipModel,
-                name,
+                "Pooled Ship",
                 ShipFootprint,
                 shipMaterial,
                 modelYawOffset);
             var feedback = ship.AddComponent<SeaShipFeedback>();
+            var visual = ship.transform.Find("Visual");
             feedback.Configure(
-                ship.transform.Find("Visual"),
+                visual,
                 wakeMaterial,
                 waterlineShadowMaterial,
-                entityId * 0.37f);
-            shipFeedback[entityId] = feedback;
+                0f);
+
+            var modelBounds = SeaShipVisualFactory.CalculateRendererBounds(ship);
+            var modelTop = ship.transform.InverseTransformPoint(
+                new Vector3(modelBounds.center.x, modelBounds.max.y, modelBounds.center.z));
+            var health = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            health.name = "Health";
+            health.transform.SetParent(ship.transform, false);
+            health.GetComponent<Renderer>().sharedMaterial = healthMaterial;
+            Destroy(health.GetComponent<Collider>());
+            health.transform.localPosition = new Vector3(0f, modelTop.y + 0.6f, 0f);
+
+            var silhouette = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            silhouette.name = "Distant Silhouette";
+            silhouette.transform.SetParent(ship.transform, false);
+            silhouette.transform.localPosition = new Vector3(0f, 0.4f, 0f);
+            silhouette.transform.localScale = new Vector3(2.1f, 0.55f, 5.4f);
+            silhouette.GetComponent<Renderer>().sharedMaterial = silhouetteMaterial;
+            Destroy(silhouette.GetComponent<Collider>());
+
+            var presentation = ship.AddComponent<SeaShipPresentation>();
+            presentation.Configure(visual, feedback, health.transform, silhouette);
             return ship;
+        }
+
+        private static void ResetPooledShip(GameObject ship)
+        {
+            if (ship != null)
+            {
+                ship.GetComponent<SeaShipPresentation>().ResetForPool();
+            }
         }
 
         private void CreateCourseIndicator()
@@ -453,7 +409,7 @@ namespace Sea.Client
                 targetRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
                 targetRing.name = "Selected Target Ring";
                 targetRing.transform.localScale = new Vector3(4.5f, 0.04f, 4.5f);
-                targetRing.GetComponent<Renderer>().sharedMaterial = SeaMaterialFactory.Create(new Color(1f, 0.85f, 0.25f, 1f));
+                targetRing.GetComponent<Renderer>().sharedMaterial = targetMaterial;
                 Destroy(targetRing.GetComponent<Collider>());
             }
 
@@ -462,25 +418,6 @@ namespace Sea.Client
                 selectedObject.transform.position.x,
                 WaterSurfaceHeight + 0.025f,
                 selectedObject.transform.position.z);
-        }
-
-        private void UpdateHealthBar(GameObject ship, uint health, uint maxHealth)
-        {
-            var bar = ship.transform.Find("Health");
-            if (bar == null)
-            {
-                var modelBounds = SeaShipVisualFactory.CalculateRendererBounds(ship);
-                var modelTop = ship.transform.InverseTransformPoint(
-                    new Vector3(modelBounds.center.x, modelBounds.max.y, modelBounds.center.z));
-                bar = GameObject.CreatePrimitive(PrimitiveType.Cube).transform;
-                bar.name = "Health";
-                bar.SetParent(ship.transform, false);
-                bar.GetComponent<Renderer>().sharedMaterial = SeaMaterialFactory.Create(new Color(0.28f, 0.95f, 0.45f, 1f));
-                Destroy(bar.GetComponent<Collider>());
-                bar.localPosition = new Vector3(0f, modelTop.y + 0.6f, 0f);
-            }
-
-            bar.localScale = new Vector3(4f * Mathf.Clamp01(maxHealth == 0 ? 0f : (float)health / maxHealth), 0.12f, 0.12f);
         }
 
     }

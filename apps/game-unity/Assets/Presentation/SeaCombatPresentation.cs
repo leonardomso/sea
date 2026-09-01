@@ -7,63 +7,103 @@ namespace Sea.Client
 {
     public sealed class SeaCombatVisualPool
     {
-        private readonly Func<GameObject> factory;
-        private readonly Queue<GameObject> available = new();
+        private readonly SeaBoundedPool<GameObject> pool;
 
-        public SeaCombatVisualPool(Func<GameObject> visualFactory)
+        public SeaCombatVisualPool(
+            Func<GameObject> visualFactory,
+            int maximumCapacity = 512)
         {
-            factory = visualFactory ?? throw new ArgumentNullException(nameof(visualFactory));
+            pool = new SeaBoundedPool<GameObject>(
+                visualFactory ?? throw new ArgumentNullException(nameof(visualFactory)),
+                Reset,
+                initialCapacity: 0,
+                maximumCapacity);
         }
 
-        public int CreatedCount { get; private set; }
+        public int CreatedCount => pool.CreatedCount;
 
         public GameObject Acquire()
         {
-            var visual = available.Count == 0 ? Create() : available.Dequeue();
-            visual.SetActive(true);
-            foreach (var trail in visual.GetComponentsInChildren<TrailRenderer>(true))
+            if (!pool.TryAcquire(out var visual))
             {
-                trail.Clear();
-                trail.emitting = true;
+                throw new InvalidOperationException("The combat presentation pool reached its limit.");
             }
+
+            visual.SetActive(true);
+            Cache(visual).PrepareForAcquire();
 
             return visual;
         }
 
-        public void Release(GameObject visual)
+        public void Release(GameObject visual) => pool.Release(visual);
+
+        private static void Reset(GameObject visual)
         {
             if (visual == null)
             {
                 return;
             }
 
-            foreach (var trail in visual.GetComponentsInChildren<TrailRenderer>(true))
+            Cache(visual).PrepareForRelease();
+            visual.SetActive(false);
+        }
+
+        private static SeaCombatVisualCache Cache(GameObject visual)
+        {
+            var cache = visual.GetComponent<SeaCombatVisualCache>();
+            if (cache == null)
+            {
+                cache = visual.AddComponent<SeaCombatVisualCache>();
+                cache.Capture();
+            }
+
+            return cache;
+        }
+    }
+
+    public sealed class SeaCombatVisualCache : MonoBehaviour
+    {
+        private TrailRenderer[] trails = Array.Empty<TrailRenderer>();
+        private ParticleSystem particles;
+        private AudioSource audioSource;
+
+        public ParticleSystem Particles => particles;
+
+        public AudioSource AudioSource => audioSource;
+
+        public void Capture()
+        {
+            trails = GetComponentsInChildren<TrailRenderer>(true);
+            particles = GetComponent<ParticleSystem>();
+            audioSource = GetComponent<AudioSource>();
+        }
+
+        public void PrepareForAcquire()
+        {
+            foreach (var trail in trails)
+            {
+                trail.Clear();
+                trail.emitting = true;
+            }
+        }
+
+        public void PrepareForRelease()
+        {
+            foreach (var trail in trails)
             {
                 trail.emitting = false;
                 trail.Clear();
             }
 
-            var particles = visual.GetComponent<ParticleSystem>();
             if (particles != null)
             {
                 particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             }
 
-            var audio = visual.GetComponent<AudioSource>();
-            if (audio != null)
+            if (audioSource != null)
             {
-                audio.Stop();
+                audioSource.Stop();
             }
-            visual.SetActive(false);
-            available.Enqueue(visual);
-        }
-
-        private GameObject Create()
-        {
-            CreatedCount++;
-            var visual = factory();
-            visual.SetActive(false);
-            return visual;
         }
     }
 
@@ -95,6 +135,8 @@ namespace Sea.Client
                 trail.emitting = false;
             }
 
+            var cache = root.AddComponent<SeaCombatVisualCache>();
+            cache.Capture();
             return root;
         }
 
@@ -127,6 +169,8 @@ namespace Sea.Client
             audio.rolloffMode = AudioRolloffMode.Linear;
             audio.minDistance = 4f;
             audio.maxDistance = 85f;
+            var cache = effect.AddComponent<SeaCombatVisualCache>();
+            cache.Capture();
             return effect;
         }
 
@@ -246,15 +290,33 @@ namespace Sea.Client
             }
         }
 
+        public void Reset()
+        {
+            foreach (var presentation in active.Values)
+            {
+                volleyPool.Release(presentation.Visual);
+            }
+
+            active.Clear();
+            foreach (var effect in effects)
+            {
+                effectPool.Release(effect.Visual);
+            }
+
+            effects.Clear();
+            stale.Clear();
+        }
+
         private void PlayEffect(Vector3 position, AudioClip clip, Color color)
         {
             var visual = effectPool.Acquire();
             visual.transform.position = position;
-            var particles = visual.GetComponent<ParticleSystem>();
+            var cache = visual.GetComponent<SeaCombatVisualCache>();
+            var particles = cache.Particles;
             var main = particles.main;
             main.startColor = color;
             particles.Play(true);
-            var audio = visual.GetComponent<AudioSource>();
+            var audio = cache.AudioSource;
             audio.pitch = UnityEngine.Random.Range(0.94f, 1.06f);
             audio.PlayOneShot(clip, 0.7f);
             effects.Add(new TimedEffect(visual, Time.unscaledTime + EffectLifetimeSeconds));

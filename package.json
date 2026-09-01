@@ -28,6 +28,7 @@
     "unity:test:playmode": "./scripts/test-unity-playmode.sh",
     "unity:test:performance": "./scripts/test-unity-performance.sh",
     "unity:test:runtime": "./scripts/test-unity-runtime.sh",
+    "unity:test:presentation-performance": "./scripts/test-unity-presentation-performance.sh",
     "unity:build:webgl": "unity build apps/game-unity --target WebGL --execute-method Sea.Editor.SeaBuild.PerformWebGLBuild --output-path apps/game-unity/Build/WebGL --no-tail",
     "unity:build:macos": "unity build apps/game-unity --target StandaloneOSX --execute-method Sea.Editor.SeaBuild.PerformMacOSBuild --output-path apps/game-unity/Build/Sea.app --no-tail",
     "unity:source-check": "./scripts/check-unity-source.sh",

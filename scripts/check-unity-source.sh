@@ -21,6 +21,9 @@ test -f "$unity_root/Assets/Domain/SeaSubscriptionPlan.cs"
 test -f "$unity_root/Assets/Domain/SeaSpatialInterest.cs"
 test -f "$unity_root/Assets/Domain/SeaSubscriptionGeneration.cs"
 test -f "$unity_root/Assets/Networking/SeaConnectionSubscriptions.cs"
+test -f "$unity_root/Assets/Networking/SeaConnectionClientState.cs"
+test -f "$unity_root/Assets/Presentation/SeaVisibilityDistanceJob.cs"
+test -f "$unity_root/Assets/Presentation/SeaShipPresentation.cs"
 test -f "$unity_root/Assets/Domain/SeaChartCoordinates.cs"
 test -f "$unity_root/Assets/Presentation/SeaChartCameraController.cs"
 test -f "$unity_root/Assets/Input/SeaInputController.cs"
@@ -69,6 +72,26 @@ grep -q 'command_result_event WHERE owner' \
   "$unity_root/Assets/Domain/SeaSubscriptionPlan.cs"
 grep -q 'world_object WHERE is_active = true AND' \
   "$unity_root/Assets/Domain/SeaSubscriptionPlan.cs"
+
+if grep -q '\.Iter()' \
+  "$unity_root"/Assets/Presentation/SeaWorldView*.cs \
+  "$unity_root/Assets/UI/SeaHudController.cs"; then
+  echo "World presentation and HUD updates must use row callbacks, not table iteration." >&2
+  exit 1
+fi
+
+grep -q 'ProfilerMarker' "$unity_root/Assets/Networking/SeaConnectionController.cs"
+grep -q 'ProfilerMarker' "$unity_root/Assets/Presentation/SeaWorldView.cs"
+grep -q 'ProfilerMarker' "$unity_root/Assets/UI/SeaHudEvents.cs"
+grep -q 'SeaVisibilityDistanceJob' "$unity_root/Assets/Presentation/SeaWorldView.Rows.cs"
+grep -q 'MaterialPropertyBlock' "$unity_root/Assets/Presentation/SeaShipPresentation.cs"
+grep -q 'SeaBoundedPool<GameObject>' "$unity_root/Assets/Presentation/SeaWorldView.cs"
+grep -q 'SeaDirtyState' "$unity_root/Assets/UI/SeaHudEvents.cs"
+grep -q -- '-seaPresentationPerformanceTest' \
+  "$unity_root/Assets/Presentation/SeaRuntimeValidationProbe.cs"
+grep -q 'SeedSyntheticPerformanceFleet(100)' \
+  "$unity_root/Assets/Presentation/SeaRuntimeValidationProbe.cs"
+grep -q 'test-unity-presentation-performance.sh' "$project_root/scripts/verify-unity.sh"
 
 if grep -R -q --include='*.cs' -E 'void OnGUI\(|Input\.Get' \
   "$unity_root/Assets/Domain" "$unity_root/Assets/Networking" \

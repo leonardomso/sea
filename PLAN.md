@@ -464,6 +464,18 @@ Commit: `feat(networking): add stable shared-world interest`
 
 ### Phase 14: make Unity presentation event-driven
 
+Status: complete.
+
+Unity presentation now consumes typed insert, update, delete, and event
+callbacks instead of scanning subscribed tables from frame loops. Ship and
+combat views use bounded pools, shared materials, property blocks, cached
+components, dirty HUD updates, Burst visibility work, interpolation buffers,
+platform presentation caps, and distance-based presentation levels. The
+canonical `pnpm verify` gate passed, including EditMode, PlayMode, Unity
+performance fixtures, WebGL and macOS production builds, and the authoritative
+runtime scenario. The built M1 Pro macOS probe rendered 100 ship presentations
+at 1920 by 1080 with a 3.905 ms frame-time p95 after warm-up.
+
 - Replace per-frame table scans with row callback registries.
 - Keep transform interpolation, active effects, camera, and input in per-frame
   loops.

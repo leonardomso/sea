@@ -22,6 +22,12 @@ namespace Sea.Client
 
             interestConnection.ShipLeftInterest += RemoveShipPresentation;
             interestConnection.WorldObjectLeftInterest += RemoveWorldObjectPresentation;
+            interestConnection.ShipChanged += HandleShipChanged;
+            interestConnection.WorldObjectChanged += HandleWorldObjectChanged;
+            interestConnection.VolleyChanged += HandleVolleyChanged;
+            interestConnection.VolleyLeftInterest += HandleVolleyRemoved;
+            interestConnection.WorldTickChanged += HandleWorldTickChanged;
+            interestConnection.PresentationReset += ResetPresentations;
         }
 
         private void UnbindInterestCallbacks()
@@ -33,30 +39,27 @@ namespace Sea.Client
 
             interestConnection.ShipLeftInterest -= RemoveShipPresentation;
             interestConnection.WorldObjectLeftInterest -= RemoveWorldObjectPresentation;
+            interestConnection.ShipChanged -= HandleShipChanged;
+            interestConnection.WorldObjectChanged -= HandleWorldObjectChanged;
+            interestConnection.VolleyChanged -= HandleVolleyChanged;
+            interestConnection.VolleyLeftInterest -= HandleVolleyRemoved;
+            interestConnection.WorldTickChanged -= HandleWorldTickChanged;
+            interestConnection.PresentationReset -= ResetPresentations;
             interestConnection = null;
         }
 
         private void RemoveShipPresentation(ulong entityId)
         {
             targets.Remove(entityId);
-            shipFeedback.Remove(entityId);
-            if (entityId == playerEntityId)
+            shipRows.Remove(entityId);
+            if (localShip?.EntityId == entityId)
             {
-                if (playerObject != null)
-                {
-                    Destroy(playerObject);
-                }
-
-                playerObject = null;
-                playerFeedback = null;
+                localShip = null;
                 playerEntityId = 0;
-                return;
             }
 
-            if (entities.Remove(entityId, out var entityObject) && entityObject != null)
-            {
-                Destroy(entityObject);
-            }
+            ReleaseShipPresentation(entityId);
+            visibilityDirty = true;
         }
 
         private void RemoveWorldObjectPresentation(ulong entityId)
@@ -67,22 +70,68 @@ namespace Sea.Client
             }
         }
 
-        private void OnDestroy() => UnbindInterestCallbacks();
-
-        private static Vector3 ToWorld(float x, float y, float height) => new(x, height, y);
-
-        private readonly struct PresentationTarget
+        private void ResetPresentations()
         {
-            public PresentationTarget(Vector3 position, float headingDegrees, float speed)
+            releaseEntityIds.Clear();
+            foreach (var entityId in entities.Keys)
             {
-                Position = position;
-                HeadingDegrees = headingDegrees;
-                Speed = speed;
+                releaseEntityIds.Add(entityId);
             }
 
-            public Vector3 Position { get; }
-            public float HeadingDegrees { get; }
-            public float Speed { get; }
+            foreach (var entityId in releaseEntityIds)
+            {
+                ReleaseShipPresentation(entityId);
+            }
+
+            foreach (var geometry in mapGeometry.Values)
+            {
+                if (geometry != null)
+                {
+                    Destroy(geometry);
+                }
+            }
+
+            mapGeometry.Clear();
+            shipRows.Clear();
+            targets.Clear();
+            volleyRows.Clear();
+            relevantEndpointIds.Clear();
+            localShip = null;
+            playerEntityId = 0;
+            worldTick = 0;
+            if (targetRing != null)
+            {
+                targetRing.SetActive(false);
+            }
+
+            if (courseLine != null)
+            {
+                courseLine.gameObject.SetActive(false);
+            }
+
+            if (destinationRing != null)
+            {
+                destinationRing.gameObject.SetActive(false);
+            }
+
+            combatPresenter?.Reset();
+            visibilityDirty = true;
         }
+
+        private void OnDestroy()
+        {
+            UnbindInterestCallbacks();
+            if (visibilityPositions.IsCreated)
+            {
+                visibilityPositions.Dispose();
+            }
+
+            if (visibilitySquaredDistances.IsCreated)
+            {
+                visibilitySquaredDistances.Dispose();
+            }
+        }
+
+        private static Vector3 ToWorld(float x, float y, float height) => new(x, height, y);
     }
 }

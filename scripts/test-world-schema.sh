@@ -48,7 +48,11 @@ if (world.length !== 1 || world[0].tick_rate_hz !== 10 || world[0].content_versi
 }
 
 const ships = rows("ship");
-if (ships.length < 1 || !ships.every((ship) => ship.entity_id > 0 && ship.is_active === true)) {
+if (
+  ships.length < 1 ||
+  !ships.every((ship) => ship.entity_id > 0) ||
+  !ships.some((ship) => ship.is_active === true)
+) {
   throw new Error("Unified active ship state is missing or invalid.");
 }
 if (!ships.some((ship) => ship.faction_code === 2)) {

@@ -15,6 +15,7 @@ for file in \
   apps/game-unity/Assets/Tests/PlayMode/SeaScenePlayModeTests.cs \
   apps/game-unity/Assets/Tests/Performance/SeaClientPerformanceTests.cs \
   apps/game-unity/Assets/Tests/EditMode/SeaSubscriptionTests.cs \
+  apps/game-unity/Assets/Tests/EditMode/SeaPresentationInfrastructureTests.cs \
   scripts/test-server-integration.sh \
   scripts/test-shared-world.sh \
   scripts/launch-local-clients.sh \

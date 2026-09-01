@@ -10,8 +10,6 @@ namespace Sea.Client
     [RequireComponent(typeof(UIDocument))]
     public sealed partial class SeaHudController : MonoBehaviour
     {
-        private const float RefreshIntervalSeconds = 0.1f;
-
         [SerializeField] private StyleSheet styleSheet;
         [SerializeField] private SeaConnectionController connection;
         [SerializeField] private SeaGameController game;
@@ -32,8 +30,6 @@ namespace Sea.Client
         private Camera chartCamera;
         private readonly Label[] topCoordinateLabels = new Label[9];
         private readonly Label[] leftCoordinateLabels = new Label[7];
-        private float nextRefreshTime;
-
         public void Configure(StyleSheet hudStyleSheet)
         {
             styleSheet = hudStyleSheet;
@@ -42,7 +38,10 @@ namespace Sea.Client
         private void OnEnable()
         {
             InitializeDocument();
+            BindHudEvents(connection);
         }
+
+        private void OnDisable() => BindHudEvents(null);
 
         private void Start() => InitializeDocument();
 
@@ -54,18 +53,32 @@ namespace Sea.Client
             connection = connectionController;
             game = gameController;
             input = inputPort;
+            BindHudEvents(connectionController);
+            hudDirty.Mark();
         }
 
         private void Update()
         {
-            if (root == null || Time.unscaledTime < nextRefreshTime)
+            if (root == null)
             {
                 return;
             }
 
-            nextRefreshTime = Time.unscaledTime + RefreshIntervalSeconds;
-            Apply(SeaHudViewModel.From(CaptureSnapshot()));
-            UpdateCoordinateRulers();
+            if (hudDirty.TryConsume())
+            {
+                using (HudMarker.Auto())
+                {
+                    Apply(SeaHudViewModel.From(CaptureSnapshot()));
+                }
+            }
+
+            if (CameraRulersChanged())
+            {
+                using (MinimapMarker.Auto())
+                {
+                    UpdateCoordinateRulers();
+                }
+            }
         }
 
         public bool IsPointerOverInterface(Vector2 screenPosition)
@@ -174,7 +187,7 @@ namespace Sea.Client
             HookButton("repair", () => game?.ToggleRepair());
             HookButton("board", () => game?.ToggleBoarding());
             coordinateInput.RegisterCallback<KeyDownEvent>(HandleCoordinateKey);
-            Apply(SeaHudViewModel.From(CaptureSnapshot()));
+            hudDirty.Mark();
         }
 
         private SeaHudSnapshot CaptureSnapshot()
@@ -205,16 +218,14 @@ namespace Sea.Client
                 snapshot.Level = progression.Level;
                 snapshot.Experience = progression.Experience;
                 snapshot.Gold = progression.Gold;
-                foreach (var definition in connection.Connection.Db.LevelDefinition.Iter())
+                if (connection.TryGetLevelThreshold(progression.Level, out var currentThreshold))
                 {
-                    if (definition.Level == progression.Level)
-                    {
-                        snapshot.CurrentLevelExperience = definition.RequiredExperience;
-                    }
-                    else if (definition.Level == progression.Level + 1)
-                    {
-                        snapshot.NextLevelExperience = definition.RequiredExperience;
-                    }
+                    snapshot.CurrentLevelExperience = currentThreshold;
+                }
+
+                if (connection.TryGetLevelThreshold(progression.Level + 1, out var nextThreshold))
+                {
+                    snapshot.NextLevelExperience = nextThreshold;
                 }
 
                 if (snapshot.NextLevelExperience == 0)

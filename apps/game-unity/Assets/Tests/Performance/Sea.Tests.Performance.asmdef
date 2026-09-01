@@ -4,7 +4,9 @@
   "references": [
     "Sea.Domain",
     "Sea.Presentation",
-    "Unity.PerformanceTesting"
+    "Unity.PerformanceTesting",
+    "Unity.Collections",
+    "Unity.Mathematics"
   ],
   "optionalUnityReferences": ["TestAssemblies"],
   "autoReferenced": false

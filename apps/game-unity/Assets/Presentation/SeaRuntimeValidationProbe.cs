@@ -8,9 +8,11 @@ namespace Sea.Client
     public sealed class SeaRuntimeValidationProbe : MonoBehaviour
     {
         private SeaConnectionController connection;
+        private SeaWorldView worldView;
         private bool enabledForThisRun;
         private bool combatEnabledForThisRun;
         private bool tacticalEnabledForThisRun;
+        private bool presentationPerformanceEnabledForThisRun;
         private bool movementValidated;
         private bool moveRequested;
         private bool stopRequested;
@@ -38,6 +40,10 @@ namespace Sea.Client
         private uint tacticalDamagedHull;
         private Vector2 tacticalRetreat;
         private float nextTacticalCourseTime;
+        private readonly float[] presentationFrameTimes = new float[300];
+        private int presentationWarmupFrames;
+        private int presentationMeasuredFrames;
+        private bool presentationFleetSeeded;
 
         private void Awake()
         {
@@ -50,13 +56,33 @@ namespace Sea.Client
             tacticalEnabledForThisRun = Array.Exists(
                 Environment.GetCommandLineArgs(),
                 argument => argument == "-seaRuntimeTacticalTest");
+            presentationPerformanceEnabledForThisRun = Array.Exists(
+                Environment.GetCommandLineArgs(),
+                argument => argument == "-seaPresentationPerformanceTest");
+            if (presentationPerformanceEnabledForThisRun)
+            {
+                Screen.SetResolution(1920, 1080, FullScreenMode.Windowed);
+                QualitySettings.vSyncCount = 0;
+                Application.targetFrameRate = 1_000;
+            }
         }
 
-        public void ConfigureDependencies(SeaConnectionController connectionController) =>
+        public void ConfigureDependencies(
+            SeaConnectionController connectionController,
+            SeaWorldView configuredWorldView)
+        {
             connection = connectionController;
+            worldView = configuredWorldView;
+        }
 
         private void Update()
         {
+            if (presentationPerformanceEnabledForThisRun)
+            {
+                ObservePresentationPerformance();
+                return;
+            }
+
             if ((!enabledForThisRun && !combatEnabledForThisRun && !tacticalEnabledForThisRun) ||
                 connection?.Connection == null ||
                 !connection.IsSubscribed)
@@ -86,6 +112,48 @@ namespace Sea.Client
                     ObserveTactical(ship);
                 }
             }
+        }
+
+        private void ObservePresentationPerformance()
+        {
+            Application.targetFrameRate = 1_000;
+            if (worldView == null)
+            {
+                return;
+            }
+
+            if (!presentationFleetSeeded)
+            {
+                worldView.SeedSyntheticPerformanceFleet(100);
+                presentationFleetSeeded = true;
+                return;
+            }
+
+            worldView.RunSyntheticPerformanceFrame();
+            if (presentationWarmupFrames < 180)
+            {
+                presentationWarmupFrames++;
+                return;
+            }
+
+            presentationFrameTimes[presentationMeasuredFrames] = Time.unscaledDeltaTime * 1_000f;
+            presentationMeasuredFrames++;
+            if (presentationMeasuredFrames < presentationFrameTimes.Length)
+            {
+                return;
+            }
+
+            Array.Sort(presentationFrameTimes);
+            var percentileIndex = Mathf.CeilToInt(presentationFrameTimes.Length * 0.95f) - 1;
+            var p95Milliseconds = presentationFrameTimes[percentileIndex];
+            var visibleCount = worldView.VisibleShipPresentationCount;
+            var passed = visibleCount >= 100 && p95Milliseconds <= 16.7f;
+            Debug.Log(
+                $"Sea presentation performance: visible={visibleCount}, " +
+                $"frame-p95-ms={p95Milliseconds:F3}, passed={passed}.",
+                this);
+            presentationPerformanceEnabledForThisRun = false;
+            Application.Quit(passed ? 0 : 3);
         }
 
         private void ObserveShip(Ship ship)

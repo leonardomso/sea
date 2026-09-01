@@ -25,12 +25,42 @@ namespace Sea.Client
             baseLocalPosition = visual.localPosition;
             baseLocalRotation = visual.localRotation;
             phase = animationPhase;
+            if (wakes != null)
+            {
+                ResetPresentation();
+                return;
+            }
+
             wakes = new[]
             {
                 CreateWake("Port Wake", -1.15f, wakeMaterial),
                 CreateWake("Starboard Wake", 1.15f, wakeMaterial),
             };
             CreateWaterlineShadow(shadowMaterial);
+        }
+
+        public void SetAnimationPhase(float animationPhase) => phase = animationPhase;
+
+        public void ResetPresentation()
+        {
+            normalizedSpeed = 0f;
+            broadsideRecoil = 0f;
+            if (visual != null)
+            {
+                visual.localPosition = baseLocalPosition;
+                visual.localRotation = baseLocalRotation;
+            }
+
+            if (wakes == null)
+            {
+                return;
+            }
+
+            foreach (var wake in wakes)
+            {
+                wake.emitting = false;
+                wake.Clear();
+            }
         }
 
         public void SetMotion(float speed, float maximumSpeed)

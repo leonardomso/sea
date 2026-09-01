@@ -1,5 +1,6 @@
 using SpacetimeDB.Types;
 using UnityEngine;
+using Unity.Profiling;
 
 namespace Sea.Client
 {
@@ -58,6 +59,8 @@ namespace Sea.Client
 
     public sealed class SeaChartCameraController : MonoBehaviour
     {
+        private static readonly ProfilerMarker CameraMarker = new("Sea.Presentation.Camera");
+
         [SerializeField] private Camera chartCamera;
         [SerializeField] private Camera miniMapCamera;
         [SerializeField] private SeaConnectionController connection;
@@ -99,6 +102,7 @@ namespace Sea.Client
                 return;
             }
 
+            using var _ = CameraMarker.Auto();
             if (TryGetPlayerPosition(out var playerPosition))
             {
                 if (!hasInitialCenter)

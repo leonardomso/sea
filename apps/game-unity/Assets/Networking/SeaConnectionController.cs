@@ -4,11 +4,15 @@ using System.Linq;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using UnityEngine;
+using Unity.Profiling;
 
 namespace Sea.Client
 {
     public sealed partial class SeaConnectionController : MonoBehaviour
     {
+        private static readonly ProfilerMarker NetworkingMarker =
+            new("Sea.Networking.FrameTick");
+
         [SerializeField] private string serverUrl = "http://127.0.0.1:3000";
         [SerializeField] private string databaseName = "sea-local";
         [SerializeField] private bool connectOnStart = true;
@@ -72,7 +76,11 @@ namespace Sea.Client
         {
             if (Connection != null)
             {
-                Connection.FrameTick();
+                using (NetworkingMarker.Auto())
+                {
+                    Connection.FrameTick();
+                }
+
                 ApplyPendingSpatialInterest(Time.realtimeSinceStartupAsDouble);
             }
         }
@@ -163,6 +171,7 @@ namespace Sea.Client
             connection.Db.PlayerCommandState.OnInsert += HandleCommandStateInserted;
             connection.Db.PlayerCommandState.OnUpdate += HandleCommandStateUpdated;
             connection.Db.CommandResultEvent.OnInsert += HandleCommandResult;
+            RegisterClientStateCallbacks(connection);
 
             initialSubscription = connection.SubscriptionBuilder()
                 .OnApplied(HandleInitialSubscriptionApplied)
@@ -188,6 +197,7 @@ namespace Sea.Client
             if (ownership.Owner == LocalIdentity)
             {
                 SubscribePlayerScope(Connection, ownership.ShipEntityId);
+                NotifyHudStateChanged();
             }
         }
 
@@ -199,6 +209,7 @@ namespace Sea.Client
             if (ownership.Owner == LocalIdentity)
             {
                 SubscribePlayerScope(Connection, ownership.ShipEntityId);
+                NotifyHudStateChanged();
             }
         }
 
@@ -233,11 +244,13 @@ namespace Sea.Client
         private void HandleShipInserted(EventContext context, Ship ship)
         {
             RefreshSpatialScope(Connection, ship);
+            NotifyShipChanged(ship);
         }
 
         private void HandleShipUpdated(EventContext context, Ship _oldShip, Ship ship)
         {
             RefreshSpatialScope(Connection, ship);
+            NotifyShipChanged(ship);
         }
 
         private void HandleCommandStateInserted(EventContext context, PlayerCommandState state) =>
@@ -270,6 +283,7 @@ namespace Sea.Client
             CommandStatus = result.Accepted
                 ? $"Accepted • {description}"
                 : $"Rejected • {description} • {SeaCommandResultText.Rejection(result.RejectionCode)}";
+            NotifyHudStateChanged();
         }
 
         private static string ToIdentitySqlLiteral(Identity identity)
@@ -393,6 +407,7 @@ namespace Sea.Client
 
         private void ResetSubscriptions()
         {
+            NotifyPresentationReset();
             initialSubscription = null;
             playerSubscription = null;
             subscribedPlayerEntityId = 0;

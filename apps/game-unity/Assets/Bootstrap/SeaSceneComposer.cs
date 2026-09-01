@@ -42,7 +42,7 @@ namespace Sea.Bootstrap
             chartCamera?.ConfigureDependencies(connection, world);
             game?.ConfigureDependencies(connection, mainCamera);
             world?.ConfigureDependencies(connection);
-            validationProbe?.ConfigureDependencies(connection);
+            validationProbe?.ConfigureDependencies(connection, world);
             hud?.ConfigureDependencies(connection, game, input);
             input?.ConfigureDependencies(game, chartCamera, hud);
         }

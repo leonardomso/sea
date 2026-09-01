@@ -5,7 +5,10 @@
     "Sea.Domain",
     "Sea.Networking",
     "Sea.Generated",
-    "com.clockworklabs.spacetimedbsdk"
+    "com.clockworklabs.spacetimedbsdk",
+    "Unity.Burst",
+    "Unity.Collections",
+    "Unity.Mathematics"
   ],
   "autoReferenced": false
 }
