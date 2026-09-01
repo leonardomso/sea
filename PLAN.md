@@ -510,6 +510,29 @@ Commit: `perf(client): make Unity presentation event driven`
 
 ### Phase 15: finish roaming combat and progression
 
+Status: complete.
+
+The authoritative world now seeds four patrols, four raiders, and four
+gunships. Indexed 2 Hz decisions use the same command policy as players and
+cover deterministic roaming, aggro, range control, loadouts, broadsides,
+retreat, repair, sinking, and respawn. Automatic aggro admits one attacker per
+player so the introductory shared world cannot collapse into an eight-ship
+dogpile; ships attacked by a player still retaliate.
+
+NPC deaths create spatially indexed, atomic sail-over loot and award
+contribution, kill, boarding, and loot XP against data-driven level thresholds.
+Players respawn safely after five seconds at half hull with five seconds of
+protection. NPCs respawn after 30 seconds with a new encounter ID. The built
+macOS runtime demonstrated sailing, authoritative combat, NPC sinking, loot,
+XP, NPC respawn, hazards, abilities, and repair in one isolated database.
+Server unit, deterministic replay, four-client shared-world, four-way loot
+contention, reducer integration, world-schema, and Unity regression coverage
+protect these contracts. The Phase 15 gate passed 275 server tests and four
+real-module integration tests. Idle simulation averaged 5.83 ms, aggregate
+container CPU averaged 23.92 percent, and the rebuilt macOS presentation probe
+held 101 visible ships at 4.90 ms p95. The containerized CLI now persists one
+local owner identity, so repeated publishes update the same disposable world.
+
 - Seed four patrols, four raiders, and four gunships.
 - Run NPC decisions at 2 Hz through indexed due work.
 - Add deterministic roaming, aggro, range control, weak-point and ammunition

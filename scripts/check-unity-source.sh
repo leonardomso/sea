@@ -89,7 +89,9 @@ grep -q 'SeaBoundedPool<GameObject>' "$unity_root/Assets/Presentation/SeaWorldVi
 grep -q 'SeaDirtyState' "$unity_root/Assets/UI/SeaHudEvents.cs"
 grep -q -- '-seaPresentationPerformanceTest' \
   "$unity_root/Assets/Presentation/SeaRuntimeValidationProbe.cs"
-grep -q 'SeedSyntheticPerformanceFleet(100)' \
+grep -q 'SeedSyntheticPerformanceFleet(requiredShipCount)' \
+  "$unity_root/Assets/Presentation/SeaRuntimeValidationProbe.cs"
+grep -q 'ShouldRestoreSyntheticFleet' \
   "$unity_root/Assets/Presentation/SeaRuntimeValidationProbe.cs"
 grep -q 'test-unity-presentation-performance.sh' "$project_root/scripts/verify-unity.sh"
 

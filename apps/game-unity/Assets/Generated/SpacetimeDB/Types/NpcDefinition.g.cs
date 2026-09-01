@@ -15,24 +15,52 @@ namespace SpacetimeDB.Types
     {
         [DataMember(Name = "npc_id")]
         public string NpcId;
+        [DataMember(Name = "archetype_code")]
+        public byte ArchetypeCode;
         [DataMember(Name = "aggro_range")]
         public float AggroRange;
         [DataMember(Name = "desired_range")]
         public float DesiredRange;
+        [DataMember(Name = "maximum_speed")]
+        public float MaximumSpeed;
         [DataMember(Name = "hull")]
         public uint Hull;
+        [DataMember(Name = "cannon_damage")]
+        public uint CannonDamage;
+        [DataMember(Name = "preferred_ammo_code")]
+        public byte PreferredAmmoCode;
+        [DataMember(Name = "preferred_weak_point_code")]
+        public byte PreferredWeakPointCode;
+        [DataMember(Name = "gold_reward")]
+        public uint GoldReward;
+        [DataMember(Name = "experience_reward")]
+        public ulong ExperienceReward;
 
         public NpcDefinition(
             string NpcId,
+            byte ArchetypeCode,
             float AggroRange,
             float DesiredRange,
-            uint Hull
+            float MaximumSpeed,
+            uint Hull,
+            uint CannonDamage,
+            byte PreferredAmmoCode,
+            byte PreferredWeakPointCode,
+            uint GoldReward,
+            ulong ExperienceReward
         )
         {
             this.NpcId = NpcId;
+            this.ArchetypeCode = ArchetypeCode;
             this.AggroRange = AggroRange;
             this.DesiredRange = DesiredRange;
+            this.MaximumSpeed = MaximumSpeed;
             this.Hull = Hull;
+            this.CannonDamage = CannonDamage;
+            this.PreferredAmmoCode = PreferredAmmoCode;
+            this.PreferredWeakPointCode = PreferredWeakPointCode;
+            this.GoldReward = GoldReward;
+            this.ExperienceReward = ExperienceReward;
         }
 
         public NpcDefinition()

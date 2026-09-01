@@ -105,6 +105,7 @@ public static partial class Module
             moved.ChunkX = SpatialRules.ChunkCoordinate(moved.PositionX);
             moved.ChunkY = SpatialRules.ChunkCoordinate(moved.PositionY);
             ships.Stage(moved);
+            ProcessLootClaimsForMovingShip(ctx, moved);
         }
     }
 

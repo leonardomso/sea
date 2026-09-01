@@ -163,9 +163,16 @@ export type NpcAi = __Infer<typeof NpcAi>;
 
 export const NpcDefinition = __t.object("NpcDefinition", {
   npcId: __t.string(),
+  archetypeCode: __t.u8(),
   aggroRange: __t.f32(),
   desiredRange: __t.f32(),
+  maximumSpeed: __t.f32(),
   hull: __t.u32(),
+  cannonDamage: __t.u32(),
+  preferredAmmoCode: __t.u8(),
+  preferredWeakPointCode: __t.u8(),
+  goldReward: __t.u32(),
+  experienceReward: __t.u64(),
 });
 export type NpcDefinition = __Infer<typeof NpcDefinition>;
 
@@ -264,6 +271,7 @@ export const Ship = __t.object("Ship", {
   nextStarboardFireTick: __t.u64(),
   respawnAtTick: __t.u64(),
   invulnerableUntilTick: __t.u64(),
+  encounterId: __t.u64(),
 });
 export type Ship = __Infer<typeof Ship>;
 

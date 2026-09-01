@@ -81,27 +81,57 @@ public static partial class Module
         {
             defender.ModeCode = (byte)ShipMode.Operational;
         }
-        defender.Hull = WorldRules.ApplyDamage(defender.Hull, damage.Hull);
-        defender.Sails = WorldRules.ApplyDamage(defender.Sails, damage.Sails);
-        defender.Cannons = WorldRules.ApplyDamage(defender.Cannons, damage.Cannons);
-        defender.Crew = WorldRules.ApplyDamage(defender.Crew, damage.Crew);
+        var hullBefore = defender.Hull;
+        var sailsBefore = defender.Sails;
+        var cannonsBefore = defender.Cannons;
+        var crewBefore = defender.Crew;
+        defender.Hull = WorldRules.ApplyDamage(hullBefore, damage.Hull);
+        defender.Sails = WorldRules.ApplyDamage(sailsBefore, damage.Sails);
+        defender.Cannons = WorldRules.ApplyDamage(cannonsBefore, damage.Cannons);
+        defender.Crew = WorldRules.ApplyDamage(crewBefore, damage.Crew);
+        var applied = new CombatDamage(
+            hullBefore - defender.Hull,
+            sailsBefore - defender.Sails,
+            cannonsBefore - defender.Cannons,
+            crewBefore - defender.Crew);
         SynchronizeDisabledSails(ctx, defender, tick);
-        if (defender.Hull == 0)
+        var sunk = hullBefore > 0 && defender.Hull == 0;
+        if (sunk)
         {
-            defender.IsAlive = false;
-            defender.IsActive = false;
-            defender.IsMoving = false;
-            defender.HasCourse = false;
-            defender.IsStopping = false;
-            defender.ModeCode = (byte)ShipMode.Sunk;
-            ClearTargetLocks(ctx, ships, defender.EntityId);
-            if (sourceEntityId != 0)
-            {
-                defender.TargetEntityId = 0;
-            }
+            SinkShip(ctx, ships, sourceEntityId, ref defender, tick);
+        }
+        else if (sourceEntityId != 0 &&
+            defender.FactionCode == (byte)FactionCode.Npc &&
+            ctx.Db.PlayerOwnership.ShipEntityId.Find(sourceEntityId) is not null)
+        {
+            defender.TargetEntityId = sourceEntityId;
+            defender.IsEngaged = true;
         }
 
-        return damage;
+        RecordCombatProgress(ctx, sourceEntityId, defender, applied, sunk);
+        return applied;
+    }
+
+    private static void SinkShip(
+        ReducerContext ctx,
+        ShipTickBuffer ships,
+        ulong sourceEntityId,
+        ref Ship defender,
+        ulong tick)
+    {
+        defender.IsAlive = false;
+        defender.IsActive = false;
+        defender.IsMoving = false;
+        defender.HasCourse = false;
+        defender.IsStopping = false;
+        defender.ModeCode = (byte)ShipMode.Sunk;
+        ClearTargetLocks(ctx, ships, defender.EntityId);
+        if (sourceEntityId != 0)
+        {
+            defender.TargetEntityId = 0;
+        }
+
+        ScheduleRespawn(ctx, ref defender, tick);
     }
 
     private static void ApplyVolleyStatus(

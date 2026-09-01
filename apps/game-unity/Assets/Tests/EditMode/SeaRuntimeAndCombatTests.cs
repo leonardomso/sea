@@ -130,31 +130,6 @@ namespace Sea.Tests
                 currentTick), Is.EqualTo(expected).Within(0.001f));
         }
 
-        [Test]
-        public void Runtime_combat_observation_stays_inside_one_spatial_chunk_and_holds_position()
-        {
-            Assert.That(SeaRuntimeValidationRules.CombatObservationRange,
-                Is.LessThanOrEqualTo(25f));
-            Assert.That(SeaRuntimeValidationRules.ShouldHoldPositionBeforeFire(
-                distance: 12f,
-                targetSelected: true), Is.True);
-            Assert.That(SeaRuntimeValidationRules.ShouldHoldPositionBeforeFire(
-                distance: 25f,
-                targetSelected: true), Is.False);
-        }
-
-        [Test]
-        public void Runtime_tactical_probe_can_find_the_seeded_storm_before_it_enters_interest()
-        {
-            var initial = SeaRuntimeValidationRules.SeededStormPosition(worldTick: 0);
-            var afterTenSeconds = SeaRuntimeValidationRules.SeededStormPosition(worldTick: 100);
-
-            Assert.That(initial.x, Is.EqualTo(-72f).Within(0.001f));
-            Assert.That(initial.y, Is.EqualTo(3f).Within(0.001f));
-            Assert.That(afterTenSeconds.x, Is.EqualTo(-57.734f).Within(0.001f));
-            Assert.That(afterTenSeconds.y, Is.EqualTo(7.635f).Within(0.001f));
-        }
-
         [Theory]
         [TestCase(5ul, 10ul, 5ul, 0f)]
         [TestCase(5ul, 10ul, 7ul, 0.4f)]

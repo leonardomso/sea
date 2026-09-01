@@ -146,6 +146,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Ship, ulong> NextStarboardFireTick { get; }
         public global::SpacetimeDB.Col<Ship, ulong> RespawnAtTick { get; }
         public global::SpacetimeDB.Col<Ship, ulong> InvulnerableUntilTick { get; }
+        public global::SpacetimeDB.Col<Ship, ulong> EncounterId { get; }
 
         public ShipCols(string tableName)
         {
@@ -196,6 +197,7 @@ namespace SpacetimeDB.Types
             NextStarboardFireTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "next_starboard_fire_tick");
             RespawnAtTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "respawn_at_tick");
             InvulnerableUntilTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "invulnerable_until_tick");
+            EncounterId = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "encounter_id");
         }
     }
 

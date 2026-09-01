@@ -27,6 +27,8 @@ namespace Sea.Client
             interestConnection.VolleyChanged += HandleVolleyChanged;
             interestConnection.VolleyLeftInterest += HandleVolleyRemoved;
             interestConnection.WorldTickChanged += HandleWorldTickChanged;
+            interestConnection.LootChanged += HandleLootChanged;
+            interestConnection.LootLeftInterest += HandleLootRemoved;
             interestConnection.PresentationReset += ResetPresentations;
         }
 
@@ -44,6 +46,8 @@ namespace Sea.Client
             interestConnection.VolleyChanged -= HandleVolleyChanged;
             interestConnection.VolleyLeftInterest -= HandleVolleyRemoved;
             interestConnection.WorldTickChanged -= HandleWorldTickChanged;
+            interestConnection.LootChanged -= HandleLootChanged;
+            interestConnection.LootLeftInterest -= HandleLootRemoved;
             interestConnection.PresentationReset -= ResetPresentations;
             interestConnection = null;
         }
@@ -115,6 +119,7 @@ namespace Sea.Client
             }
 
             combatPresenter?.Reset();
+            ResetLootPresentations();
             visibilityDirty = true;
         }
 

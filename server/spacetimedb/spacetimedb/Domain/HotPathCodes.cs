@@ -119,6 +119,22 @@ public static class HotPathCodes
         return code != AmmunitionCode.None;
     }
 
+    public static string AmmunitionId(AmmunitionCode code) => code switch
+    {
+        AmmunitionCode.Round => "round",
+        AmmunitionCode.Chain => "chain",
+        AmmunitionCode.Grapeshot => "grapeshot",
+        AmmunitionCode.Incendiary => "incendiary",
+        _ => "none",
+    };
+
+    public static string WeakPointId(WeakPointCode code) => code switch
+    {
+        WeakPointCode.Sails => "sails",
+        WeakPointCode.Cannons => "cannons",
+        _ => "hull",
+    };
+
     public static bool TryParseAbility(string? id, out AbilityCode code)
     {
         code = id switch

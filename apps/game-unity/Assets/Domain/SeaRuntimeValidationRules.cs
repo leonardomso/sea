@@ -4,7 +4,10 @@ namespace Sea.Client
 {
     public static class SeaRuntimeValidationRules
     {
-        public const float CombatObservationRange = 12f;
+        public const float CombatObservationRange = 52f;
+        public const float CombatApproachRange = 42f;
+        public const string RuntimeNpcSubscriptionQuery =
+            "SELECT * FROM ship WHERE faction_code = 2";
 
         private const float SeededStormX = -72f;
         private const float SeededStormY = 3f;
@@ -16,6 +19,25 @@ namespace Sea.Client
             float distance,
             bool targetSelected) =>
             targetSelected && distance <= CombatObservationRange;
+
+        public static bool ShouldRestoreSyntheticFleet(
+            int visibleCount,
+            int requiredCount) =>
+            visibleCount < requiredCount;
+
+        public static Vector2 SyntheticFleetPosition(
+            int index,
+            Vector2 center,
+            int columns = 10,
+            float spacing = 6f)
+        {
+            var row = index / columns;
+            var column = index % columns;
+            var halfSpan = (columns - 1) * spacing * 0.5f;
+            return center + new Vector2(
+                column * spacing - halfSpan,
+                row * spacing - halfSpan);
+        }
 
         public static Vector2 SeededStormPosition(ulong worldTick)
         {

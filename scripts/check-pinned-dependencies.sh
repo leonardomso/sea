@@ -32,8 +32,19 @@ check_pattern '(FROM|image:).*:latest' apps/admin/Dockerfile infra/docker-compos
 check_pattern 'clockworklabs/spacetime:latest|mcr.microsoft.com/dotnet/sdk:latest' \
   scripts/spacetime.sh scripts/dotnet.sh scripts/dotnet10.sh .env.example
 
+if ! grep -q 'spacetime-local' scripts/spacetime.sh \
+  || ! grep -q 'spacetime_config=' scripts/spacetime.sh; then
+  echo "The local SpacetimeDB CLI identity must persist across container runs." >&2
+  failed=1
+fi
+
+if rg -n -- '--anonymous' package.json scripts/reset-spacetime.sh; then
+  echo "The persistent local world must not be published with a throwaway identity." >&2
+  failed=1
+fi
+
 if [ "$failed" -ne 0 ]; then
-  echo "Floating production dependency found. Pin an exact version or immutable image digest." >&2
+  echo "Dependency pin or local tool-state validation failed." >&2
   exit 1
 fi
 

@@ -217,6 +217,11 @@ const tablesSchema = __schema({
         'chunkX',
         'chunkY',
       ] },
+      { accessor: 'ByActiveChunk', name: 'loot_is_active_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+        'chunkX',
+        'chunkY',
+      ] },
       { accessor: 'ByLootExpiryDue', name: 'loot_is_active_expires_at_tick_idx_btree', algorithm: 'btree', columns: [
         'isActive',
         'expiresAtTick',
@@ -250,11 +255,15 @@ const tablesSchema = __schema({
   npcDefinition: __table({
     name: 'npc_definition',
     indexes: [
+      { accessor: 'ArchetypeCode', name: 'npc_definition_archetype_code_idx_btree', algorithm: 'btree', columns: [
+        'archetypeCode',
+      ] },
       { accessor: 'NpcId', name: 'npc_definition_npc_id_idx_btree', algorithm: 'btree', columns: [
         'npcId',
       ] },
     ],
     constraints: [
+      { name: 'npc_definition_archetype_code_key', constraint: 'unique', columns: ['archetypeCode'] },
       { name: 'npc_definition_npc_id_key', constraint: 'unique', columns: ['npcId'] },
     ],
   }, NpcDefinitionRow),

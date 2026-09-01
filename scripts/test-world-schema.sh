@@ -19,13 +19,12 @@ query_table() {
     "$database_url" >"$runtime_directory/$table_name.json"
 }
 
-for table_name in world_state ship ship_status ship_channel cooldown volley inventory ammo_definition ability_definition npc_definition combat_event environment_state current_zone world_object; do
+for table_name in world_state ship ship_status ship_channel cooldown volley inventory ammo_definition ability_definition npc_definition npc_ai respawn_work loot player_progression combat_event environment_state current_zone world_object; do
   query_table "$table_name"
 done
 
 "$project_root/scripts/spacetime.sh" describe sea-local \
   --server http://host.docker.internal:3000 \
-  --anonymous \
   --json >"$runtime_directory/schema.json"
 
 node - "$runtime_directory" <<'NODE'
@@ -43,7 +42,7 @@ const columns = (table) => {
 };
 
 const world = rows("world_state");
-if (world.length !== 1 || world[0].tick_rate_hz !== 10 || world[0].content_version !== 3) {
+if (world.length !== 1 || world[0].tick_rate_hz !== 10 || world[0].content_version !== 4) {
   throw new Error("World state does not expose the 10 Hz versioned simulation contract.");
 }
 
@@ -58,6 +57,14 @@ if (
 if (!ships.some((ship) => ship.faction_code === 2)) {
   throw new Error("The unified ship table does not contain the seeded NPC ship.");
 }
+const npcShips = ships.filter((ship) => ship.faction_code === 2);
+if (npcShips.length !== 12) throw new Error("Expected twelve persistent NPC ships.");
+for (const archetypeCode of [1, 2, 3]) {
+  if (npcShips.filter((ship) => ship.archetype_code === archetypeCode).length !== 4) {
+    throw new Error(`Expected four NPC ships for archetype ${archetypeCode}.`);
+  }
+}
+if (rows("npc_ai").length !== 12) throw new Error("Expected twelve NPC AI work rows.");
 
 const volleyColumns = columns("volley");
 for (const field of ["hull_damage", "sail_damage", "cannon_damage", "crew_damage"]) {
@@ -98,7 +105,13 @@ if (sourceNames.has("Engage")) {
 
 if (rows("ammo_definition").length !== 4) throw new Error("Expected four ammunition definitions.");
 if (rows("ability_definition").length !== 4) throw new Error("Expected four ability definitions.");
-if (rows("npc_definition").length !== 3) throw new Error("Expected three NPC definitions.");
+const npcDefinitions = rows("npc_definition");
+if (npcDefinitions.length !== 3) throw new Error("Expected three NPC definitions.");
+if (npcDefinitions.some((definition) =>
+  definition.maximum_speed <= 0 || definition.cannon_damage <= 0 ||
+  definition.gold_reward <= 0 || definition.experience_reward <= 0)) {
+  throw new Error("NPC combat and reward definitions must be positive.");
+}
 if (rows("environment_state").length !== 1) throw new Error("Expected one deterministic wind state.");
 if (rows("current_zone").length !== 2) throw new Error("Expected two seeded current zones.");
 const worldObjects = rows("world_object");

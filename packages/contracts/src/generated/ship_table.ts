@@ -58,4 +58,5 @@ export default __t.row({
   nextStarboardFireTick: __t.u64().name("next_starboard_fire_tick"),
   respawnAtTick: __t.u64().name("respawn_at_tick"),
   invulnerableUntilTick: __t.u64().name("invulnerable_until_tick"),
+  encounterId: __t.u64().name("encounter_id"),
 });

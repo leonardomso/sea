@@ -96,7 +96,7 @@ public sealed class CommandPolicyTests
     {
         var snapshot = ValidSnapshot(ShipMode.Operational) with
         {
-            TargetIsPlayer = true,
+            TargetIsFriendly = true,
         };
 
         var decision = CommandPolicy.Evaluate(snapshot, ShipCommandKind.SelectTarget);
@@ -112,7 +112,7 @@ public sealed class CommandPolicyTests
     {
         var snapshot = ValidSnapshot(ShipMode.Operational) with
         {
-            TargetIsPlayer = true,
+            TargetIsFriendly = true,
         };
 
         var decision = CommandPolicy.Evaluate(snapshot, command);

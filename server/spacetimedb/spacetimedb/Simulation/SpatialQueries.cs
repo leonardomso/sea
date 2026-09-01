@@ -55,4 +55,21 @@ public static partial class Module
             }
         }
     }
+
+    private static IEnumerable<Loot> ActiveLootIn(
+        ReducerContext ctx,
+        ChunkBounds bounds)
+    {
+        for (var chunkX = bounds.MinX; chunkX <= bounds.MaxX; chunkX++)
+        {
+            for (var chunkY = bounds.MinY; chunkY <= bounds.MaxY; chunkY++)
+            {
+                foreach (var loot in ctx.Db.Loot.ByActiveChunk.Filter(
+                             (true, chunkX, chunkY)))
+                {
+                    yield return loot;
+                }
+            }
+        }
+    }
 }

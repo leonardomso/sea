@@ -116,6 +116,7 @@ public static partial class Module
                 boarded.Crew = WorldRules.ApplyDamage(boarded.Crew, 25);
                 ships.Stage(boarded);
                 AddInventory(ctx, source.EntityId, "boarding_cache", 1);
+                RecordBoardingProgress(ctx, source.EntityId, boarded);
                 AppendEvent(
                     ctx,
                     source.EntityId,

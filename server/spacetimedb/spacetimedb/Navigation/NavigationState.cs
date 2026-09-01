@@ -33,6 +33,43 @@ public static partial class Module
         return point;
     }
 
+    private static SpawnPoint FindSafeRespawn(ReducerContext ctx, ulong seed)
+    {
+        var blockers = new List<SpawnBlocker>();
+        foreach (var kind in new[]
+                 {
+                     WorldObjectCode.Island,
+                     WorldObjectCode.Reef,
+                     WorldObjectCode.Storm,
+                     WorldObjectCode.Shoal,
+                 })
+        {
+            foreach (var worldObject in ctx.Db.WorldObject.ByActiveKind.Filter(
+                         (true, (byte)kind)))
+            {
+                blockers.Add(new SpawnBlocker(
+                    worldObject.PositionX,
+                    worldObject.PositionY,
+                    worldObject.Radius));
+            }
+        }
+
+        foreach (var ship in ctx.Db.Ship.ByActive.Filter(true))
+        {
+            if (ship.IsAlive)
+            {
+                blockers.Add(new SpawnBlocker(ship.PositionX, ship.PositionY, 4f));
+            }
+        }
+
+        if (!SpawnRules.TryFindSafePosition(seed, blockers, out var point))
+        {
+            throw new InvalidOperationException("No safe respawn position is available.");
+        }
+
+        return point;
+    }
+
     private static List<NavigationBlocker> NavigationBlockersAt(
         ReducerContext ctx,
         float x,

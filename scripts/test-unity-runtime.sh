@@ -56,7 +56,8 @@ defaults write "$preference_domain" "$token_key" -string "invalid-local-runtime-
 "$game_binary" -batchmode -nographics \
   -seaDatabaseName "$runtime_database" \
   -seaProfile "$runtime_profile" \
-  -seaRuntimeMoveTest -seaRuntimeCombatTest -seaRuntimeTacticalTest \
+  -seaRuntimeMoveTest -seaRuntimeCombatTest -seaRuntimeProgressionTest \
+  -seaRuntimeTacticalTest \
   -logFile "$runtime_log" >/dev/null 2>&1 &
 game_pid=$!
 
@@ -65,6 +66,7 @@ for _ in {1..180}; do
   if rg -q "Sea client ready\." "$runtime_log" 2>/dev/null \
     && rg -q "Sea runtime observed progressive sailing\." "$runtime_log" 2>/dev/null \
     && rg -q "Sea runtime observed authoritative manual broadside combat\." "$runtime_log" 2>/dev/null \
+    && rg -q "Sea runtime observed NPC sinking, atomic loot, XP, and NPC respawn\." "$runtime_log" 2>/dev/null \
     && rg -q "Sea runtime observed tactical ability, storm damage, and progressive repair\." "$runtime_log" 2>/dev/null; then
     validated=true
     break
@@ -79,6 +81,7 @@ done
 
 if [ "$validated" != true ]; then
   echo "Unity runtime did not demonstrate sailing, broadside combat, and tactical recovery." >&2
+  rg -n "Sea runtime|Rejected|Reducer|Exception|Fatal" "$runtime_log" >&2 || true
   tail -n 120 "$runtime_log" >&2 || true
   exit 1
 fi
@@ -87,10 +90,11 @@ rg -q "Cached identity rejected; retrying anonymously\." "$runtime_log"
 rg -q "Sea client ready\." "$runtime_log"
 rg -q "Sea runtime observed progressive sailing\." "$runtime_log"
 rg -q "Sea runtime observed authoritative manual broadside combat\." "$runtime_log"
+rg -q "Sea runtime observed NPC sinking, atomic loot, XP, and NPC respawn\." "$runtime_log"
 rg -q "Sea runtime observed tactical ability, storm damage, and progressive repair\." "$runtime_log"
 if rg -q "No runtime-compatible shader|ArgumentNullException: Value cannot be null.*shader|Unhandled Exception|Fatal error" "$runtime_log"; then
   echo "Unity runtime reported a fatal or shader error." >&2
   tail -n 120 "$runtime_log" >&2
   exit 1
 fi
-echo "Unity runtime recovered a stale identity and demonstrated sailing, manual combat, hazards, abilities, and repair."
+echo "Unity runtime demonstrated sailing, combat, NPC sinking, loot, XP, respawn, hazards, abilities, and repair."

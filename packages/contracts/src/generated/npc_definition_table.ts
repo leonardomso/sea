@@ -12,7 +12,14 @@ import {
 
 export default __t.row({
   npcId: __t.string().primaryKey().name("npc_id"),
+  archetypeCode: __t.u8().name("archetype_code"),
   aggroRange: __t.f32().name("aggro_range"),
   desiredRange: __t.f32().name("desired_range"),
+  maximumSpeed: __t.f32().name("maximum_speed"),
   hull: __t.u32(),
+  cannonDamage: __t.u32().name("cannon_damage"),
+  preferredAmmoCode: __t.u8().name("preferred_ammo_code"),
+  preferredWeakPointCode: __t.u8().name("preferred_weak_point_code"),
+  goldReward: __t.u32().name("gold_reward"),
+  experienceReward: __t.u64().name("experience_reward"),
 });

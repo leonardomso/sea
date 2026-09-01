@@ -24,7 +24,7 @@ public static partial class Module
         var target = ctx.Db.Ship.EntityId.Find(command.EntityId);
         var valid = target is Ship selectedShip &&
             selectedShip.IsActive && selectedShip.IsAlive;
-        var isPlayer = valid && target!.Value.FactionCode == (byte)FactionCode.Player;
+        var isFriendly = valid && target!.Value.FactionCode == source.FactionCode;
         var concealed = false;
         if (valid)
         {
@@ -43,7 +43,7 @@ public static partial class Module
         return snapshot with
         {
             TargetValid = valid,
-            TargetIsPlayer = isPlayer,
+            TargetIsFriendly = isFriendly,
             TargetConcealed = concealed,
         };
     }
@@ -99,8 +99,8 @@ public static partial class Module
             : source.NextStarboardFireTick;
         return snapshot with
         {
-            TargetIsPlayer = target is Ship selectedTarget &&
-                selectedTarget.FactionCode == (byte)FactionCode.Player,
+            TargetIsFriendly = target is Ship selectedTarget &&
+                selectedTarget.FactionCode == source.FactionCode,
             FireRejection = CombatRules.ValidateFire(new FireRequest
             {
                 SourceAlive = source.IsActive && source.IsAlive,
@@ -180,8 +180,8 @@ public static partial class Module
         var cooldown = FindCooldown(ctx, source.EntityId, CooldownCode.Boarding);
         return snapshot with
         {
-            TargetIsPlayer = target is Ship selectedTarget &&
-                selectedTarget.FactionCode == (byte)FactionCode.Player,
+            TargetIsFriendly = target is Ship selectedTarget &&
+                selectedTarget.FactionCode == source.FactionCode,
             BoardingRejection = TacticalRules.ValidateBoarding(new BoardingRequest(
                 source.IsActive && source.IsAlive,
                 target is Ship selected && selected.IsActive && selected.IsAlive,

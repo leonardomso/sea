@@ -87,6 +87,31 @@ public sealed class ReducerIntegrationTests
         Assert.All(clients, client => Assert.True(client.HasOnlyBoundedSpatialRows(3, 5)));
     }
 
+    [Fact]
+    public void TwelveNpcShipsSeedAndBeginDeterministicRoaming()
+    {
+        using var client = IntegrationClient.Connect();
+        client.SubscribeNpcWorld();
+        var initial = client.NpcPositions();
+
+        Assert.Equal(12, initial.Count);
+        Assert.Equal(4, client.NpcCount(1));
+        Assert.Equal(4, client.NpcCount(2));
+        Assert.Equal(4, client.NpcCount(3));
+
+        PumpAllUntil([client], () =>
+        {
+            var current = client.NpcPositions();
+            return current.Any(pair =>
+                initial.TryGetValue(pair.Key, out var position) &&
+                (MathF.Abs(pair.Value.X - position.X) > 0.01f ||
+                 MathF.Abs(pair.Value.Y - position.Y) > 0.01f));
+        });
+
+        Assert.Equal(12, client.NpcAiCount());
+        Assert.Null(client.UnhandledReducerError);
+    }
+
     private static void PumpAllUntil(
         IReadOnlyCollection<IntegrationClient> clients,
         Func<bool> condition)
@@ -116,6 +141,7 @@ public sealed class ReducerIntegrationTests
         private bool subscribed;
         private bool playerSubscribed;
         private bool spatialSubscribed;
+        private bool npcWorldSubscribed;
         private Exception? failure;
 
         private IntegrationClient(DbConnection connection, Identity identity)
@@ -217,6 +243,30 @@ public sealed class ReducerIntegrationTests
                     $"SELECT * FROM world_object WHERE is_active = true AND {bounds}",
                 ]);
         }
+
+        public void SubscribeNpcWorld()
+        {
+            connection.SubscriptionBuilder()
+                .OnApplied(_ => npcWorldSubscribed = true)
+                .OnError((_, error) => failure = error)
+                .Subscribe([
+                    "SELECT * FROM ship WHERE faction_code = 2",
+                    "SELECT * FROM npc_ai",
+                    "SELECT * FROM npc_definition",
+                ]);
+            PumpUntil(connection, () => npcWorldSubscribed || failure is not null);
+            ThrowIfFailed();
+        }
+
+        public Dictionary<ulong, (float X, float Y)> NpcPositions() =>
+            connection.Db.Ship.Iter()
+                .Where(ship => ship.FactionCode == 2)
+                .ToDictionary(ship => ship.EntityId, ship => (ship.PositionX, ship.PositionY));
+
+        public int NpcCount(byte archetypeCode) => connection.Db.Ship.Iter()
+            .Count(ship => ship.FactionCode == 2 && ship.ArchetypeCode == archetypeCode);
+
+        public int NpcAiCount() => connection.Db.NpcAi.Iter().Count();
 
         public Ship OwnedShip()
         {

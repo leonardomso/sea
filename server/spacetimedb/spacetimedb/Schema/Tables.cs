@@ -90,6 +90,7 @@ public static partial class Module
         public ulong NextStarboardFireTick;
         public ulong RespawnAtTick;
         public ulong InvulnerableUntilTick;
+        public ulong EncounterId;
     }
 
     [SpacetimeDB.Table(Accessor = "RespawnWork", Public = true)]
@@ -201,6 +202,7 @@ public static partial class Module
     [SpacetimeDB.Table(Accessor = "Loot", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByChunk", Columns = new[] { nameof(ChunkX), nameof(ChunkY) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByActiveChunk", Columns = new[] { nameof(IsActive), nameof(ChunkX), nameof(ChunkY) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByLootExpiryDue", Columns = new[] { nameof(IsActive), nameof(ExpiresAtTick) })]
     public partial struct Loot
     {
@@ -359,9 +361,17 @@ public static partial class Module
     {
         [PrimaryKey]
         public string NpcId;
+        [Unique]
+        public byte ArchetypeCode;
         public float AggroRange;
         public float DesiredRange;
+        public float MaximumSpeed;
         public uint Hull;
+        public uint CannonDamage;
+        public byte PreferredAmmoCode;
+        public byte PreferredWeakPointCode;
+        public uint GoldReward;
+        public ulong ExperienceReward;
     }
 
     [SpacetimeDB.Table(Accessor = "LevelDefinition", Public = true)]

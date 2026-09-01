@@ -107,6 +107,8 @@ namespace SpacetimeDB.Types
         public ulong RespawnAtTick;
         [DataMember(Name = "invulnerable_until_tick")]
         public ulong InvulnerableUntilTick;
+        [DataMember(Name = "encounter_id")]
+        public ulong EncounterId;
 
         public Ship(
             ulong EntityId,
@@ -155,7 +157,8 @@ namespace SpacetimeDB.Types
             ulong NextPortFireTick,
             ulong NextStarboardFireTick,
             ulong RespawnAtTick,
-            ulong InvulnerableUntilTick
+            ulong InvulnerableUntilTick,
+            ulong EncounterId
         )
         {
             this.EntityId = EntityId;
@@ -205,6 +208,7 @@ namespace SpacetimeDB.Types
             this.NextStarboardFireTick = NextStarboardFireTick;
             this.RespawnAtTick = RespawnAtTick;
             this.InvulnerableUntilTick = InvulnerableUntilTick;
+            this.EncounterId = EncounterId;
         }
 
         public Ship()

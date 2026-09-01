@@ -11,21 +11,22 @@ namespace Sea.Client
 
         internal void SeedSyntheticPerformanceFleet(int count)
         {
+            var cameraTransform = Camera.main != null ? Camera.main.transform : null;
+            var center = cameraTransform == null
+                ? Vector2.zero
+                : new Vector2(cameraTransform.position.x, cameraTransform.position.z);
             for (var index = 0; index < count; index++)
             {
-                var column = index % 10;
-                var row = index / 10;
-                var positionX = -27f + column * 6f;
-                var positionY = -27f + row * 6f;
+                var position = SeaRuntimeValidationRules.SyntheticFleetPosition(index, center);
                 HandleShipChanged(new Ship
                 {
                     EntityId = SyntheticPerformanceEntityBase + (ulong)index,
                     ArchetypeCode = 1,
                     FactionCode = 2,
-                    PositionX = positionX,
-                    PositionY = positionY,
-                    DestinationX = positionX + 4f,
-                    DestinationY = positionY,
+                    PositionX = position.x,
+                    PositionY = position.y,
+                    DestinationX = position.x + 4f,
+                    DestinationY = position.y,
                     HeadingDegrees = index * 17f % 360f,
                     Speed = 5f,
                     MaximumSpeed = 8f,

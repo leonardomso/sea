@@ -17,7 +17,7 @@ public static partial class Module
             Tick = 0,
             TickRateHz = WorldRules.TickRateHz,
             NextEntityId = 1000,
-            ContentVersion = 3,
+            ContentVersion = 4,
         });
         SeedContent(ctx);
         SeedWorld(ctx);

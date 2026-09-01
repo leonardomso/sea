@@ -13,6 +13,8 @@ namespace Sea.Client
         public event Action<WorldObject> WorldObjectChanged;
         public event Action<Volley> VolleyChanged;
         public event Action<ulong> VolleyLeftInterest;
+        public event Action<Loot> LootChanged;
+        public event Action<ulong> LootLeftInterest;
         public event Action<ulong> WorldTickChanged;
         public event Action HudStateChanged;
         public event Action PresentationReset;
@@ -45,6 +47,9 @@ namespace Sea.Client
             connection.Db.ShipChannel.OnInsert += HandleHudRowInserted;
             connection.Db.ShipChannel.OnUpdate += HandleHudRowUpdated;
             connection.Db.ShipChannel.OnDelete += HandleHudRowDeleted;
+            connection.Db.Loot.OnInsert += HandleLootInserted;
+            connection.Db.Loot.OnUpdate += HandleLootUpdated;
+            connection.Db.Loot.OnDelete += HandleLootDeleted;
         }
 
         private void HandleWorldObjectInserted(EventContext _context, WorldObject worldObject) =>
@@ -102,6 +107,15 @@ namespace Sea.Client
             WorldObjectChanged?.Invoke(worldObject);
 
         private void NotifyVolleyChanged(Volley volley) => VolleyChanged?.Invoke(volley);
+
+        private void HandleLootInserted(EventContext _context, Loot loot) =>
+            LootChanged?.Invoke(loot);
+
+        private void HandleLootUpdated(EventContext _context, Loot _oldLoot, Loot loot) =>
+            LootChanged?.Invoke(loot);
+
+        private void HandleLootDeleted(EventContext _context, Loot loot) =>
+            LootLeftInterest?.Invoke(loot.LootId);
 
         private void NotifyWorldStateChanged(WorldState world)
         {

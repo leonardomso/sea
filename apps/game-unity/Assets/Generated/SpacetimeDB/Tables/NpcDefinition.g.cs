@@ -17,6 +17,15 @@ namespace SpacetimeDB.Types
         {
             public override string RemoteTableName => "npc_definition";
 
+            public sealed class ArchetypeCodeUniqueIndex : UniqueIndexBase<byte>
+            {
+                protected override byte GetKey(NpcDefinition row) => row.ArchetypeCode;
+
+                public ArchetypeCodeUniqueIndex(NpcDefinitionHandle table) : base(table) { }
+            }
+
+            public readonly ArchetypeCodeUniqueIndex ArchetypeCode;
+
             public sealed class NpcIdUniqueIndex : UniqueIndexBase<string>
             {
                 protected override string GetKey(NpcDefinition row) => row.NpcId;
@@ -28,6 +37,7 @@ namespace SpacetimeDB.Types
 
             internal NpcDefinitionHandle(DbConnection conn) : base(conn)
             {
+                ArchetypeCode = new(this);
                 NpcId = new(this);
             }
 
@@ -40,26 +50,42 @@ namespace SpacetimeDB.Types
     public sealed class NpcDefinitionCols
     {
         public global::SpacetimeDB.Col<NpcDefinition, string> NpcId { get; }
+        public global::SpacetimeDB.Col<NpcDefinition, byte> ArchetypeCode { get; }
         public global::SpacetimeDB.Col<NpcDefinition, float> AggroRange { get; }
         public global::SpacetimeDB.Col<NpcDefinition, float> DesiredRange { get; }
+        public global::SpacetimeDB.Col<NpcDefinition, float> MaximumSpeed { get; }
         public global::SpacetimeDB.Col<NpcDefinition, uint> Hull { get; }
+        public global::SpacetimeDB.Col<NpcDefinition, uint> CannonDamage { get; }
+        public global::SpacetimeDB.Col<NpcDefinition, byte> PreferredAmmoCode { get; }
+        public global::SpacetimeDB.Col<NpcDefinition, byte> PreferredWeakPointCode { get; }
+        public global::SpacetimeDB.Col<NpcDefinition, uint> GoldReward { get; }
+        public global::SpacetimeDB.Col<NpcDefinition, ulong> ExperienceReward { get; }
 
         public NpcDefinitionCols(string tableName)
         {
             NpcId = new global::SpacetimeDB.Col<NpcDefinition, string>(tableName, "npc_id");
+            ArchetypeCode = new global::SpacetimeDB.Col<NpcDefinition, byte>(tableName, "archetype_code");
             AggroRange = new global::SpacetimeDB.Col<NpcDefinition, float>(tableName, "aggro_range");
             DesiredRange = new global::SpacetimeDB.Col<NpcDefinition, float>(tableName, "desired_range");
+            MaximumSpeed = new global::SpacetimeDB.Col<NpcDefinition, float>(tableName, "maximum_speed");
             Hull = new global::SpacetimeDB.Col<NpcDefinition, uint>(tableName, "hull");
+            CannonDamage = new global::SpacetimeDB.Col<NpcDefinition, uint>(tableName, "cannon_damage");
+            PreferredAmmoCode = new global::SpacetimeDB.Col<NpcDefinition, byte>(tableName, "preferred_ammo_code");
+            PreferredWeakPointCode = new global::SpacetimeDB.Col<NpcDefinition, byte>(tableName, "preferred_weak_point_code");
+            GoldReward = new global::SpacetimeDB.Col<NpcDefinition, uint>(tableName, "gold_reward");
+            ExperienceReward = new global::SpacetimeDB.Col<NpcDefinition, ulong>(tableName, "experience_reward");
         }
     }
 
     public sealed class NpcDefinitionIxCols
     {
         public global::SpacetimeDB.IxCol<NpcDefinition, string> NpcId { get; }
+        public global::SpacetimeDB.IxCol<NpcDefinition, byte> ArchetypeCode { get; }
 
         public NpcDefinitionIxCols(string tableName)
         {
             NpcId = new global::SpacetimeDB.IxCol<NpcDefinition, string>(tableName, "npc_id");
+            ArchetypeCode = new global::SpacetimeDB.IxCol<NpcDefinition, byte>(tableName, "archetype_code");
         }
     }
 }

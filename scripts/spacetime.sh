@@ -35,20 +35,17 @@ if [ ! -x "$wasi_cache/bin/clang" ]; then
   rm -f "$wasi_archive"
 fi
 
-spacetime_root=/tmp/sea-spacetime
-spacetime_config=/tmp/sea-spacetime/cli.toml
-if [ -n "${SPACETIME_STATE_RELATIVE:-}" ]; then
-  case "$SPACETIME_STATE_RELATIVE" in
-    .cache/spacetime-*) ;;
-    *)
-      echo "SPACETIME_STATE_RELATIVE must be a .cache/spacetime-* path." >&2
-      exit 2
-      ;;
-  esac
-  mkdir -p "$repo_root/$SPACETIME_STATE_RELATIVE"
-  spacetime_root="/workspace/$SPACETIME_STATE_RELATIVE"
-  spacetime_config="$spacetime_root/cli.toml"
-fi
+spacetime_state_relative=${SPACETIME_STATE_RELATIVE:-.cache/spacetime-local}
+case "$spacetime_state_relative" in
+  .cache/spacetime-*) ;;
+  *)
+    echo "SPACETIME_STATE_RELATIVE must be a .cache/spacetime-* path." >&2
+    exit 2
+    ;;
+esac
+mkdir -p "$repo_root/$spacetime_state_relative"
+spacetime_root="/workspace/$spacetime_state_relative"
+spacetime_config="$spacetime_root/cli.toml"
 
 exec docker run --rm \
   --user "$(id -u):$(id -g)" \

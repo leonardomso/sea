@@ -76,7 +76,7 @@ public readonly record struct CommandSnapshot
     public bool CourseValid { get; init; }
     public bool DestinationBlocked { get; init; }
     public bool TargetValid { get; init; }
-    public bool TargetIsPlayer { get; init; }
+    public bool TargetIsFriendly { get; init; }
     public bool TargetConcealed { get; init; }
     public bool AmmoKnown { get; init; }
     public bool AmmoOwned { get; init; }
@@ -169,12 +169,12 @@ public static class CommandPolicy
             ShipCommandKind.SetCourse => ValidateCourse(snapshot),
             ShipCommandKind.SelectTarget => ValidateTarget(snapshot),
             ShipCommandKind.SetAmmo => ValidateAmmo(snapshot),
-            ShipCommandKind.FireBroadside when snapshot.TargetIsPlayer =>
+            ShipCommandKind.FireBroadside when snapshot.TargetIsFriendly =>
                 CommandRejectionCode.PlayerTargetForbidden,
             ShipCommandKind.FireBroadside => Map(snapshot.FireRejection),
             ShipCommandKind.ActivateAbility => Map(snapshot.AbilityRejection),
             ShipCommandKind.StartRepair => Map(snapshot.RepairRejection),
-            ShipCommandKind.StartBoarding when snapshot.TargetIsPlayer =>
+            ShipCommandKind.StartBoarding when snapshot.TargetIsFriendly =>
                 CommandRejectionCode.PlayerTargetForbidden,
             ShipCommandKind.StartBoarding => Map(snapshot.BoardingRejection),
             ShipCommandKind.CancelChannel when !snapshot.HasActiveChannel =>

@@ -104,4 +104,24 @@ public static partial class Module
         });
     }
 
+    private static void SeedNpcInventory(ReducerContext ctx, ulong shipEntityId)
+    {
+        foreach (var ammunition in ContentCatalog.CreateDefault().Ammunition)
+        {
+            ctx.Db.Inventory.Insert(new Inventory
+            {
+                ShipEntityId = shipEntityId,
+                ItemId = ammunition.Id,
+                Quantity = 10_000,
+            });
+        }
+
+        ctx.Db.Inventory.Insert(new Inventory
+        {
+            ShipEntityId = shipEntityId,
+            ItemId = "repair_kit",
+            Quantity = 10_000,
+        });
+    }
+
 }

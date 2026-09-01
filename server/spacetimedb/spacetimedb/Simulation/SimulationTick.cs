@@ -20,8 +20,10 @@ public static partial class Module
         ProcessChannels(ctx, ships, world.Tick);
         ApplyEnvironmentalHazards(ctx, ships, world.Tick);
         ResolveVolleys(ctx, ships, world.Tick);
+        ProcessRespawns(ctx, ships, world.Tick);
         ProcessLootExpiry(ctx, world.Tick);
         ships.Flush(ctx);
+        ProcessNpcDecisions(ctx, world.Tick);
     }
 
     [SpacetimeDB.Reducer]
@@ -124,6 +126,7 @@ public static partial class Module
             NextStarboardFireTick = 0,
             RespawnAtTick = 0,
             InvulnerableUntilTick = 0,
+            EncounterId = 0,
         };
     }
 

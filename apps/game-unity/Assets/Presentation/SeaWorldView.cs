@@ -120,6 +120,7 @@ namespace Sea.Client
                 ResetPooledShip,
                 initialCapacity: 4,
                 maximumCapacity: visibleLimit);
+            InitializeLootPresentation();
             visibilityPositions = new NativeArray<float2>(
                 MaximumTrackedShipRows,
                 Allocator.Persistent,

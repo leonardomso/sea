@@ -37,6 +37,11 @@ if grep -R -n --include='*.cs' 'Ship.ByActive.Filter(true)' "$simulation"; then
   exit 1
 fi
 
+if grep -R -n --include='*.cs' 'Loot.ByActive.Filter(true)' "$simulation"; then
+  echo "Simulation hot paths must not scan every active loot row." >&2
+  exit 1
+fi
+
 if grep -R -n --include='*.cs' 'ExpireTransientRows' "$simulation"; then
   echo "Persisted transient event cleanup must be removed." >&2
   exit 1

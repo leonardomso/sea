@@ -44,9 +44,16 @@ public static partial class Module
             ctx.Db.NpcDefinition.Insert(new NpcDefinition
             {
                 NpcId = npc.Id,
+                ArchetypeCode = (byte)npc.Code,
                 AggroRange = npc.AggroRange,
                 DesiredRange = npc.DesiredRange,
+                MaximumSpeed = npc.MaximumSpeed,
                 Hull = npc.Hull,
+                CannonDamage = npc.CannonDamage,
+                PreferredAmmoCode = (byte)npc.PreferredAmmunition,
+                PreferredWeakPointCode = (byte)npc.PreferredWeakPoint,
+                GoldReward = npc.GoldReward,
+                ExperienceReward = npc.ExperienceReward,
             });
         }
 
@@ -80,18 +87,46 @@ public static partial class Module
             movementSpeed: 1.5f,
             intensity: 1f);
 
-        var trainingShip = CreateShip(10, "patrol", "npc", 45f, -10f);
-        trainingShip.Hull = WorldRules.EnemyInitialHealth;
-        trainingShip.MaxHull = WorldRules.EnemyInitialHealth;
-        ctx.Db.Ship.Insert(trainingShip);
+        var content = ContentCatalog.CreateDefault();
+        var entityId = 10ul;
+        foreach (var definition in content.Npcs)
+        {
+            for (var index = 0; index < 4; index++)
+            {
+                SeedNpc(ctx, entityId, definition, index);
+                entityId++;
+            }
+        }
+    }
+
+    private static void SeedNpc(
+        ReducerContext ctx,
+        ulong entityId,
+        NpcContent definition,
+        int archetypeIndex)
+    {
+        var spawn = FindSafeSpawn(
+            ctx,
+            entityId ^ unchecked((ulong)(archetypeIndex + 1) * 0x9E3779B97F4A7C15UL));
+        var ship = CreateShip(entityId, definition.Id, "npc", spawn.X, spawn.Y);
+        ship.MaximumSpeed = definition.MaximumSpeed;
+        ship.Hull = definition.Hull;
+        ship.MaxHull = definition.Hull;
+        ship.CannonDamage = definition.CannonDamage;
+        ship.CannonCooldownTicks = WorldRules.EnemyCannonCooldownTicks;
+        ship.SelectedAmmoCode = (byte)definition.PreferredAmmunition;
+        ship.SelectedWeakPointCode = (byte)definition.PreferredWeakPoint;
+        ship.EncounterId = entityId;
+        ctx.Db.Ship.Insert(ship);
         ctx.Db.NpcAi.Insert(new NpcAi
         {
-            ShipEntityId = trainingShip.EntityId,
-            ArchetypeId = "patrol",
+            ShipEntityId = entityId,
+            ArchetypeId = definition.Id,
             IsActive = true,
-            NextDecisionTick = 0,
-            HomeSeed = 10,
+            NextDecisionTick = (ulong)archetypeIndex,
+            HomeSeed = entityId * 17,
         });
+        SeedNpcInventory(ctx, entityId);
     }
 
     private static void SeedEnvironment(ReducerContext ctx)

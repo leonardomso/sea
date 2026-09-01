@@ -24,9 +24,16 @@ public sealed class AbilityContent
 public sealed class NpcContent
 {
     public required string Id { get; init; }
+    public required ShipArchetypeCode Code { get; init; }
     public required float AggroRange { get; init; }
     public required float DesiredRange { get; init; }
+    public required float MaximumSpeed { get; init; }
     public required uint Hull { get; init; }
+    public required uint CannonDamage { get; init; }
+    public required AmmunitionCode PreferredAmmunition { get; init; }
+    public required WeakPointCode PreferredWeakPoint { get; init; }
+    public required uint GoldReward { get; init; }
+    public required ulong ExperienceReward { get; init; }
 }
 
 public sealed class CombatContent
@@ -56,9 +63,9 @@ public static class ContentCatalog
         },
         Npcs = new NpcContent[]
         {
-            new() { Id = "patrol", AggroRange = 0f, DesiredRange = 45f, Hull = 100 },
-            new() { Id = "raider", AggroRange = 65f, DesiredRange = 18f, Hull = 90 },
-            new() { Id = "gunship", AggroRange = 75f, DesiredRange = 48f, Hull = 130 },
+            new() { Id = "patrol", Code = ShipArchetypeCode.Patrol, AggroRange = 0f, DesiredRange = 45f, MaximumSpeed = 10f, Hull = 100, CannonDamage = 18, PreferredAmmunition = AmmunitionCode.Round, PreferredWeakPoint = WeakPointCode.Hull, GoldReward = 80, ExperienceReward = 100 },
+            new() { Id = "raider", Code = ShipArchetypeCode.Raider, AggroRange = 65f, DesiredRange = 18f, MaximumSpeed = 14f, Hull = 90, CannonDamage = 20, PreferredAmmunition = AmmunitionCode.Chain, PreferredWeakPoint = WeakPointCode.Sails, GoldReward = 100, ExperienceReward = 125 },
+            new() { Id = "gunship", Code = ShipArchetypeCode.Gunship, AggroRange = 75f, DesiredRange = 48f, MaximumSpeed = 9f, Hull = 130, CannonDamage = 28, PreferredAmmunition = AmmunitionCode.Incendiary, PreferredWeakPoint = WeakPointCode.Hull, GoldReward = 140, ExperienceReward = 175 },
         },
     };
 
@@ -83,6 +90,15 @@ public static class ContentCatalog
             if (ability.CooldownTicks == 0 || ability.DurationTicks == 0)
             {
                 errors.Add($"Ability '{ability.Id}' must have positive timing values.");
+            }
+        }
+
+        foreach (var npc in content.Npcs)
+        {
+            if (npc.MaximumSpeed <= 0f || npc.DesiredRange <= 0f || npc.Hull == 0 ||
+                npc.CannonDamage == 0 || npc.GoldReward == 0 || npc.ExperienceReward == 0)
+            {
+                errors.Add($"NPC '{npc.Id}' has invalid combat or reward values.");
             }
         }
 
