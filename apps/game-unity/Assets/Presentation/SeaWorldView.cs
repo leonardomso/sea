@@ -17,8 +17,6 @@ namespace Sea.Client
             new("Sea.Presentation.Effects");
 
         [SerializeField] private SeaConnectionController connection;
-        [SerializeField] private GameObject shipModel;
-        [SerializeField] private Material shipMaterial;
         [SerializeField] private Shader fogShader;
         [SerializeField] private float presentationMovementSpeed = 18f;
         [SerializeField] private float turnSpeedDegrees = 720f;
@@ -63,7 +61,6 @@ namespace Sea.Client
         private Material silhouetteMaterial;
         private Material targetMaterial;
         private SeaCombatPresenter combatPresenter;
-        private SeaBoundedPool<GameObject> shipPool;
         private ulong playerEntityId;
         private ulong worldTick;
         private Ship localShip;
@@ -72,8 +69,6 @@ namespace Sea.Client
         private LineRenderer courseLine;
         private LineRenderer destinationRing;
 
-        public GameObject ShipModel => shipModel;
-        public Material ShipMaterial => shipMaterial;
         public Shader FogShader => fogShader;
         public float ModelYawOffset => modelYawOffset;
         public float PresentationTurnSpeed => turnSpeedDegrees;
@@ -88,12 +83,6 @@ namespace Sea.Client
 
             position = playerObject.transform.position;
             return true;
-        }
-
-        public void ConfigureShipAssets(GameObject model, Material material)
-        {
-            shipModel = model;
-            shipMaterial = material;
         }
 
         public void ConfigureFogShader(Shader shader)
@@ -113,13 +102,7 @@ namespace Sea.Client
             CreateMaterials();
             CreateWater();
             CreateFog();
-            var visibleLimit = SeaPresentationRules.VisibleShipLimit(
-                SeaPresentationRules.CurrentPlatform());
-            shipPool = new SeaBoundedPool<GameObject>(
-                CreatePooledShip,
-                ResetPooledShip,
-                initialCapacity: 4,
-                maximumCapacity: visibleLimit);
+            BeginOwnedAssetLoad();
             InitializeLootPresentation();
             visibilityPositions = new NativeArray<float2>(
                 MaximumTrackedShipRows,
@@ -134,6 +117,11 @@ namespace Sea.Client
         private void Update()
         {
             if (connection?.Connection == null || !connection.IsSubscribed)
+            {
+                return;
+            }
+
+            if (!assetsReady)
             {
                 return;
             }
@@ -272,69 +260,18 @@ namespace Sea.Client
             }
         }
 
-        private GameObject CreateShip(string name, ulong entityId)
+        private GameObject CreateShip(string name, Ship row)
         {
-            if (!shipPool.TryAcquire(out var ship))
+            var role = SeaOwnedAssetPolicy.ShipRole(row.FactionCode, row.ArchetypeCode);
+            if (!shipPool.TryAcquire(role, out var ship))
             {
                 return null;
             }
 
             var presentation = ship.GetComponent<SeaShipPresentation>();
-            presentation.Bind(entityId, name);
-            shipFeedback[entityId] = presentation.Feedback;
+            presentation.Bind(row.EntityId, name);
+            shipFeedback[row.EntityId] = presentation.Feedback;
             return ship;
-        }
-
-        private GameObject CreatePooledShip()
-        {
-            if (shipModel == null)
-            {
-                throw new System.InvalidOperationException("The Apricum ship model is not configured.");
-            }
-
-            var ship = SeaShipVisualFactory.Create(
-                shipModel,
-                "Pooled Ship",
-                ShipFootprint,
-                shipMaterial,
-                modelYawOffset);
-            var feedback = ship.AddComponent<SeaShipFeedback>();
-            var visual = ship.transform.Find("Visual");
-            feedback.Configure(
-                visual,
-                wakeMaterial,
-                waterlineShadowMaterial,
-                0f);
-
-            var modelBounds = SeaShipVisualFactory.CalculateRendererBounds(ship);
-            var modelTop = ship.transform.InverseTransformPoint(
-                new Vector3(modelBounds.center.x, modelBounds.max.y, modelBounds.center.z));
-            var health = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            health.name = "Health";
-            health.transform.SetParent(ship.transform, false);
-            health.GetComponent<Renderer>().sharedMaterial = healthMaterial;
-            Destroy(health.GetComponent<Collider>());
-            health.transform.localPosition = new Vector3(0f, modelTop.y + 0.6f, 0f);
-
-            var silhouette = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            silhouette.name = "Distant Silhouette";
-            silhouette.transform.SetParent(ship.transform, false);
-            silhouette.transform.localPosition = new Vector3(0f, 0.4f, 0f);
-            silhouette.transform.localScale = new Vector3(2.1f, 0.55f, 5.4f);
-            silhouette.GetComponent<Renderer>().sharedMaterial = silhouetteMaterial;
-            Destroy(silhouette.GetComponent<Collider>());
-
-            var presentation = ship.AddComponent<SeaShipPresentation>();
-            presentation.Configure(visual, feedback, health.transform, silhouette);
-            return ship;
-        }
-
-        private static void ResetPooledShip(GameObject ship)
-        {
-            if (ship != null)
-            {
-                ship.GetComponent<SeaShipPresentation>().ResetForPool();
-            }
         }
 
         private void CreateCourseIndicator()

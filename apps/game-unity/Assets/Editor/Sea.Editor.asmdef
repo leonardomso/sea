@@ -9,7 +9,9 @@
     "Sea.Input",
     "Sea.Bootstrap",
     "Unity.InputSystem",
-    "VContainer"
+    "VContainer",
+    "Unity.Addressables",
+    "Unity.Addressables.Editor"
   ],
   "includePlatforms": ["Editor"],
   "autoReferenced": false

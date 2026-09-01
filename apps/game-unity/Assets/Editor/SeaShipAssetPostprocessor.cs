@@ -5,12 +5,9 @@ namespace Sea.Editor
 {
     public sealed class SeaShipAssetPostprocessor : AssetPostprocessor
     {
-        private const string ModelPath = "Assets/Art/Ships/Apricum/Apricum.fbx";
-        private const string TextureRoot = "Assets/Art/Ships/Apricum/Textures/";
-
         private void OnPreprocessModel()
         {
-            if (assetPath != ModelPath)
+            if (!SeaOwnedAssetEditorLifecycle.IsShipModelPath(assetPath))
             {
                 return;
             }
@@ -28,7 +25,7 @@ namespace Sea.Editor
 
         private void OnPreprocessTexture()
         {
-            if (!assetPath.StartsWith(TextureRoot, System.StringComparison.Ordinal))
+            if (!SeaOwnedAssetEditorLifecycle.IsShipTexturePath(assetPath))
             {
                 return;
             }

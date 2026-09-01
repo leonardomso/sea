@@ -123,6 +123,11 @@ namespace Sea.Client
 
         private void ReconcileVisibility()
         {
+            if (!assetsReady)
+            {
+                return;
+            }
+
             var cameraTransform = Camera.main != null ? Camera.main.transform : null;
             var origin = cameraTransform != null
                 ? new Vector3(cameraTransform.position.x, 0f, cameraTransform.position.z)
@@ -216,7 +221,7 @@ namespace Sea.Client
 
                 if (!entities.TryGetValue(candidate.EntityId, out var shipObject))
                 {
-                    shipObject = CreateShip(ShipName(ship), ship.EntityId);
+                    shipObject = CreateShip(ShipName(ship), ship);
                     if (shipObject == null)
                     {
                         break;
@@ -240,7 +245,8 @@ namespace Sea.Client
                     ship.Speed,
                     ship.MaximumSpeed,
                     candidate.Level,
-                    ship.FactionCode == 1);
+                    ship.FactionCode,
+                    ship.ArchetypeCode);
             }
         }
 

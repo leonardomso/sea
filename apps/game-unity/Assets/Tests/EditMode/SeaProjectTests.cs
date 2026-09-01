@@ -1,6 +1,5 @@
 #if UNITY_EDITOR
 using System.IO;
-using System.Linq;
 using NUnit.Framework;
 using Sea.Client;
 using SpacetimeDB;
@@ -48,146 +47,6 @@ namespace Sea.Tests
         public void Generated_spacetime_bindings_are_present()
         {
             Assert.That(File.Exists("Assets/Generated/SpacetimeDB/SpacetimeDBClient.g.cs"), Is.True);
-        }
-
-        [Test]
-        public void Apricum_ship_model_is_imported_for_runtime_use()
-        {
-            var shipModel = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Art/Ships/Apricum/Apricum.fbx");
-
-            Assert.That(shipModel, Is.Not.Null);
-            Assert.That(shipModel.GetComponentsInChildren<Renderer>(true), Is.Not.Empty);
-        }
-
-        [Test]
-        public void Apricum_visual_preserves_FBX_axis_conversion_when_yaw_is_applied()
-        {
-            var shipModel = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Art/Ships/Apricum/Apricum.fbx");
-            var ship = SeaShipVisualFactory.Create(
-                shipModel,
-                "Axis Correct Ship",
-                10f,
-                modelYawOffsetDegrees: 90f);
-            var visual = ship.transform.Find("Visual");
-            var expected = Quaternion.Euler(0f, 90f, 0f) * shipModel.transform.localRotation;
-
-            Assert.That(Quaternion.Angle(visual.localRotation, expected), Is.LessThan(0.1f));
-            Object.DestroyImmediate(ship);
-        }
-
-        [Test]
-        public void Apricum_hull_intersects_the_waterline_instead_of_hovering()
-        {
-            var shipModel = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Art/Ships/Apricum/Apricum.fbx");
-            var ship = SeaShipVisualFactory.Create(
-                shipModel,
-                "Waterline Ship",
-                10f,
-                modelYawOffsetDegrees: 90f);
-            ship.transform.position = Vector3.up * SeaWorldView.ShipRootHeight;
-            var bounds = SeaShipVisualFactory.CalculateRendererBounds(ship);
-            var submergedDepth = SeaWorldView.WaterSurfaceHeight - bounds.min.y;
-
-            Assert.That(submergedDepth, Is.InRange(0.04f, 0.16f));
-            Object.DestroyImmediate(ship);
-        }
-
-        [Test]
-        public void Apricum_ship_model_has_a_game_ready_triangle_budget()
-        {
-            var shipModel = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Art/Ships/Apricum/Apricum.fbx");
-            var triangleCount = shipModel.GetComponentsInChildren<MeshFilter>(true)
-                .Select(filter => filter.sharedMesh)
-                .Where(mesh => mesh != null)
-                .Sum(mesh => Enumerable.Range(0, mesh.subMeshCount)
-                    .Sum(subMesh => (long)mesh.GetIndexCount(subMesh) / 3));
-
-            Assert.That(triangleCount, Is.LessThanOrEqualTo(30_000),
-                "The starter ship exceeds its 30,000-triangle runtime budget.");
-        }
-
-        [Test]
-        public void Apricum_model_excludes_studio_geometry()
-        {
-            var shipModel = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Art/Ships/Apricum/Apricum.fbx");
-            var meshFilters = shipModel.GetComponentsInChildren<MeshFilter>(true);
-
-            Assert.That(meshFilters, Has.Length.EqualTo(1));
-            Assert.That(meshFilters[0].name, Does.Not.Contain("Cube"));
-        }
-
-        [Test]
-        public void Apricum_material_uses_all_runtime_pbr_textures()
-        {
-            var material = AssetDatabase.LoadAssetAtPath<Material>(
-                "Assets/Art/Ships/Apricum/Apricum.mat");
-
-            Assert.That(material, Is.Not.Null);
-            Assert.That(material.shader.name, Is.EqualTo("Standard"));
-            Assert.That(material.GetTexture("_BaseMap") ?? material.GetTexture("_MainTex"), Is.Not.Null);
-            Assert.That(material.GetTexture("_BumpMap"), Is.Not.Null);
-            Assert.That(material.GetTexture("_MetallicGlossMap"), Is.Not.Null);
-        }
-
-        [Test]
-        public void Apricum_textures_use_color_correct_import_settings()
-        {
-            var baseColor = (TextureImporter)AssetImporter.GetAtPath(
-                "Assets/Art/Ships/Apricum/Textures/Apricum_BaseColor.png");
-            var normal = (TextureImporter)AssetImporter.GetAtPath(
-                "Assets/Art/Ships/Apricum/Textures/Apricum_Normal.png");
-            var metallicSmoothness = (TextureImporter)AssetImporter.GetAtPath(
-                "Assets/Art/Ships/Apricum/Textures/Apricum_MetallicSmoothness.png");
-
-            Assert.That(baseColor.sRGBTexture, Is.True);
-            Assert.That(normal.textureType, Is.EqualTo(TextureImporterType.NormalMap));
-            Assert.That(normal.flipGreenChannel, Is.False);
-            Assert.That(metallicSmoothness.sRGBTexture, Is.False);
-            Assert.That(metallicSmoothness.alphaSource, Is.EqualTo(TextureImporterAlphaSource.FromInput));
-        }
-
-        [Test]
-        public void Apricum_ship_visual_never_uses_an_all_white_fallback()
-        {
-            var shipModel = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Art/Ships/Apricum/Apricum.fbx");
-            var material = AssetDatabase.LoadAssetAtPath<Material>(
-                "Assets/Art/Ships/Apricum/Apricum.mat");
-            var ship = SeaShipVisualFactory.Create(shipModel, "Colored Ship", 10f, material);
-            var materials = ship.GetComponentsInChildren<Renderer>(true)
-                .SelectMany(renderer => renderer.sharedMaterials)
-                .Where(material => material != null)
-                .ToArray();
-            var hasTextureOrColor = materials.Any(material =>
-            {
-                var color = material.color;
-                var channelRange = Mathf.Max(color.r, color.g, color.b) - Mathf.Min(color.r, color.g, color.b);
-                return material.mainTexture != null || channelRange > 0.05f;
-            });
-
-            Assert.That(hasTextureOrColor, Is.True,
-                "The runtime ship visual only contains white fallback materials.");
-            Object.DestroyImmediate(ship);
-        }
-
-        [Test]
-        public void Apricum_ship_visual_uses_the_imported_model_at_a_readable_scale()
-        {
-            var shipModel = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Art/Ships/Apricum/Apricum.fbx");
-
-            var ship = SeaShipVisualFactory.Create(shipModel, "Test Ship", 10f);
-            var bounds = SeaShipVisualFactory.CalculateRendererBounds(ship);
-            var footprint = Mathf.Max(bounds.size.x, bounds.size.z);
-
-            Assert.That(ship.GetComponentsInChildren<Renderer>(true), Is.Not.Empty);
-            Assert.That(footprint, Is.EqualTo(10f).Within(0.05f));
-            Object.DestroyImmediate(ship);
         }
 
         [Test]
@@ -278,29 +137,6 @@ namespace Sea.Tests
             Assert.That(topLeft.z, Is.EqualTo(SeaChartCoordinates.MapMaximum).Within(0.2f));
             Assert.That(SeaMiniMapRules.TryScreenToWorldPosition(
                 new Vector2(799f, 750f), pixelRect, out _), Is.False);
-        }
-
-        [Test]
-        public void Main_scene_references_the_Apricum_ship_and_material()
-        {
-            EditorSceneManager.OpenScene("Assets/Scenes/Main.unity", OpenSceneMode.Single);
-            var world = Object.FindFirstObjectByType<SeaWorldView>();
-            var shipModel = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Art/Ships/Apricum/Apricum.fbx");
-            var material = AssetDatabase.LoadAssetAtPath<Material>(
-                "Assets/Art/Ships/Apricum/Apricum.mat");
-            var fogShader = AssetDatabase.LoadAssetAtPath<Shader>(
-                "Assets/Shaders/SeaChartFog.shader");
-
-            Assert.That(world, Is.Not.Null);
-            Assert.That(world.ShipModel, Is.SameAs(shipModel));
-            Assert.That(world.ShipMaterial, Is.SameAs(material));
-            Assert.That(world.FogShader, Is.SameAs(fogShader),
-                "The production build must retain the serialized fog shader.");
-            Assert.That(world.ModelYawOffset, Is.EqualTo(270f),
-                "Apricum's bow must face the authoritative ship-forward direction.");
-            Assert.That(world.PresentationTurnSpeed, Is.EqualTo(720f),
-                "Combat sailing should visually settle onto a new heading without lag.");
         }
 
         [Test]

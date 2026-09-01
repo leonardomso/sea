@@ -57,6 +57,50 @@ namespace Sea.Client
             return root;
         }
 
+        public static GameObject CreateMediumLod(
+            string name,
+            float targetFootprint,
+            Material material = null)
+        {
+            ValidateFootprint(targetFootprint);
+            var root = new GameObject(name);
+            CreatePrimitive(
+                root.transform,
+                "Medium Hull",
+                new Vector3(targetFootprint * 0.34f, targetFootprint * 0.12f, targetFootprint),
+                new Vector3(0f, targetFootprint * 0.06f, 0f),
+                material);
+            CreatePrimitive(
+                root.transform,
+                "Medium Deck",
+                new Vector3(targetFootprint * 0.42f, targetFootprint * 0.10f, targetFootprint * 0.48f),
+                new Vector3(0f, targetFootprint * 0.16f, -targetFootprint * 0.04f),
+                material);
+            CreatePrimitive(
+                root.transform,
+                "Medium Sail",
+                new Vector3(targetFootprint * 0.58f, targetFootprint * 0.34f, targetFootprint * 0.035f),
+                new Vector3(0f, targetFootprint * 0.37f, 0f),
+                material);
+            return root;
+        }
+
+        public static GameObject CreateDistantLod(
+            string name,
+            float targetFootprint,
+            Material material = null)
+        {
+            ValidateFootprint(targetFootprint);
+            var root = new GameObject(name);
+            CreatePrimitive(
+                root.transform,
+                "Distant Hull",
+                new Vector3(targetFootprint * 0.28f, targetFootprint * 0.09f, targetFootprint),
+                new Vector3(0f, targetFootprint * 0.045f, 0f),
+                material);
+            return root;
+        }
+
         private static void ApplyMaterial(GameObject visual, Material material)
         {
             foreach (var renderer in visual.GetComponentsInChildren<Renderer>(true))
@@ -68,6 +112,42 @@ namespace Sea.Client
                 }
 
                 renderer.sharedMaterials = materials;
+            }
+        }
+
+        private static void CreatePrimitive(
+            Transform parent,
+            string name,
+            Vector3 scale,
+            Vector3 position,
+            Material material)
+        {
+            var primitive = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            primitive.name = name;
+            primitive.transform.SetParent(parent, false);
+            primitive.transform.localScale = scale;
+            primitive.transform.localPosition = position;
+            if (material != null)
+            {
+                primitive.GetComponent<Renderer>().sharedMaterial = material;
+            }
+
+            var collider = primitive.GetComponent<Collider>();
+            if (Application.isPlaying)
+            {
+                UnityEngine.Object.Destroy(collider);
+            }
+            else
+            {
+                UnityEngine.Object.DestroyImmediate(collider);
+            }
+        }
+
+        private static void ValidateFootprint(float targetFootprint)
+        {
+            if (!float.IsFinite(targetFootprint) || targetFootprint <= 0f)
+            {
+                throw new ArgumentOutOfRangeException(nameof(targetFootprint));
             }
         }
 

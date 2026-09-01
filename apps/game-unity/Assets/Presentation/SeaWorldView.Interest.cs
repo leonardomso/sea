@@ -126,6 +126,7 @@ namespace Sea.Client
         private void OnDestroy()
         {
             UnbindInterestCallbacks();
+            ownedAssetLease?.Release();
             if (visibilityPositions.IsCreated)
             {
                 visibilityPositions.Dispose();

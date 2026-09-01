@@ -622,6 +622,29 @@ Commit: `feat(combat): add shared reward contracts`
 
 ### Phase 17: finish the owned-asset presentation
 
+Status: complete.
+
+Owned art now enters the game through one catalog and lifecycle module. The
+module owns import policy, validation, stable Addressable entries, typed ship
+roles, asynchronous loading, and idempotent release. Player, patrol, raider,
+and gunship slots can be replaced independently. A globally bounded keyed pool
+keeps those role variants reusable without allowing the combined pools to grow
+past the platform presentation limit.
+
+Apricum remains the current model for all four roles. Shared material property
+blocks provide original role colors without material instances. Near and
+medium presentations plus a distant silhouette share the same scale and
+forward direction. Required FBX, texture, material, pivot, waterline, shader,
+and Addressable rules now fail before a build. Optional world, combat, UI, and
+audio slots declare explicit procedural or silent fallbacks.
+
+The phase passed 111 Unity EditMode tests, two PlayMode tests, both production
+builds, and the built macOS gameplay probe. Both macOS and WebGL artifacts
+contain their platform catalog and owned-asset bundle. Build logs contain no
+missing or pink owned-asset errors. The canonical `pnpm verify` gate passed;
+idle simulation averaged 6.077 ms with 17.36 percent local stack CPU, and the
+102-ship presentation probe measured 4.005 ms p95.
+
 - Put Apricum and other user-provided ships behind Addressables.
 - Validate FBX scale, forward axis, pivot, texture import, materials, and bounds.
 - Use Apricum for the player and owned material variants for NPCs until more
