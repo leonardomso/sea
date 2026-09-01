@@ -1,0 +1,14 @@
+{
+  "name": "Sea.Presentation",
+  "rootNamespace": "Sea.Client",
+  "references": [
+    "Sea.Domain",
+    "Sea.Networking",
+    "Sea.Generated",
+    "com.clockworklabs.spacetimedbsdk",
+    "Unity.Burst",
+    "Unity.Collections",
+    "Unity.Mathematics"
+  ],
+  "autoReferenced": false
+}

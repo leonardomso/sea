@@ -1,0 +1,16 @@
+{
+  "name": "Sea.Editor",
+  "rootNamespace": "Sea.Editor",
+  "references": [
+    "Sea.Domain",
+    "Sea.Networking",
+    "Sea.Presentation",
+    "Sea.UI",
+    "Sea.Input",
+    "Sea.Bootstrap",
+    "Unity.InputSystem",
+    "VContainer"
+  ],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": false
+}

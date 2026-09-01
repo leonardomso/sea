@@ -1,0 +1,16 @@
+.git
+.env
+.env.*
+!.env.example
+**/node_modules
+**/.output
+**/dist
+**/Library
+**/Temp
+**/Obj
+**/Build
+**/Builds
+**/Logs
+**/UserSettings
+.pnpm-store
+*.log

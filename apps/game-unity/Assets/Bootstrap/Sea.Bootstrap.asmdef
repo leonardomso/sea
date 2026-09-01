@@ -1,0 +1,13 @@
+{
+  "name": "Sea.Bootstrap",
+  "rootNamespace": "Sea.Bootstrap",
+  "references": [
+    "Sea.Domain",
+    "Sea.Networking",
+    "Sea.Presentation",
+    "Sea.UI",
+    "Sea.Input",
+    "VContainer"
+  ],
+  "autoReferenced": false
+}

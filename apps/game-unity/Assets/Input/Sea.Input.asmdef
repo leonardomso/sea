@@ -1,0 +1,11 @@
+{
+  "name": "Sea.Input",
+  "rootNamespace": "Sea.Client",
+  "references": [
+    "Sea.Domain",
+    "Sea.Presentation",
+    "Sea.UI",
+    "Unity.InputSystem"
+  ],
+  "autoReferenced": false
+}

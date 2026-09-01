@@ -1,0 +1,12 @@
+{
+  "name": "Sea.UI",
+  "rootNamespace": "Sea.Client",
+  "references": [
+    "Sea.Domain",
+    "Sea.Networking",
+    "Sea.Presentation",
+    "Sea.Generated",
+    "com.clockworklabs.spacetimedbsdk"
+  ],
+  "autoReferenced": false
+}

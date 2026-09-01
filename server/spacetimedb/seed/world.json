@@ -1,0 +1,14 @@
+{
+  "mapId": "starter-cove",
+  "tickRateHz": 20,
+  "entities": [
+    { "entityId": 1, "kind": "harbor", "x": 0, "y": 0, "interactionRadius": 8, "targetable": false, "blocksMovement": false },
+    { "entityId": 2, "kind": "island", "x": 35, "y": 20, "interactionRadius": 12, "targetable": false, "blocksMovement": true },
+    { "entityId": 3, "kind": "reef", "x": -30, "y": -25, "interactionRadius": 10, "targetable": false, "blocksMovement": true },
+    { "entityId": 10, "kind": "training_target", "x": 45, "y": -10, "interactionRadius": 15, "targetable": true, "blocksMovement": false }
+  ],
+  "npcShips": [
+    { "entityId": 10, "x": 45, "y": -10, "health": 100, "cannonDamage": 5, "cannonCooldownTicks": 40, "goldReward": 100 }
+  ],
+  "progression": { "initialLevel": 1, "initialCannonUpgradeLevel": 0, "cannonUpgradeBaseCost": 100, "cannonUpgradeCostStep": 100, "cannonDamagePerUpgrade": 5 }
+}
