@@ -14,5 +14,6 @@ export default __t.row({
   cooldownId: __t.u64().primaryKey().name("cooldown_id"),
   shipEntityId: __t.u64().name("ship_entity_id"),
   cooldownType: __t.string().name("cooldown_type"),
+  cooldownTypeCode: __t.u8().name("cooldown_type_code"),
   readyAtTick: __t.u64().name("ready_at_tick"),
 });

@@ -21,10 +21,16 @@ namespace SpacetimeDB.Types
         public ulong TargetEntityId;
         [DataMember(Name = "side")]
         public string Side;
+        [DataMember(Name = "side_code")]
+        public byte SideCode;
         [DataMember(Name = "ammo_id")]
         public string AmmoId;
+        [DataMember(Name = "ammo_code")]
+        public byte AmmoCode;
         [DataMember(Name = "weak_point")]
         public string WeakPoint;
+        [DataMember(Name = "weak_point_code")]
+        public byte WeakPointCode;
         [DataMember(Name = "origin_x")]
         public float OriginX;
         [DataMember(Name = "origin_y")]
@@ -53,8 +59,11 @@ namespace SpacetimeDB.Types
             ulong SourceEntityId,
             ulong TargetEntityId,
             string Side,
+            byte SideCode,
             string AmmoId,
+            byte AmmoCode,
             string WeakPoint,
+            byte WeakPointCode,
             float OriginX,
             float OriginY,
             int ChunkX,
@@ -72,8 +81,11 @@ namespace SpacetimeDB.Types
             this.SourceEntityId = SourceEntityId;
             this.TargetEntityId = TargetEntityId;
             this.Side = Side;
+            this.SideCode = SideCode;
             this.AmmoId = AmmoId;
+            this.AmmoCode = AmmoCode;
             this.WeakPoint = WeakPoint;
+            this.WeakPointCode = WeakPointCode;
             this.OriginX = OriginX;
             this.OriginY = OriginY;
             this.ChunkX = ChunkX;

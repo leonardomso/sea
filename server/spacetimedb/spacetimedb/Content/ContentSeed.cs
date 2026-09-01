@@ -17,12 +17,14 @@ public static partial class Module
             ctx.Db.AmmoDefinition.Insert(new AmmoDefinition
             {
                 AmmoId = ammunition.Id,
+                AmmoCode = (byte)ammunition.Code,
                 HullDamage = ammunition.HullDamage,
                 SailDamage = ammunition.SailDamage,
                 CannonDamage = ammunition.CannonDamage,
                 CrewDamage = ammunition.CrewDamage,
                 RangeMultiplier = ammunition.RangeMultiplier,
                 AppliedStatus = ammunition.AppliedStatus,
+                AppliedStatusCode = (byte)ammunition.AppliedStatusCode,
             });
         }
 
@@ -31,6 +33,7 @@ public static partial class Module
             ctx.Db.AbilityDefinition.Insert(new AbilityDefinition
             {
                 AbilityId = ability.Id,
+                AbilityCode = (byte)ability.Code,
                 CooldownTicks = ability.CooldownTicks,
                 DurationTicks = ability.DurationTicks,
             });

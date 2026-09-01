@@ -13,6 +13,7 @@ import {
 export default __t.row({
   entityId: __t.u64().primaryKey().name("entity_id"),
   kind: __t.string(),
+  kindCode: __t.u8().name("kind_code"),
   positionX: __t.f32().name("position_x"),
   positionY: __t.f32().name("position_y"),
   radius: __t.f32(),

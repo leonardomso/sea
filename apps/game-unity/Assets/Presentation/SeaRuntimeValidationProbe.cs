@@ -125,7 +125,7 @@ namespace Sea.Client
         {
             var target = combatTargetId == 0
                 ? connection.Connection.Db.Ship.Iter().FirstOrDefault(
-                    ship => ship.Faction == "npc" && ship.IsActive && ship.IsAlive)
+                    ship => ship.FactionCode == 2 && ship.IsActive && ship.IsAlive)
                 : connection.Connection.Db.Ship.EntityId.Find(combatTargetId);
             if (target == null)
             {

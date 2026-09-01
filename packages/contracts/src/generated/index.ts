@@ -57,6 +57,7 @@ import NpcDefinitionRow from "./npc_definition_table";
 import PlayerCommandStateRow from "./player_command_state_table";
 import PlayerOwnershipRow from "./player_ownership_table";
 import PlayerProgressionRow from "./player_progression_table";
+import RespawnWorkRow from "./respawn_work_table";
 import ShipRow from "./ship_table";
 import ShipChannelRow from "./ship_channel_table";
 import ShipStatusRow from "./ship_status_table";
@@ -71,22 +72,30 @@ const tablesSchema = __schema({
   abilityDefinition: __table({
     name: 'ability_definition',
     indexes: [
+      { accessor: 'AbilityCode', name: 'ability_definition_ability_code_idx_btree', algorithm: 'btree', columns: [
+        'abilityCode',
+      ] },
       { accessor: 'AbilityId', name: 'ability_definition_ability_id_idx_btree', algorithm: 'btree', columns: [
         'abilityId',
       ] },
     ],
     constraints: [
+      { name: 'ability_definition_ability_code_key', constraint: 'unique', columns: ['abilityCode'] },
       { name: 'ability_definition_ability_id_key', constraint: 'unique', columns: ['abilityId'] },
     ],
   }, AbilityDefinitionRow),
   ammoDefinition: __table({
     name: 'ammo_definition',
     indexes: [
+      { accessor: 'AmmoCode', name: 'ammo_definition_ammo_code_idx_btree', algorithm: 'btree', columns: [
+        'ammoCode',
+      ] },
       { accessor: 'AmmoId', name: 'ammo_definition_ammo_id_idx_btree', algorithm: 'btree', columns: [
         'ammoId',
       ] },
     ],
     constraints: [
+      { name: 'ammo_definition_ammo_code_key', constraint: 'unique', columns: ['ammoCode'] },
       { name: 'ammo_definition_ammo_id_key', constraint: 'unique', columns: ['ammoId'] },
     ],
   }, AmmoDefinitionRow),
@@ -110,19 +119,10 @@ const tablesSchema = __schema({
   combatEvent: __table({
     name: 'combat_event',
     indexes: [
-      { accessor: 'EventId', name: 'combat_event_event_id_idx_btree', algorithm: 'btree', columns: [
-        'eventId',
-      ] },
-      { accessor: 'ByActive', name: 'combat_event_is_active_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
-      ] },
-      { accessor: 'ByOwner', name: 'combat_event_owner_entity_id_idx_btree', algorithm: 'btree', columns: [
-        'ownerEntityId',
-      ] },
     ],
     constraints: [
-      { name: 'combat_event_event_id_key', constraint: 'unique', columns: ['eventId'] },
     ],
+    event: true,
   }, CombatEventRow),
   commandResultEvent: __table({
     name: 'command_result_event',
@@ -138,6 +138,10 @@ const tablesSchema = __schema({
       { accessor: 'CooldownId', name: 'cooldown_cooldown_id_idx_btree', algorithm: 'btree', columns: [
         'cooldownId',
       ] },
+      { accessor: 'ByShipCooldown', name: 'cooldown_ship_entity_id_cooldown_type_code_idx_btree', algorithm: 'btree', columns: [
+        'shipEntityId',
+        'cooldownTypeCode',
+      ] },
       { accessor: 'ByShip', name: 'cooldown_ship_entity_id_idx_btree', algorithm: 'btree', columns: [
         'shipEntityId',
       ] },
@@ -150,6 +154,11 @@ const tablesSchema = __schema({
     name: 'current_zone',
     indexes: [
       { accessor: 'ByChunk', name: 'current_zone_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
+        'chunkX',
+        'chunkY',
+      ] },
+      { accessor: 'ByActiveChunk', name: 'current_zone_is_active_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
         'chunkX',
         'chunkY',
       ] },
@@ -207,6 +216,10 @@ const tablesSchema = __schema({
       { accessor: 'ByChunk', name: 'loot_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
         'chunkX',
         'chunkY',
+      ] },
+      { accessor: 'ByLootExpiryDue', name: 'loot_is_active_expires_at_tick_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+        'expiresAtTick',
       ] },
       { accessor: 'ByActive', name: 'loot_is_active_idx_btree', algorithm: 'btree', columns: [
         'isActive',
@@ -282,24 +295,44 @@ const tablesSchema = __schema({
       { name: 'player_progression_owner_key', constraint: 'unique', columns: ['owner'] },
     ],
   }, PlayerProgressionRow),
+  respawnWork: __table({
+    name: 'respawn_work',
+    indexes: [
+      { accessor: 'ByRespawnDue', name: 'respawn_work_is_pending_respawn_at_tick_idx_btree', algorithm: 'btree', columns: [
+        'isPending',
+        'respawnAtTick',
+      ] },
+      { accessor: 'ShipEntityId', name: 'respawn_work_ship_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'shipEntityId',
+      ] },
+    ],
+    constraints: [
+      { name: 'respawn_work_ship_entity_id_key', constraint: 'unique', columns: ['shipEntityId'] },
+    ],
+  }, RespawnWorkRow),
   ship: __table({
     name: 'ship',
     indexes: [
-      { accessor: 'ByChunk', name: 'ship_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
-        'chunkX',
-        'chunkY',
-      ] },
       { accessor: 'EntityId', name: 'ship_entity_id_idx_btree', algorithm: 'btree', columns: [
         'entityId',
+      ] },
+      { accessor: 'ByEnvironmentExposure', name: 'ship_environment_exposure_code_idx_btree', algorithm: 'btree', columns: [
+        'environmentExposureCode',
+      ] },
+      { accessor: 'ByActiveChunk', name: 'ship_is_active_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+        'chunkX',
+        'chunkY',
       ] },
       { accessor: 'ByActive', name: 'ship_is_active_idx_btree', algorithm: 'btree', columns: [
         'isActive',
       ] },
-      { accessor: 'ByEngaged', name: 'ship_is_engaged_idx_btree', algorithm: 'btree', columns: [
-        'isEngaged',
-      ] },
       { accessor: 'ByMoving', name: 'ship_is_moving_idx_btree', algorithm: 'btree', columns: [
         'isMoving',
+      ] },
+      { accessor: 'ByMovingShard', name: 'ship_is_moving_movement_shard_idx_btree', algorithm: 'btree', columns: [
+        'isMoving',
+        'movementShard',
       ] },
       { accessor: 'ByTarget', name: 'ship_target_entity_id_idx_btree', algorithm: 'btree', columns: [
         'targetEntityId',
@@ -315,6 +348,10 @@ const tablesSchema = __schema({
       { accessor: 'ByActive', name: 'ship_channel_is_active_idx_btree', algorithm: 'btree', columns: [
         'isActive',
       ] },
+      { accessor: 'ByChannelDue', name: 'ship_channel_is_active_next_process_tick_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+        'nextProcessTick',
+      ] },
       { accessor: 'ShipEntityId', name: 'ship_channel_ship_entity_id_idx_btree', algorithm: 'btree', columns: [
         'shipEntityId',
       ] },
@@ -329,8 +366,16 @@ const tablesSchema = __schema({
       { accessor: 'ByActive', name: 'ship_status_is_active_idx_btree', algorithm: 'btree', columns: [
         'isActive',
       ] },
+      { accessor: 'ByStatusDue', name: 'ship_status_is_active_next_process_tick_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+        'nextProcessTick',
+      ] },
       { accessor: 'ByShip', name: 'ship_status_ship_entity_id_idx_btree', algorithm: 'btree', columns: [
         'shipEntityId',
+      ] },
+      { accessor: 'ByShipStatus', name: 'ship_status_ship_entity_id_status_code_idx_btree', algorithm: 'btree', columns: [
+        'shipEntityId',
+        'statusCode',
       ] },
       { accessor: 'StatusId', name: 'ship_status_status_id_idx_btree', algorithm: 'btree', columns: [
         'statusId',
@@ -349,6 +394,10 @@ const tablesSchema = __schema({
       ] },
       { accessor: 'ByActive', name: 'volley_is_active_idx_btree', algorithm: 'btree', columns: [
         'isActive',
+      ] },
+      { accessor: 'ByImpactDue', name: 'volley_is_active_impact_at_tick_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+        'impactAtTick',
       ] },
       { accessor: 'ByTarget', name: 'volley_target_entity_id_idx_btree', algorithm: 'btree', columns: [
         'targetEntityId',
@@ -370,6 +419,10 @@ const tablesSchema = __schema({
       ] },
       { accessor: 'EntityId', name: 'world_object_entity_id_idx_btree', algorithm: 'btree', columns: [
         'entityId',
+      ] },
+      { accessor: 'ByActiveKind', name: 'world_object_is_active_kind_code_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+        'kindCode',
       ] },
     ],
     constraints: [
@@ -434,6 +487,8 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "PlayerOwnership": Omit<typeof tablesSchema.schemaType.tables["playerOwnership"], "accessorName"> & { readonly accessorName: "PlayerOwnership" };
     /** @deprecated Use `playerProgression` instead. This alias will be removed in the next major version. */
     readonly "PlayerProgression": Omit<typeof tablesSchema.schemaType.tables["playerProgression"], "accessorName"> & { readonly accessorName: "PlayerProgression" };
+    /** @deprecated Use `respawnWork` instead. This alias will be removed in the next major version. */
+    readonly "RespawnWork": Omit<typeof tablesSchema.schemaType.tables["respawnWork"], "accessorName"> & { readonly accessorName: "RespawnWork" };
     /** @deprecated Use `ship` instead. This alias will be removed in the next major version. */
     readonly "Ship": Omit<typeof tablesSchema.schemaType.tables["ship"], "accessorName"> & { readonly accessorName: "Ship" };
     /** @deprecated Use `shipChannel` instead. This alias will be removed in the next major version. */
@@ -480,6 +535,7 @@ const tableAccessorAliases = {
   "PlayerCommandState": "playerCommandState",
   "PlayerOwnership": "playerOwnership",
   "PlayerProgression": "playerProgression",
+  "RespawnWork": "respawnWork",
   "Ship": "ship",
   "ShipChannel": "shipChannel",
   "ShipStatus": "shipStatus",
@@ -538,6 +594,8 @@ export type DbView = __DbViewBase & {
   readonly "PlayerOwnership": __DbViewBase["playerOwnership"];
   /** @deprecated Use `playerProgression` instead. This alias will be removed in the next major version. */
   readonly "PlayerProgression": __DbViewBase["playerProgression"];
+  /** @deprecated Use `respawnWork` instead. This alias will be removed in the next major version. */
+  readonly "RespawnWork": __DbViewBase["respawnWork"];
   /** @deprecated Use `ship` instead. This alias will be removed in the next major version. */
   readonly "Ship": __DbViewBase["ship"];
   /** @deprecated Use `shipChannel` instead. This alias will be removed in the next major version. */
@@ -586,6 +644,8 @@ export type Tables = __TablesBase & {
   readonly "PlayerOwnership": __TablesBase["playerOwnership"];
   /** @deprecated Use `playerProgression` instead. This alias will be removed in the next major version. */
   readonly "PlayerProgression": __TablesBase["playerProgression"];
+  /** @deprecated Use `respawnWork` instead. This alias will be removed in the next major version. */
+  readonly "RespawnWork": __TablesBase["respawnWork"];
   /** @deprecated Use `ship` instead. This alias will be removed in the next major version. */
   readonly "Ship": __TablesBase["ship"];
   /** @deprecated Use `shipChannel` instead. This alias will be removed in the next major version. */

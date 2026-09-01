@@ -19,12 +19,16 @@ namespace SpacetimeDB.Types
         public ulong ShipEntityId;
         [DataMember(Name = "status_type")]
         public string StatusType;
+        [DataMember(Name = "status_code")]
+        public byte StatusCode;
         [DataMember(Name = "stacks")]
         public uint Stacks;
         [DataMember(Name = "expires_at_tick")]
         public ulong ExpiresAtTick;
         [DataMember(Name = "immunity_until_tick")]
         public ulong ImmunityUntilTick;
+        [DataMember(Name = "next_process_tick")]
+        public ulong NextProcessTick;
         [DataMember(Name = "is_active")]
         public bool IsActive;
 
@@ -32,18 +36,22 @@ namespace SpacetimeDB.Types
             ulong StatusId,
             ulong ShipEntityId,
             string StatusType,
+            byte StatusCode,
             uint Stacks,
             ulong ExpiresAtTick,
             ulong ImmunityUntilTick,
+            ulong NextProcessTick,
             bool IsActive
         )
         {
             this.StatusId = StatusId;
             this.ShipEntityId = ShipEntityId;
             this.StatusType = StatusType;
+            this.StatusCode = StatusCode;
             this.Stacks = Stacks;
             this.ExpiresAtTick = ExpiresAtTick;
             this.ImmunityUntilTick = ImmunityUntilTick;
+            this.NextProcessTick = NextProcessTick;
             this.IsActive = IsActive;
         }
 

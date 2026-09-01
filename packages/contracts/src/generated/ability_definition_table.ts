@@ -12,6 +12,7 @@ import {
 
 export default __t.row({
   abilityId: __t.string().primaryKey().name("ability_id"),
+  abilityCode: __t.u8().name("ability_code"),
   cooldownTicks: __t.u32().name("cooldown_ticks"),
   durationTicks: __t.u32().name("duration_ticks"),
 });

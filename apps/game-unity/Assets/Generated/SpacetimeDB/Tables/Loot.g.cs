@@ -26,6 +26,15 @@ namespace SpacetimeDB.Types
 
             public readonly ByChunkIndex ByChunk;
 
+            public sealed class ByLootExpiryDueIndex : BTreeIndexBase<(bool IsActive, ulong ExpiresAtTick)>
+            {
+                protected override (bool IsActive, ulong ExpiresAtTick) GetKey(Loot row) => (row.IsActive, row.ExpiresAtTick);
+
+                public ByLootExpiryDueIndex(LootHandle table) : base(table) { }
+            }
+
+            public readonly ByLootExpiryDueIndex ByLootExpiryDue;
+
             public sealed class ByActiveIndex : BTreeIndexBase<bool>
             {
                 protected override bool GetKey(Loot row) => row.IsActive;
@@ -47,6 +56,7 @@ namespace SpacetimeDB.Types
             internal LootHandle(DbConnection conn) : base(conn)
             {
                 ByChunk = new(this);
+                ByLootExpiryDue = new(this);
                 ByActive = new(this);
                 LootId = new(this);
             }
@@ -91,6 +101,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.IxCol<Loot, int> ChunkX { get; }
         public global::SpacetimeDB.IxCol<Loot, int> ChunkY { get; }
         public global::SpacetimeDB.IxCol<Loot, bool> IsActive { get; }
+        public global::SpacetimeDB.IxCol<Loot, ulong> ExpiresAtTick { get; }
 
         public LootIxCols(string tableName)
         {
@@ -98,6 +109,7 @@ namespace SpacetimeDB.Types
             ChunkX = new global::SpacetimeDB.IxCol<Loot, int>(tableName, "chunk_x");
             ChunkY = new global::SpacetimeDB.IxCol<Loot, int>(tableName, "chunk_y");
             IsActive = new global::SpacetimeDB.IxCol<Loot, bool>(tableName, "is_active");
+            ExpiresAtTick = new global::SpacetimeDB.IxCol<Loot, ulong>(tableName, "expires_at_tick");
         }
     }
 }

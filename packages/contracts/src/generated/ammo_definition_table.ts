@@ -12,10 +12,12 @@ import {
 
 export default __t.row({
   ammoId: __t.string().primaryKey().name("ammo_id"),
+  ammoCode: __t.u8().name("ammo_code"),
   hullDamage: __t.u32().name("hull_damage"),
   sailDamage: __t.u32().name("sail_damage"),
   cannonDamage: __t.u32().name("cannon_damage"),
   crewDamage: __t.u32().name("crew_damage"),
   rangeMultiplier: __t.f32().name("range_multiplier"),
   appliedStatus: __t.string().name("applied_status"),
+  appliedStatusCode: __t.u8().name("applied_status_code"),
 });

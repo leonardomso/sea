@@ -106,7 +106,7 @@ public static partial class Module
                 ApplyFireBroadside(ctx, ref ship, command.FireBroadside, side, weakPoint);
                 break;
             case ShipCommandKind.ActivateAbility:
-                ApplyActivateAbility(ctx, ship, command.ActivateAbility);
+                ApplyActivateAbility(ctx, ref ship, command.ActivateAbility);
                 break;
             case ShipCommandKind.StartRepair:
                 ApplyStartRepair(ctx, ref ship);

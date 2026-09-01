@@ -12,7 +12,7 @@ public static partial class Module
             DestinationBlocked = NavigationRules.IsDestinationBlocked(
                 command.X,
                 command.Y,
-                NavigationBlockers(ctx)),
+                NavigationBlockersAt(ctx, command.X, command.Y)),
         };
 
     private static CommandSnapshot TargetSnapshot(
@@ -24,7 +24,7 @@ public static partial class Module
         var target = ctx.Db.Ship.EntityId.Find(command.EntityId);
         var valid = target is Ship selectedShip &&
             selectedShip.IsActive && selectedShip.IsAlive;
-        var isPlayer = valid && target!.Value.Faction == "player";
+        var isPlayer = valid && target!.Value.FactionCode == (byte)FactionCode.Player;
         var concealed = false;
         if (valid)
         {
@@ -32,7 +32,7 @@ public static partial class Module
                 throw new InvalidOperationException("World state is missing.");
             var selected = target!.Value;
             concealed = !TacticalRules.CanAcquireTarget(
-                HasActiveStatus(ctx, selected.EntityId, "smoke_screen", world.Tick),
+                HasActiveStatus(ctx, selected.EntityId, StatusCode.SmokeScreen, world.Tick),
                 CombatRules.Distance(
                     source.PositionX,
                     source.PositionY,
@@ -88,12 +88,12 @@ public static partial class Module
 
         var world = ctx.Db.WorldState.Id.Find(1) ??
             throw new InvalidOperationException("World state is missing.");
-        var ammunition = ctx.Db.AmmoDefinition.AmmoId.Find(source.SelectedAmmoId) ??
+        var ammunition = ctx.Db.AmmoDefinition.AmmoCode.Find(source.SelectedAmmoCode) ??
             throw new InvalidOperationException("Selected ammunition definition is missing.");
         var target = source.TargetEntityId == 0
             ? default(Ship?)
             : ctx.Db.Ship.EntityId.Find(source.TargetEntityId);
-        var inventory = FindInventory(ctx, source.EntityId, source.SelectedAmmoId);
+        var inventory = FindInventory(ctx, source.EntityId, ammunition.AmmoId);
         var readyAtTick = side == BroadsideSide.Port
             ? source.NextPortFireTick
             : source.NextStarboardFireTick;
@@ -129,10 +129,14 @@ public static partial class Module
     {
         var world = ctx.Db.WorldState.Id.Find(1) ??
             throw new InvalidOperationException("World state is missing.");
-        var ability = string.IsNullOrWhiteSpace(command.AbilityId)
+        var knownCode = HotPathCodes.TryParseAbility(command.AbilityId, out var abilityCode);
+        var ability = !knownCode
             ? default(AbilityDefinition?)
             : ctx.Db.AbilityDefinition.AbilityId.Find(command.AbilityId);
-        var cooldown = FindCooldown(ctx, ship.EntityId, command.AbilityId);
+        var cooldown = FindCooldown(
+            ctx,
+            ship.EntityId,
+            HotPathCodes.CooldownFor(abilityCode));
         return snapshot with
         {
             AbilityRejection = TacticalRules.ValidateAbility(new AbilityRequest(
@@ -171,7 +175,7 @@ public static partial class Module
         var target = source.TargetEntityId == 0
             ? default(Ship?)
             : ctx.Db.Ship.EntityId.Find(source.TargetEntityId);
-        var cooldown = FindCooldown(ctx, source.EntityId, "boarding");
+        var cooldown = FindCooldown(ctx, source.EntityId, CooldownCode.Boarding);
         return snapshot with
         {
             BoardingRejection = TacticalRules.ValidateBoarding(new BoardingRequest(

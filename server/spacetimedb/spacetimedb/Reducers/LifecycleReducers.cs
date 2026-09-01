@@ -17,7 +17,7 @@ public static partial class Module
             Tick = 0,
             TickRateHz = WorldRules.TickRateHz,
             NextEntityId = 1000,
-            ContentVersion = 2,
+            ContentVersion = 3,
         });
         SeedContent(ctx);
         SeedWorld(ctx);
@@ -27,6 +27,15 @@ public static partial class Module
             ScheduledAt = new ScheduleAt.Interval(
                 TimeSpan.FromMilliseconds(1000d / WorldRules.TickRateHz)),
         });
+        for (byte shardId = 0; shardId < SimulationWorkRules.MovementShardCount; shardId++)
+        {
+            ctx.Db.MovementShardTimer.Insert(new MovementShardTimer
+            {
+                ShardId = shardId,
+                ScheduledAt = new ScheduleAt.Interval(
+                    TimeSpan.FromMilliseconds(1000d / WorldRules.TickRateHz)),
+            });
+        }
     }
 
     [Reducer(ReducerKind.ClientConnected)]

@@ -59,22 +59,12 @@ public static partial class Module
         _ => "Boarding cannot start.",
     };
 
-    private static void ExpireTransientRows(ReducerContext ctx, ulong tick)
+    private static void ProcessLootExpiry(ReducerContext ctx, ulong tick)
     {
-        foreach (var gameEvent in ctx.Db.CombatEvent.ByActive.Filter(true))
+        foreach (var loot in ctx.Db.Loot.ByLootExpiryDue.Filter(
+                     (true, new Bound<ulong>(0, tick))))
         {
-            if (EventRetentionRules.IsExpired(gameEvent.ExpiresAtTick, tick))
-            {
-                ctx.Db.CombatEvent.EventId.Delete(gameEvent.EventId);
-            }
-        }
-
-        foreach (var loot in ctx.Db.Loot.ByActive.Filter(true))
-        {
-            if (EventRetentionRules.IsExpired(loot.ExpiresAtTick, tick))
-            {
-                ctx.Db.Loot.LootId.Delete(loot.LootId);
-            }
+            ctx.Db.Loot.LootId.Delete(loot.LootId);
         }
     }
 
@@ -91,8 +81,6 @@ public static partial class Module
             EventType = eventType,
             Details = details,
             Tick = tick,
-            ExpiresAtTick = tick + EventRetentionRules.LifetimeTicks,
-            IsActive = true,
         });
     }
 

@@ -15,10 +15,10 @@ namespace SpacetimeDB.Types
     {
         [DataMember(Name = "entity_id")]
         public ulong EntityId;
-        [DataMember(Name = "archetype_id")]
-        public string ArchetypeId;
-        [DataMember(Name = "faction")]
-        public string Faction;
+        [DataMember(Name = "archetype_code")]
+        public byte ArchetypeCode;
+        [DataMember(Name = "faction_code")]
+        public byte FactionCode;
         [DataMember(Name = "position_x")]
         public float PositionX;
         [DataMember(Name = "position_y")]
@@ -51,6 +51,8 @@ namespace SpacetimeDB.Types
         public bool IsStopping;
         [DataMember(Name = "is_moving")]
         public bool IsMoving;
+        [DataMember(Name = "movement_shard")]
+        public byte MovementShard;
         [DataMember(Name = "is_active")]
         public bool IsActive;
         [DataMember(Name = "is_alive")]
@@ -59,16 +61,24 @@ namespace SpacetimeDB.Types
         public bool IsEngaged;
         [DataMember(Name = "mode_code")]
         public byte ModeCode;
+        [DataMember(Name = "movement_status_mask")]
+        public byte MovementStatusMask;
+        [DataMember(Name = "environment_exposure_code")]
+        public byte EnvironmentExposureCode;
+        [DataMember(Name = "current_velocity_x")]
+        public float CurrentVelocityX;
+        [DataMember(Name = "current_velocity_y")]
+        public float CurrentVelocityY;
         [DataMember(Name = "chunk_x")]
         public int ChunkX;
         [DataMember(Name = "chunk_y")]
         public int ChunkY;
         [DataMember(Name = "target_entity_id")]
         public ulong TargetEntityId;
-        [DataMember(Name = "selected_ammo_id")]
-        public string SelectedAmmoId;
-        [DataMember(Name = "selected_weak_point")]
-        public string SelectedWeakPoint;
+        [DataMember(Name = "selected_ammo_code")]
+        public byte SelectedAmmoCode;
+        [DataMember(Name = "selected_weak_point_code")]
+        public byte SelectedWeakPointCode;
         [DataMember(Name = "hull")]
         public uint Hull;
         [DataMember(Name = "max_hull")]
@@ -100,8 +110,8 @@ namespace SpacetimeDB.Types
 
         public Ship(
             ulong EntityId,
-            string ArchetypeId,
-            string Faction,
+            byte ArchetypeCode,
+            byte FactionCode,
             float PositionX,
             float PositionY,
             float DestinationX,
@@ -118,15 +128,20 @@ namespace SpacetimeDB.Types
             bool HasCourse,
             bool IsStopping,
             bool IsMoving,
+            byte MovementShard,
             bool IsActive,
             bool IsAlive,
             bool IsEngaged,
             byte ModeCode,
+            byte MovementStatusMask,
+            byte EnvironmentExposureCode,
+            float CurrentVelocityX,
+            float CurrentVelocityY,
             int ChunkX,
             int ChunkY,
             ulong TargetEntityId,
-            string SelectedAmmoId,
-            string SelectedWeakPoint,
+            byte SelectedAmmoCode,
+            byte SelectedWeakPointCode,
             uint Hull,
             uint MaxHull,
             uint Sails,
@@ -144,8 +159,8 @@ namespace SpacetimeDB.Types
         )
         {
             this.EntityId = EntityId;
-            this.ArchetypeId = ArchetypeId;
-            this.Faction = Faction;
+            this.ArchetypeCode = ArchetypeCode;
+            this.FactionCode = FactionCode;
             this.PositionX = PositionX;
             this.PositionY = PositionY;
             this.DestinationX = DestinationX;
@@ -162,15 +177,20 @@ namespace SpacetimeDB.Types
             this.HasCourse = HasCourse;
             this.IsStopping = IsStopping;
             this.IsMoving = IsMoving;
+            this.MovementShard = MovementShard;
             this.IsActive = IsActive;
             this.IsAlive = IsAlive;
             this.IsEngaged = IsEngaged;
             this.ModeCode = ModeCode;
+            this.MovementStatusMask = MovementStatusMask;
+            this.EnvironmentExposureCode = EnvironmentExposureCode;
+            this.CurrentVelocityX = CurrentVelocityX;
+            this.CurrentVelocityY = CurrentVelocityY;
             this.ChunkX = ChunkX;
             this.ChunkY = ChunkY;
             this.TargetEntityId = TargetEntityId;
-            this.SelectedAmmoId = SelectedAmmoId;
-            this.SelectedWeakPoint = SelectedWeakPoint;
+            this.SelectedAmmoCode = SelectedAmmoCode;
+            this.SelectedWeakPointCode = SelectedWeakPointCode;
             this.Hull = Hull;
             this.MaxHull = MaxHull;
             this.Sails = Sails;
@@ -189,10 +209,6 @@ namespace SpacetimeDB.Types
 
         public Ship()
         {
-            this.ArchetypeId = "";
-            this.Faction = "";
-            this.SelectedAmmoId = "";
-            this.SelectedWeakPoint = "";
         }
     }
 }

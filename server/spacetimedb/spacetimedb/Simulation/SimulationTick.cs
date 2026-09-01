@@ -13,14 +13,33 @@ public static partial class Module
 
         world.Tick++;
         ctx.Db.WorldState.Id.Update(world);
+        var ships = new ShipTickBuffer();
         UpdateWind(ctx, world.Tick);
-        MoveStorms(ctx);
-        ProcessStatuses(ctx, world.Tick);
-        ProcessChannels(ctx, world.Tick);
-        AdvanceMovingShips(ctx);
-        ApplyEnvironmentalHazards(ctx, world.Tick);
-        ResolveVolleys(ctx, world.Tick);
-        ExpireTransientRows(ctx, world.Tick);
+        MoveStorms(ctx, world.Tick);
+        ProcessStatuses(ctx, ships, world.Tick);
+        ProcessChannels(ctx, ships, world.Tick);
+        ApplyEnvironmentalHazards(ctx, ships, world.Tick);
+        ResolveVolleys(ctx, ships, world.Tick);
+        ProcessLootExpiry(ctx, world.Tick);
+        ships.Flush(ctx);
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void RunMovementShard(ReducerContext ctx, MovementShardTimer timer)
+    {
+        if (ctx.Db.WorldState.Id.Find(1) is not WorldState world)
+        {
+            return;
+        }
+
+        var ships = new ShipTickBuffer();
+        AdvanceMovingShips(
+            ctx,
+            ships,
+            new SpatialTickCache(),
+            world.Tick,
+            timer.ShardId);
+        ships.Flush(ctx);
     }
 
     private static void SetConnectionStateIfLoaded(
@@ -57,8 +76,10 @@ public static partial class Module
         return new Ship
         {
             EntityId = entityId,
-            ArchetypeId = archetypeId,
-            Faction = faction,
+            ArchetypeCode = (byte)HotPathCodes.ShipArchetype(archetypeId),
+            FactionCode = faction == "player"
+                ? (byte)FactionCode.Player
+                : (byte)FactionCode.Npc,
             PositionX = x,
             PositionY = y,
             DestinationX = x,
@@ -75,15 +96,20 @@ public static partial class Module
             HasCourse = false,
             IsStopping = false,
             IsMoving = false,
+            MovementShard = SimulationWorkRules.MovementShard(entityId),
             IsActive = true,
             IsAlive = true,
             IsEngaged = false,
             ModeCode = (byte)ShipMode.Operational,
+            MovementStatusMask = 0,
+            EnvironmentExposureCode = 0,
+            CurrentVelocityX = 0f,
+            CurrentVelocityY = 0f,
             ChunkX = SpatialRules.ChunkCoordinate(x),
             ChunkY = SpatialRules.ChunkCoordinate(y),
             TargetEntityId = 0,
-            SelectedAmmoId = "round",
-            SelectedWeakPoint = "hull",
+            SelectedAmmoCode = (byte)AmmunitionCode.Round,
+            SelectedWeakPointCode = (byte)WeakPointCode.Hull,
             Hull = WorldRules.InitialHealth,
             MaxHull = WorldRules.InitialHealth,
             Sails = 100,

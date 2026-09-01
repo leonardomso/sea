@@ -15,6 +15,8 @@ namespace SpacetimeDB.Types
     {
         [DataMember(Name = "ammo_id")]
         public string AmmoId;
+        [DataMember(Name = "ammo_code")]
+        public byte AmmoCode;
         [DataMember(Name = "hull_damage")]
         public uint HullDamage;
         [DataMember(Name = "sail_damage")]
@@ -27,24 +29,30 @@ namespace SpacetimeDB.Types
         public float RangeMultiplier;
         [DataMember(Name = "applied_status")]
         public string AppliedStatus;
+        [DataMember(Name = "applied_status_code")]
+        public byte AppliedStatusCode;
 
         public AmmoDefinition(
             string AmmoId,
+            byte AmmoCode,
             uint HullDamage,
             uint SailDamage,
             uint CannonDamage,
             uint CrewDamage,
             float RangeMultiplier,
-            string AppliedStatus
+            string AppliedStatus,
+            byte AppliedStatusCode
         )
         {
             this.AmmoId = AmmoId;
+            this.AmmoCode = AmmoCode;
             this.HullDamage = HullDamage;
             this.SailDamage = SailDamage;
             this.CannonDamage = CannonDamage;
             this.CrewDamage = CrewDamage;
             this.RangeMultiplier = RangeMultiplier;
             this.AppliedStatus = AppliedStatus;
+            this.AppliedStatusCode = AppliedStatusCode;
         }
 
         public AmmoDefinition()

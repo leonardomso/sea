@@ -240,7 +240,7 @@ namespace Sea.Client
             var target = targetId == 0 ? null : connection.Connection.Db.Ship.EntityId.Find(targetId);
             if (target != null && target.IsAlive)
             {
-                snapshot.TargetName = $"{target.ArchetypeId.ToUpperInvariant()}  {target.EntityId}";
+                snapshot.TargetName = $"{ArchetypeName(target.ArchetypeCode)}  {target.EntityId}";
                 snapshot.TargetHull = target.Hull;
                 snapshot.TargetMaxHull = target.MaxHull;
                 snapshot.TargetSails = target.Sails;
@@ -305,6 +305,14 @@ namespace Sea.Client
 
             return snapshot;
         }
+
+        private static string ArchetypeName(byte code) => code switch
+        {
+            1 => "PATROL",
+            2 => "RAIDER",
+            3 => "GUNSHIP",
+            _ => "SHIP",
+        };
 
         private void Apply(SeaHudViewModel model)
         {

@@ -37,7 +37,7 @@ namespace Sea.Client
                 $"SELECT * FROM ship_status WHERE ship_entity_id = {shipEntityId}",
                 $"SELECT * FROM cooldown WHERE ship_entity_id = {shipEntityId}",
                 $"SELECT * FROM ship_channel WHERE ship_entity_id = {shipEntityId}",
-                $"SELECT * FROM combat_event WHERE owner_entity_id = {shipEntityId} AND is_active = true",
+                $"SELECT * FROM combat_event WHERE owner_entity_id = {shipEntityId}",
             };
         }
 

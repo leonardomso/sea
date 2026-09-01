@@ -11,6 +11,7 @@ dist/
 TestResults/
 coverage/
 BenchmarkDotNet.Artifacts/
+reports/
 .stryker-output/
 
 # .NET generated output

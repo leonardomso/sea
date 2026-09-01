@@ -16,9 +16,11 @@ public static partial class Module
         {
             ShipEntityId = ship.EntityId,
             ChannelType = "repair",
+            ChannelTypeCode = (byte)ChannelCode.Repair,
             TargetEntityId = ship.EntityId,
             StartedAtTick = world.Tick,
             CompletesAtTick = world.Tick + TacticalRules.RepairDurationTicks,
+            NextProcessTick = world.Tick + 1,
             InitialHull = ship.Hull,
             InitialSails = ship.Sails,
             InitialCannons = ship.Cannons,
@@ -39,9 +41,11 @@ public static partial class Module
         {
             ShipEntityId = source.EntityId,
             ChannelType = "boarding",
+            ChannelTypeCode = (byte)ChannelCode.Boarding,
             TargetEntityId = target.EntityId,
             StartedAtTick = world.Tick,
             CompletesAtTick = world.Tick + TacticalRules.BoardingDurationTicks,
+            NextProcessTick = world.Tick + 1,
             InitialHull = source.Hull,
             InitialSails = source.Sails,
             InitialCannons = source.Cannons,

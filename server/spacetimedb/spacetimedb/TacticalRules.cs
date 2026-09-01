@@ -220,6 +220,21 @@ public static class TacticalRules
         };
     }
 
+    public static uint PeriodicStatusDamage(StatusCode status, uint stacks)
+    {
+        if (stacks == 0)
+        {
+            return 0;
+        }
+
+        return status switch
+        {
+            StatusCode.Burning => checked(stacks * 2),
+            StatusCode.Flooding => stacks,
+            _ => 0,
+        };
+    }
+
     public static bool CanAcquireTarget(bool smokeActive, float distance) =>
         !smokeActive || distance <= SmokeCloseRange;
 

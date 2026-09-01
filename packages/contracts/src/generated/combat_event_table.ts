@@ -11,11 +11,8 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  eventId: __t.u64().primaryKey().name("event_id"),
   ownerEntityId: __t.u64().name("owner_entity_id"),
   eventType: __t.string().name("event_type"),
   details: __t.string(),
   tick: __t.u64(),
-  expiresAtTick: __t.u64().name("expires_at_tick"),
-  isActive: __t.bool().name("is_active"),
 });

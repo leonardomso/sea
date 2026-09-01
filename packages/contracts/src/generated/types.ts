@@ -12,6 +12,7 @@ import {
 
 export const AbilityDefinition = __t.object("AbilityDefinition", {
   abilityId: __t.string(),
+  abilityCode: __t.u8(),
   cooldownTicks: __t.u32(),
   durationTicks: __t.u32(),
 });
@@ -24,12 +25,14 @@ export type ActivateAbilityCommand = __Infer<typeof ActivateAbilityCommand>;
 
 export const AmmoDefinition = __t.object("AmmoDefinition", {
   ammoId: __t.string(),
+  ammoCode: __t.u8(),
   hullDamage: __t.u32(),
   sailDamage: __t.u32(),
   cannonDamage: __t.u32(),
   crewDamage: __t.u32(),
   rangeMultiplier: __t.f32(),
   appliedStatus: __t.string(),
+  appliedStatusCode: __t.u8(),
 });
 export type AmmoDefinition = __Infer<typeof AmmoDefinition>;
 
@@ -51,13 +54,10 @@ export const CombatContribution = __t.object("CombatContribution", {
 export type CombatContribution = __Infer<typeof CombatContribution>;
 
 export const CombatEvent = __t.object("CombatEvent", {
-  eventId: __t.u64(),
   ownerEntityId: __t.u64(),
   eventType: __t.string(),
   details: __t.string(),
   tick: __t.u64(),
-  expiresAtTick: __t.u64(),
-  isActive: __t.bool(),
 });
 export type CombatEvent = __Infer<typeof CombatEvent>;
 
@@ -83,6 +83,7 @@ export const Cooldown = __t.object("Cooldown", {
   cooldownId: __t.u64(),
   shipEntityId: __t.u64(),
   cooldownType: __t.string(),
+  cooldownTypeCode: __t.u8(),
   readyAtTick: __t.u64(),
 });
 export type Cooldown = __Infer<typeof Cooldown>;
@@ -144,6 +145,13 @@ export const Loot = __t.object("Loot", {
 });
 export type Loot = __Infer<typeof Loot>;
 
+export const MovementShardTimer = __t.object("MovementShardTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+  shardId: __t.u8(),
+});
+export type MovementShardTimer = __Infer<typeof MovementShardTimer>;
+
 export const NpcAi = __t.object("NpcAi", {
   shipEntityId: __t.u64(),
   archetypeId: __t.string(),
@@ -185,6 +193,13 @@ export const PlayerProgression = __t.object("PlayerProgression", {
 });
 export type PlayerProgression = __Infer<typeof PlayerProgression>;
 
+export const RespawnWork = __t.object("RespawnWork", {
+  shipEntityId: __t.u64(),
+  isPending: __t.bool(),
+  respawnAtTick: __t.u64(),
+});
+export type RespawnWork = __Infer<typeof RespawnWork>;
+
 export const SelectTargetCommand = __t.object("SelectTargetCommand", {
   entityId: __t.u64(),
 });
@@ -203,8 +218,8 @@ export type SetCourseCommand = __Infer<typeof SetCourseCommand>;
 
 export const Ship = __t.object("Ship", {
   entityId: __t.u64(),
-  archetypeId: __t.string(),
-  faction: __t.string(),
+  archetypeCode: __t.u8(),
+  factionCode: __t.u8(),
   positionX: __t.f32(),
   positionY: __t.f32(),
   destinationX: __t.f32(),
@@ -221,15 +236,20 @@ export const Ship = __t.object("Ship", {
   hasCourse: __t.bool(),
   isStopping: __t.bool(),
   isMoving: __t.bool(),
+  movementShard: __t.u8(),
   isActive: __t.bool(),
   isAlive: __t.bool(),
   isEngaged: __t.bool(),
   modeCode: __t.u8(),
+  movementStatusMask: __t.u8(),
+  environmentExposureCode: __t.u8(),
+  currentVelocityX: __t.f32(),
+  currentVelocityY: __t.f32(),
   chunkX: __t.i32(),
   chunkY: __t.i32(),
   targetEntityId: __t.u64(),
-  selectedAmmoId: __t.string(),
-  selectedWeakPoint: __t.string(),
+  selectedAmmoCode: __t.u8(),
+  selectedWeakPointCode: __t.u8(),
   hull: __t.u32(),
   maxHull: __t.u32(),
   sails: __t.u32(),
@@ -250,9 +270,11 @@ export type Ship = __Infer<typeof Ship>;
 export const ShipChannel = __t.object("ShipChannel", {
   shipEntityId: __t.u64(),
   channelType: __t.string(),
+  channelTypeCode: __t.u8(),
   targetEntityId: __t.u64(),
   startedAtTick: __t.u64(),
   completesAtTick: __t.u64(),
+  nextProcessTick: __t.u64(),
   initialHull: __t.u32(),
   initialSails: __t.u32(),
   initialCannons: __t.u32(),
@@ -300,9 +322,11 @@ export const ShipStatus = __t.object("ShipStatus", {
   statusId: __t.u64(),
   shipEntityId: __t.u64(),
   statusType: __t.string(),
+  statusCode: __t.u8(),
   stacks: __t.u32(),
   expiresAtTick: __t.u64(),
   immunityUntilTick: __t.u64(),
+  nextProcessTick: __t.u64(),
   isActive: __t.bool(),
 });
 export type ShipStatus = __Infer<typeof ShipStatus>;
@@ -327,8 +351,11 @@ export const Volley = __t.object("Volley", {
   sourceEntityId: __t.u64(),
   targetEntityId: __t.u64(),
   side: __t.string(),
+  sideCode: __t.u8(),
   ammoId: __t.string(),
+  ammoCode: __t.u8(),
   weakPoint: __t.string(),
+  weakPointCode: __t.u8(),
   originX: __t.f32(),
   originY: __t.f32(),
   chunkX: __t.i32(),
@@ -346,6 +373,7 @@ export type Volley = __Infer<typeof Volley>;
 export const WorldObject = __t.object("WorldObject", {
   entityId: __t.u64(),
   kind: __t.string(),
+  kindCode: __t.u8(),
   positionX: __t.f32(),
   positionY: __t.f32(),
   radius: __t.f32(),

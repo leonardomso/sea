@@ -26,6 +26,15 @@ namespace SpacetimeDB.Types
 
             public readonly CooldownIdUniqueIndex CooldownId;
 
+            public sealed class ByShipCooldownIndex : BTreeIndexBase<(ulong ShipEntityId, byte CooldownTypeCode)>
+            {
+                protected override (ulong ShipEntityId, byte CooldownTypeCode) GetKey(Cooldown row) => (row.ShipEntityId, row.CooldownTypeCode);
+
+                public ByShipCooldownIndex(CooldownHandle table) : base(table) { }
+            }
+
+            public readonly ByShipCooldownIndex ByShipCooldown;
+
             public sealed class ByShipIndex : BTreeIndexBase<ulong>
             {
                 protected override ulong GetKey(Cooldown row) => row.ShipEntityId;
@@ -38,6 +47,7 @@ namespace SpacetimeDB.Types
             internal CooldownHandle(DbConnection conn) : base(conn)
             {
                 CooldownId = new(this);
+                ByShipCooldown = new(this);
                 ByShip = new(this);
             }
 
@@ -52,6 +62,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Cooldown, ulong> CooldownId { get; }
         public global::SpacetimeDB.Col<Cooldown, ulong> ShipEntityId { get; }
         public global::SpacetimeDB.Col<Cooldown, string> CooldownType { get; }
+        public global::SpacetimeDB.Col<Cooldown, byte> CooldownTypeCode { get; }
         public global::SpacetimeDB.Col<Cooldown, ulong> ReadyAtTick { get; }
 
         public CooldownCols(string tableName)
@@ -59,6 +70,7 @@ namespace SpacetimeDB.Types
             CooldownId = new global::SpacetimeDB.Col<Cooldown, ulong>(tableName, "cooldown_id");
             ShipEntityId = new global::SpacetimeDB.Col<Cooldown, ulong>(tableName, "ship_entity_id");
             CooldownType = new global::SpacetimeDB.Col<Cooldown, string>(tableName, "cooldown_type");
+            CooldownTypeCode = new global::SpacetimeDB.Col<Cooldown, byte>(tableName, "cooldown_type_code");
             ReadyAtTick = new global::SpacetimeDB.Col<Cooldown, ulong>(tableName, "ready_at_tick");
         }
     }
@@ -67,11 +79,13 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.IxCol<Cooldown, ulong> CooldownId { get; }
         public global::SpacetimeDB.IxCol<Cooldown, ulong> ShipEntityId { get; }
+        public global::SpacetimeDB.IxCol<Cooldown, byte> CooldownTypeCode { get; }
 
         public CooldownIxCols(string tableName)
         {
             CooldownId = new global::SpacetimeDB.IxCol<Cooldown, ulong>(tableName, "cooldown_id");
             ShipEntityId = new global::SpacetimeDB.IxCol<Cooldown, ulong>(tableName, "ship_entity_id");
+            CooldownTypeCode = new global::SpacetimeDB.IxCol<Cooldown, byte>(tableName, "cooldown_type_code");
         }
     }
 }

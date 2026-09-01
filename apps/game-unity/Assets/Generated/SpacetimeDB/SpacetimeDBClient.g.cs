@@ -43,6 +43,7 @@ namespace SpacetimeDB.Types
             AddTable(PlayerCommandState = new(conn));
             AddTable(PlayerOwnership = new(conn));
             AddTable(PlayerProgression = new(conn));
+            AddTable(RespawnWork = new(conn));
             AddTable(Ship = new(conn));
             AddTable(ShipChannel = new(conn));
             AddTable(ShipStatus = new(conn));
@@ -561,6 +562,7 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.PlayerCommandState().ToSql(),
             new QueryBuilder().From.PlayerOwnership().ToSql(),
             new QueryBuilder().From.PlayerProgression().ToSql(),
+            new QueryBuilder().From.RespawnWork().ToSql(),
             new QueryBuilder().From.Ship().ToSql(),
             new QueryBuilder().From.ShipChannel().ToSql(),
             new QueryBuilder().From.ShipStatus().ToSql(),
@@ -589,6 +591,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<PlayerCommandState, PlayerCommandStateCols, PlayerCommandStateIxCols> PlayerCommandState() => new("player_command_state", new PlayerCommandStateCols("player_command_state"), new PlayerCommandStateIxCols("player_command_state"));
         public global::SpacetimeDB.Table<PlayerOwnership, PlayerOwnershipCols, PlayerOwnershipIxCols> PlayerOwnership() => new("player_ownership", new PlayerOwnershipCols("player_ownership"), new PlayerOwnershipIxCols("player_ownership"));
         public global::SpacetimeDB.Table<PlayerProgression, PlayerProgressionCols, PlayerProgressionIxCols> PlayerProgression() => new("player_progression", new PlayerProgressionCols("player_progression"), new PlayerProgressionIxCols("player_progression"));
+        public global::SpacetimeDB.Table<RespawnWork, RespawnWorkCols, RespawnWorkIxCols> RespawnWork() => new("respawn_work", new RespawnWorkCols("respawn_work"), new RespawnWorkIxCols("respawn_work"));
         public global::SpacetimeDB.Table<Ship, ShipCols, ShipIxCols> Ship() => new("ship", new ShipCols("ship"), new ShipIxCols("ship"));
         public global::SpacetimeDB.Table<ShipChannel, ShipChannelCols, ShipChannelIxCols> ShipChannel() => new("ship_channel", new ShipChannelCols("ship_channel"), new ShipChannelIxCols("ship_channel"));
         public global::SpacetimeDB.Table<ShipStatus, ShipStatusCols, ShipStatusIxCols> ShipStatus() => new("ship_status", new ShipStatusCols("ship_status"), new ShipStatusIxCols("ship_status"));

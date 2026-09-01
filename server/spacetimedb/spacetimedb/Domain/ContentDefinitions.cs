@@ -3,17 +3,20 @@ namespace Sea.Server;
 public sealed class AmmunitionContent
 {
     public required string Id { get; init; }
+    public required AmmunitionCode Code { get; init; }
     public required uint HullDamage { get; init; }
     public required uint SailDamage { get; init; }
     public required uint CannonDamage { get; init; }
     public required uint CrewDamage { get; init; }
     public required float RangeMultiplier { get; init; }
     public required string AppliedStatus { get; init; }
+    public required StatusCode AppliedStatusCode { get; init; }
 }
 
 public sealed class AbilityContent
 {
     public required string Id { get; init; }
+    public required AbilityCode Code { get; init; }
     public required uint CooldownTicks { get; init; }
     public required uint DurationTicks { get; init; }
 }
@@ -39,17 +42,17 @@ public static class ContentCatalog
     {
         Ammunition = new AmmunitionContent[]
         {
-            new() { Id = "round", HullDamage = 25, SailDamage = 5, CannonDamage = 5, CrewDamage = 2, RangeMultiplier = 1f, AppliedStatus = "flooding" },
-            new() { Id = "chain", HullDamage = 5, SailDamage = 28, CannonDamage = 2, CrewDamage = 2, RangeMultiplier = 0.9f, AppliedStatus = "slowed" },
-            new() { Id = "grapeshot", HullDamage = 4, SailDamage = 3, CannonDamage = 4, CrewDamage = 30, RangeMultiplier = 0.55f, AppliedStatus = "none" },
-            new() { Id = "incendiary", HullDamage = 14, SailDamage = 8, CannonDamage = 8, CrewDamage = 5, RangeMultiplier = 0.85f, AppliedStatus = "burning" },
+            new() { Id = "round", Code = AmmunitionCode.Round, HullDamage = 25, SailDamage = 5, CannonDamage = 5, CrewDamage = 2, RangeMultiplier = 1f, AppliedStatus = "flooding", AppliedStatusCode = StatusCode.Flooding },
+            new() { Id = "chain", Code = AmmunitionCode.Chain, HullDamage = 5, SailDamage = 28, CannonDamage = 2, CrewDamage = 2, RangeMultiplier = 0.9f, AppliedStatus = "slowed", AppliedStatusCode = StatusCode.Slowed },
+            new() { Id = "grapeshot", Code = AmmunitionCode.Grapeshot, HullDamage = 4, SailDamage = 3, CannonDamage = 4, CrewDamage = 30, RangeMultiplier = 0.55f, AppliedStatus = "none", AppliedStatusCode = StatusCode.None },
+            new() { Id = "incendiary", Code = AmmunitionCode.Incendiary, HullDamage = 14, SailDamage = 8, CannonDamage = 8, CrewDamage = 5, RangeMultiplier = 0.85f, AppliedStatus = "burning", AppliedStatusCode = StatusCode.Burning },
         },
         Abilities = new AbilityContent[]
         {
-            new() { Id = "full_sail", CooldownTicks = 200, DurationTicks = 50 },
-            new() { Id = "brace", CooldownTicks = 180, DurationTicks = 40 },
-            new() { Id = "emergency_pump", CooldownTicks = 300, DurationTicks = 50 },
-            new() { Id = "smoke_screen", CooldownTicks = 240, DurationTicks = 40 },
+            new() { Id = "full_sail", Code = AbilityCode.FullSail, CooldownTicks = 200, DurationTicks = 50 },
+            new() { Id = "brace", Code = AbilityCode.Brace, CooldownTicks = 180, DurationTicks = 40 },
+            new() { Id = "emergency_pump", Code = AbilityCode.EmergencyPump, CooldownTicks = 300, DurationTicks = 50 },
+            new() { Id = "smoke_screen", Code = AbilityCode.SmokeScreen, CooldownTicks = 240, DurationTicks = 40 },
         },
         Npcs = new NpcContent[]
         {

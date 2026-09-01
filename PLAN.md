@@ -382,6 +382,13 @@ Commit: `refactor(combat): centralize authoritative ship commands`
 
 ### Phase 12: make the server simulation scale by indexed work
 
+Status: complete.
+
+Measured on the local development stack with 100 real C# SDK clients and 100
+concurrently sailing ships: global simulation tick p95 was 3.53 ms and the
+eight-shard movement reducer p95 was 6.98 ms. Idle simulation work averaged
+0.93 ms and aggregate container CPU averaged 12.61 percent.
+
 - Remove all ship-to-ship collision checks.
 - Add due-tick and spatial indexes.
 - Convert transient combat messages to event tables.

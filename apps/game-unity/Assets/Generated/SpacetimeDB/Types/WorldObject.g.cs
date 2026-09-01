@@ -17,6 +17,8 @@ namespace SpacetimeDB.Types
         public ulong EntityId;
         [DataMember(Name = "kind")]
         public string Kind;
+        [DataMember(Name = "kind_code")]
+        public byte KindCode;
         [DataMember(Name = "position_x")]
         public float PositionX;
         [DataMember(Name = "position_y")]
@@ -41,6 +43,7 @@ namespace SpacetimeDB.Types
         public WorldObject(
             ulong EntityId,
             string Kind,
+            byte KindCode,
             float PositionX,
             float PositionY,
             float Radius,
@@ -55,6 +58,7 @@ namespace SpacetimeDB.Types
         {
             this.EntityId = EntityId;
             this.Kind = Kind;
+            this.KindCode = KindCode;
             this.PositionX = PositionX;
             this.PositionY = PositionY;
             this.Radius = Radius;

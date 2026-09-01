@@ -6,11 +6,21 @@ public static partial class Module
     private static (bool InStorm, bool InShoal, TacticalModifiers Modifiers) HazardsAt(
         ReducerContext ctx,
         float x,
+        float y) => HazardsAt(ctx, new SpatialTickCache(), x, y);
+
+    private static (bool InStorm, bool InShoal, TacticalModifiers Modifiers) HazardsAt(
+        ReducerContext ctx,
+        SpatialTickCache spatial,
+        float x,
         float y)
     {
         var inStorm = false;
         var inShoal = false;
-        foreach (var worldObject in ctx.Db.WorldObject.Iter())
+        var bounds = SpatialRules.BoundsAround(
+            x,
+            y,
+            SpatialRules.MaximumWorldInfluenceRadius);
+        foreach (var worldObject in spatial.WorldObjectsIn(ctx, bounds))
         {
             if (!worldObject.IsActive ||
                 !WorldRules.IsInRange(
@@ -23,8 +33,9 @@ public static partial class Module
                 continue;
             }
 
-            inStorm |= worldObject.Kind == "storm";
-            inShoal |= worldObject.Kind == "shoal";
+            var kind = (WorldObjectCode)worldObject.KindCode;
+            inStorm |= kind == WorldObjectCode.Storm;
+            inShoal |= kind == WorldObjectCode.Shoal;
         }
 
         return (

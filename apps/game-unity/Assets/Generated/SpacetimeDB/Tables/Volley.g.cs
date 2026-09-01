@@ -35,6 +35,15 @@ namespace SpacetimeDB.Types
 
             public readonly ByActiveIndex ByActive;
 
+            public sealed class ByImpactDueIndex : BTreeIndexBase<(bool IsActive, ulong ImpactAtTick)>
+            {
+                protected override (bool IsActive, ulong ImpactAtTick) GetKey(Volley row) => (row.IsActive, row.ImpactAtTick);
+
+                public ByImpactDueIndex(VolleyHandle table) : base(table) { }
+            }
+
+            public readonly ByImpactDueIndex ByImpactDue;
+
             public sealed class ByTargetIndex : BTreeIndexBase<ulong>
             {
                 protected override ulong GetKey(Volley row) => row.TargetEntityId;
@@ -57,6 +66,7 @@ namespace SpacetimeDB.Types
             {
                 ByChunk = new(this);
                 ByActive = new(this);
+                ByImpactDue = new(this);
                 ByTarget = new(this);
                 VolleyId = new(this);
             }
@@ -73,8 +83,11 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Volley, ulong> SourceEntityId { get; }
         public global::SpacetimeDB.Col<Volley, ulong> TargetEntityId { get; }
         public global::SpacetimeDB.Col<Volley, string> Side { get; }
+        public global::SpacetimeDB.Col<Volley, byte> SideCode { get; }
         public global::SpacetimeDB.Col<Volley, string> AmmoId { get; }
+        public global::SpacetimeDB.Col<Volley, byte> AmmoCode { get; }
         public global::SpacetimeDB.Col<Volley, string> WeakPoint { get; }
+        public global::SpacetimeDB.Col<Volley, byte> WeakPointCode { get; }
         public global::SpacetimeDB.Col<Volley, float> OriginX { get; }
         public global::SpacetimeDB.Col<Volley, float> OriginY { get; }
         public global::SpacetimeDB.Col<Volley, int> ChunkX { get; }
@@ -93,8 +106,11 @@ namespace SpacetimeDB.Types
             SourceEntityId = new global::SpacetimeDB.Col<Volley, ulong>(tableName, "source_entity_id");
             TargetEntityId = new global::SpacetimeDB.Col<Volley, ulong>(tableName, "target_entity_id");
             Side = new global::SpacetimeDB.Col<Volley, string>(tableName, "side");
+            SideCode = new global::SpacetimeDB.Col<Volley, byte>(tableName, "side_code");
             AmmoId = new global::SpacetimeDB.Col<Volley, string>(tableName, "ammo_id");
+            AmmoCode = new global::SpacetimeDB.Col<Volley, byte>(tableName, "ammo_code");
             WeakPoint = new global::SpacetimeDB.Col<Volley, string>(tableName, "weak_point");
+            WeakPointCode = new global::SpacetimeDB.Col<Volley, byte>(tableName, "weak_point_code");
             OriginX = new global::SpacetimeDB.Col<Volley, float>(tableName, "origin_x");
             OriginY = new global::SpacetimeDB.Col<Volley, float>(tableName, "origin_y");
             ChunkX = new global::SpacetimeDB.Col<Volley, int>(tableName, "chunk_x");
@@ -115,6 +131,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.IxCol<Volley, ulong> TargetEntityId { get; }
         public global::SpacetimeDB.IxCol<Volley, int> ChunkX { get; }
         public global::SpacetimeDB.IxCol<Volley, int> ChunkY { get; }
+        public global::SpacetimeDB.IxCol<Volley, ulong> ImpactAtTick { get; }
         public global::SpacetimeDB.IxCol<Volley, bool> IsActive { get; }
 
         public VolleyIxCols(string tableName)
@@ -123,6 +140,7 @@ namespace SpacetimeDB.Types
             TargetEntityId = new global::SpacetimeDB.IxCol<Volley, ulong>(tableName, "target_entity_id");
             ChunkX = new global::SpacetimeDB.IxCol<Volley, int>(tableName, "chunk_x");
             ChunkY = new global::SpacetimeDB.IxCol<Volley, int>(tableName, "chunk_y");
+            ImpactAtTick = new global::SpacetimeDB.IxCol<Volley, ulong>(tableName, "impact_at_tick");
             IsActive = new global::SpacetimeDB.IxCol<Volley, bool>(tableName, "is_active");
         }
     }

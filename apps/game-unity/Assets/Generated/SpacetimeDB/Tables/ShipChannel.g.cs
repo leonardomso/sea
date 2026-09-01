@@ -26,6 +26,15 @@ namespace SpacetimeDB.Types
 
             public readonly ByActiveIndex ByActive;
 
+            public sealed class ByChannelDueIndex : BTreeIndexBase<(bool IsActive, ulong NextProcessTick)>
+            {
+                protected override (bool IsActive, ulong NextProcessTick) GetKey(ShipChannel row) => (row.IsActive, row.NextProcessTick);
+
+                public ByChannelDueIndex(ShipChannelHandle table) : base(table) { }
+            }
+
+            public readonly ByChannelDueIndex ByChannelDue;
+
             public sealed class ShipEntityIdUniqueIndex : UniqueIndexBase<ulong>
             {
                 protected override ulong GetKey(ShipChannel row) => row.ShipEntityId;
@@ -38,6 +47,7 @@ namespace SpacetimeDB.Types
             internal ShipChannelHandle(DbConnection conn) : base(conn)
             {
                 ByActive = new(this);
+                ByChannelDue = new(this);
                 ShipEntityId = new(this);
             }
 
@@ -51,9 +61,11 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.Col<ShipChannel, ulong> ShipEntityId { get; }
         public global::SpacetimeDB.Col<ShipChannel, string> ChannelType { get; }
+        public global::SpacetimeDB.Col<ShipChannel, byte> ChannelTypeCode { get; }
         public global::SpacetimeDB.Col<ShipChannel, ulong> TargetEntityId { get; }
         public global::SpacetimeDB.Col<ShipChannel, ulong> StartedAtTick { get; }
         public global::SpacetimeDB.Col<ShipChannel, ulong> CompletesAtTick { get; }
+        public global::SpacetimeDB.Col<ShipChannel, ulong> NextProcessTick { get; }
         public global::SpacetimeDB.Col<ShipChannel, uint> InitialHull { get; }
         public global::SpacetimeDB.Col<ShipChannel, uint> InitialSails { get; }
         public global::SpacetimeDB.Col<ShipChannel, uint> InitialCannons { get; }
@@ -64,9 +76,11 @@ namespace SpacetimeDB.Types
         {
             ShipEntityId = new global::SpacetimeDB.Col<ShipChannel, ulong>(tableName, "ship_entity_id");
             ChannelType = new global::SpacetimeDB.Col<ShipChannel, string>(tableName, "channel_type");
+            ChannelTypeCode = new global::SpacetimeDB.Col<ShipChannel, byte>(tableName, "channel_type_code");
             TargetEntityId = new global::SpacetimeDB.Col<ShipChannel, ulong>(tableName, "target_entity_id");
             StartedAtTick = new global::SpacetimeDB.Col<ShipChannel, ulong>(tableName, "started_at_tick");
             CompletesAtTick = new global::SpacetimeDB.Col<ShipChannel, ulong>(tableName, "completes_at_tick");
+            NextProcessTick = new global::SpacetimeDB.Col<ShipChannel, ulong>(tableName, "next_process_tick");
             InitialHull = new global::SpacetimeDB.Col<ShipChannel, uint>(tableName, "initial_hull");
             InitialSails = new global::SpacetimeDB.Col<ShipChannel, uint>(tableName, "initial_sails");
             InitialCannons = new global::SpacetimeDB.Col<ShipChannel, uint>(tableName, "initial_cannons");
@@ -78,11 +92,13 @@ namespace SpacetimeDB.Types
     public sealed class ShipChannelIxCols
     {
         public global::SpacetimeDB.IxCol<ShipChannel, ulong> ShipEntityId { get; }
+        public global::SpacetimeDB.IxCol<ShipChannel, ulong> NextProcessTick { get; }
         public global::SpacetimeDB.IxCol<ShipChannel, bool> IsActive { get; }
 
         public ShipChannelIxCols(string tableName)
         {
             ShipEntityId = new global::SpacetimeDB.IxCol<ShipChannel, ulong>(tableName, "ship_entity_id");
+            NextProcessTick = new global::SpacetimeDB.IxCol<ShipChannel, ulong>(tableName, "next_process_tick");
             IsActive = new global::SpacetimeDB.IxCol<ShipChannel, bool>(tableName, "is_active");
         }
     }

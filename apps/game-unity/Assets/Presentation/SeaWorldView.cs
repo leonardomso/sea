@@ -226,7 +226,7 @@ namespace Sea.Client
         {
             foreach (var enemy in connection.Connection.Db.Ship.Iter())
             {
-                if (enemy.Faction != "npc")
+                if (enemy.FactionCode != 2)
                 {
                     continue;
                 }

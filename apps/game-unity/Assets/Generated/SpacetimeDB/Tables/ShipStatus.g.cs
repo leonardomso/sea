@@ -26,6 +26,15 @@ namespace SpacetimeDB.Types
 
             public readonly ByActiveIndex ByActive;
 
+            public sealed class ByStatusDueIndex : BTreeIndexBase<(bool IsActive, ulong NextProcessTick)>
+            {
+                protected override (bool IsActive, ulong NextProcessTick) GetKey(ShipStatus row) => (row.IsActive, row.NextProcessTick);
+
+                public ByStatusDueIndex(ShipStatusHandle table) : base(table) { }
+            }
+
+            public readonly ByStatusDueIndex ByStatusDue;
+
             public sealed class ByShipIndex : BTreeIndexBase<ulong>
             {
                 protected override ulong GetKey(ShipStatus row) => row.ShipEntityId;
@@ -34,6 +43,15 @@ namespace SpacetimeDB.Types
             }
 
             public readonly ByShipIndex ByShip;
+
+            public sealed class ByShipStatusIndex : BTreeIndexBase<(ulong ShipEntityId, byte StatusCode)>
+            {
+                protected override (ulong ShipEntityId, byte StatusCode) GetKey(ShipStatus row) => (row.ShipEntityId, row.StatusCode);
+
+                public ByShipStatusIndex(ShipStatusHandle table) : base(table) { }
+            }
+
+            public readonly ByShipStatusIndex ByShipStatus;
 
             public sealed class StatusIdUniqueIndex : UniqueIndexBase<ulong>
             {
@@ -47,7 +65,9 @@ namespace SpacetimeDB.Types
             internal ShipStatusHandle(DbConnection conn) : base(conn)
             {
                 ByActive = new(this);
+                ByStatusDue = new(this);
                 ByShip = new(this);
+                ByShipStatus = new(this);
                 StatusId = new(this);
             }
 
@@ -62,9 +82,11 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<ShipStatus, ulong> StatusId { get; }
         public global::SpacetimeDB.Col<ShipStatus, ulong> ShipEntityId { get; }
         public global::SpacetimeDB.Col<ShipStatus, string> StatusType { get; }
+        public global::SpacetimeDB.Col<ShipStatus, byte> StatusCode { get; }
         public global::SpacetimeDB.Col<ShipStatus, uint> Stacks { get; }
         public global::SpacetimeDB.Col<ShipStatus, ulong> ExpiresAtTick { get; }
         public global::SpacetimeDB.Col<ShipStatus, ulong> ImmunityUntilTick { get; }
+        public global::SpacetimeDB.Col<ShipStatus, ulong> NextProcessTick { get; }
         public global::SpacetimeDB.Col<ShipStatus, bool> IsActive { get; }
 
         public ShipStatusCols(string tableName)
@@ -72,9 +94,11 @@ namespace SpacetimeDB.Types
             StatusId = new global::SpacetimeDB.Col<ShipStatus, ulong>(tableName, "status_id");
             ShipEntityId = new global::SpacetimeDB.Col<ShipStatus, ulong>(tableName, "ship_entity_id");
             StatusType = new global::SpacetimeDB.Col<ShipStatus, string>(tableName, "status_type");
+            StatusCode = new global::SpacetimeDB.Col<ShipStatus, byte>(tableName, "status_code");
             Stacks = new global::SpacetimeDB.Col<ShipStatus, uint>(tableName, "stacks");
             ExpiresAtTick = new global::SpacetimeDB.Col<ShipStatus, ulong>(tableName, "expires_at_tick");
             ImmunityUntilTick = new global::SpacetimeDB.Col<ShipStatus, ulong>(tableName, "immunity_until_tick");
+            NextProcessTick = new global::SpacetimeDB.Col<ShipStatus, ulong>(tableName, "next_process_tick");
             IsActive = new global::SpacetimeDB.Col<ShipStatus, bool>(tableName, "is_active");
         }
     }
@@ -83,12 +107,16 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.IxCol<ShipStatus, ulong> StatusId { get; }
         public global::SpacetimeDB.IxCol<ShipStatus, ulong> ShipEntityId { get; }
+        public global::SpacetimeDB.IxCol<ShipStatus, byte> StatusCode { get; }
+        public global::SpacetimeDB.IxCol<ShipStatus, ulong> NextProcessTick { get; }
         public global::SpacetimeDB.IxCol<ShipStatus, bool> IsActive { get; }
 
         public ShipStatusIxCols(string tableName)
         {
             StatusId = new global::SpacetimeDB.IxCol<ShipStatus, ulong>(tableName, "status_id");
             ShipEntityId = new global::SpacetimeDB.IxCol<ShipStatus, ulong>(tableName, "ship_entity_id");
+            StatusCode = new global::SpacetimeDB.IxCol<ShipStatus, byte>(tableName, "status_code");
+            NextProcessTick = new global::SpacetimeDB.IxCol<ShipStatus, ulong>(tableName, "next_process_tick");
             IsActive = new global::SpacetimeDB.IxCol<ShipStatus, bool>(tableName, "is_active");
         }
     }

@@ -14,9 +14,9 @@ public static partial class Module
             throw new InvalidOperationException("World state is missing.");
         var target = ctx.Db.Ship.EntityId.Find(source.TargetEntityId) ??
             throw new InvalidOperationException("Accepted broadside has no target.");
-        var ammunition = ctx.Db.AmmoDefinition.AmmoId.Find(source.SelectedAmmoId) ??
+        var ammunition = ctx.Db.AmmoDefinition.AmmoCode.Find(source.SelectedAmmoCode) ??
             throw new InvalidOperationException("Selected ammunition definition is missing.");
-        var inventory = FindInventory(ctx, source.EntityId, source.SelectedAmmoId) ??
+        var inventory = FindInventory(ctx, source.EntityId, ammunition.AmmoId) ??
             throw new InvalidOperationException("Accepted broadside has no ammunition.");
         var damage = BroadsideDamage(ctx, source, ammunition, weakPoint);
         var distance = CombatRules.Distance(
@@ -31,7 +31,7 @@ public static partial class Module
 
         inventory.Quantity--;
         ctx.Db.Inventory.InventoryId.Update(inventory);
-        source.SelectedWeakPoint = command.WeakPoint.ToLowerInvariant();
+        source.SelectedWeakPointCode = (byte)weakPoint;
         source.IsEngaged = true;
         ApplyReload(ref source, side, world.Tick);
         ctx.Db.Volley.Insert(new Volley
@@ -39,8 +39,13 @@ public static partial class Module
             SourceEntityId = source.EntityId,
             TargetEntityId = target.EntityId,
             Side = command.Side.ToLowerInvariant(),
+            SideCode = (byte)(side == BroadsideSide.Port
+                ? BroadsideCode.Port
+                : BroadsideCode.Starboard),
             AmmoId = ammunition.AmmoId,
+            AmmoCode = ammunition.AmmoCode,
             WeakPoint = command.WeakPoint.ToLowerInvariant(),
+            WeakPointCode = (byte)weakPoint,
             OriginX = source.PositionX,
             OriginY = source.PositionY,
             ChunkX = source.ChunkX,
@@ -70,12 +75,14 @@ public static partial class Module
             new AmmunitionContent
             {
                 Id = ammunition.AmmoId,
+                Code = (AmmunitionCode)ammunition.AmmoCode,
                 HullDamage = ammunition.HullDamage,
                 SailDamage = ammunition.SailDamage,
                 CannonDamage = ammunition.CannonDamage,
                 CrewDamage = ammunition.CrewDamage,
                 RangeMultiplier = ammunition.RangeMultiplier,
                 AppliedStatus = ammunition.AppliedStatus,
+                AppliedStatusCode = (StatusCode)ammunition.AppliedStatusCode,
             },
             weakPoint,
             source.CannonDamage,
@@ -105,29 +112,32 @@ public static partial class Module
 
     private static void ApplyActivateAbility(
         ReducerContext ctx,
-        Ship ship,
+        ref Ship ship,
         ActivateAbilityCommand command)
     {
         var ability = ctx.Db.AbilityDefinition.AbilityId.Find(command.AbilityId) ??
             throw new InvalidOperationException("Accepted ability definition is missing.");
+        var abilityCode = (AbilityCode)ability.AbilityCode;
         var world = ctx.Db.WorldState.Id.Find(1) ??
             throw new InvalidOperationException("World state is missing.");
-        if (command.AbilityId == "emergency_pump")
+        if (abilityCode == AbilityCode.EmergencyPump)
         {
-            DeactivateStatus(ctx, ship.EntityId, "flooding", world.Tick);
+            DeactivateStatus(ctx, ship.EntityId, StatusCode.Flooding, world.Tick);
         }
 
+        var statusCode = HotPathCodes.StatusFor(abilityCode);
         ApplyStatus(
             ctx,
             ship.EntityId,
-            command.AbilityId,
+            statusCode,
             world.Tick,
             ability.DurationTicks,
             maximumStacks: 1);
+        ship.MovementStatusMask |= HotPathCodes.MovementMask(statusCode);
         SetCooldown(
             ctx,
             ship.EntityId,
-            command.AbilityId,
+            HotPathCodes.CooldownFor(abilityCode),
             world.Tick + ability.CooldownTicks);
         AppendEvent(
             ctx,

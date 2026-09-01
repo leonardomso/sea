@@ -33,6 +33,8 @@ var scenario = Scenario.Create("spacetimedb_real_client", async _ =>
         try
         {
             await client.LoadPlayerAsync().ConfigureAwait(false);
+            await client.StartSailingAsync().ConfigureAwait(false);
+            await Task.Delay(TimeSpan.FromSeconds(duration)).ConfigureAwait(false);
             return Response.Ok();
         }
         finally
@@ -43,6 +45,6 @@ var scenario = Scenario.Create("spacetimedb_real_client", async _ =>
     .WithoutWarmUp()
     .WithLoadSimulations(Simulation.KeepConstant(
         copies: clients,
-        during: TimeSpan.FromSeconds(duration)));
+        during: TimeSpan.FromSeconds(duration + 5)));
 
 NBomberRunner.RegisterScenarios(scenario).Run();

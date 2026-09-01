@@ -19,6 +19,7 @@
     "runtime:test:idle": "./scripts/test-idle-resources.sh",
     "runtime:test:identity": "./scripts/test-identity-leak.sh",
     "runtime:test:world": "./scripts/test-world-schema.sh",
+    "runtime:test:scale-smoke": "./scripts/test-server-scale-smoke.sh",
     "unity:scene": "unity run apps/game-unity -- -executeMethod Sea.Editor.SeaSceneBuilder.CreateMainScene",
     "unity:test": "unity test apps/game-unity --mode EditMode --output apps/game-unity/Build/test-results.xml",
     "unity:test:playmode": "./scripts/test-unity-playmode.sh",
@@ -43,7 +44,8 @@
     "quality:pins": "./scripts/check-pinned-dependencies.sh",
     "quality:unity-architecture": "./scripts/check-unity-architecture.sh",
     "quality:test-foundation": "./scripts/check-test-foundation.sh",
-    "check": "pnpm infra:config && pnpm quality:pins && pnpm admin:check && pnpm --filter @sea/contracts run check && pnpm quality:csharp-size && pnpm quality:unity-architecture && pnpm quality:test-foundation && pnpm quality:dotnet-format",
+    "quality:server-simulation": "./scripts/check-server-simulation.sh",
+    "check": "pnpm infra:config && pnpm quality:pins && pnpm admin:check && pnpm --filter @sea/contracts run check && pnpm quality:csharp-size && pnpm quality:unity-architecture && pnpm quality:test-foundation && pnpm quality:server-simulation && pnpm quality:dotnet-format",
     "verify": "pnpm check && pnpm server:build && pnpm quality:bindings && pnpm server:test && pnpm server:test:integration && pnpm tools:build && pnpm admin:build && pnpm admin:test:health && pnpm runtime:test:identity && pnpm runtime:test:world && pnpm runtime:test:idle && pnpm unity:verify",
     "verify:full": "pnpm verify"
   }

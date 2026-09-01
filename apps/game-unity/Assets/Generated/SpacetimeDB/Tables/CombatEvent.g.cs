@@ -13,45 +13,13 @@ namespace SpacetimeDB.Types
 {
     public sealed partial class RemoteTables
     {
-        public sealed class CombatEventHandle : RemoteTableHandle<EventContext, CombatEvent>
+        public sealed class CombatEventHandle : RemoteEventTableHandle<EventContext, CombatEvent>
         {
             public override string RemoteTableName => "combat_event";
 
-            public sealed class EventIdUniqueIndex : UniqueIndexBase<ulong>
-            {
-                protected override ulong GetKey(CombatEvent row) => row.EventId;
-
-                public EventIdUniqueIndex(CombatEventHandle table) : base(table) { }
-            }
-
-            public readonly EventIdUniqueIndex EventId;
-
-            public sealed class ByActiveIndex : BTreeIndexBase<bool>
-            {
-                protected override bool GetKey(CombatEvent row) => row.IsActive;
-
-                public ByActiveIndex(CombatEventHandle table) : base(table) { }
-            }
-
-            public readonly ByActiveIndex ByActive;
-
-            public sealed class ByOwnerIndex : BTreeIndexBase<ulong>
-            {
-                protected override ulong GetKey(CombatEvent row) => row.OwnerEntityId;
-
-                public ByOwnerIndex(CombatEventHandle table) : base(table) { }
-            }
-
-            public readonly ByOwnerIndex ByOwner;
-
             internal CombatEventHandle(DbConnection conn) : base(conn)
             {
-                EventId = new(this);
-                ByActive = new(this);
-                ByOwner = new(this);
             }
-
-            protected override object GetPrimaryKey(CombatEvent row) => row.EventId;
         }
 
         public readonly CombatEventHandle CombatEvent;
@@ -59,37 +27,25 @@ namespace SpacetimeDB.Types
 
     public sealed class CombatEventCols
     {
-        public global::SpacetimeDB.Col<CombatEvent, ulong> EventId { get; }
         public global::SpacetimeDB.Col<CombatEvent, ulong> OwnerEntityId { get; }
         public global::SpacetimeDB.Col<CombatEvent, string> EventType { get; }
         public global::SpacetimeDB.Col<CombatEvent, string> Details { get; }
         public global::SpacetimeDB.Col<CombatEvent, ulong> Tick { get; }
-        public global::SpacetimeDB.Col<CombatEvent, ulong> ExpiresAtTick { get; }
-        public global::SpacetimeDB.Col<CombatEvent, bool> IsActive { get; }
 
         public CombatEventCols(string tableName)
         {
-            EventId = new global::SpacetimeDB.Col<CombatEvent, ulong>(tableName, "event_id");
             OwnerEntityId = new global::SpacetimeDB.Col<CombatEvent, ulong>(tableName, "owner_entity_id");
             EventType = new global::SpacetimeDB.Col<CombatEvent, string>(tableName, "event_type");
             Details = new global::SpacetimeDB.Col<CombatEvent, string>(tableName, "details");
             Tick = new global::SpacetimeDB.Col<CombatEvent, ulong>(tableName, "tick");
-            ExpiresAtTick = new global::SpacetimeDB.Col<CombatEvent, ulong>(tableName, "expires_at_tick");
-            IsActive = new global::SpacetimeDB.Col<CombatEvent, bool>(tableName, "is_active");
         }
     }
 
     public sealed class CombatEventIxCols
     {
-        public global::SpacetimeDB.IxCol<CombatEvent, ulong> EventId { get; }
-        public global::SpacetimeDB.IxCol<CombatEvent, ulong> OwnerEntityId { get; }
-        public global::SpacetimeDB.IxCol<CombatEvent, bool> IsActive { get; }
 
         public CombatEventIxCols(string tableName)
         {
-            EventId = new global::SpacetimeDB.IxCol<CombatEvent, ulong>(tableName, "event_id");
-            OwnerEntityId = new global::SpacetimeDB.IxCol<CombatEvent, ulong>(tableName, "owner_entity_id");
-            IsActive = new global::SpacetimeDB.IxCol<CombatEvent, bool>(tableName, "is_active");
         }
     }
 }

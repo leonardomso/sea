@@ -15,6 +15,8 @@ namespace SpacetimeDB.Types
     {
         [DataMember(Name = "ability_id")]
         public string AbilityId;
+        [DataMember(Name = "ability_code")]
+        public byte AbilityCode;
         [DataMember(Name = "cooldown_ticks")]
         public uint CooldownTicks;
         [DataMember(Name = "duration_ticks")]
@@ -22,11 +24,13 @@ namespace SpacetimeDB.Types
 
         public AbilityDefinition(
             string AbilityId,
+            byte AbilityCode,
             uint CooldownTicks,
             uint DurationTicks
         )
         {
             this.AbilityId = AbilityId;
+            this.AbilityCode = AbilityCode;
             this.CooldownTicks = CooldownTicks;
             this.DurationTicks = DurationTicks;
         }

@@ -3,18 +3,22 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    private static void ProcessChannels(ReducerContext ctx, ulong tick)
+    private static void ProcessChannels(
+        ReducerContext ctx,
+        ShipTickBuffer ships,
+        ulong tick)
     {
-        foreach (var channel in ctx.Db.ShipChannel.ByActive.Filter(true))
+        foreach (var channel in ctx.Db.ShipChannel.ByChannelDue.Filter(
+                     (true, new Bound<ulong>(0, tick))))
         {
-            if (ctx.Db.Ship.EntityId.Find(channel.ShipEntityId) is not Ship source ||
+            if (!ships.TryGet(ctx, channel.ShipEntityId, out var source) ||
                 !source.IsActive || !source.IsAlive)
             {
                 ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
                 continue;
             }
 
-            if (channel.ChannelType == "repair")
+            if (channel.ChannelTypeCode == (byte)ChannelCode.Repair)
             {
                 var elapsed = Math.Min(
                     (ulong)TacticalRules.RepairDurationTicks,
@@ -50,21 +54,28 @@ public static partial class Module
                     ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
                     AppendEvent(ctx, channel.ShipEntityId, "repair_completed", "");
                 }
+                else
+                {
+                    var scheduled = channel;
+                    scheduled.NextProcessTick = tick + 1;
+                    ctx.Db.ShipChannel.ShipEntityId.Update(scheduled);
+                }
 
-                ctx.Db.Ship.EntityId.Update(repaired);
+                ships.Stage(repaired);
                 SynchronizeDisabledSails(ctx, repaired, tick);
 
                 continue;
             }
 
-            if (channel.ChannelType != "boarding")
+            if (channel.ChannelTypeCode != (byte)ChannelCode.Boarding)
             {
                 ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
-                SetShipMode(ctx, channel.ShipEntityId, ShipMode.Operational);
+                source.ModeCode = (byte)ShipMode.Operational;
+                ships.Stage(source);
                 continue;
             }
 
-            if (ctx.Db.Ship.EntityId.Find(channel.TargetEntityId) is not Ship target ||
+            if (!ships.TryGet(ctx, channel.TargetEntityId, out var target) ||
                 TacticalRules.ValidateBoarding(new BoardingRequest(
                     source.IsActive && source.IsAlive,
                     target.IsActive && target.IsAlive,
@@ -80,21 +91,30 @@ public static partial class Module
                     ReadyAtTick: tick)) != BoardingRejection.None)
             {
                 InterruptBoarding(ctx, channel.ShipEntityId, tick, "boarding_interrupted");
+                source.ModeCode = (byte)ShipMode.Operational;
+                ships.Stage(source);
                 continue;
             }
 
             if (tick < channel.CompletesAtTick)
             {
+                var scheduled = channel;
+                scheduled.NextProcessTick = tick + 1;
+                ctx.Db.ShipChannel.ShipEntityId.Update(scheduled);
                 continue;
             }
 
-            var fatigued = HasActiveStatus(ctx, source.EntityId, "boarding_fatigue", tick);
+            var fatigued = HasActiveStatus(
+                ctx,
+                source.EntityId,
+                StatusCode.BoardingFatigue,
+                tick);
             var succeeded = TacticalRules.BoardingSucceeds(source.Crew, target.Crew, fatigued);
             if (succeeded)
             {
                 var boarded = target;
                 boarded.Crew = WorldRules.ApplyDamage(boarded.Crew, 25);
-                ctx.Db.Ship.EntityId.Update(boarded);
+                ships.Stage(boarded);
                 AddInventory(ctx, source.EntityId, "boarding_cache", 1);
                 AppendEvent(
                     ctx,
@@ -107,7 +127,7 @@ public static partial class Module
                 ApplyStatus(
                     ctx,
                     source.EntityId,
-                    "boarding_fatigue",
+                    StatusCode.BoardingFatigue,
                     tick,
                     TacticalRules.BoardingFatigueTicks,
                     maximumStacks: 1);
@@ -121,10 +141,11 @@ public static partial class Module
             SetCooldown(
                 ctx,
                 source.EntityId,
-                "boarding",
+                CooldownCode.Boarding,
                 tick + TacticalRules.BoardingCooldownTicks);
             ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
-            SetShipMode(ctx, source.EntityId, ShipMode.Operational);
+            source.ModeCode = (byte)ShipMode.Operational;
+            ships.Stage(source);
         }
     }
 

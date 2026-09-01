@@ -23,18 +23,29 @@ public static partial class Module
         public ScheduleAt ScheduledAt;
     }
 
+    [SpacetimeDB.Table(Accessor = "MovementShardTimer", Scheduled = "RunMovementShard", ScheduledAt = "ScheduledAt")]
+    public partial struct MovementShardTimer
+    {
+        [PrimaryKey]
+        [AutoInc]
+        public ulong ScheduledId;
+        public ScheduleAt ScheduledAt;
+        public byte ShardId;
+    }
+
     [SpacetimeDB.Table(Accessor = "Ship", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByMoving", Columns = new[] { nameof(IsMoving) })]
-    [SpacetimeDB.Index.BTree(Accessor = "ByEngaged", Columns = new[] { nameof(IsEngaged) })]
-    [SpacetimeDB.Index.BTree(Accessor = "ByChunk", Columns = new[] { nameof(ChunkX), nameof(ChunkY) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByMovingShard", Columns = new[] { nameof(IsMoving), nameof(MovementShard) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByActiveChunk", Columns = new[] { nameof(IsActive), nameof(ChunkX), nameof(ChunkY) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByEnvironmentExposure", Columns = new[] { nameof(EnvironmentExposureCode) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByTarget", Columns = new[] { nameof(TargetEntityId) })]
     public partial struct Ship
     {
         [PrimaryKey]
         public ulong EntityId;
-        public string ArchetypeId;
-        public string Faction;
+        public byte ArchetypeCode;
+        public byte FactionCode;
         public float PositionX;
         public float PositionY;
         public float DestinationX;
@@ -51,15 +62,20 @@ public static partial class Module
         public bool HasCourse;
         public bool IsStopping;
         public bool IsMoving;
+        public byte MovementShard;
         public bool IsActive;
         public bool IsAlive;
         public bool IsEngaged;
         public byte ModeCode;
+        public byte MovementStatusMask;
+        public byte EnvironmentExposureCode;
+        public float CurrentVelocityX;
+        public float CurrentVelocityY;
         public int ChunkX;
         public int ChunkY;
         public ulong TargetEntityId;
-        public string SelectedAmmoId;
-        public string SelectedWeakPoint;
+        public byte SelectedAmmoCode;
+        public byte SelectedWeakPointCode;
         public uint Hull;
         public uint MaxHull;
         public uint Sails;
@@ -74,6 +90,16 @@ public static partial class Module
         public ulong NextStarboardFireTick;
         public ulong RespawnAtTick;
         public ulong InvulnerableUntilTick;
+    }
+
+    [SpacetimeDB.Table(Accessor = "RespawnWork", Public = true)]
+    [SpacetimeDB.Index.BTree(Accessor = "ByRespawnDue", Columns = new[] { nameof(IsPending), nameof(RespawnAtTick) })]
+    public partial struct RespawnWork
+    {
+        [PrimaryKey]
+        public ulong ShipEntityId;
+        public bool IsPending;
+        public ulong RespawnAtTick;
     }
 
     [SpacetimeDB.Table(Accessor = "PlayerOwnership", Public = true)]
@@ -124,6 +150,8 @@ public static partial class Module
     [SpacetimeDB.Table(Accessor = "ShipStatus", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByShip", Columns = new[] { nameof(ShipEntityId) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByShipStatus", Columns = new[] { nameof(ShipEntityId), nameof(StatusCode) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByStatusDue", Columns = new[] { nameof(IsActive), nameof(NextProcessTick) })]
     public partial struct ShipStatus
     {
         [PrimaryKey]
@@ -131,9 +159,11 @@ public static partial class Module
         public ulong StatusId;
         public ulong ShipEntityId;
         public string StatusType;
+        public byte StatusCode;
         public uint Stacks;
         public ulong ExpiresAtTick;
         public ulong ImmunityUntilTick;
+        public ulong NextProcessTick;
         public bool IsActive;
     }
 
@@ -141,6 +171,7 @@ public static partial class Module
     [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByTarget", Columns = new[] { nameof(TargetEntityId) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByChunk", Columns = new[] { nameof(ChunkX), nameof(ChunkY) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByImpactDue", Columns = new[] { nameof(IsActive), nameof(ImpactAtTick) })]
     public partial struct Volley
     {
         [PrimaryKey]
@@ -149,8 +180,11 @@ public static partial class Module
         public ulong SourceEntityId;
         public ulong TargetEntityId;
         public string Side;
+        public byte SideCode;
         public string AmmoId;
+        public byte AmmoCode;
         public string WeakPoint;
+        public byte WeakPointCode;
         public float OriginX;
         public float OriginY;
         public int ChunkX;
@@ -167,6 +201,7 @@ public static partial class Module
     [SpacetimeDB.Table(Accessor = "Loot", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByChunk", Columns = new[] { nameof(ChunkX), nameof(ChunkY) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByLootExpiryDue", Columns = new[] { nameof(IsActive), nameof(ExpiresAtTick) })]
     public partial struct Loot
     {
         [PrimaryKey]
@@ -185,6 +220,7 @@ public static partial class Module
 
     [SpacetimeDB.Table(Accessor = "Cooldown", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByShip", Columns = new[] { nameof(ShipEntityId) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByShipCooldown", Columns = new[] { nameof(ShipEntityId), nameof(CooldownTypeCode) })]
     public partial struct Cooldown
     {
         [PrimaryKey]
@@ -192,19 +228,23 @@ public static partial class Module
         public ulong CooldownId;
         public ulong ShipEntityId;
         public string CooldownType;
+        public byte CooldownTypeCode;
         public ulong ReadyAtTick;
     }
 
     [SpacetimeDB.Table(Accessor = "ShipChannel", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByChannelDue", Columns = new[] { nameof(IsActive), nameof(NextProcessTick) })]
     public partial struct ShipChannel
     {
         [PrimaryKey]
         public ulong ShipEntityId;
         public string ChannelType;
+        public byte ChannelTypeCode;
         public ulong TargetEntityId;
         public ulong StartedAtTick;
         public ulong CompletesAtTick;
+        public ulong NextProcessTick;
         public uint InitialHull;
         public uint InitialSails;
         public uint InitialCannons;
@@ -228,29 +268,24 @@ public static partial class Module
         public bool Rewarded;
     }
 
-    [SpacetimeDB.Table(Accessor = "CombatEvent", Public = true)]
-    [SpacetimeDB.Index.BTree(Accessor = "ByOwner", Columns = new[] { nameof(OwnerEntityId) })]
-    [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
+    [SpacetimeDB.Table(Accessor = "CombatEvent", Public = true, Event = true)]
     public partial struct CombatEvent
     {
-        [PrimaryKey]
-        [AutoInc]
-        public ulong EventId;
         public ulong OwnerEntityId;
         public string EventType;
         public string Details;
         public ulong Tick;
-        public ulong ExpiresAtTick;
-        public bool IsActive;
     }
 
     [SpacetimeDB.Table(Accessor = "WorldObject", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByChunk", Columns = new[] { nameof(ChunkX), nameof(ChunkY) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByActiveKind", Columns = new[] { nameof(IsActive), nameof(KindCode) })]
     public partial struct WorldObject
     {
         [PrimaryKey]
         public ulong EntityId;
         public string Kind;
+        public byte KindCode;
         public float PositionX;
         public float PositionY;
         public float Radius;
@@ -277,6 +312,7 @@ public static partial class Module
 
     [SpacetimeDB.Table(Accessor = "CurrentZone", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByChunk", Columns = new[] { nameof(ChunkX), nameof(ChunkY) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByActiveChunk", Columns = new[] { nameof(IsActive), nameof(ChunkX), nameof(ChunkY) })]
     public partial struct CurrentZone
     {
         [PrimaryKey]
@@ -296,12 +332,15 @@ public static partial class Module
     {
         [PrimaryKey]
         public string AmmoId;
+        [Unique]
+        public byte AmmoCode;
         public uint HullDamage;
         public uint SailDamage;
         public uint CannonDamage;
         public uint CrewDamage;
         public float RangeMultiplier;
         public string AppliedStatus;
+        public byte AppliedStatusCode;
     }
 
     [SpacetimeDB.Table(Accessor = "AbilityDefinition", Public = true)]
@@ -309,6 +348,8 @@ public static partial class Module
     {
         [PrimaryKey]
         public string AbilityId;
+        [Unique]
+        public byte AbilityCode;
         public uint CooldownTicks;
         public uint DurationTicks;
     }

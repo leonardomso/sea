@@ -84,6 +84,25 @@ public static class WorldRules
         return dx * dx + dy * dy < collisionRadius * collisionRadius;
     }
 
+    public static bool IsBlocked(
+        WorldObjectCode kind,
+        float entityX,
+        float entityY,
+        float radius,
+        float x,
+        float y)
+    {
+        if (!HotPathCodes.BlocksMovement(kind))
+        {
+            return false;
+        }
+
+        var dx = x - entityX;
+        var dy = y - entityY;
+        var collisionRadius = radius + CollisionPadding;
+        return dx * dx + dy * dy < collisionRadius * collisionRadius;
+    }
+
     public static bool IsInRange(float sourceX, float sourceY, float targetX, float targetY, float range)
     {
         var dx = targetX - sourceX;

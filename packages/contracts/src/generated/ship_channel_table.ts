@@ -13,9 +13,11 @@ import {
 export default __t.row({
   shipEntityId: __t.u64().primaryKey().name("ship_entity_id"),
   channelType: __t.string().name("channel_type"),
+  channelTypeCode: __t.u8().name("channel_type_code"),
   targetEntityId: __t.u64().name("target_entity_id"),
   startedAtTick: __t.u64().name("started_at_tick"),
   completesAtTick: __t.u64().name("completes_at_tick"),
+  nextProcessTick: __t.u64().name("next_process_tick"),
   initialHull: __t.u32().name("initial_hull"),
   initialSails: __t.u32().name("initial_sails"),
   initialCannons: __t.u32().name("initial_cannons"),

@@ -43,7 +43,7 @@ const columns = (table) => {
 };
 
 const world = rows("world_state");
-if (world.length !== 1 || world[0].tick_rate_hz !== 10 || world[0].content_version !== 2) {
+if (world.length !== 1 || world[0].tick_rate_hz !== 10 || world[0].content_version !== 3) {
   throw new Error("World state does not expose the 10 Hz versioned simulation contract.");
 }
 
@@ -51,7 +51,7 @@ const ships = rows("ship");
 if (ships.length < 1 || !ships.every((ship) => ship.entity_id > 0 && ship.is_active === true)) {
   throw new Error("Unified active ship state is missing or invalid.");
 }
-if (!ships.some((ship) => ship.faction === "npc")) {
+if (!ships.some((ship) => ship.faction_code === 2)) {
   throw new Error("The unified ship table does not contain the seeded NPC ship.");
 }
 

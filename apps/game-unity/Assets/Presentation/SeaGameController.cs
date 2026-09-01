@@ -11,13 +11,23 @@ namespace Sea.Client
         [SerializeField] private float movePlaneHeight;
 
         public ulong SelectedTargetId => TryGetLocalShip(out var ship) ? ship.TargetEntityId : 0;
-        public string SelectedAmmoId => TryGetLocalShip(out var ship) ? ship.SelectedAmmoId : "round";
+        public string SelectedAmmoId => TryGetLocalShip(out var ship)
+            ? AmmoId(ship.SelectedAmmoCode)
+            : "round";
         public string SelectedWeakPoint { get; private set; } = "hull";
         private string localAction = "Click water to set course.";
         public string LastAction => string.IsNullOrEmpty(connection?.CommandStatus)
             ? localAction
             : connection.CommandStatus;
         public bool IsReady => connection?.Connection != null && connection.IsSubscribed;
+
+        private static string AmmoId(byte code) => code switch
+        {
+            2 => "chain",
+            3 => "grapeshot",
+            4 => "incendiary",
+            _ => "round",
+        };
 
         public void ConfigureDependencies(SeaConnectionController connectionController, Camera camera)
         {
@@ -88,7 +98,7 @@ namespace Sea.Client
             var enemies = new List<Ship>();
             foreach (var enemy in connection.Connection.Db.Ship.Iter())
             {
-                if (enemy.IsActive && enemy.IsAlive && enemy.Faction == "npc")
+                if (enemy.IsActive && enemy.IsAlive && enemy.FactionCode == 2)
                 {
                     enemies.Add(enemy);
                 }
@@ -261,7 +271,7 @@ namespace Sea.Client
 
             foreach (var enemy in connection.Connection.Db.Ship.Iter())
             {
-                if (!enemy.IsActive || !enemy.IsAlive || enemy.Faction != "npc")
+                if (!enemy.IsActive || !enemy.IsAlive || enemy.FactionCode != 2)
                 {
                     continue;
                 }

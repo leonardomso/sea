@@ -20,12 +20,12 @@ public static partial class Module
             return false;
         }
 
-        if (channel.ChannelType == "boarding")
+        if (channel.ChannelTypeCode == (byte)ChannelCode.Boarding)
         {
             SetCooldown(
                 ctx,
                 shipEntityId,
-                "boarding",
+                CooldownCode.Boarding,
                 tick + TacticalRules.BoardingCooldownTicks);
         }
 
@@ -47,38 +47,21 @@ public static partial class Module
         SetCooldown(
             ctx,
             shipEntityId,
-            "boarding",
+            CooldownCode.Boarding,
             tick + TacticalRules.BoardingCooldownTicks);
         ctx.Db.ShipChannel.ShipEntityId.Delete(shipEntityId);
-        SetShipMode(ctx, shipEntityId, ShipMode.Operational);
         AppendEvent(ctx, shipEntityId, eventType, "");
-    }
-
-    private static void SetShipMode(
-        ReducerContext ctx,
-        ulong shipEntityId,
-        ShipMode mode)
-    {
-        if (ctx.Db.Ship.EntityId.Find(shipEntityId) is not Ship ship)
-        {
-            return;
-        }
-
-        ship.ModeCode = (byte)mode;
-        ctx.Db.Ship.EntityId.Update(ship);
     }
 
     private static Cooldown? FindCooldown(
         ReducerContext ctx,
         ulong shipEntityId,
-        string cooldownType)
+        CooldownCode cooldownType)
     {
-        foreach (var cooldown in ctx.Db.Cooldown.ByShip.Filter(shipEntityId))
+        foreach (var cooldown in ctx.Db.Cooldown.ByShipCooldown.Filter(
+                     (shipEntityId, (byte)cooldownType)))
         {
-            if (cooldown.CooldownType == cooldownType)
-            {
-                return cooldown;
-            }
+            return cooldown;
         }
 
         return null;
@@ -87,7 +70,7 @@ public static partial class Module
     private static void SetCooldown(
         ReducerContext ctx,
         ulong shipEntityId,
-        string cooldownType,
+        CooldownCode cooldownType,
         ulong readyAtTick)
     {
         if (FindCooldown(ctx, shipEntityId, cooldownType) is Cooldown cooldown)
@@ -100,7 +83,8 @@ public static partial class Module
         ctx.Db.Cooldown.Insert(new Cooldown
         {
             ShipEntityId = shipEntityId,
-            CooldownType = cooldownType,
+            CooldownType = HotPathCodes.CooldownId(cooldownType),
+            CooldownTypeCode = (byte)cooldownType,
             ReadyAtTick = readyAtTick,
         });
     }

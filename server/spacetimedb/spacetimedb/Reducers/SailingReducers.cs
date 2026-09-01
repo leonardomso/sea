@@ -1,3 +1,4 @@
+using Sea.Server;
 using SpacetimeDB;
 
 public static partial class Module
@@ -7,7 +8,12 @@ public static partial class Module
         ref Ship ship,
         SetCourseCommand command)
     {
-        var blockers = NavigationBlockers(ctx);
+        var blockers = NavigationBlockersForCourse(
+            ctx,
+            ship.PositionX,
+            ship.PositionY,
+            command.X,
+            command.Y);
         ship.DestinationX = command.X;
         ship.DestinationY = command.Y;
         ConfigureNavigationWaypoint(ref ship, blockers);
@@ -56,7 +62,12 @@ public static partial class Module
         ref Ship ship,
         SetAmmoCommand command)
     {
-        ship.SelectedAmmoId = command.AmmoId;
+        if (!HotPathCodes.TryParseAmmunition(command.AmmoId, out var ammunitionCode))
+        {
+            throw new InvalidOperationException("Accepted ammunition id is invalid.");
+        }
+
+        ship.SelectedAmmoCode = (byte)ammunitionCode;
         AppendEvent(ctx, ship.EntityId, "set_ammo", $"ammo={command.AmmoId}");
     }
 }

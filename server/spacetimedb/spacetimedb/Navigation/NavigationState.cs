@@ -6,7 +6,7 @@ public static partial class Module
     private static SpawnPoint FindSafeSpawn(ReducerContext ctx, ulong seed)
     {
         var blockers = new List<SpawnBlocker>();
-        foreach (var worldObject in ctx.Db.WorldObject.Iter())
+        foreach (var worldObject in BlockingWorldObjects(ctx))
         {
             if (worldObject.IsActive && worldObject.BlocksMovement)
             {
@@ -33,21 +33,67 @@ public static partial class Module
         return point;
     }
 
-    private static List<NavigationBlocker> NavigationBlockers(ReducerContext ctx)
+    private static List<NavigationBlocker> NavigationBlockersAt(
+        ReducerContext ctx,
+        float x,
+        float y)
     {
         var blockers = new List<NavigationBlocker>();
-        foreach (var worldObject in ctx.Db.WorldObject.Iter())
+        var bounds = SpatialRules.BoundsAround(
+            x,
+            y,
+            SpatialRules.MaximumWorldInfluenceRadius);
+        AddNavigationBlockers(WorldObjectsIn(ctx, bounds), blockers);
+        return blockers;
+    }
+
+    private static List<NavigationBlocker> NavigationBlockersForCourse(
+        ReducerContext ctx,
+        float startX,
+        float startY,
+        float destinationX,
+        float destinationY)
+    {
+        var blockers = new List<NavigationBlocker>();
+        var bounds = SpatialRules.BoundsForSegment(
+            startX,
+            startY,
+            destinationX,
+            destinationY,
+            SpatialRules.MaximumWorldInfluenceRadius);
+        AddNavigationBlockers(WorldObjectsIn(ctx, bounds), blockers);
+        return blockers;
+    }
+
+    private static IEnumerable<WorldObject> BlockingWorldObjects(ReducerContext ctx)
+    {
+        foreach (var kind in new[] { WorldObjectCode.Island, WorldObjectCode.Reef })
         {
-            if (worldObject.IsActive && worldObject.BlocksMovement)
+            foreach (var worldObject in ctx.Db.WorldObject.ByActiveKind.Filter(
+                         (true, (byte)kind)))
             {
-                blockers.Add(new NavigationBlocker(
-                    worldObject.PositionX,
-                    worldObject.PositionY,
-                    worldObject.Radius));
+                yield return worldObject;
             }
         }
+    }
 
-        return blockers;
+    private static void AddNavigationBlockers(
+        IEnumerable<WorldObject> worldObjects,
+        ICollection<NavigationBlocker> blockers)
+    {
+        foreach (var worldObject in worldObjects)
+        {
+            if (!worldObject.IsActive ||
+                !HotPathCodes.BlocksMovement((WorldObjectCode)worldObject.KindCode))
+            {
+                continue;
+            }
+
+            blockers.Add(new NavigationBlocker(
+                worldObject.PositionX,
+                worldObject.PositionY,
+                worldObject.Radius));
+        }
     }
 
     private static void ConfigureNavigationWaypoint(
@@ -89,10 +135,16 @@ public static partial class Module
         float movementSpeed = 0f,
         float intensity = 0f)
     {
+        if (!HotPathCodes.TryParseWorldObject(kind, out var kindCode))
+        {
+            throw new InvalidOperationException($"Unknown world object kind '{kind}'.");
+        }
+
         ctx.Db.WorldObject.Insert(new WorldObject
         {
             EntityId = entityId,
             Kind = kind,
+            KindCode = (byte)kindCode,
             PositionX = x,
             PositionY = y,
             Radius = radius,

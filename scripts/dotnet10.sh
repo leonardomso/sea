@@ -9,6 +9,10 @@ dotnet_image=${DOTNET10_IMAGE:-mcr.microsoft.com/dotnet/sdk:10.0.103@sha256:e362
 exec docker run --rm \
   --user "$(id -u):$(id -g)" \
   -e DOTNET_CLI_HOME=/tmp/dotnet-cli \
+  -e SEA_LOAD_CLIENTS \
+  -e SEA_LOAD_DATABASE \
+  -e SEA_LOAD_SECONDS \
+  -e SEA_LOAD_SERVER \
   -v "$repo_root:/workspace" \
   -w /workspace \
   "$dotnet_image" \

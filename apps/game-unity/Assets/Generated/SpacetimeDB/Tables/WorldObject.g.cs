@@ -35,10 +35,20 @@ namespace SpacetimeDB.Types
 
             public readonly EntityIdUniqueIndex EntityId;
 
+            public sealed class ByActiveKindIndex : BTreeIndexBase<(bool IsActive, byte KindCode)>
+            {
+                protected override (bool IsActive, byte KindCode) GetKey(WorldObject row) => (row.IsActive, row.KindCode);
+
+                public ByActiveKindIndex(WorldObjectHandle table) : base(table) { }
+            }
+
+            public readonly ByActiveKindIndex ByActiveKind;
+
             internal WorldObjectHandle(DbConnection conn) : base(conn)
             {
                 ByChunk = new(this);
                 EntityId = new(this);
+                ByActiveKind = new(this);
             }
 
             protected override object GetPrimaryKey(WorldObject row) => row.EntityId;
@@ -51,6 +61,7 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.Col<WorldObject, ulong> EntityId { get; }
         public global::SpacetimeDB.Col<WorldObject, string> Kind { get; }
+        public global::SpacetimeDB.Col<WorldObject, byte> KindCode { get; }
         public global::SpacetimeDB.Col<WorldObject, float> PositionX { get; }
         public global::SpacetimeDB.Col<WorldObject, float> PositionY { get; }
         public global::SpacetimeDB.Col<WorldObject, float> Radius { get; }
@@ -66,6 +77,7 @@ namespace SpacetimeDB.Types
         {
             EntityId = new global::SpacetimeDB.Col<WorldObject, ulong>(tableName, "entity_id");
             Kind = new global::SpacetimeDB.Col<WorldObject, string>(tableName, "kind");
+            KindCode = new global::SpacetimeDB.Col<WorldObject, byte>(tableName, "kind_code");
             PositionX = new global::SpacetimeDB.Col<WorldObject, float>(tableName, "position_x");
             PositionY = new global::SpacetimeDB.Col<WorldObject, float>(tableName, "position_y");
             Radius = new global::SpacetimeDB.Col<WorldObject, float>(tableName, "radius");
@@ -82,14 +94,18 @@ namespace SpacetimeDB.Types
     public sealed class WorldObjectIxCols
     {
         public global::SpacetimeDB.IxCol<WorldObject, ulong> EntityId { get; }
+        public global::SpacetimeDB.IxCol<WorldObject, byte> KindCode { get; }
         public global::SpacetimeDB.IxCol<WorldObject, int> ChunkX { get; }
         public global::SpacetimeDB.IxCol<WorldObject, int> ChunkY { get; }
+        public global::SpacetimeDB.IxCol<WorldObject, bool> IsActive { get; }
 
         public WorldObjectIxCols(string tableName)
         {
             EntityId = new global::SpacetimeDB.IxCol<WorldObject, ulong>(tableName, "entity_id");
+            KindCode = new global::SpacetimeDB.IxCol<WorldObject, byte>(tableName, "kind_code");
             ChunkX = new global::SpacetimeDB.IxCol<WorldObject, int>(tableName, "chunk_x");
             ChunkY = new global::SpacetimeDB.IxCol<WorldObject, int>(tableName, "chunk_y");
+            IsActive = new global::SpacetimeDB.IxCol<WorldObject, bool>(tableName, "is_active");
         }
     }
 }

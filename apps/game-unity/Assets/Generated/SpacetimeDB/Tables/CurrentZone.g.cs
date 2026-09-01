@@ -26,6 +26,15 @@ namespace SpacetimeDB.Types
 
             public readonly ByChunkIndex ByChunk;
 
+            public sealed class ByActiveChunkIndex : BTreeIndexBase<(bool IsActive, int ChunkX, int ChunkY)>
+            {
+                protected override (bool IsActive, int ChunkX, int ChunkY) GetKey(CurrentZone row) => (row.IsActive, row.ChunkX, row.ChunkY);
+
+                public ByActiveChunkIndex(CurrentZoneHandle table) : base(table) { }
+            }
+
+            public readonly ByActiveChunkIndex ByActiveChunk;
+
             public sealed class ZoneIdUniqueIndex : UniqueIndexBase<ulong>
             {
                 protected override ulong GetKey(CurrentZone row) => row.ZoneId;
@@ -38,6 +47,7 @@ namespace SpacetimeDB.Types
             internal CurrentZoneHandle(DbConnection conn) : base(conn)
             {
                 ByChunk = new(this);
+                ByActiveChunk = new(this);
                 ZoneId = new(this);
             }
 
@@ -78,12 +88,14 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.IxCol<CurrentZone, ulong> ZoneId { get; }
         public global::SpacetimeDB.IxCol<CurrentZone, int> ChunkX { get; }
         public global::SpacetimeDB.IxCol<CurrentZone, int> ChunkY { get; }
+        public global::SpacetimeDB.IxCol<CurrentZone, bool> IsActive { get; }
 
         public CurrentZoneIxCols(string tableName)
         {
             ZoneId = new global::SpacetimeDB.IxCol<CurrentZone, ulong>(tableName, "zone_id");
             ChunkX = new global::SpacetimeDB.IxCol<CurrentZone, int>(tableName, "chunk_x");
             ChunkY = new global::SpacetimeDB.IxCol<CurrentZone, int>(tableName, "chunk_y");
+            IsActive = new global::SpacetimeDB.IxCol<CurrentZone, bool>(tableName, "is_active");
         }
     }
 }

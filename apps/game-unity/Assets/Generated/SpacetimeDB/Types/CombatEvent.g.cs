@@ -13,8 +13,6 @@ namespace SpacetimeDB.Types
     [DataContract]
     public sealed partial class CombatEvent
     {
-        [DataMember(Name = "event_id")]
-        public ulong EventId;
         [DataMember(Name = "owner_entity_id")]
         public ulong OwnerEntityId;
         [DataMember(Name = "event_type")]
@@ -23,28 +21,18 @@ namespace SpacetimeDB.Types
         public string Details;
         [DataMember(Name = "tick")]
         public ulong Tick;
-        [DataMember(Name = "expires_at_tick")]
-        public ulong ExpiresAtTick;
-        [DataMember(Name = "is_active")]
-        public bool IsActive;
 
         public CombatEvent(
-            ulong EventId,
             ulong OwnerEntityId,
             string EventType,
             string Details,
-            ulong Tick,
-            ulong ExpiresAtTick,
-            bool IsActive
+            ulong Tick
         )
         {
-            this.EventId = EventId;
             this.OwnerEntityId = OwnerEntityId;
             this.EventType = EventType;
             this.Details = Details;
             this.Tick = Tick;
-            this.ExpiresAtTick = ExpiresAtTick;
-            this.IsActive = IsActive;
         }
 
         public CombatEvent()

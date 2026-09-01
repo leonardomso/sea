@@ -3,20 +3,39 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    private static void AdvanceMovingShips(ReducerContext ctx)
+    private static void AdvanceMovingShips(
+        ReducerContext ctx,
+        ShipTickBuffer ships,
+        SpatialTickCache spatial,
+        ulong tick,
+        byte shardId)
     {
         var deltaSeconds = 1f / WorldRules.TickRateHz;
-        var worldTick = ctx.Db.WorldState.Id.Find(1)?.Tick ?? 0;
         var environment = ctx.Db.EnvironmentState.Id.Find(1);
-        var navigationBlockers = NavigationBlockers(ctx);
-        foreach (var ship in ctx.Db.Ship.ByMoving.Filter(true))
+        foreach (var indexedShip in ctx.Db.Ship.ByMovingShard.Filter((true, shardId)))
         {
+            var ship = ships.TryGetStaged(indexedShip.EntityId, out var staged)
+                ? staged
+                : indexedShip;
+
             if (!ship.IsActive || !ship.IsAlive)
             {
                 continue;
             }
 
             var routedShip = ship;
+            const int currentRefreshBuckets = 8;
+            var chunkKey = routedShip.ChunkY * SpatialRules.ChunkCountPerAxis + routedShip.ChunkX;
+            if (chunkKey % currentRefreshBuckets == (int)(tick % currentRefreshBuckets))
+            {
+                var current = CurrentVelocityAt(
+                    ctx,
+                    spatial,
+                    routedShip.PositionX,
+                    routedShip.PositionY);
+                routedShip.CurrentVelocityX = current.X;
+                routedShip.CurrentVelocityY = current.Y;
+            }
             if (routedShip.HasWaypoint && NavigationRules.Distance(
                     routedShip.PositionX,
                     routedShip.PositionY,
@@ -24,7 +43,14 @@ public static partial class Module
                     routedShip.WaypointY) <= NavigationRules.WaypointArrivalRadius)
             {
                 routedShip.HasWaypoint = false;
-                ConfigureNavigationWaypoint(ref routedShip, navigationBlockers);
+                ConfigureNavigationWaypoint(
+                    ref routedShip,
+                    NavigationBlockersForCourse(
+                        ctx,
+                        routedShip.PositionX,
+                        routedShip.PositionY,
+                        routedShip.DestinationX,
+                        routedShip.DestinationY));
             }
 
             var navigationX = routedShip.HasWaypoint
@@ -39,18 +65,17 @@ public static partial class Module
                     wind.WindDirectionDegrees,
                     wind.WindStrength)
                 : 1f;
-            var hazards = HazardsAt(ctx, routedShip.PositionX, routedShip.PositionY);
+            var exposure = routedShip.EnvironmentExposureCode;
             var movementModifiers = TacticalRules.MovementModifiers(
-                HasActiveStatus(ctx, routedShip.EntityId, "full_sail", worldTick),
-                ActiveStatusStacks(ctx, routedShip.EntityId, "slowed", worldTick),
+                (routedShip.MovementStatusMask & HotPathCodes.FullSailMovementMask) != 0,
+                (routedShip.MovementStatusMask & HotPathCodes.SlowedMovementMask) != 0 ? 1u : 0u,
                 routedShip.Sails == 0,
                 routedShip.MaxSails == 0
                     ? 0f
                     : (float)routedShip.Sails / routedShip.MaxSails,
-                hazards.InShoal,
-                hazards.InStorm,
-                FindActiveChannel(ctx, routedShip.EntityId) is ShipChannel channel &&
-                    channel.ChannelType == "repair");
+                (exposure & 2) != 0,
+                (exposure & 1) != 0,
+                routedShip.ModeCode == (byte)ShipMode.Repairing);
             var step = SailingRules.Step(
                 new SailingState(
                     routedShip.PositionX,
@@ -66,34 +91,20 @@ public static partial class Module
                     routedShip.Deceleration,
                     routedShip.TurnRateDegrees * movementModifiers.TurnRate),
                 deltaSeconds);
-            var current = CurrentVelocityAt(ctx, step.PositionX, step.PositionY);
-            var nextX = step.PositionX + current.X * deltaSeconds;
-            var nextY = step.PositionY + current.Y * deltaSeconds;
+            var nextX = step.PositionX + routedShip.CurrentVelocityX * deltaSeconds;
+            var nextY = step.PositionY + routedShip.CurrentVelocityY * deltaSeconds;
             var moved = routedShip;
             moved.HeadingDegrees = step.HeadingDegrees;
             moved.Speed = step.Speed;
             moved.IsMoving = step.IsMoving;
             moved.HasCourse = routedShip.HasCourse && (!step.Arrived || routedShip.HasWaypoint);
             moved.IsStopping = routedShip.IsStopping && step.Speed > 0f;
-            if (IsNavigablePosition(ctx, routedShip.EntityId, nextX, nextY))
-            {
-                moved.PositionX = Math.Clamp(nextX, WorldRules.MapMin, WorldRules.MapMax);
-                moved.PositionY = Math.Clamp(nextY, WorldRules.MapMin, WorldRules.MapMax);
-            }
-            else
-            {
-                moved.HasCourse = false;
-                moved.IsStopping = true;
-                moved.Speed = MathF.Max(0f, routedShip.Speed - routedShip.Deceleration * deltaSeconds);
-                moved.IsMoving = moved.Speed > 0f;
-                moved.DestinationX = routedShip.PositionX;
-                moved.DestinationY = routedShip.PositionY;
-                moved.HasWaypoint = false;
-            }
+            moved.PositionX = Math.Clamp(nextX, WorldRules.MapMin, WorldRules.MapMax);
+            moved.PositionY = Math.Clamp(nextY, WorldRules.MapMin, WorldRules.MapMax);
 
             moved.ChunkX = SpatialRules.ChunkCoordinate(moved.PositionX);
             moved.ChunkY = SpatialRules.ChunkCoordinate(moved.PositionY);
-            ctx.Db.Ship.EntityId.Update(moved);
+            ships.Stage(moved);
         }
     }
 
@@ -115,12 +126,13 @@ public static partial class Module
 
     private static (float X, float Y) CurrentVelocityAt(
         ReducerContext ctx,
+        SpatialTickCache spatial,
         float x,
         float y)
     {
         var velocityX = 0f;
         var velocityY = 0f;
-        foreach (var zone in ctx.Db.CurrentZone.Iter())
+        foreach (var zone in spatial.CurrentZonesNear(ctx, x, y))
         {
             if (!zone.IsActive ||
                 !WorldRules.IsInRange(x, y, zone.PositionX, zone.PositionY, zone.Radius))
@@ -138,9 +150,10 @@ public static partial class Module
         return (velocityX, velocityY);
     }
 
+
     private static bool IsNavigablePosition(
         ReducerContext ctx,
-        ulong movingEntityId,
+        SpatialTickCache spatial,
         float x,
         float y)
     {
@@ -149,11 +162,15 @@ public static partial class Module
             return false;
         }
 
-        foreach (var worldObject in ctx.Db.WorldObject.Iter())
+        var bounds = SpatialRules.BoundsAround(
+            x,
+            y,
+            SpatialRules.MaximumWorldInfluenceRadius);
+        foreach (var worldObject in spatial.WorldObjectsIn(ctx, bounds))
         {
             if (worldObject.IsActive && worldObject.BlocksMovement &&
                 WorldRules.IsBlocked(
-                    worldObject.Kind,
+                    (WorldObjectCode)worldObject.KindCode,
                     worldObject.PositionX,
                     worldObject.PositionY,
                     worldObject.Radius,
@@ -164,25 +181,22 @@ public static partial class Module
             }
         }
 
-        foreach (var ship in ctx.Db.Ship.ByActive.Filter(true))
-        {
-            if (ship.EntityId != movingEntityId && ship.IsAlive &&
-                WorldRules.IsInRange(x, y, ship.PositionX, ship.PositionY, 4f))
-            {
-                return false;
-            }
-        }
-
         return true;
     }
 
-    private static void MoveStorms(ReducerContext ctx)
+    private static void MoveStorms(ReducerContext ctx, ulong tick)
     {
-        var deltaSeconds = 1f / WorldRules.TickRateHz;
-        foreach (var worldObject in ctx.Db.WorldObject.Iter())
+        if (tick % SimulationWorkRules.PeriodicEffectIntervalTicks != 0)
         {
-            if (!worldObject.IsActive || worldObject.Kind != "storm" ||
-                worldObject.MovementSpeed <= 0f)
+            return;
+        }
+
+        var deltaSeconds = (float)SimulationWorkRules.PeriodicEffectIntervalTicks /
+            WorldRules.TickRateHz;
+        foreach (var worldObject in ctx.Db.WorldObject.ByActiveKind.Filter(
+                     (true, (byte)WorldObjectCode.Storm)))
+        {
+            if (worldObject.MovementSpeed <= 0f)
             {
                 continue;
             }

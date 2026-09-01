@@ -34,6 +34,8 @@ namespace Sea.Tests
 
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM ship_channel WHERE ship_entity_id = 42"));
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM combat_event WHERE owner_entity_id = 42"));
         }
 
         [Test]

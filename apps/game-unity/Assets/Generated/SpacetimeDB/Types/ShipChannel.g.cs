@@ -17,12 +17,16 @@ namespace SpacetimeDB.Types
         public ulong ShipEntityId;
         [DataMember(Name = "channel_type")]
         public string ChannelType;
+        [DataMember(Name = "channel_type_code")]
+        public byte ChannelTypeCode;
         [DataMember(Name = "target_entity_id")]
         public ulong TargetEntityId;
         [DataMember(Name = "started_at_tick")]
         public ulong StartedAtTick;
         [DataMember(Name = "completes_at_tick")]
         public ulong CompletesAtTick;
+        [DataMember(Name = "next_process_tick")]
+        public ulong NextProcessTick;
         [DataMember(Name = "initial_hull")]
         public uint InitialHull;
         [DataMember(Name = "initial_sails")]
@@ -37,9 +41,11 @@ namespace SpacetimeDB.Types
         public ShipChannel(
             ulong ShipEntityId,
             string ChannelType,
+            byte ChannelTypeCode,
             ulong TargetEntityId,
             ulong StartedAtTick,
             ulong CompletesAtTick,
+            ulong NextProcessTick,
             uint InitialHull,
             uint InitialSails,
             uint InitialCannons,
@@ -49,9 +55,11 @@ namespace SpacetimeDB.Types
         {
             this.ShipEntityId = ShipEntityId;
             this.ChannelType = ChannelType;
+            this.ChannelTypeCode = ChannelTypeCode;
             this.TargetEntityId = TargetEntityId;
             this.StartedAtTick = StartedAtTick;
             this.CompletesAtTick = CompletesAtTick;
+            this.NextProcessTick = NextProcessTick;
             this.InitialHull = InitialHull;
             this.InitialSails = InitialSails;
             this.InitialCannons = InitialCannons;

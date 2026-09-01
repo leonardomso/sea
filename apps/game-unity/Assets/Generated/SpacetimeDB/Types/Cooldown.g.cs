@@ -19,6 +19,8 @@ namespace SpacetimeDB.Types
         public ulong ShipEntityId;
         [DataMember(Name = "cooldown_type")]
         public string CooldownType;
+        [DataMember(Name = "cooldown_type_code")]
+        public byte CooldownTypeCode;
         [DataMember(Name = "ready_at_tick")]
         public ulong ReadyAtTick;
 
@@ -26,12 +28,14 @@ namespace SpacetimeDB.Types
             ulong CooldownId,
             ulong ShipEntityId,
             string CooldownType,
+            byte CooldownTypeCode,
             ulong ReadyAtTick
         )
         {
             this.CooldownId = CooldownId;
             this.ShipEntityId = ShipEntityId;
             this.CooldownType = CooldownType;
+            this.CooldownTypeCode = CooldownTypeCode;
             this.ReadyAtTick = ReadyAtTick;
         }
 
