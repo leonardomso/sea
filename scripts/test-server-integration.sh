@@ -22,7 +22,14 @@ SPACETIME_STATE_RELATIVE="$state_relative" \
     --yes \
     --module-path server/spacetimedb/spacetimedb >/dev/null
 
+test_arguments=(
+  test
+  tests/integration/Sea.Server.IntegrationTests/Sea.Server.IntegrationTests.csproj
+)
+if [ -n "${SEA_TEST_FILTER:-}" ]; then
+  test_arguments+=( --filter "$SEA_TEST_FILTER" )
+fi
+
 SEA_TEST_DATABASE="$database_name" \
 SEA_TEST_SERVER="http://host.docker.internal:3000" \
-  "$project_root/scripts/dotnet.sh" test \
-    tests/integration/Sea.Server.IntegrationTests/Sea.Server.IntegrationTests.csproj
+  "$project_root/scripts/dotnet.sh" "${test_arguments[@]}"

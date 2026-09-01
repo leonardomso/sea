@@ -4,7 +4,8 @@ set -euo pipefail
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 game_binary="$project_root/apps/game-unity/Build/Sea.app/Contents/MacOS/game-unity"
 preference_domain="com.DefaultCompany.game-unity"
-token_key="spacetimedb.identity_token"
+runtime_profile="captain-runtime"
+token_key="spacetimedb.identity_token.$runtime_profile"
 runtime_directory="$(mktemp -d)"
 runtime_log="$runtime_directory/player.log"
 runtime_database="sea-runtime-$$"
@@ -54,6 +55,7 @@ defaults write "$preference_domain" "$token_key" -string "invalid-local-runtime-
 
 "$game_binary" -batchmode -nographics \
   -seaDatabaseName "$runtime_database" \
+  -seaProfile "$runtime_profile" \
   -seaRuntimeMoveTest -seaRuntimeCombatTest -seaRuntimeTacticalTest \
   -logFile "$runtime_log" >/dev/null 2>&1 &
 game_pid=$!

@@ -99,6 +99,8 @@ public static partial class Module
             : source.NextStarboardFireTick;
         return snapshot with
         {
+            TargetIsPlayer = target is Ship selectedTarget &&
+                selectedTarget.FactionCode == (byte)FactionCode.Player,
             FireRejection = CombatRules.ValidateFire(new FireRequest
             {
                 SourceAlive = source.IsActive && source.IsAlive,
@@ -178,6 +180,8 @@ public static partial class Module
         var cooldown = FindCooldown(ctx, source.EntityId, CooldownCode.Boarding);
         return snapshot with
         {
+            TargetIsPlayer = target is Ship selectedTarget &&
+                selectedTarget.FactionCode == (byte)FactionCode.Player,
             BoardingRejection = TacticalRules.ValidateBoarding(new BoardingRequest(
                 source.IsActive && source.IsAlive,
                 target is Ship selected && selected.IsActive && selected.IsAlive,

@@ -421,6 +421,14 @@ Commit: `perf(server): index active simulation work`
 
 ### Phase 13: add stable shared-world subscriptions
 
+Status: complete.
+
+Verified on the local stack with four isolated Unity profiles. All four clients
+connected at once, applied bounded spatial subscriptions, and appeared as four
+connected ownership rows. Their logs contained no reducer, fatal, or null
+errors. Disconnecting the clients returned the connected count to zero without
+removing persistent player state. The canonical `pnpm verify` gate passed.
+
 - Replace broad subscriptions with owner, spatial, target, volley, loot,
   world-object, and HUD queries.
 - Move world objects into spatial subscriptions.

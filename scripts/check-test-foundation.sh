@@ -14,7 +14,11 @@ for file in \
   tests/load/Sea.LoadTests/SpacetimeLoadClient.cs \
   apps/game-unity/Assets/Tests/PlayMode/SeaScenePlayModeTests.cs \
   apps/game-unity/Assets/Tests/Performance/SeaClientPerformanceTests.cs \
+  apps/game-unity/Assets/Tests/EditMode/SeaSubscriptionTests.cs \
   scripts/test-server-integration.sh \
+  scripts/test-shared-world.sh \
+  scripts/launch-local-clients.sh \
+  scripts/stop-local-clients.sh \
   scripts/test-server-coverage.sh \
   scripts/test-unity-playmode.sh \
   scripts/test-unity-performance.sh; do

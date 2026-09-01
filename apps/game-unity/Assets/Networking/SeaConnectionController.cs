@@ -7,24 +7,21 @@ using UnityEngine;
 
 namespace Sea.Client
 {
-    public sealed class SeaConnectionController : MonoBehaviour
+    public sealed partial class SeaConnectionController : MonoBehaviour
     {
         [SerializeField] private string serverUrl = "http://127.0.0.1:3000";
         [SerializeField] private string databaseName = "sea-local";
         [SerializeField] private bool connectOnStart = true;
 
-        private readonly SeaAuthTokenStore authTokens = new();
+        private SeaAuthTokenStore authTokens;
         private Coroutine reconnectCoroutine;
         private bool manualDisconnect;
         private bool connectAttemptInFlight;
         private bool attemptedWithToken;
         private int transientFailureCount;
         private ulong subscribedPlayerEntityId;
-        private int subscribedChunkX = int.MinValue;
-        private int subscribedChunkY = int.MinValue;
         private SubscriptionHandle initialSubscription;
         private SubscriptionHandle playerSubscription;
-        private SubscriptionHandle spatialSubscription;
         private ulong nextCommandId = 1;
         private ulong latestCommandId;
         private string latestCommandDescription = string.Empty;
@@ -55,9 +52,12 @@ namespace Sea.Client
 
         private void Awake()
         {
+            var arguments = Environment.GetCommandLineArgs();
             databaseName = SeaClientOptions.DatabaseName(
-                Environment.GetCommandLineArgs(),
+                arguments,
                 databaseName);
+            var profile = SeaClientOptions.Profile(arguments, "captain-1");
+            authTokens = new SeaAuthTokenStore(SeaClientOptions.IdentityTokenKey(profile));
         }
 
         private void Start()
@@ -73,6 +73,7 @@ namespace Sea.Client
             if (Connection != null)
             {
                 Connection.FrameTick();
+                ApplyPendingSpatialInterest(Time.realtimeSinceStartupAsDouble);
             }
         }
 
@@ -154,6 +155,11 @@ namespace Sea.Client
             connection.Db.PlayerOwnership.OnUpdate += HandleOwnershipUpdated;
             connection.Db.Ship.OnInsert += HandleShipInserted;
             connection.Db.Ship.OnUpdate += HandleShipUpdated;
+            connection.Db.Ship.OnDelete += HandleShipDeleted;
+            connection.Db.WorldObject.OnDelete += HandleWorldObjectDeleted;
+            connection.Db.Volley.OnInsert += HandleVolleyInserted;
+            connection.Db.Volley.OnUpdate += HandleVolleyUpdated;
+            connection.Db.Volley.OnDelete += HandleVolleyDeleted;
             connection.Db.PlayerCommandState.OnInsert += HandleCommandStateInserted;
             connection.Db.PlayerCommandState.OnUpdate += HandleCommandStateUpdated;
             connection.Db.CommandResultEvent.OnInsert += HandleCommandResult;
@@ -264,41 +270,6 @@ namespace Sea.Client
             CommandStatus = result.Accepted
                 ? $"Accepted • {description}"
                 : $"Rejected • {description} • {SeaCommandResultText.Rejection(result.RejectionCode)}";
-        }
-
-        private void RefreshSpatialScope(DbConnection connection, Ship ship)
-        {
-            if (ship.EntityId == subscribedPlayerEntityId &&
-                (ship.ChunkX != subscribedChunkX || ship.ChunkY != subscribedChunkY))
-            {
-                SubscribeSpatialScope(connection, ship.ChunkX, ship.ChunkY);
-            }
-        }
-
-        private void SubscribeSpatialScope(DbConnection connection, int chunkX, int chunkY)
-        {
-            if (chunkX == subscribedChunkX && chunkY == subscribedChunkY)
-            {
-                return;
-            }
-
-            var previousSubscription = spatialSubscription;
-            subscribedChunkX = chunkX;
-            subscribedChunkY = chunkY;
-            spatialSubscription = connection.SubscriptionBuilder()
-                .OnApplied(context =>
-                {
-                    if (previousSubscription != null && previousSubscription.IsActive)
-                    {
-                        previousSubscription.Unsubscribe();
-                    }
-
-                    IsSubscribed = true;
-                    Status = "Ready";
-                    Debug.Log("Sea client ready.", this);
-                })
-                .OnError(HandleSubscriptionError)
-                .Subscribe(SeaSubscriptionPlan.Spatial(chunkX, chunkY, radius: 1).ToArray());
         }
 
         private static string ToIdentitySqlLiteral(Identity identity)
@@ -424,10 +395,8 @@ namespace Sea.Client
         {
             initialSubscription = null;
             playerSubscription = null;
-            spatialSubscription = null;
             subscribedPlayerEntityId = 0;
-            subscribedChunkX = int.MinValue;
-            subscribedChunkY = int.MinValue;
+            ResetInterestSubscriptions();
             latestCommandId = 0;
             latestCommandDescription = string.Empty;
             CommandStatus = string.Empty;

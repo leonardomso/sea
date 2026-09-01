@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Sea.Client
 {
@@ -20,8 +21,7 @@ namespace Sea.Client
                 "SELECT * FROM ability_definition",
                 "SELECT * FROM npc_definition",
                 "SELECT * FROM level_definition",
-                "SELECT * FROM world_object",
-                "SELECT * FROM command_result_event",
+                $"SELECT * FROM command_result_event WHERE owner = {ownerSqlLiteral}",
                 $"SELECT * FROM player_ownership WHERE owner = {ownerSqlLiteral}",
                 $"SELECT * FROM player_progression WHERE owner = {ownerSqlLiteral}",
                 $"SELECT * FROM player_command_state WHERE owner = {ownerSqlLiteral}",
@@ -38,6 +38,61 @@ namespace Sea.Client
                 $"SELECT * FROM cooldown WHERE ship_entity_id = {shipEntityId}",
                 $"SELECT * FROM ship_channel WHERE ship_entity_id = {shipEntityId}",
                 $"SELECT * FROM combat_event WHERE owner_entity_id = {shipEntityId}",
+                $"SELECT * FROM volley WHERE is_active = true AND " +
+                $"(source_entity_id = {shipEntityId} OR target_entity_id = {shipEntityId})",
+            };
+        }
+
+        public static IReadOnlyList<string> Focus(
+            ulong localShipEntityId,
+            ulong targetEntityId) => Focus(localShipEntityId, new[] { targetEntityId });
+
+        public static IReadOnlyList<string> Focus(
+            ulong localShipEntityId,
+            IEnumerable<ulong> targetEntityIds)
+        {
+            if (localShipEntityId == 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(localShipEntityId));
+            }
+
+            if (targetEntityIds == null)
+            {
+                throw new ArgumentNullException(nameof(targetEntityIds));
+            }
+
+            var targets = targetEntityIds
+                .Where(entityId => entityId != 0 && entityId != localShipEntityId)
+                .Distinct()
+                .OrderBy(entityId => entityId)
+                .ToArray();
+            if (targets.Length == 0)
+            {
+                return Array.Empty<string>();
+            }
+
+            var targetPredicate = string.Join(
+                " OR ",
+                targets.Select(entityId => $"entity_id = {entityId}"));
+            var statusPredicate = string.Join(
+                " OR ",
+                targets.Select(entityId => $"ship_entity_id = {entityId}"));
+            var volleyPredicate = string.Join(
+                " OR ",
+                new[] { localShipEntityId }
+                    .Concat(targets)
+                    .SelectMany(entityId => new[]
+                    {
+                        $"source_entity_id = {entityId}",
+                        $"target_entity_id = {entityId}",
+                    }));
+            return new[]
+            {
+                $"SELECT * FROM ship WHERE {targetPredicate}",
+                $"SELECT * FROM ship_status WHERE {statusPredicate}",
+                $"SELECT * FROM cooldown WHERE {statusPredicate}",
+                $"SELECT * FROM ship_channel WHERE {statusPredicate}",
+                $"SELECT * FROM volley WHERE is_active = true AND ({volleyPredicate})",
             };
         }
 
@@ -61,6 +116,7 @@ namespace Sea.Client
                 $"SELECT * FROM ship WHERE is_active = true AND {bounds}",
                 $"SELECT * FROM volley WHERE is_active = true AND {bounds}",
                 $"SELECT * FROM loot WHERE is_active = true AND {bounds}",
+                $"SELECT * FROM world_object WHERE is_active = true AND {bounds}",
                 $"SELECT * FROM current_zone WHERE is_active = true AND {bounds}",
             };
         }

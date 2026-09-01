@@ -296,6 +296,14 @@ namespace Sea.Client
                 .FirstOrDefault(item => item.Kind == "storm" && item.IsActive);
             if (storm == null)
             {
+                if (!tacticalStormCourseRequested || Time.unscaledTime >= nextTacticalCourseTime)
+                {
+                    var searchPosition = SeaRuntimeValidationRules.SeededStormPosition(world.Tick);
+                    SetCourse(searchPosition.x, searchPosition.y);
+                    tacticalStormCourseRequested = true;
+                    nextTacticalCourseTime = Time.unscaledTime + 1f;
+                }
+
                 return;
             }
 

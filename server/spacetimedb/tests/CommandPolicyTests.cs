@@ -91,6 +91,37 @@ public sealed class CommandPolicyTests
         Assert.Equal(CommandEffect.None, decision.Effects);
     }
 
+    [Fact]
+    public void PlayerShipCanBeSelectedForInspection()
+    {
+        var snapshot = ValidSnapshot(ShipMode.Operational) with
+        {
+            TargetIsPlayer = true,
+        };
+
+        var decision = CommandPolicy.Evaluate(snapshot, ShipCommandKind.SelectTarget);
+
+        Assert.True(decision.Accepted);
+        Assert.Equal(CommandEffect.SelectTarget, decision.Effects);
+    }
+
+    [Theory]
+    [InlineData(ShipCommandKind.FireBroadside)]
+    [InlineData(ShipCommandKind.StartBoarding)]
+    public void PlayerShipCannotBeAttackedOrBoarded(ShipCommandKind command)
+    {
+        var snapshot = ValidSnapshot(ShipMode.Operational) with
+        {
+            TargetIsPlayer = true,
+        };
+
+        var decision = CommandPolicy.Evaluate(snapshot, command);
+
+        Assert.False(decision.Accepted);
+        Assert.Equal(CommandRejectionCode.PlayerTargetForbidden, decision.Rejection);
+        Assert.Equal(CommandEffect.None, decision.Effects);
+    }
+
     [Theory]
     [InlineData(FireRejection.SourceSunk, CommandRejectionCode.Sunk)]
     [InlineData(FireRejection.NoTarget, CommandRejectionCode.NoTarget)]

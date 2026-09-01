@@ -15,42 +15,6 @@ namespace Sea.Tests
     public sealed partial class SeaProjectTests
     {
         [Test]
-        public void Initial_subscription_plan_is_owner_scoped_and_never_unrestricted()
-        {
-            var queries = SeaSubscriptionPlan.Initial("0xabc123");
-
-            Assert.That(queries, Does.Contain("SELECT * FROM player_ownership WHERE owner = 0xabc123"));
-            Assert.That(queries, Does.Contain(
-                "SELECT * FROM player_command_state WHERE owner = 0xabc123"));
-            Assert.That(queries, Does.Contain("SELECT * FROM command_result_event"));
-            Assert.That(queries, Does.Contain("SELECT * FROM world_state"));
-            Assert.That(queries.Any(query => query == "SELECT * FROM ship"), Is.False);
-        }
-
-        [Test]
-        public void Player_subscription_includes_authoritative_tactical_channels()
-        {
-            var queries = SeaSubscriptionPlan.Player(42);
-
-            Assert.That(queries, Does.Contain(
-                "SELECT * FROM ship_channel WHERE ship_entity_id = 42"));
-            Assert.That(queries, Does.Contain(
-                "SELECT * FROM combat_event WHERE owner_entity_id = 42"));
-        }
-
-        [Test]
-        public void Spatial_subscription_plan_is_bounded_to_nearby_chunks_and_active_rows()
-        {
-            var queries = SeaSubscriptionPlan.Spatial(chunkX: 4, chunkY: 2, radius: 1);
-
-            Assert.That(queries, Has.Some.Contains("chunk_x >= 3"));
-            Assert.That(queries, Has.Some.Contains("chunk_x <= 5"));
-            Assert.That(queries, Has.Some.Contains("chunk_y >= 1"));
-            Assert.That(queries, Has.Some.Contains("chunk_y <= 3"));
-            Assert.That(queries.All(query => query.Contains("is_active = true")), Is.True);
-        }
-
-        [Test]
         public void Client_chart_coordinates_match_the_server_contract()
         {
             Assert.That(SeaChartCoordinates.TryCellCenter("AX 59", out var center), Is.True);
@@ -177,6 +141,18 @@ namespace Sea.Tests
             Assert.That(SeaRuntimeValidationRules.ShouldHoldPositionBeforeFire(
                 distance: 25f,
                 targetSelected: true), Is.False);
+        }
+
+        [Test]
+        public void Runtime_tactical_probe_can_find_the_seeded_storm_before_it_enters_interest()
+        {
+            var initial = SeaRuntimeValidationRules.SeededStormPosition(worldTick: 0);
+            var afterTenSeconds = SeaRuntimeValidationRules.SeededStormPosition(worldTick: 100);
+
+            Assert.That(initial.x, Is.EqualTo(-72f).Within(0.001f));
+            Assert.That(initial.y, Is.EqualTo(3f).Within(0.001f));
+            Assert.That(afterTenSeconds.x, Is.EqualTo(-57.734f).Within(0.001f));
+            Assert.That(afterTenSeconds.y, Is.EqualTo(7.635f).Within(0.001f));
         }
 
         [Theory]

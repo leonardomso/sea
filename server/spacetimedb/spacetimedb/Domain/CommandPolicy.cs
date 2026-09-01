@@ -169,9 +169,13 @@ public static class CommandPolicy
             ShipCommandKind.SetCourse => ValidateCourse(snapshot),
             ShipCommandKind.SelectTarget => ValidateTarget(snapshot),
             ShipCommandKind.SetAmmo => ValidateAmmo(snapshot),
+            ShipCommandKind.FireBroadside when snapshot.TargetIsPlayer =>
+                CommandRejectionCode.PlayerTargetForbidden,
             ShipCommandKind.FireBroadside => Map(snapshot.FireRejection),
             ShipCommandKind.ActivateAbility => Map(snapshot.AbilityRejection),
             ShipCommandKind.StartRepair => Map(snapshot.RepairRejection),
+            ShipCommandKind.StartBoarding when snapshot.TargetIsPlayer =>
+                CommandRejectionCode.PlayerTargetForbidden,
             ShipCommandKind.StartBoarding => Map(snapshot.BoardingRejection),
             ShipCommandKind.CancelChannel when !snapshot.HasActiveChannel =>
                 CommandRejectionCode.NotChanneling,
@@ -195,11 +199,6 @@ public static class CommandPolicy
         if (!snapshot.TargetValid)
         {
             return CommandRejectionCode.InvalidTarget;
-        }
-
-        if (snapshot.TargetIsPlayer)
-        {
-            return CommandRejectionCode.PlayerTargetForbidden;
         }
 
         return snapshot.TargetConcealed

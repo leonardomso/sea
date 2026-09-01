@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Sea.Client
 {
-    public sealed class SeaWorldView : MonoBehaviour
+    public sealed partial class SeaWorldView : MonoBehaviour
     {
         [SerializeField] private SeaConnectionController connection;
         [SerializeField] private GameObject shipModel;
@@ -77,10 +77,12 @@ namespace Sea.Client
         public void ConfigureDependencies(SeaConnectionController connectionController)
         {
             connection = connectionController;
+            BindInterestCallbacks(connectionController);
         }
 
         private void Awake()
         {
+            BindInterestCallbacks(connection);
             CreateMaterials();
             CreateWater();
             CreateFog();
@@ -481,20 +483,5 @@ namespace Sea.Client
             bar.localScale = new Vector3(4f * Mathf.Clamp01(maxHealth == 0 ? 0f : (float)health / maxHealth), 0.12f, 0.12f);
         }
 
-        private static Vector3 ToWorld(float x, float y, float height) => new(x, height, y);
-
-        private readonly struct PresentationTarget
-        {
-            public PresentationTarget(Vector3 position, float headingDegrees, float speed)
-            {
-                Position = position;
-                HeadingDegrees = headingDegrees;
-                Speed = speed;
-            }
-
-            public Vector3 Position { get; }
-            public float HeadingDegrees { get; }
-            public float Speed { get; }
-        }
     }
 }

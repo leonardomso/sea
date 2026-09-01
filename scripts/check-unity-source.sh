@@ -18,6 +18,9 @@ test -f "$unity_root/Assets/Presentation/SeaShipVisualFactory.cs"
 test -f "$unity_root/Assets/Presentation/SeaShipFeedback.cs"
 test -f "$unity_root/Assets/Presentation/SeaWorldGeometryFactory.cs"
 test -f "$unity_root/Assets/Domain/SeaSubscriptionPlan.cs"
+test -f "$unity_root/Assets/Domain/SeaSpatialInterest.cs"
+test -f "$unity_root/Assets/Domain/SeaSubscriptionGeneration.cs"
+test -f "$unity_root/Assets/Networking/SeaConnectionSubscriptions.cs"
 test -f "$unity_root/Assets/Domain/SeaChartCoordinates.cs"
 test -f "$unity_root/Assets/Presentation/SeaChartCameraController.cs"
 test -f "$unity_root/Assets/Input/SeaInputController.cs"
@@ -62,6 +65,10 @@ if grep -R -q --include='*.cs' 'SubscribeToAllTables' \
   echo "Runtime Unity code must use scoped subscriptions." >&2
   exit 1
 fi
+grep -q 'command_result_event WHERE owner' \
+  "$unity_root/Assets/Domain/SeaSubscriptionPlan.cs"
+grep -q 'world_object WHERE is_active = true AND' \
+  "$unity_root/Assets/Domain/SeaSubscriptionPlan.cs"
 
 if grep -R -q --include='*.cs' -E 'void OnGUI\(|Input\.Get' \
   "$unity_root/Assets/Domain" "$unity_root/Assets/Networking" \
