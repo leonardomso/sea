@@ -7,6 +7,9 @@ compose_file=infra/docker-compose.yml
 docker compose -f "$compose_file" rm --stop --force spacetimedb
 docker volume rm sea_spacetimedb-data 2>/dev/null || true
 docker compose -f "$compose_file" up -d --wait spacetimedb
+# A server-issued local token is signed by the deleted server state. Clear it
+# after recreation so publish obtains a fresh identity from the new server.
+./scripts/spacetime.sh logout >/dev/null 2>&1 || true
 ./scripts/spacetime.sh publish sea-local \
   --server http://host.docker.internal:3000 \
   --yes \

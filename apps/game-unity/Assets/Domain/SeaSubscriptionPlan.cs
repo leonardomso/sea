@@ -22,6 +22,8 @@ namespace Sea.Client
                 "SELECT * FROM npc_definition",
                 "SELECT * FROM level_definition",
                 $"SELECT * FROM command_result_event WHERE owner = {ownerSqlLiteral}",
+                $"SELECT * FROM encounter_reward_event WHERE owner = {ownerSqlLiteral}",
+                $"SELECT * FROM encounter_reward WHERE owner = {ownerSqlLiteral}",
                 $"SELECT * FROM player_ownership WHERE owner = {ownerSqlLiteral}",
                 $"SELECT * FROM player_progression WHERE owner = {ownerSqlLiteral}",
                 $"SELECT * FROM player_command_state WHERE owner = {ownerSqlLiteral}",

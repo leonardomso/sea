@@ -11,11 +11,9 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  contributionId: __t.u64().primaryKey().name("contribution_id"),
+  owner: __t.identity(),
   encounterId: __t.u64().name("encounter_id"),
   contributorEntityId: __t.u64().name("contributor_entity_id"),
-  damage: __t.u64(),
-  boarding: __t.u64(),
-  support: __t.u64(),
-  rewarded: __t.bool(),
+  gold: __t.u32(),
+  experience: __t.u64(),
 });

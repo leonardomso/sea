@@ -171,6 +171,7 @@ namespace Sea.Client
             connection.Db.PlayerCommandState.OnInsert += HandleCommandStateInserted;
             connection.Db.PlayerCommandState.OnUpdate += HandleCommandStateUpdated;
             connection.Db.CommandResultEvent.OnInsert += HandleCommandResult;
+            connection.Db.EncounterRewardEvent.OnInsert += HandleEncounterReward;
             RegisterClientStateCallbacks(connection);
 
             initialSubscription = connection.SubscriptionBuilder()
@@ -283,6 +284,17 @@ namespace Sea.Client
             CommandStatus = result.Accepted
                 ? $"Accepted • {description}"
                 : $"Rejected • {description} • {SeaCommandResultText.Rejection(result.RejectionCode)}";
+            NotifyHudStateChanged();
+        }
+
+        private void HandleEncounterReward(EventContext context, EncounterRewardEvent reward)
+        {
+            if (reward.Owner != LocalIdentity)
+            {
+                return;
+            }
+
+            CommandStatus = $"Shared reward • +{reward.Gold} gold • +{reward.Experience} XP";
             NotifyHudStateChanged();
         }
 

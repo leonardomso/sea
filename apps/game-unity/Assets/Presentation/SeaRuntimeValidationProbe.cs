@@ -23,24 +23,12 @@ namespace Sea.Client
         private bool combatTargetRequested;
         private bool combatFireRequested;
         private bool combatLaunchObserved;
-        private bool combatHoldRequested;
         private SubscriptionHandle runtimeCombatTargetsSubscription;
         private ulong combatTargetId;
         private uint combatInitialHull;
         private uint combatInitialAmmo;
         private float nextCombatCourseTime;
         private float combatFireRequestedAt;
-        private bool tacticalAbilityRequested;
-        private bool tacticalAbilityObserved;
-        private bool tacticalStormCourseRequested;
-        private bool tacticalDamageObserved;
-        private bool tacticalRetreatRequested;
-        private bool tacticalRepairRequested;
-        private bool tacticalRepairObserved;
-        private uint tacticalInitialHull;
-        private uint tacticalDamagedHull;
-        private Vector2 tacticalRetreat;
-        private float nextTacticalCourseTime;
         private readonly float[] presentationFrameTimes = new float[300];
         private int presentationWarmupFrames;
         private int presentationMeasuredFrames;
@@ -313,19 +301,15 @@ namespace Sea.Client
                 return;
             }
 
-            if (!SeaVolleyPresentationRules.IsInsideBroadsideArc(
-                    playerPosition,
-                    player.HeadingDegrees,
-                    targetPosition,
-                    "port",
-                    halfArcDegrees: 44f))
+            var broadside = SeaRuntimeValidationRules.PlanBroadside(
+                playerPosition,
+                player.HeadingDegrees,
+                targetPosition);
+            if (!broadside.CanFire)
             {
                 if (Time.unscaledTime >= nextCombatCourseTime)
                 {
-                    var bearing = Mathf.Atan2(
-                        targetPosition.x - playerPosition.x,
-                        targetPosition.y - playerPosition.y) * Mathf.Rad2Deg;
-                    var desiredHeading = (bearing + 90f) * Mathf.Deg2Rad;
+                    var desiredHeading = broadside.DesiredHeadingDegrees * Mathf.Deg2Rad;
                     var turnDestination = playerPosition + new Vector2(
                         Mathf.Sin(desiredHeading),
                         Mathf.Cos(desiredHeading)) * 10f;
@@ -335,21 +319,6 @@ namespace Sea.Client
                     nextCombatCourseTime = Time.unscaledTime + 0.5f;
                 }
 
-                return;
-            }
-
-            if (!combatHoldRequested &&
-                SeaRuntimeValidationRules.ShouldHoldPositionBeforeFire(
-                    distance,
-                    combatTargetRequested))
-            {
-                combatHoldRequested = true;
-                StopCourse();
-                return;
-            }
-
-            if (combatHoldRequested && player.Speed > 0.25f)
-            {
                 return;
             }
 
@@ -363,127 +332,14 @@ namespace Sea.Client
             combatFireRequested = true;
             combatFireRequestedAt = Time.unscaledTime;
             Issue(
-                new ShipCommand.FireBroadside(new FireBroadsideCommand("port", "hull")),
+                new ShipCommand.FireBroadside(
+                    new FireBroadsideCommand(broadside.Side, "hull")),
                 "runtime fire broadside");
         }
 
         private void SetCombatCourse(float x, float y)
         {
-            combatHoldRequested = false;
             SetCourse(x, y);
-        }
-
-        private void ObserveTactical(Ship player)
-        {
-            var world = connection.Connection.Db.WorldState.Id.Find(1);
-            if (world == null)
-            {
-                return;
-            }
-
-            if (!tacticalAbilityRequested)
-            {
-                tacticalInitialHull = player.Hull;
-                tacticalAbilityRequested = true;
-                Issue(
-                    new ShipCommand.ActivateAbility(new ActivateAbilityCommand("full_sail")),
-                    "runtime activate full sail");
-                return;
-            }
-
-            if (!tacticalAbilityObserved)
-            {
-                var status = connection.Connection.Db.ShipStatus.ByShip
-                    .Filter(player.EntityId)
-                    .FirstOrDefault(item => item.StatusType == "full_sail" && item.IsActive);
-                var cooldown = connection.Connection.Db.Cooldown.ByShip
-                    .Filter(player.EntityId)
-                    .FirstOrDefault(item => item.CooldownType == "full_sail");
-                if (status == null || cooldown == null || cooldown.ReadyAtTick <= world.Tick)
-                {
-                    return;
-                }
-
-                tacticalAbilityObserved = true;
-            }
-
-            var storm = connection.Connection.Db.WorldObject.Iter()
-                .FirstOrDefault(item => item.Kind == "storm" && item.IsActive);
-            if (storm == null)
-            {
-                if (!tacticalStormCourseRequested || Time.unscaledTime >= nextTacticalCourseTime)
-                {
-                    var searchPosition = SeaRuntimeValidationRules.SeededStormPosition(world.Tick);
-                    SetCourse(searchPosition.x, searchPosition.y);
-                    tacticalStormCourseRequested = true;
-                    nextTacticalCourseTime = Time.unscaledTime + 1f;
-                }
-
-                return;
-            }
-
-            var playerPosition = new Vector2(player.PositionX, player.PositionY);
-            var stormPosition = new Vector2(storm.PositionX, storm.PositionY);
-            if (!tacticalDamageObserved)
-            {
-                if (player.Hull < tacticalInitialHull)
-                {
-                    tacticalDamageObserved = true;
-                    tacticalDamagedHull = player.Hull;
-                    var outward = (playerPosition - stormPosition).normalized;
-                    if (outward.sqrMagnitude < 0.5f)
-                    {
-                        outward = Vector2.right;
-                    }
-
-                    tacticalRetreat = SeaChartCoordinates.ClampToMap(
-                        playerPosition + outward * (storm.Radius + 18f));
-                    SetCourse(tacticalRetreat.x, tacticalRetreat.y);
-                    tacticalRetreatRequested = true;
-                    return;
-                }
-
-                if (!tacticalStormCourseRequested || Time.unscaledTime >= nextTacticalCourseTime)
-                {
-                    SetCourse(storm.PositionX, storm.PositionY);
-                    tacticalStormCourseRequested = true;
-                    nextTacticalCourseTime = Time.unscaledTime + 1f;
-                }
-
-                return;
-            }
-
-            if (!tacticalRepairRequested)
-            {
-                if (!tacticalRetreatRequested ||
-                    Vector2.Distance(playerPosition, stormPosition) <= storm.Radius + 5f)
-                {
-                    if (Time.unscaledTime >= nextTacticalCourseTime)
-                    {
-                        SetCourse(tacticalRetreat.x, tacticalRetreat.y);
-                        nextTacticalCourseTime = Time.unscaledTime + 1f;
-                    }
-
-                    return;
-                }
-
-                StopCourse();
-                Issue(
-                    new ShipCommand.StartRepair(new StartRepairCommand()),
-                    "runtime start repair");
-                tacticalRepairRequested = true;
-                return;
-            }
-
-            var channel = connection.Connection.Db.ShipChannel.ShipEntityId.Find(player.EntityId);
-            tacticalRepairObserved |= channel != null && channel.IsActive && channel.ChannelType == "repair";
-            if (tacticalRepairObserved && player.Hull > tacticalDamagedHull)
-            {
-                tacticalEnabledForThisRun = false;
-                Debug.Log(
-                    "Sea runtime observed tactical ability, storm damage, and progressive repair.",
-                    this);
-            }
         }
 
         private void SetCourse(float x, float y) => Issue(

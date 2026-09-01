@@ -35,6 +35,7 @@ namespace Sea.Client
             connection.Db.LevelDefinition.OnDelete += HandleLevelDefinitionDeleted;
             connection.Db.PlayerProgression.OnInsert += HandleHudRowInserted;
             connection.Db.PlayerProgression.OnUpdate += HandleHudRowUpdated;
+            connection.Db.EncounterReward.OnInsert += HandleHudRowInserted;
             connection.Db.Inventory.OnInsert += HandleHudRowInserted;
             connection.Db.Inventory.OnUpdate += HandleHudRowUpdated;
             connection.Db.Inventory.OnDelete += HandleHudRowDeleted;

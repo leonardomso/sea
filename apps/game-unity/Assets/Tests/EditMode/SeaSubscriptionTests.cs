@@ -17,6 +17,10 @@ namespace Sea.Tests
                 "SELECT * FROM player_command_state WHERE owner = 0xabc123"));
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM command_result_event WHERE owner = 0xabc123"));
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM encounter_reward_event WHERE owner = 0xabc123"));
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM encounter_reward WHERE owner = 0xabc123"));
             Assert.That(queries, Does.Contain("SELECT * FROM world_state"));
             Assert.That(queries, Does.Not.Contain("SELECT * FROM world_object"));
             Assert.That(queries.Any(query => query == "SELECT * FROM ship"), Is.False);

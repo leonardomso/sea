@@ -19,7 +19,7 @@ query_table() {
     "$database_url" >"$runtime_directory/$table_name.json"
 }
 
-for table_name in world_state ship ship_status ship_channel cooldown volley inventory ammo_definition ability_definition npc_definition npc_ai respawn_work loot player_progression combat_event environment_state current_zone world_object; do
+for table_name in world_state ship ship_status ship_channel cooldown volley inventory ammo_definition ability_definition npc_definition npc_ai respawn_work loot player_progression encounter_reward combat_event environment_state current_zone world_object; do
   query_table "$table_name"
 done
 
@@ -98,6 +98,16 @@ for (const reducer of [
   if (sourceNames.has(reducer)) {
     throw new Error(`Legacy gameplay reducer ${reducer} is still deployed.`);
   }
+}
+for (const rewardContract of [
+  "CombatContribution", "CombatEncounter", "EncounterReward", "EncounterRewardEvent",
+]) {
+  if (!sourceNames.has(rewardContract)) {
+    throw new Error(`Shared reward contract ${rewardContract} is missing.`);
+  }
+}
+if (!Array.isArray(rows("encounter_reward"))) {
+  throw new Error("Reconnect-safe encounter reward history is unavailable.");
 }
 if (sourceNames.has("Engage")) {
   throw new Error("Prototype automatic engagement is still deployed.");

@@ -43,11 +43,12 @@ import UpgradeCannonReducer from "./upgrade_cannon_reducer";
 // Import all table schema definitions
 import AbilityDefinitionRow from "./ability_definition_table";
 import AmmoDefinitionRow from "./ammo_definition_table";
-import CombatContributionRow from "./combat_contribution_table";
 import CombatEventRow from "./combat_event_table";
 import CommandResultEventRow from "./command_result_event_table";
 import CooldownRow from "./cooldown_table";
 import CurrentZoneRow from "./current_zone_table";
+import EncounterRewardRow from "./encounter_reward_table";
+import EncounterRewardEventRow from "./encounter_reward_event_table";
 import EnvironmentStateRow from "./environment_state_table";
 import InventoryRow from "./inventory_table";
 import LevelDefinitionRow from "./level_definition_table";
@@ -99,23 +100,6 @@ const tablesSchema = __schema({
       { name: 'ammo_definition_ammo_id_key', constraint: 'unique', columns: ['ammoId'] },
     ],
   }, AmmoDefinitionRow),
-  combatContribution: __table({
-    name: 'combat_contribution',
-    indexes: [
-      { accessor: 'ContributionId', name: 'combat_contribution_contribution_id_idx_btree', algorithm: 'btree', columns: [
-        'contributionId',
-      ] },
-      { accessor: 'ByContributor', name: 'combat_contribution_contributor_entity_id_idx_btree', algorithm: 'btree', columns: [
-        'contributorEntityId',
-      ] },
-      { accessor: 'ByEncounter', name: 'combat_contribution_encounter_id_idx_btree', algorithm: 'btree', columns: [
-        'encounterId',
-      ] },
-    ],
-    constraints: [
-      { name: 'combat_contribution_contribution_id_key', constraint: 'unique', columns: ['contributionId'] },
-    ],
-  }, CombatContributionRow),
   combatEvent: __table({
     name: 'combat_event',
     indexes: [
@@ -170,6 +154,35 @@ const tablesSchema = __schema({
       { name: 'current_zone_zone_id_key', constraint: 'unique', columns: ['zoneId'] },
     ],
   }, CurrentZoneRow),
+  encounterReward: __table({
+    name: 'encounter_reward',
+    indexes: [
+      { accessor: 'ByEncounterContributor', name: 'encounter_reward_encounter_id_contributor_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'encounterId',
+        'contributorEntityId',
+      ] },
+      { accessor: 'ByEncounter', name: 'encounter_reward_encounter_id_idx_btree', algorithm: 'btree', columns: [
+        'encounterId',
+      ] },
+      { accessor: 'ByOwner', name: 'encounter_reward_owner_idx_btree', algorithm: 'btree', columns: [
+        'owner',
+      ] },
+      { accessor: 'RewardId', name: 'encounter_reward_reward_id_idx_btree', algorithm: 'btree', columns: [
+        'rewardId',
+      ] },
+    ],
+    constraints: [
+      { name: 'encounter_reward_reward_id_key', constraint: 'unique', columns: ['rewardId'] },
+    ],
+  }, EncounterRewardRow),
+  encounterRewardEvent: __table({
+    name: 'encounter_reward_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, EncounterRewardEventRow),
   environmentState: __table({
     name: 'environment_state',
     indexes: [
@@ -468,8 +481,6 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "AbilityDefinition": Omit<typeof tablesSchema.schemaType.tables["abilityDefinition"], "accessorName"> & { readonly accessorName: "AbilityDefinition" };
     /** @deprecated Use `ammoDefinition` instead. This alias will be removed in the next major version. */
     readonly "AmmoDefinition": Omit<typeof tablesSchema.schemaType.tables["ammoDefinition"], "accessorName"> & { readonly accessorName: "AmmoDefinition" };
-    /** @deprecated Use `combatContribution` instead. This alias will be removed in the next major version. */
-    readonly "CombatContribution": Omit<typeof tablesSchema.schemaType.tables["combatContribution"], "accessorName"> & { readonly accessorName: "CombatContribution" };
     /** @deprecated Use `combatEvent` instead. This alias will be removed in the next major version. */
     readonly "CombatEvent": Omit<typeof tablesSchema.schemaType.tables["combatEvent"], "accessorName"> & { readonly accessorName: "CombatEvent" };
     /** @deprecated Use `commandResultEvent` instead. This alias will be removed in the next major version. */
@@ -478,6 +489,10 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "Cooldown": Omit<typeof tablesSchema.schemaType.tables["cooldown"], "accessorName"> & { readonly accessorName: "Cooldown" };
     /** @deprecated Use `currentZone` instead. This alias will be removed in the next major version. */
     readonly "CurrentZone": Omit<typeof tablesSchema.schemaType.tables["currentZone"], "accessorName"> & { readonly accessorName: "CurrentZone" };
+    /** @deprecated Use `encounterReward` instead. This alias will be removed in the next major version. */
+    readonly "EncounterReward": Omit<typeof tablesSchema.schemaType.tables["encounterReward"], "accessorName"> & { readonly accessorName: "EncounterReward" };
+    /** @deprecated Use `encounterRewardEvent` instead. This alias will be removed in the next major version. */
+    readonly "EncounterRewardEvent": Omit<typeof tablesSchema.schemaType.tables["encounterRewardEvent"], "accessorName"> & { readonly accessorName: "EncounterRewardEvent" };
     /** @deprecated Use `environmentState` instead. This alias will be removed in the next major version. */
     readonly "EnvironmentState": Omit<typeof tablesSchema.schemaType.tables["environmentState"], "accessorName"> & { readonly accessorName: "EnvironmentState" };
     /** @deprecated Use `inventory` instead. This alias will be removed in the next major version. */
@@ -530,11 +545,12 @@ const REMOTE_MODULE = {
 const tableAccessorAliases = {
   "AbilityDefinition": "abilityDefinition",
   "AmmoDefinition": "ammoDefinition",
-  "CombatContribution": "combatContribution",
   "CombatEvent": "combatEvent",
   "CommandResultEvent": "commandResultEvent",
   "Cooldown": "cooldown",
   "CurrentZone": "currentZone",
+  "EncounterReward": "encounterReward",
+  "EncounterRewardEvent": "encounterRewardEvent",
   "EnvironmentState": "environmentState",
   "Inventory": "inventory",
   "LevelDefinition": "levelDefinition",
@@ -575,8 +591,6 @@ export type DbView = __DbViewBase & {
   readonly "AbilityDefinition": __DbViewBase["abilityDefinition"];
   /** @deprecated Use `ammoDefinition` instead. This alias will be removed in the next major version. */
   readonly "AmmoDefinition": __DbViewBase["ammoDefinition"];
-  /** @deprecated Use `combatContribution` instead. This alias will be removed in the next major version. */
-  readonly "CombatContribution": __DbViewBase["combatContribution"];
   /** @deprecated Use `combatEvent` instead. This alias will be removed in the next major version. */
   readonly "CombatEvent": __DbViewBase["combatEvent"];
   /** @deprecated Use `commandResultEvent` instead. This alias will be removed in the next major version. */
@@ -585,6 +599,10 @@ export type DbView = __DbViewBase & {
   readonly "Cooldown": __DbViewBase["cooldown"];
   /** @deprecated Use `currentZone` instead. This alias will be removed in the next major version. */
   readonly "CurrentZone": __DbViewBase["currentZone"];
+  /** @deprecated Use `encounterReward` instead. This alias will be removed in the next major version. */
+  readonly "EncounterReward": __DbViewBase["encounterReward"];
+  /** @deprecated Use `encounterRewardEvent` instead. This alias will be removed in the next major version. */
+  readonly "EncounterRewardEvent": __DbViewBase["encounterRewardEvent"];
   /** @deprecated Use `environmentState` instead. This alias will be removed in the next major version. */
   readonly "EnvironmentState": __DbViewBase["environmentState"];
   /** @deprecated Use `inventory` instead. This alias will be removed in the next major version. */
@@ -625,8 +643,6 @@ export type Tables = __TablesBase & {
   readonly "AbilityDefinition": __TablesBase["abilityDefinition"];
   /** @deprecated Use `ammoDefinition` instead. This alias will be removed in the next major version. */
   readonly "AmmoDefinition": __TablesBase["ammoDefinition"];
-  /** @deprecated Use `combatContribution` instead. This alias will be removed in the next major version. */
-  readonly "CombatContribution": __TablesBase["combatContribution"];
   /** @deprecated Use `combatEvent` instead. This alias will be removed in the next major version. */
   readonly "CombatEvent": __TablesBase["combatEvent"];
   /** @deprecated Use `commandResultEvent` instead. This alias will be removed in the next major version. */
@@ -635,6 +651,10 @@ export type Tables = __TablesBase & {
   readonly "Cooldown": __TablesBase["cooldown"];
   /** @deprecated Use `currentZone` instead. This alias will be removed in the next major version. */
   readonly "CurrentZone": __TablesBase["currentZone"];
+  /** @deprecated Use `encounterReward` instead. This alias will be removed in the next major version. */
+  readonly "EncounterReward": __TablesBase["encounterReward"];
+  /** @deprecated Use `encounterRewardEvent` instead. This alias will be removed in the next major version. */
+  readonly "EncounterRewardEvent": __TablesBase["encounterRewardEvent"];
   /** @deprecated Use `environmentState` instead. This alias will be removed in the next major version. */
   readonly "EnvironmentState": __TablesBase["environmentState"];
   /** @deprecated Use `inventory` instead. This alias will be removed in the next major version. */

@@ -118,6 +118,7 @@ public static partial class Module
         ship.SelectedWeakPointCode = (byte)definition.PreferredWeakPoint;
         ship.EncounterId = entityId;
         ctx.Db.Ship.Insert(ship);
+        OpenNpcEncounter(ctx, ship, definition.GoldReward, definition.ExperienceReward, tick: 0);
         ctx.Db.NpcAi.Insert(new NpcAi
         {
             ShipEntityId = entityId,

@@ -43,6 +43,16 @@ if rg -n -- '--anonymous' package.json scripts/reset-spacetime.sh; then
   failed=1
 fi
 
+logout_line=$(grep -n './scripts/spacetime.sh logout' scripts/reset-spacetime.sh |
+  cut -d: -f1 | head -n 1 || true)
+publish_line=$(grep -n './scripts/spacetime.sh publish' scripts/reset-spacetime.sh |
+  cut -d: -f1 | head -n 1 || true)
+if [ -z "$logout_line" ] || [ -z "$publish_line" ] ||
+  [ "$logout_line" -ge "$publish_line" ]; then
+  echo "SpacetimeDB reset must clear the stale local token before publishing." >&2
+  failed=1
+fi
+
 if [ "$failed" -ne 0 ]; then
   echo "Dependency pin or local tool-state validation failed." >&2
   exit 1

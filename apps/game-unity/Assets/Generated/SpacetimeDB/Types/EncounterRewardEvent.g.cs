@@ -11,39 +11,35 @@ namespace SpacetimeDB.Types
 {
     [SpacetimeDB.Type]
     [DataContract]
-    public sealed partial class CombatContribution
+    public sealed partial class EncounterRewardEvent
     {
-        [DataMember(Name = "contribution_id")]
-        public ulong ContributionId;
+        [DataMember(Name = "owner")]
+        public SpacetimeDB.Identity Owner;
         [DataMember(Name = "encounter_id")]
         public ulong EncounterId;
         [DataMember(Name = "contributor_entity_id")]
         public ulong ContributorEntityId;
-        [DataMember(Name = "damage")]
-        public ulong Damage;
-        [DataMember(Name = "boarding")]
-        public ulong Boarding;
-        [DataMember(Name = "support")]
-        public ulong Support;
+        [DataMember(Name = "gold")]
+        public uint Gold;
+        [DataMember(Name = "experience")]
+        public ulong Experience;
 
-        public CombatContribution(
-            ulong ContributionId,
+        public EncounterRewardEvent(
+            SpacetimeDB.Identity Owner,
             ulong EncounterId,
             ulong ContributorEntityId,
-            ulong Damage,
-            ulong Boarding,
-            ulong Support
+            uint Gold,
+            ulong Experience
         )
         {
-            this.ContributionId = ContributionId;
+            this.Owner = Owner;
             this.EncounterId = EncounterId;
             this.ContributorEntityId = ContributorEntityId;
-            this.Damage = Damage;
-            this.Boarding = Boarding;
-            this.Support = Support;
+            this.Gold = Gold;
+            this.Experience = Experience;
         }
 
-        public CombatContribution()
+        public EncounterRewardEvent()
         {
         }
     }

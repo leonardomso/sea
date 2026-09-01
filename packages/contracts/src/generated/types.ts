@@ -49,9 +49,19 @@ export const CombatContribution = __t.object("CombatContribution", {
   damage: __t.u64(),
   boarding: __t.u64(),
   support: __t.u64(),
-  rewarded: __t.bool(),
 });
 export type CombatContribution = __Infer<typeof CombatContribution>;
+
+export const CombatEncounter = __t.object("CombatEncounter", {
+  encounterId: __t.u64(),
+  npcEntityId: __t.u64(),
+  stateCode: __t.u8(),
+  goldPool: __t.u32(),
+  experiencePool: __t.u64(),
+  openedAtTick: __t.u64(),
+  settledAtTick: __t.u64(),
+});
+export type CombatEncounter = __Infer<typeof CombatEncounter>;
 
 export const CombatEvent = __t.object("CombatEvent", {
   ownerEntityId: __t.u64(),
@@ -100,6 +110,26 @@ export const CurrentZone = __t.object("CurrentZone", {
   isActive: __t.bool(),
 });
 export type CurrentZone = __Infer<typeof CurrentZone>;
+
+export const EncounterReward = __t.object("EncounterReward", {
+  rewardId: __t.u64(),
+  encounterId: __t.u64(),
+  owner: __t.identity(),
+  contributorEntityId: __t.u64(),
+  gold: __t.u32(),
+  experience: __t.u64(),
+  awardedAtTick: __t.u64(),
+});
+export type EncounterReward = __Infer<typeof EncounterReward>;
+
+export const EncounterRewardEvent = __t.object("EncounterRewardEvent", {
+  owner: __t.identity(),
+  encounterId: __t.u64(),
+  contributorEntityId: __t.u64(),
+  gold: __t.u32(),
+  experience: __t.u64(),
+});
+export type EncounterRewardEvent = __Infer<typeof EncounterRewardEvent>;
 
 export const EnvironmentState = __t.object("EnvironmentState", {
   id: __t.u32(),
