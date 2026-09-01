@@ -2,6 +2,7 @@
 node_modules/
 .pnpm-store/
 dist/
+.output/
 .turbo/
 .vite/
 .cache/
@@ -10,6 +11,7 @@ dist/
 # Test and profiling artifacts
 TestResults/
 coverage/
+*.lcov
 BenchmarkDotNet.Artifacts/
 reports/
 .stryker-output/
