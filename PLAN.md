@@ -314,6 +314,8 @@ Commit: `refactor(architecture): split game runtime boundaries`
 
 ### Phase 10: build the full test foundation
 
+Status: complete.
+
 - Add an isolated SpacetimeDB integration runner that publishes the real
   module, creates identities, invokes reducers, and reads committed rows.
 - Give every integration test its own database or reset boundary.

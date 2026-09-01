@@ -21,6 +21,8 @@
     "runtime:test:world": "./scripts/test-world-schema.sh",
     "unity:scene": "unity run apps/game-unity -- -executeMethod Sea.Editor.SeaSceneBuilder.CreateMainScene",
     "unity:test": "unity test apps/game-unity --mode EditMode --output apps/game-unity/Build/test-results.xml",
+    "unity:test:playmode": "./scripts/test-unity-playmode.sh",
+    "unity:test:performance": "./scripts/test-unity-performance.sh",
     "unity:test:runtime": "./scripts/test-unity-runtime.sh",
     "unity:build:webgl": "unity build apps/game-unity --target WebGL --execute-method Sea.Editor.SeaBuild.PerformWebGLBuild --output-path apps/game-unity/Build/WebGL --no-tail",
     "unity:build:macos": "unity build apps/game-unity --target StandaloneOSX --execute-method Sea.Editor.SeaBuild.PerformMacOSBuild --output-path apps/game-unity/Build/Sea.app --no-tail",
@@ -32,14 +34,17 @@
     "server:publish": "./scripts/spacetime.sh publish sea-local --server http://host.docker.internal:3000 --anonymous --yes --module-path server/spacetimedb/spacetimedb",
     "server:reset": "./scripts/reset-spacetime.sh",
     "server:test": "./scripts/dotnet.sh test server/spacetimedb/tests/Sea.Server.Tests.csproj",
+    "server:test:integration": "./scripts/test-server-integration.sh",
+    "server:test:coverage": "./scripts/test-server-coverage.sh",
     "tools:build": "./scripts/dotnet.sh build tests/performance/Sea.Server.Benchmarks/Sea.Server.Benchmarks.csproj && ./scripts/dotnet10.sh build tests/load/Sea.LoadTests/Sea.LoadTests.csproj",
     "quality:csharp-size": "./scripts/check-csharp-size.sh",
     "quality:bindings": "./scripts/check-generated-bindings.sh",
     "quality:dotnet-format": "./scripts/check-dotnet-format.sh",
     "quality:pins": "./scripts/check-pinned-dependencies.sh",
     "quality:unity-architecture": "./scripts/check-unity-architecture.sh",
-    "check": "pnpm infra:config && pnpm quality:pins && pnpm admin:check && pnpm --filter @sea/contracts run check && pnpm quality:csharp-size && pnpm quality:unity-architecture && pnpm quality:dotnet-format",
-    "verify": "pnpm check && pnpm server:build && pnpm quality:bindings && pnpm server:test && pnpm tools:build && pnpm admin:build && pnpm admin:test:health && pnpm runtime:test:identity && pnpm runtime:test:world && pnpm runtime:test:idle && pnpm unity:verify",
+    "quality:test-foundation": "./scripts/check-test-foundation.sh",
+    "check": "pnpm infra:config && pnpm quality:pins && pnpm admin:check && pnpm --filter @sea/contracts run check && pnpm quality:csharp-size && pnpm quality:unity-architecture && pnpm quality:test-foundation && pnpm quality:dotnet-format",
+    "verify": "pnpm check && pnpm server:build && pnpm quality:bindings && pnpm server:test && pnpm server:test:integration && pnpm tools:build && pnpm admin:build && pnpm admin:test:health && pnpm runtime:test:identity && pnpm runtime:test:world && pnpm runtime:test:idle && pnpm unity:verify",
     "verify:full": "pnpm verify"
   }
 }

@@ -358,7 +358,19 @@ namespace Sea.Tests
         [Test]
         public void Runtime_client_has_no_legacy_input_or_immediate_mode_hud_path()
         {
-            var runtimeSources = Directory.GetFiles("Assets/Scripts", "*.cs")
+            var runtimeSources = new[]
+                {
+                    "Assets/Domain",
+                    "Assets/Networking",
+                    "Assets/Input",
+                    "Assets/Presentation",
+                    "Assets/UI",
+                    "Assets/Bootstrap",
+                }
+                .SelectMany(directory => Directory.GetFiles(
+                    directory,
+                    "*.cs",
+                    SearchOption.AllDirectories))
                 .Select(File.ReadAllText)
                 .ToArray();
 

@@ -23,6 +23,7 @@ check_pattern '": "(latest|\^|~|[0-9]+\.(x|\*))' \
 check_pattern 'Version="[^"]*[\*\^~]' \
   server/spacetimedb/spacetimedb/StdbModule.csproj \
   server/spacetimedb/tests/Sea.Server.Tests.csproj \
+  tests/integration/Sea.Server.IntegrationTests/Sea.Server.IntegrationTests.csproj \
   tests/performance/Sea.Server.Benchmarks/Sea.Server.Benchmarks.csproj \
   tests/load/Sea.LoadTests/Sea.LoadTests.csproj \
   packages/spacetimedb-unity/SpacetimeDB.ClientSDK.csproj \

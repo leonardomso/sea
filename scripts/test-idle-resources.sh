@@ -6,6 +6,8 @@ metrics_before="$runtime_directory/metrics-before.txt"
 metrics_after="$runtime_directory/metrics-after.txt"
 cpu_samples="$runtime_directory/cpu-samples.txt"
 tick_interval_usec=50000
+database_identity="$(curl --fail --silent --max-time 3 \
+  http://127.0.0.1:3000/v1/database/sea-local/identity)"
 
 cleanup() {
   rm -rf "$runtime_directory"
@@ -16,9 +18,12 @@ metric_value() {
   local metric_file="$1"
   local metric_name="$2"
 
-  awk -v metric_name="$metric_name" '
+  awk -v metric_name="$metric_name" -v database_identity="$database_identity" '
     index($1, metric_name "{") == 1 &&
+    index($1, "db=\"" database_identity "\"") > 0 &&
     index($1, "reducer=\"run_simulation_tick\"") > 0 &&
+    (metric_name != "spacetime_num_txns_total" ||
+      index($1, "txn_type=\"Reducer\"") > 0) &&
     index($1, "committed=\"false\"") == 0 {
       print $2
       exit
