@@ -44,13 +44,15 @@ public static partial class Module
                     restoreAmount: 20,
                     elapsed,
                     TacticalRules.RepairDurationTicks);
-                ctx.Db.Ship.EntityId.Update(repaired);
-                SynchronizeDisabledSails(ctx, repaired, tick);
                 if (tick >= channel.CompletesAtTick)
                 {
+                    repaired.ModeCode = (byte)ShipMode.Operational;
                     ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
                     AppendEvent(ctx, channel.ShipEntityId, "repair_completed", "");
                 }
+
+                ctx.Db.Ship.EntityId.Update(repaired);
+                SynchronizeDisabledSails(ctx, repaired, tick);
 
                 continue;
             }
@@ -58,6 +60,7 @@ public static partial class Module
             if (channel.ChannelType != "boarding")
             {
                 ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
+                SetShipMode(ctx, channel.ShipEntityId, ShipMode.Operational);
                 continue;
             }
 
@@ -121,6 +124,7 @@ public static partial class Module
                 "boarding",
                 tick + TacticalRules.BoardingCooldownTicks);
             ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
+            SetShipMode(ctx, source.EntityId, ShipMode.Operational);
         }
     }
 

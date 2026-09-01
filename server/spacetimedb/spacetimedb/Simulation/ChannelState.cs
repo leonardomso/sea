@@ -9,23 +9,7 @@ public static partial class Module
             ? channel
             : null;
 
-    private static void CancelChannel(
-        ReducerContext ctx,
-        ulong shipEntityId,
-        string expectedType,
-        string eventType)
-    {
-        if (FindActiveChannel(ctx, shipEntityId) is not ShipChannel channel ||
-            channel.ChannelType != expectedType)
-        {
-            return;
-        }
-
-        ctx.Db.ShipChannel.ShipEntityId.Delete(shipEntityId);
-        AppendEvent(ctx, shipEntityId, eventType, "");
-    }
-
-    private static void InterruptActiveChannel(
+    private static bool InterruptActiveChannel(
         ReducerContext ctx,
         ulong shipEntityId,
         ulong tick,
@@ -33,7 +17,7 @@ public static partial class Module
     {
         if (FindActiveChannel(ctx, shipEntityId) is not ShipChannel channel)
         {
-            return;
+            return false;
         }
 
         if (channel.ChannelType == "boarding")
@@ -51,6 +35,7 @@ public static partial class Module
             shipEntityId,
             $"{channel.ChannelType}_interrupted",
             $"cause={cause}");
+        return true;
     }
 
     private static void InterruptBoarding(
@@ -65,7 +50,22 @@ public static partial class Module
             "boarding",
             tick + TacticalRules.BoardingCooldownTicks);
         ctx.Db.ShipChannel.ShipEntityId.Delete(shipEntityId);
+        SetShipMode(ctx, shipEntityId, ShipMode.Operational);
         AppendEvent(ctx, shipEntityId, eventType, "");
+    }
+
+    private static void SetShipMode(
+        ReducerContext ctx,
+        ulong shipEntityId,
+        ShipMode mode)
+    {
+        if (ctx.Db.Ship.EntityId.Find(shipEntityId) is not Ship ship)
+        {
+            return;
+        }
+
+        ship.ModeCode = (byte)mode;
+        ctx.Db.Ship.EntityId.Update(ship);
     }
 
     private static Cooldown? FindCooldown(

@@ -17,6 +17,11 @@ export const AbilityDefinition = __t.object("AbilityDefinition", {
 });
 export type AbilityDefinition = __Infer<typeof AbilityDefinition>;
 
+export const ActivateAbilityCommand = __t.object("ActivateAbilityCommand", {
+  abilityId: __t.string(),
+});
+export type ActivateAbilityCommand = __Infer<typeof ActivateAbilityCommand>;
+
 export const AmmoDefinition = __t.object("AmmoDefinition", {
   ammoId: __t.string(),
   hullDamage: __t.u32(),
@@ -27,6 +32,12 @@ export const AmmoDefinition = __t.object("AmmoDefinition", {
   appliedStatus: __t.string(),
 });
 export type AmmoDefinition = __Infer<typeof AmmoDefinition>;
+
+export const CancelChannelCommand = __t.object("CancelChannelCommand", {});
+export type CancelChannelCommand = __Infer<typeof CancelChannelCommand>;
+
+export const ClearTargetCommand = __t.object("ClearTargetCommand", {});
+export type ClearTargetCommand = __Infer<typeof ClearTargetCommand>;
 
 export const CombatContribution = __t.object("CombatContribution", {
   contributionId: __t.u64(),
@@ -49,6 +60,24 @@ export const CombatEvent = __t.object("CombatEvent", {
   isActive: __t.bool(),
 });
 export type CombatEvent = __Infer<typeof CombatEvent>;
+
+export const CommandEnvelope = __t.object("CommandEnvelope", {
+  commandId: __t.u64(),
+  get command() {
+    return ShipCommand;
+  },
+});
+export type CommandEnvelope = __Infer<typeof CommandEnvelope>;
+
+export const CommandResultEvent = __t.object("CommandResultEvent", {
+  owner: __t.identity(),
+  commandId: __t.u64(),
+  accepted: __t.bool(),
+  rejectionCode: __t.u8(),
+  modeCode: __t.u8(),
+  isDuplicate: __t.bool(),
+});
+export type CommandResultEvent = __Infer<typeof CommandResultEvent>;
 
 export const Cooldown = __t.object("Cooldown", {
   cooldownId: __t.u64(),
@@ -80,6 +109,12 @@ export const EnvironmentState = __t.object("EnvironmentState", {
   nextWindChangeTick: __t.u64(),
 });
 export type EnvironmentState = __Infer<typeof EnvironmentState>;
+
+export const FireBroadsideCommand = __t.object("FireBroadsideCommand", {
+  side: __t.string(),
+  weakPoint: __t.string(),
+});
+export type FireBroadsideCommand = __Infer<typeof FireBroadsideCommand>;
 
 export const Inventory = __t.object("Inventory", {
   inventoryId: __t.u64(),
@@ -126,6 +161,15 @@ export const NpcDefinition = __t.object("NpcDefinition", {
 });
 export type NpcDefinition = __Infer<typeof NpcDefinition>;
 
+export const PlayerCommandState = __t.object("PlayerCommandState", {
+  owner: __t.identity(),
+  lastProcessedCommandId: __t.u64(),
+  lastAccepted: __t.bool(),
+  lastRejectionCode: __t.u8(),
+  lastModeCode: __t.u8(),
+});
+export type PlayerCommandState = __Infer<typeof PlayerCommandState>;
+
 export const PlayerOwnership = __t.object("PlayerOwnership", {
   owner: __t.identity(),
   shipEntityId: __t.u64(),
@@ -140,6 +184,22 @@ export const PlayerProgression = __t.object("PlayerProgression", {
   gold: __t.u32(),
 });
 export type PlayerProgression = __Infer<typeof PlayerProgression>;
+
+export const SelectTargetCommand = __t.object("SelectTargetCommand", {
+  entityId: __t.u64(),
+});
+export type SelectTargetCommand = __Infer<typeof SelectTargetCommand>;
+
+export const SetAmmoCommand = __t.object("SetAmmoCommand", {
+  ammoId: __t.string(),
+});
+export type SetAmmoCommand = __Infer<typeof SetAmmoCommand>;
+
+export const SetCourseCommand = __t.object("SetCourseCommand", {
+  x: __t.f32(),
+  y: __t.f32(),
+});
+export type SetCourseCommand = __Infer<typeof SetCourseCommand>;
 
 export const Ship = __t.object("Ship", {
   entityId: __t.u64(),
@@ -164,6 +224,7 @@ export const Ship = __t.object("Ship", {
   isActive: __t.bool(),
   isAlive: __t.bool(),
   isEngaged: __t.bool(),
+  modeCode: __t.u8(),
   chunkX: __t.i32(),
   chunkY: __t.i32(),
   targetEntityId: __t.u64(),
@@ -200,6 +261,41 @@ export const ShipChannel = __t.object("ShipChannel", {
 });
 export type ShipChannel = __Infer<typeof ShipChannel>;
 
+// The tagged union or sum type for the algebraic type `ShipCommand`.
+export const ShipCommand = __t.enum("ShipCommand", {
+  get SetCourse() {
+    return SetCourseCommand;
+  },
+  get StopCourse() {
+    return StopCourseCommand;
+  },
+  get SelectTarget() {
+    return SelectTargetCommand;
+  },
+  get ClearTarget() {
+    return ClearTargetCommand;
+  },
+  get SetAmmo() {
+    return SetAmmoCommand;
+  },
+  get FireBroadside() {
+    return FireBroadsideCommand;
+  },
+  get ActivateAbility() {
+    return ActivateAbilityCommand;
+  },
+  get StartRepair() {
+    return StartRepairCommand;
+  },
+  get StartBoarding() {
+    return StartBoardingCommand;
+  },
+  get CancelChannel() {
+    return CancelChannelCommand;
+  },
+});
+export type ShipCommand = __Infer<typeof ShipCommand>;
+
 export const ShipStatus = __t.object("ShipStatus", {
   statusId: __t.u64(),
   shipEntityId: __t.u64(),
@@ -216,6 +312,15 @@ export const SimulationTimer = __t.object("SimulationTimer", {
   scheduledAt: __t.scheduleAt(),
 });
 export type SimulationTimer = __Infer<typeof SimulationTimer>;
+
+export const StartBoardingCommand = __t.object("StartBoardingCommand", {});
+export type StartBoardingCommand = __Infer<typeof StartBoardingCommand>;
+
+export const StartRepairCommand = __t.object("StartRepairCommand", {});
+export type StartRepairCommand = __Infer<typeof StartRepairCommand>;
+
+export const StopCourseCommand = __t.object("StopCourseCommand", {});
+export type StopCourseCommand = __Infer<typeof StopCourseCommand>;
 
 export const Volley = __t.object("Volley", {
   volleyId: __t.u64(),
@@ -262,3 +367,4 @@ export const WorldState = __t.object("WorldState", {
   contentVersion: __t.u32(),
 });
 export type WorldState = __Infer<typeof WorldState>;
+

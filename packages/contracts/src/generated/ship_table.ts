@@ -33,6 +33,7 @@ export default __t.row({
   isActive: __t.bool().name("is_active"),
   isAlive: __t.bool().name("is_alive"),
   isEngaged: __t.bool().name("is_engaged"),
+  modeCode: __t.u8().name("mode_code"),
   chunkX: __t.i32().name("chunk_x"),
   chunkY: __t.i32().name("chunk_y"),
   targetEntityId: __t.u64().name("target_entity_id"),

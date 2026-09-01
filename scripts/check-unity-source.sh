@@ -10,6 +10,7 @@ test -f "$project_version"
 test -f "$manifest"
 test -f "$unity_root/Assets/Networking/SeaConnectionController.cs"
 test -f "$unity_root/Assets/Domain/SeaConnectionRecoveryPolicy.cs"
+test -f "$unity_root/Assets/Domain/SeaCommandResultText.cs"
 test -f "$unity_root/Assets/Networking/SeaAuthTokenStore.cs"
 test -f "$unity_root/Assets/Presentation/SeaGameController.cs"
 test -f "$unity_root/Assets/Domain/SeaShipMotion.cs"
@@ -42,11 +43,17 @@ grep -q 'com.unity.inputsystem.*1.15.0' "$manifest"
 grep -q '^  activeInputHandler: 1$' "$unity_root/ProjectSettings/ProjectSettings.asset"
 grep -q '^using System.Collections;$' "$project_root/packages/spacetimedb-unity/src/SpacetimeDBClient.cs"
 grep -q 'DbConnection\.Builder' "$unity_root/Assets/Networking/SeaConnectionController.cs"
-grep -q 'Reducers\.SetCourse' "$unity_root/Assets/Presentation/SeaGameController.cs"
-grep -q 'Reducers\.StopCourse' "$unity_root/Assets/Presentation/SeaGameController.cs"
-grep -q 'Reducers\.ActivateAbility' "$unity_root/Assets/Presentation/SeaGameController.cs"
-grep -q 'Reducers\.StartRepair' "$unity_root/Assets/Presentation/SeaGameController.cs"
-grep -q 'Reducers\.StartBoarding' "$unity_root/Assets/Presentation/SeaGameController.cs"
+grep -q 'Reducers\.IssueShipCommand' "$unity_root/Assets/Networking/SeaConnectionController.cs"
+grep -q 'new ShipCommand\.SetCourse' "$unity_root/Assets/Presentation/SeaGameController.cs"
+grep -q 'new ShipCommand\.FireBroadside' "$unity_root/Assets/Presentation/SeaGameController.cs"
+grep -q 'new ShipCommand\.ActivateAbility' "$unity_root/Assets/Presentation/SeaGameController.cs"
+grep -q 'new ShipCommand\.StartRepair' "$unity_root/Assets/Presentation/SeaGameController.cs"
+grep -q 'new ShipCommand\.StartBoarding' "$unity_root/Assets/Presentation/SeaGameController.cs"
+if grep -R -q --include='*.cs' -E 'Reducers\.(SetCourse|StopCourse|SelectTarget|ClearTarget|SetAmmo|FireBroadside|ActivateAbility|StartRepair|StartBoarding|CancelRepair|CancelBoarding|MoveTo)' \
+  "$unity_root/Assets/Networking" "$unity_root/Assets/Presentation"; then
+  echo "Runtime Unity code must use IssueShipCommand for gameplay." >&2
+  exit 1
+fi
 grep -q 'FindActionMap("Gameplay"' "$unity_root/Assets/Input/SeaInputController.cs"
 grep -q 'name="port-broadside"' "$unity_root/Assets/UI/SeaHud.uxml"
 

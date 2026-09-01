@@ -111,6 +111,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Ship, bool> IsActive { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsAlive { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsEngaged { get; }
+        public global::SpacetimeDB.Col<Ship, byte> ModeCode { get; }
         public global::SpacetimeDB.Col<Ship, int> ChunkX { get; }
         public global::SpacetimeDB.Col<Ship, int> ChunkY { get; }
         public global::SpacetimeDB.Col<Ship, ulong> TargetEntityId { get; }
@@ -155,6 +156,7 @@ namespace SpacetimeDB.Types
             IsActive = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_active");
             IsAlive = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_alive");
             IsEngaged = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_engaged");
+            ModeCode = new global::SpacetimeDB.Col<Ship, byte>(tableName, "mode_code");
             ChunkX = new global::SpacetimeDB.Col<Ship, int>(tableName, "chunk_x");
             ChunkY = new global::SpacetimeDB.Col<Ship, int>(tableName, "chunk_y");
             TargetEntityId = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "target_entity_id");

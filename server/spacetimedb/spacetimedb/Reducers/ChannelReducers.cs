@@ -3,25 +3,13 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    [SpacetimeDB.Reducer]
-    public static void StartRepair(ReducerContext ctx)
+    private static void ApplyStartRepair(ReducerContext ctx, ref Ship ship)
     {
         var world = ctx.Db.WorldState.Id.Find(1) ??
-            throw new Exception("World state is missing.");
-        var ship = FindPlayerShip(ctx, ctx.Sender);
-        var kit = FindInventory(ctx, ship.EntityId, "repair_kit");
-        var rejection = TacticalRules.ValidateRepair(new RepairRequest(
-            ship.IsActive && ship.IsAlive,
-            FindActiveChannel(ctx, ship.EntityId) is null,
-            kit is Inventory item && item.Quantity > 0,
-            ship.Hull < ship.MaxHull || ship.Sails < ship.MaxSails ||
-                ship.Cannons < ship.MaxCannons || ship.Crew < ship.MaxCrew));
-        if (rejection != RepairRejection.None)
-        {
-            throw new Exception(RepairRejectionMessage(rejection));
-        }
+            throw new InvalidOperationException("World state is missing.");
+        var repairKit = FindInventory(ctx, ship.EntityId, "repair_kit") ??
+            throw new InvalidOperationException("Accepted repair has no repair kit.");
 
-        var repairKit = kit!.Value;
         repairKit.Quantity--;
         ctx.Db.Inventory.InventoryId.Update(repairKit);
         ctx.Db.ShipChannel.Insert(new ShipChannel
@@ -40,48 +28,18 @@ public static partial class Module
         AppendEvent(ctx, ship.EntityId, "repair_started", "");
     }
 
-    [SpacetimeDB.Reducer]
-    public static void CancelRepair(ReducerContext ctx)
-    {
-        var ship = FindPlayerShip(ctx, ctx.Sender);
-        CancelChannel(ctx, ship.EntityId, "repair", "repair_cancelled");
-    }
-
-    [SpacetimeDB.Reducer]
-    public static void StartBoarding(ReducerContext ctx)
+    private static void ApplyStartBoarding(ReducerContext ctx, ref Ship source)
     {
         var world = ctx.Db.WorldState.Id.Find(1) ??
-            throw new Exception("World state is missing.");
-        var source = FindPlayerShip(ctx, ctx.Sender);
-        var target = source.TargetEntityId == 0
-            ? default(Ship?)
-            : ctx.Db.Ship.EntityId.Find(source.TargetEntityId);
-        var cooldown = FindCooldown(ctx, source.EntityId, "boarding");
-        var rejection = TacticalRules.ValidateBoarding(new BoardingRequest(
-            source.IsActive && source.IsAlive,
-            target is Ship selected && selected.IsActive && selected.IsAlive,
-            FindActiveChannel(ctx, source.EntityId) is null,
-            target?.Hull ?? 0,
-            target?.MaxHull ?? 0,
-            target is Ship boardingTarget
-                ? CombatRules.Distance(
-                    source.PositionX,
-                    source.PositionY,
-                    boardingTarget.PositionX,
-                    boardingTarget.PositionY)
-                : float.PositiveInfinity,
-            world.Tick,
-            cooldown?.ReadyAtTick ?? 0));
-        if (rejection != BoardingRejection.None)
-        {
-            throw new Exception(BoardingRejectionMessage(rejection));
-        }
+            throw new InvalidOperationException("World state is missing.");
+        var target = ctx.Db.Ship.EntityId.Find(source.TargetEntityId) ??
+            throw new InvalidOperationException("Accepted boarding has no target.");
 
         ctx.Db.ShipChannel.Insert(new ShipChannel
         {
             ShipEntityId = source.EntityId,
             ChannelType = "boarding",
-            TargetEntityId = target!.Value.EntityId,
+            TargetEntityId = target.EntityId,
             StartedAtTick = world.Tick,
             CompletesAtTick = world.Tick + TacticalRules.BoardingDurationTicks,
             InitialHull = source.Hull,
@@ -90,18 +48,16 @@ public static partial class Module
             InitialCrew = source.Crew,
             IsActive = true,
         });
-        AppendEvent(ctx, source.EntityId, "boarding_started", $"target={target.Value.EntityId}");
+        AppendEvent(ctx, source.EntityId, "boarding_started", $"target={target.EntityId}");
     }
 
-    [SpacetimeDB.Reducer]
-    public static void CancelBoarding(ReducerContext ctx)
+    private static void ApplyCancelChannel(ReducerContext ctx, Ship ship)
     {
-        var ship = FindPlayerShip(ctx, ctx.Sender);
-        CancelChannel(ctx, ship.EntityId, "boarding", "boarding_cancelled");
+        var channel = FindActiveChannel(ctx, ship.EntityId) ??
+            throw new InvalidOperationException("Accepted cancellation has no channel.");
+        ctx.Db.ShipChannel.ShipEntityId.Delete(ship.EntityId);
+        AppendEvent(ctx, ship.EntityId, $"{channel.ChannelType}_cancelled", "");
     }
-
-    [SpacetimeDB.Reducer]
-    public static void MoveTo(ReducerContext ctx, float x, float y) => SetCourse(ctx, x, y);
 
     [SpacetimeDB.Reducer]
     public static void UpgradeCannon(ReducerContext ctx)
@@ -120,5 +76,4 @@ public static partial class Module
         ctx.Db.Ship.EntityId.Update(ship);
         AppendEvent(ctx, ship.EntityId, "cannon_upgraded", $"cost={cost}");
     }
-
 }

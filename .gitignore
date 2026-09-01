@@ -32,6 +32,7 @@ docker-compose.override.yml
 
 # Unity generated folders
 apps/game-unity/[Ll]ibrary/
+apps/game-unity/Library
 apps/game-unity/[Tt]emp/
 apps/game-unity/[Oo]bj/
 apps/game-unity/[Bb]uild/
@@ -43,6 +44,8 @@ apps/game-unity/.vs/
 apps/game-unity/*.csproj
 apps/game-unity/*.sln
 apps/game-unity/*.userprefs
+apps/game-unity/Assets/Resources/PerformanceTestRunInfo.json*
+apps/game-unity/Assets/Resources/PerformanceTestRunSettings.json*
 
 # IDE and OS files
 .idea/

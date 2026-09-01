@@ -76,7 +76,10 @@ public static partial class Module
             return damage;
         }
 
-        InterruptActiveChannel(ctx, defender.EntityId, tick, cause);
+        if (InterruptActiveChannel(ctx, defender.EntityId, tick, cause))
+        {
+            defender.ModeCode = (byte)ShipMode.Operational;
+        }
         defender.Hull = WorldRules.ApplyDamage(defender.Hull, damage.Hull);
         defender.Sails = WorldRules.ApplyDamage(defender.Sails, damage.Sails);
         defender.Cannons = WorldRules.ApplyDamage(defender.Cannons, damage.Cannons);
@@ -89,6 +92,7 @@ public static partial class Module
             defender.IsMoving = false;
             defender.HasCourse = false;
             defender.IsStopping = false;
+            defender.ModeCode = (byte)ShipMode.Sunk;
             ClearTargetLocks(ctx, defender.EntityId);
             if (sourceEntityId != 0)
             {

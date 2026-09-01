@@ -76,14 +76,16 @@ const visit = (value) => {
   Object.values(value).forEach(visit);
 };
 visit(schema);
-if (!sourceNames.has("FireBroadside") || !sourceNames.has("SetAmmo")) {
-  throw new Error("Manual broadside reducers are missing from the deployed module.");
+if (!sourceNames.has("IssueShipCommand")) {
+  throw new Error("The authoritative ship command reducer is missing from the deployed module.");
 }
 for (const reducer of [
-  "ActivateAbility", "StartRepair", "CancelRepair", "StartBoarding", "CancelBoarding",
+  "MoveTo", "SetCourse", "StopCourse", "SelectTarget", "ClearTarget", "SetAmmo",
+  "FireBroadside", "ActivateAbility", "StartRepair", "CancelRepair", "StartBoarding",
+  "CancelBoarding",
 ]) {
-  if (!sourceNames.has(reducer)) {
-    throw new Error(`Tactical reducer ${reducer} is missing from the deployed module.`);
+  if (sourceNames.has(reducer)) {
+    throw new Error(`Legacy gameplay reducer ${reducer} is still deployed.`);
   }
 }
 if (sourceNames.has("Engage")) {

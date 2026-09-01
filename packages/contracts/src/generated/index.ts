@@ -34,19 +34,8 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
-import ActivateAbilityReducer from "./activate_ability_reducer";
-import CancelBoardingReducer from "./cancel_boarding_reducer";
-import CancelRepairReducer from "./cancel_repair_reducer";
-import ClearTargetReducer from "./clear_target_reducer";
-import FireBroadsideReducer from "./fire_broadside_reducer";
+import IssueShipCommandReducer from "./issue_ship_command_reducer";
 import LoadPlayerReducer from "./load_player_reducer";
-import MoveToReducer from "./move_to_reducer";
-import SelectTargetReducer from "./select_target_reducer";
-import SetAmmoReducer from "./set_ammo_reducer";
-import SetCourseReducer from "./set_course_reducer";
-import StartBoardingReducer from "./start_boarding_reducer";
-import StartRepairReducer from "./start_repair_reducer";
-import StopCourseReducer from "./stop_course_reducer";
 import UpgradeCannonReducer from "./upgrade_cannon_reducer";
 
 // Import all procedure arg schemas
@@ -56,6 +45,7 @@ import AbilityDefinitionRow from "./ability_definition_table";
 import AmmoDefinitionRow from "./ammo_definition_table";
 import CombatContributionRow from "./combat_contribution_table";
 import CombatEventRow from "./combat_event_table";
+import CommandResultEventRow from "./command_result_event_table";
 import CooldownRow from "./cooldown_table";
 import CurrentZoneRow from "./current_zone_table";
 import EnvironmentStateRow from "./environment_state_table";
@@ -64,6 +54,7 @@ import LevelDefinitionRow from "./level_definition_table";
 import LootRow from "./loot_table";
 import NpcAiRow from "./npc_ai_table";
 import NpcDefinitionRow from "./npc_definition_table";
+import PlayerCommandStateRow from "./player_command_state_table";
 import PlayerOwnershipRow from "./player_ownership_table";
 import PlayerProgressionRow from "./player_progression_table";
 import ShipRow from "./ship_table";
@@ -133,6 +124,14 @@ const tablesSchema = __schema({
       { name: 'combat_event_event_id_key', constraint: 'unique', columns: ['eventId'] },
     ],
   }, CombatEventRow),
+  commandResultEvent: __table({
+    name: 'command_result_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, CommandResultEventRow),
   cooldown: __table({
     name: 'cooldown',
     indexes: [
@@ -246,6 +245,17 @@ const tablesSchema = __schema({
       { name: 'npc_definition_npc_id_key', constraint: 'unique', columns: ['npcId'] },
     ],
   }, NpcDefinitionRow),
+  playerCommandState: __table({
+    name: 'player_command_state',
+    indexes: [
+      { accessor: 'Owner', name: 'player_command_state_owner_idx_btree', algorithm: 'btree', columns: [
+        'owner',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_command_state_owner_key', constraint: 'unique', columns: ['owner'] },
+    ],
+  }, PlayerCommandStateRow),
   playerOwnership: __table({
     name: 'player_ownership',
     indexes: [
@@ -381,19 +391,8 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
-  __reducerSchema("activate_ability", ActivateAbilityReducer),
-  __reducerSchema("cancel_boarding", CancelBoardingReducer),
-  __reducerSchema("cancel_repair", CancelRepairReducer),
-  __reducerSchema("clear_target", ClearTargetReducer),
-  __reducerSchema("fire_broadside", FireBroadsideReducer),
+  __reducerSchema("issue_ship_command", IssueShipCommandReducer),
   __reducerSchema("load_player", LoadPlayerReducer),
-  __reducerSchema("move_to", MoveToReducer),
-  __reducerSchema("select_target", SelectTargetReducer),
-  __reducerSchema("set_ammo", SetAmmoReducer),
-  __reducerSchema("set_course", SetCourseReducer),
-  __reducerSchema("start_boarding", StartBoardingReducer),
-  __reducerSchema("start_repair", StartRepairReducer),
-  __reducerSchema("stop_course", StopCourseReducer),
   __reducerSchema("upgrade_cannon", UpgradeCannonReducer),
 );
 
@@ -411,6 +410,8 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "CombatContribution": Omit<typeof tablesSchema.schemaType.tables["combatContribution"], "accessorName"> & { readonly accessorName: "CombatContribution" };
     /** @deprecated Use `combatEvent` instead. This alias will be removed in the next major version. */
     readonly "CombatEvent": Omit<typeof tablesSchema.schemaType.tables["combatEvent"], "accessorName"> & { readonly accessorName: "CombatEvent" };
+    /** @deprecated Use `commandResultEvent` instead. This alias will be removed in the next major version. */
+    readonly "CommandResultEvent": Omit<typeof tablesSchema.schemaType.tables["commandResultEvent"], "accessorName"> & { readonly accessorName: "CommandResultEvent" };
     /** @deprecated Use `cooldown` instead. This alias will be removed in the next major version. */
     readonly "Cooldown": Omit<typeof tablesSchema.schemaType.tables["cooldown"], "accessorName"> & { readonly accessorName: "Cooldown" };
     /** @deprecated Use `currentZone` instead. This alias will be removed in the next major version. */
@@ -427,6 +428,8 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "NpcAi": Omit<typeof tablesSchema.schemaType.tables["npcAi"], "accessorName"> & { readonly accessorName: "NpcAi" };
     /** @deprecated Use `npcDefinition` instead. This alias will be removed in the next major version. */
     readonly "NpcDefinition": Omit<typeof tablesSchema.schemaType.tables["npcDefinition"], "accessorName"> & { readonly accessorName: "NpcDefinition" };
+    /** @deprecated Use `playerCommandState` instead. This alias will be removed in the next major version. */
+    readonly "PlayerCommandState": Omit<typeof tablesSchema.schemaType.tables["playerCommandState"], "accessorName"> & { readonly accessorName: "PlayerCommandState" };
     /** @deprecated Use `playerOwnership` instead. This alias will be removed in the next major version. */
     readonly "PlayerOwnership": Omit<typeof tablesSchema.schemaType.tables["playerOwnership"], "accessorName"> & { readonly accessorName: "PlayerOwnership" };
     /** @deprecated Use `playerProgression` instead. This alias will be removed in the next major version. */
@@ -465,6 +468,7 @@ const tableAccessorAliases = {
   "AmmoDefinition": "ammoDefinition",
   "CombatContribution": "combatContribution",
   "CombatEvent": "combatEvent",
+  "CommandResultEvent": "commandResultEvent",
   "Cooldown": "cooldown",
   "CurrentZone": "currentZone",
   "EnvironmentState": "environmentState",
@@ -473,6 +477,7 @@ const tableAccessorAliases = {
   "Loot": "loot",
   "NpcAi": "npcAi",
   "NpcDefinition": "npcDefinition",
+  "PlayerCommandState": "playerCommandState",
   "PlayerOwnership": "playerOwnership",
   "PlayerProgression": "playerProgression",
   "Ship": "ship",
@@ -509,6 +514,8 @@ export type DbView = __DbViewBase & {
   readonly "CombatContribution": __DbViewBase["combatContribution"];
   /** @deprecated Use `combatEvent` instead. This alias will be removed in the next major version. */
   readonly "CombatEvent": __DbViewBase["combatEvent"];
+  /** @deprecated Use `commandResultEvent` instead. This alias will be removed in the next major version. */
+  readonly "CommandResultEvent": __DbViewBase["commandResultEvent"];
   /** @deprecated Use `cooldown` instead. This alias will be removed in the next major version. */
   readonly "Cooldown": __DbViewBase["cooldown"];
   /** @deprecated Use `currentZone` instead. This alias will be removed in the next major version. */
@@ -525,6 +532,8 @@ export type DbView = __DbViewBase & {
   readonly "NpcAi": __DbViewBase["npcAi"];
   /** @deprecated Use `npcDefinition` instead. This alias will be removed in the next major version. */
   readonly "NpcDefinition": __DbViewBase["npcDefinition"];
+  /** @deprecated Use `playerCommandState` instead. This alias will be removed in the next major version. */
+  readonly "PlayerCommandState": __DbViewBase["playerCommandState"];
   /** @deprecated Use `playerOwnership` instead. This alias will be removed in the next major version. */
   readonly "PlayerOwnership": __DbViewBase["playerOwnership"];
   /** @deprecated Use `playerProgression` instead. This alias will be removed in the next major version. */
@@ -553,6 +562,8 @@ export type Tables = __TablesBase & {
   readonly "CombatContribution": __TablesBase["combatContribution"];
   /** @deprecated Use `combatEvent` instead. This alias will be removed in the next major version. */
   readonly "CombatEvent": __TablesBase["combatEvent"];
+  /** @deprecated Use `commandResultEvent` instead. This alias will be removed in the next major version. */
+  readonly "CommandResultEvent": __TablesBase["commandResultEvent"];
   /** @deprecated Use `cooldown` instead. This alias will be removed in the next major version. */
   readonly "Cooldown": __TablesBase["cooldown"];
   /** @deprecated Use `currentZone` instead. This alias will be removed in the next major version. */
@@ -569,6 +580,8 @@ export type Tables = __TablesBase & {
   readonly "NpcAi": __TablesBase["npcAi"];
   /** @deprecated Use `npcDefinition` instead. This alias will be removed in the next major version. */
   readonly "NpcDefinition": __TablesBase["npcDefinition"];
+  /** @deprecated Use `playerCommandState` instead. This alias will be removed in the next major version. */
+  readonly "PlayerCommandState": __TablesBase["playerCommandState"];
   /** @deprecated Use `playerOwnership` instead. This alias will be removed in the next major version. */
   readonly "PlayerOwnership": __TablesBase["playerOwnership"];
   /** @deprecated Use `playerProgression` instead. This alias will be removed in the next major version. */
@@ -633,3 +646,4 @@ export class DbConnection extends __DbConnectionImpl<typeof REMOTE_MODULE> {
     return new SubscriptionBuilder(this);
   };
 }
+

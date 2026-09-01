@@ -78,6 +78,7 @@ public static partial class Module
             IsActive = true,
             IsAlive = true,
             IsEngaged = false,
+            ModeCode = (byte)ShipMode.Operational,
             ChunkX = SpatialRules.ChunkCoordinate(x),
             ChunkY = SpatialRules.ChunkCoordinate(y),
             TargetEntityId = 0,

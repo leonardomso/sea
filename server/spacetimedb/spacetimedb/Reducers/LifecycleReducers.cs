@@ -49,6 +49,7 @@ public static partial class Module
             ownership.IsConnected = true;
             ctx.Db.PlayerOwnership.Owner.Update(ownership);
             EnsureProgression(ctx, ctx.Sender);
+            EnsureCommandState(ctx, ctx.Sender, ownership.ShipEntityId);
             return;
         }
 
@@ -69,6 +70,7 @@ public static partial class Module
             Experience = 0,
             Gold = 0,
         });
+        EnsureCommandState(ctx, ctx.Sender, entityId);
         SeedPlayerInventory(ctx, entityId);
         AppendEvent(ctx, entityId, "player_loaded", $"entity_id={entityId}");
     }

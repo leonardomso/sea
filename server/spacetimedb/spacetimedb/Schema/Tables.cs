@@ -54,6 +54,7 @@ public static partial class Module
         public bool IsActive;
         public bool IsAlive;
         public bool IsEngaged;
+        public byte ModeCode;
         public int ChunkX;
         public int ChunkY;
         public ulong TargetEntityId;

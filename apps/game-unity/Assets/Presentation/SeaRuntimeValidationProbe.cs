@@ -99,7 +99,7 @@ namespace Sea.Client
                 {
                     destination.x = Mathf.Max(position.x - 12f, -95f);
                 }
-                connection.Connection.Reducers.SetCourse(destination.x, destination.y);
+                SetCourse(destination.x, destination.y);
                 moveRequested = true;
                 return;
             }
@@ -110,7 +110,7 @@ namespace Sea.Client
             {
                 speedBeforeStop = ship.Speed;
                 stopRequested = true;
-                connection.Connection.Reducers.StopCourse();
+                StopCourse();
                 return;
             }
 
@@ -131,7 +131,7 @@ namespace Sea.Client
             {
                 if (!combatApproachRequested)
                 {
-                    connection.Connection.Reducers.SetCourse(20f, -35f);
+                    SetCourse(20f, -35f);
                     combatApproachRequested = true;
                 }
 
@@ -153,7 +153,7 @@ namespace Sea.Client
                     }
 
                     var approach = targetPosition + outward * 10f;
-                    connection.Connection.Reducers.SetCourse(
+                    SetCourse(
                         Mathf.Clamp(approach.x, -95f, 95f),
                         Mathf.Clamp(approach.y, -95f, 95f));
                     nextCombatCourseTime = Time.unscaledTime + 1f;
@@ -164,8 +164,12 @@ namespace Sea.Client
 
             if (!combatTargetRequested)
             {
-                connection.Connection.Reducers.SelectTarget(target.EntityId);
-                connection.Connection.Reducers.SetAmmo("round");
+                Issue(
+                    new ShipCommand.SelectTarget(new SelectTargetCommand(target.EntityId)),
+                    "runtime select target");
+                Issue(
+                    new ShipCommand.SetAmmo(new SetAmmoCommand("round")),
+                    "runtime select ammunition");
                 combatTargetRequested = true;
                 return;
             }
@@ -216,7 +220,7 @@ namespace Sea.Client
                     var turnDestination = playerPosition + new Vector2(
                         Mathf.Sin(desiredHeading),
                         Mathf.Cos(desiredHeading)) * 10f;
-                    connection.Connection.Reducers.SetCourse(
+                    SetCourse(
                         Mathf.Clamp(turnDestination.x, -95f, 95f),
                         Mathf.Clamp(turnDestination.y, -95f, 95f));
                     nextCombatCourseTime = Time.unscaledTime + 0.5f;
@@ -231,7 +235,7 @@ namespace Sea.Client
                     combatTargetRequested))
             {
                 combatHoldRequested = true;
-                connection.Connection.Reducers.StopCourse();
+                StopCourse();
                 return;
             }
 
@@ -249,7 +253,9 @@ namespace Sea.Client
             combatInitialHull = target.Hull;
             combatFireRequested = true;
             combatFireRequestedAt = Time.unscaledTime;
-            connection.Connection.Reducers.FireBroadside("port", "hull");
+            Issue(
+                new ShipCommand.FireBroadside(new FireBroadsideCommand("port", "hull")),
+                "runtime fire broadside");
         }
 
         private void ObserveTactical(Ship player)
@@ -264,7 +270,9 @@ namespace Sea.Client
             {
                 tacticalInitialHull = player.Hull;
                 tacticalAbilityRequested = true;
-                connection.Connection.Reducers.ActivateAbility("full_sail");
+                Issue(
+                    new ShipCommand.ActivateAbility(new ActivateAbilityCommand("full_sail")),
+                    "runtime activate full sail");
                 return;
             }
 
@@ -307,14 +315,14 @@ namespace Sea.Client
 
                     tacticalRetreat = SeaChartCoordinates.ClampToMap(
                         playerPosition + outward * (storm.Radius + 18f));
-                    connection.Connection.Reducers.SetCourse(tacticalRetreat.x, tacticalRetreat.y);
+                    SetCourse(tacticalRetreat.x, tacticalRetreat.y);
                     tacticalRetreatRequested = true;
                     return;
                 }
 
                 if (!tacticalStormCourseRequested || Time.unscaledTime >= nextTacticalCourseTime)
                 {
-                    connection.Connection.Reducers.SetCourse(storm.PositionX, storm.PositionY);
+                    SetCourse(storm.PositionX, storm.PositionY);
                     tacticalStormCourseRequested = true;
                     nextTacticalCourseTime = Time.unscaledTime + 1f;
                 }
@@ -329,15 +337,17 @@ namespace Sea.Client
                 {
                     if (Time.unscaledTime >= nextTacticalCourseTime)
                     {
-                        connection.Connection.Reducers.SetCourse(tacticalRetreat.x, tacticalRetreat.y);
+                        SetCourse(tacticalRetreat.x, tacticalRetreat.y);
                         nextTacticalCourseTime = Time.unscaledTime + 1f;
                     }
 
                     return;
                 }
 
-                connection.Connection.Reducers.StopCourse();
-                connection.Connection.Reducers.StartRepair();
+                StopCourse();
+                Issue(
+                    new ShipCommand.StartRepair(new StartRepairCommand()),
+                    "runtime start repair");
                 tacticalRepairRequested = true;
                 return;
             }
@@ -352,5 +362,16 @@ namespace Sea.Client
                     this);
             }
         }
+
+        private void SetCourse(float x, float y) => Issue(
+            new ShipCommand.SetCourse(new SetCourseCommand(x, y)),
+            "runtime set course");
+
+        private void StopCourse() => Issue(
+            new ShipCommand.StopCourse(new StopCourseCommand()),
+            "runtime stop course");
+
+        private void Issue(ShipCommand command, string description) =>
+            connection.IssueCommand(command, description);
     }
 }

@@ -20,6 +20,9 @@ namespace Sea.Tests
             var queries = SeaSubscriptionPlan.Initial("0xabc123");
 
             Assert.That(queries, Does.Contain("SELECT * FROM player_ownership WHERE owner = 0xabc123"));
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM player_command_state WHERE owner = 0xabc123"));
+            Assert.That(queries, Does.Contain("SELECT * FROM command_result_event"));
             Assert.That(queries, Does.Contain("SELECT * FROM world_state"));
             Assert.That(queries.Any(query => query == "SELECT * FROM ship"), Is.False);
         }
@@ -87,27 +90,42 @@ namespace Sea.Tests
         }
 
         [Test]
-        public void Manual_combat_bindings_replace_the_prototype_engage_reducer()
+        public void One_authoritative_command_binding_replaces_gameplay_reducers()
         {
             Assert.That(File.Exists(
-                "Assets/Generated/SpacetimeDB/Reducers/FireBroadside.g.cs"), Is.True);
-            Assert.That(File.Exists(
-                "Assets/Generated/SpacetimeDB/Reducers/SetAmmo.g.cs"), Is.True);
+                "Assets/Generated/SpacetimeDB/Reducers/IssueShipCommand.g.cs"), Is.True);
             Assert.That(File.Exists(
                 "Assets/Generated/SpacetimeDB/Reducers/Engage.g.cs"), Is.False);
+            Assert.That(File.Exists(
+                "Assets/Generated/SpacetimeDB/Reducers/MoveTo.g.cs"), Is.False);
+            Assert.That(File.Exists(
+                "Assets/Generated/SpacetimeDB/Reducers/FireBroadside.g.cs"), Is.False);
         }
 
         [Test]
-        public void Tactical_reducer_bindings_are_generated_for_every_hotbar_command()
+        public void Gameplay_commands_are_generated_as_one_typed_union()
         {
-            var reducers = new[]
+            var commands = new[]
             {
-                "ActivateAbility.g.cs", "StartRepair.g.cs", "CancelRepair.g.cs",
-                "StartBoarding.g.cs", "CancelBoarding.g.cs",
+                "SetCourseCommand.g.cs", "StopCourseCommand.g.cs",
+                "SelectTargetCommand.g.cs", "ClearTargetCommand.g.cs",
+                "SetAmmoCommand.g.cs", "FireBroadsideCommand.g.cs",
+                "ActivateAbilityCommand.g.cs", "StartRepairCommand.g.cs",
+                "StartBoardingCommand.g.cs", "CancelChannelCommand.g.cs",
             };
 
-            Assert.That(reducers.All(file => File.Exists(
-                $"Assets/Generated/SpacetimeDB/Reducers/{file}")), Is.True);
+            Assert.That(commands.All(file => File.Exists(
+                $"Assets/Generated/SpacetimeDB/Types/{file}")), Is.True);
+        }
+
+        [Test]
+        public void Command_rejections_have_stable_player_facing_text()
+        {
+            Assert.That(SeaCommandResultText.Rejection(1), Is.EqualTo("stale command"));
+            Assert.That(SeaCommandResultText.Rejection(6), Is.EqualTo("destination blocked"));
+            Assert.That(SeaCommandResultText.Rejection(18),
+                Is.EqualTo("target outside firing arc"));
+            Assert.That(SeaCommandResultText.Rejection(255), Is.EqualTo("rejection code 255"));
         }
 
         [Test]

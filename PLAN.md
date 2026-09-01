@@ -345,6 +345,8 @@ Commit: `test(runtime): add reducer and property harnesses`
 
 ### Phase 11: centralize authoritative ship commands
 
+Status: complete.
+
 - Add `CommandEnvelope`, `ShipCommand`, `ShipMode`, `CommandDecision`, and typed
   rejection codes.
 - Implement one allocation-free command transition table.

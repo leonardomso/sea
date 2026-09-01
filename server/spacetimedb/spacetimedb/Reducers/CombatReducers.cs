@@ -3,113 +3,44 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    [SpacetimeDB.Reducer]
-    public static void FireBroadside(ReducerContext ctx, string side, string weakPoint)
+    private static void ApplyFireBroadside(
+        ReducerContext ctx,
+        ref Ship source,
+        FireBroadsideCommand command,
+        BroadsideSide side,
+        WeakPoint weakPoint)
     {
-        if (!Enum.TryParse<BroadsideSide>(side, ignoreCase: true, out var parsedSide) ||
-            !Enum.IsDefined(parsedSide))
-        {
-            throw new Exception("Broadside side must be port or starboard.");
-        }
-
-        if (!CombatRules.TryParseWeakPoint(weakPoint, out var parsedWeakPoint))
-        {
-            throw new Exception("Weak point must be hull, sails, or cannons.");
-        }
-
         var world = ctx.Db.WorldState.Id.Find(1) ??
-            throw new Exception("World state is missing.");
-        var source = FindPlayerShip(ctx, ctx.Sender);
-        var target = source.TargetEntityId == 0
-            ? default(Ship?)
-            : ctx.Db.Ship.EntityId.Find(source.TargetEntityId);
+            throw new InvalidOperationException("World state is missing.");
+        var target = ctx.Db.Ship.EntityId.Find(source.TargetEntityId) ??
+            throw new InvalidOperationException("Accepted broadside has no target.");
         var ammunition = ctx.Db.AmmoDefinition.AmmoId.Find(source.SelectedAmmoId) ??
-            throw new Exception("The selected ammunition definition is missing.");
-        var inventory = FindInventory(ctx, source.EntityId, source.SelectedAmmoId);
-        var readyAtTick = parsedSide == BroadsideSide.Port
-            ? source.NextPortFireTick
-            : source.NextStarboardFireTick;
-        var rejection = CombatRules.ValidateFire(new FireRequest
-        {
-            SourceAlive = source.IsActive && source.IsAlive,
-            TargetSelected = target.HasValue,
-            TargetAlive = target is Ship selected && selected.IsActive && selected.IsAlive,
-            Cannons = source.Cannons,
-            Ammunition = inventory?.Quantity ?? 0,
-            CurrentTick = world.Tick,
-            ReadyAtTick = readyAtTick,
-            SourceX = source.PositionX,
-            SourceY = source.PositionY,
-            SourceHeadingDegrees = source.HeadingDegrees,
-            TargetX = target?.PositionX ?? source.PositionX,
-            TargetY = target?.PositionY ?? source.PositionY,
-            MaximumRange = WorldRules.CannonRange,
-            RangeMultiplier = ammunition.RangeMultiplier,
-            Side = parsedSide,
-            IsChanneling = FindActiveChannel(ctx, source.EntityId) is not null,
-        });
-        if (rejection != FireRejection.None)
-        {
-            throw new Exception(FireRejectionMessage(rejection));
-        }
-
-        var selectedTarget = target!.Value;
-        var selectedInventory = inventory!.Value;
-        var damage = CombatRules.DamageProfile(
-            new AmmunitionContent
-            {
-                Id = ammunition.AmmoId,
-                HullDamage = ammunition.HullDamage,
-                SailDamage = ammunition.SailDamage,
-                CannonDamage = ammunition.CannonDamage,
-                CrewDamage = ammunition.CrewDamage,
-                RangeMultiplier = ammunition.RangeMultiplier,
-                AppliedStatus = ammunition.AppliedStatus,
-            },
-            parsedWeakPoint,
-            source.CannonDamage,
-            source.Cannons,
-            source.MaxCannons);
-        var hazards = HazardsAt(ctx, source.PositionX, source.PositionY);
-        if (hazards.InStorm)
-        {
-            damage = ScaleCombatDamage(damage, hazards.Modifiers.WeaponEffectiveness);
-        }
+            throw new InvalidOperationException("Selected ammunition definition is missing.");
+        var inventory = FindInventory(ctx, source.EntityId, source.SelectedAmmoId) ??
+            throw new InvalidOperationException("Accepted broadside has no ammunition.");
+        var damage = BroadsideDamage(ctx, source, ammunition, weakPoint);
         var distance = CombatRules.Distance(
             source.PositionX,
             source.PositionY,
-            selectedTarget.PositionX,
-            selectedTarget.PositionY);
+            target.PositionX,
+            target.PositionY);
         var impactAtTick = world.Tick + CombatRules.VolleyTravelTicks(
             distance,
             CombatRules.ProjectileSpeed,
             world.TickRateHz);
 
-        selectedInventory.Quantity--;
-        ctx.Db.Inventory.InventoryId.Update(selectedInventory);
-        source.SelectedWeakPoint = weakPoint.ToLowerInvariant();
+        inventory.Quantity--;
+        ctx.Db.Inventory.InventoryId.Update(inventory);
+        source.SelectedWeakPoint = command.WeakPoint.ToLowerInvariant();
         source.IsEngaged = true;
-        var reloadTicks = TacticalRules.AdjustedReloadTicks(
-            source.CannonCooldownTicks,
-            source.Cannons,
-            source.MaxCannons);
-        if (parsedSide == BroadsideSide.Port)
-        {
-            source.NextPortFireTick = world.Tick + reloadTicks;
-        }
-        else
-        {
-            source.NextStarboardFireTick = world.Tick + reloadTicks;
-        }
-
-        ctx.Db.Ship.EntityId.Update(source);
+        ApplyReload(ref source, side, world.Tick);
         ctx.Db.Volley.Insert(new Volley
         {
             SourceEntityId = source.EntityId,
-            TargetEntityId = selectedTarget.EntityId,
-            Side = side.ToLowerInvariant(),
+            TargetEntityId = target.EntityId,
+            Side = command.Side.ToLowerInvariant(),
             AmmoId = ammunition.AmmoId,
-            WeakPoint = weakPoint.ToLowerInvariant(),
+            WeakPoint = command.WeakPoint.ToLowerInvariant(),
             OriginX = source.PositionX,
             OriginY = source.PositionY,
             ChunkX = source.ChunkX,
@@ -126,30 +57,62 @@ public static partial class Module
             ctx,
             source.EntityId,
             "broadside_fired",
-            $"target={selectedTarget.EntityId},side={side},ammo={ammunition.AmmoId},impact_tick={impactAtTick}");
+            $"target={target.EntityId},side={command.Side},ammo={ammunition.AmmoId},impact_tick={impactAtTick}");
     }
 
-    [SpacetimeDB.Reducer]
-    public static void ActivateAbility(ReducerContext ctx, string abilityId)
+    private static CombatDamage BroadsideDamage(
+        ReducerContext ctx,
+        Ship source,
+        AmmoDefinition ammunition,
+        WeakPoint weakPoint)
     {
-        var ability = ctx.Db.AbilityDefinition.AbilityId.Find(abilityId);
-        var world = ctx.Db.WorldState.Id.Find(1) ??
-            throw new Exception("World state is missing.");
-        var ship = FindPlayerShip(ctx, ctx.Sender);
-        var cooldown = FindCooldown(ctx, ship.EntityId, abilityId);
-        var rejection = TacticalRules.ValidateAbility(new AbilityRequest(
-            ship.IsActive && ship.IsAlive,
-            ability is not null,
-            FindActiveChannel(ctx, ship.EntityId) is null,
-            world.Tick,
-            cooldown?.ReadyAtTick ?? 0));
-        if (rejection != AbilityRejection.None)
-        {
-            throw new Exception(AbilityRejectionMessage(rejection));
-        }
+        var damage = CombatRules.DamageProfile(
+            new AmmunitionContent
+            {
+                Id = ammunition.AmmoId,
+                HullDamage = ammunition.HullDamage,
+                SailDamage = ammunition.SailDamage,
+                CannonDamage = ammunition.CannonDamage,
+                CrewDamage = ammunition.CrewDamage,
+                RangeMultiplier = ammunition.RangeMultiplier,
+                AppliedStatus = ammunition.AppliedStatus,
+            },
+            weakPoint,
+            source.CannonDamage,
+            source.Cannons,
+            source.MaxCannons);
+        var hazards = HazardsAt(ctx, source.PositionX, source.PositionY);
+        return hazards.InStorm
+            ? ScaleCombatDamage(damage, hazards.Modifiers.WeaponEffectiveness)
+            : damage;
+    }
 
-        var selectedAbility = ability!.Value;
-        if (abilityId == "emergency_pump")
+    private static void ApplyReload(ref Ship source, BroadsideSide side, ulong tick)
+    {
+        var reloadTicks = TacticalRules.AdjustedReloadTicks(
+            source.CannonCooldownTicks,
+            source.Cannons,
+            source.MaxCannons);
+        if (side == BroadsideSide.Port)
+        {
+            source.NextPortFireTick = tick + reloadTicks;
+        }
+        else
+        {
+            source.NextStarboardFireTick = tick + reloadTicks;
+        }
+    }
+
+    private static void ApplyActivateAbility(
+        ReducerContext ctx,
+        Ship ship,
+        ActivateAbilityCommand command)
+    {
+        var ability = ctx.Db.AbilityDefinition.AbilityId.Find(command.AbilityId) ??
+            throw new InvalidOperationException("Accepted ability definition is missing.");
+        var world = ctx.Db.WorldState.Id.Find(1) ??
+            throw new InvalidOperationException("World state is missing.");
+        if (command.AbilityId == "emergency_pump")
         {
             DeactivateStatus(ctx, ship.EntityId, "flooding", world.Tick);
         }
@@ -157,16 +120,19 @@ public static partial class Module
         ApplyStatus(
             ctx,
             ship.EntityId,
-            abilityId,
+            command.AbilityId,
             world.Tick,
-            selectedAbility.DurationTicks,
+            ability.DurationTicks,
             maximumStacks: 1);
         SetCooldown(
             ctx,
             ship.EntityId,
-            abilityId,
-            world.Tick + selectedAbility.CooldownTicks);
-        AppendEvent(ctx, ship.EntityId, "ability_activated", $"ability={abilityId}");
+            command.AbilityId,
+            world.Tick + ability.CooldownTicks);
+        AppendEvent(
+            ctx,
+            ship.EntityId,
+            "ability_activated",
+            $"ability={command.AbilityId}");
     }
-
 }

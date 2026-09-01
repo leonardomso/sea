@@ -25,6 +25,9 @@ namespace Sea.Client
         private SubscriptionHandle initialSubscription;
         private SubscriptionHandle playerSubscription;
         private SubscriptionHandle spatialSubscription;
+        private ulong nextCommandId = 1;
+        private ulong latestCommandId;
+        private string latestCommandDescription = string.Empty;
 
         public DbConnection Connection { get; private set; }
         public Identity LocalIdentity { get; private set; }
@@ -33,6 +36,22 @@ namespace Sea.Client
         public string Status { get; private set; } = "Not connected";
         public string ServerUrl => serverUrl;
         public string DatabaseName => databaseName;
+        public string CommandStatus { get; private set; } = string.Empty;
+
+        public ulong IssueCommand(ShipCommand command, string description)
+        {
+            if (Connection == null || !IsSubscribed)
+            {
+                return 0;
+            }
+
+            var commandId = nextCommandId++;
+            latestCommandId = commandId;
+            latestCommandDescription = description;
+            CommandStatus = $"Pending • {description}";
+            Connection.Reducers.IssueShipCommand(new CommandEnvelope(commandId, command));
+            return commandId;
+        }
 
         private void Awake()
         {
@@ -135,6 +154,9 @@ namespace Sea.Client
             connection.Db.PlayerOwnership.OnUpdate += HandleOwnershipUpdated;
             connection.Db.Ship.OnInsert += HandleShipInserted;
             connection.Db.Ship.OnUpdate += HandleShipUpdated;
+            connection.Db.PlayerCommandState.OnInsert += HandleCommandStateInserted;
+            connection.Db.PlayerCommandState.OnUpdate += HandleCommandStateUpdated;
+            connection.Db.CommandResultEvent.OnInsert += HandleCommandResult;
 
             initialSubscription = connection.SubscriptionBuilder()
                 .OnApplied(HandleInitialSubscriptionApplied)
@@ -210,6 +232,38 @@ namespace Sea.Client
         private void HandleShipUpdated(EventContext context, Ship _oldShip, Ship ship)
         {
             RefreshSpatialScope(Connection, ship);
+        }
+
+        private void HandleCommandStateInserted(EventContext context, PlayerCommandState state) =>
+            SynchronizeCommandSequence(state);
+
+        private void HandleCommandStateUpdated(
+            EventContext context,
+            PlayerCommandState _oldState,
+            PlayerCommandState state) => SynchronizeCommandSequence(state);
+
+        private void SynchronizeCommandSequence(PlayerCommandState state)
+        {
+            if (state.Owner == LocalIdentity && state.LastProcessedCommandId >= nextCommandId)
+            {
+                nextCommandId = state.LastProcessedCommandId + 1;
+            }
+        }
+
+        private void HandleCommandResult(EventContext context, CommandResultEvent result)
+        {
+            if (result.Owner != LocalIdentity || result.CommandId < latestCommandId)
+            {
+                return;
+            }
+
+            latestCommandId = result.CommandId;
+            var description = string.IsNullOrEmpty(latestCommandDescription)
+                ? $"Command {result.CommandId}"
+                : latestCommandDescription;
+            CommandStatus = result.Accepted
+                ? $"Accepted • {description}"
+                : $"Rejected • {description} • {SeaCommandResultText.Rejection(result.RejectionCode)}";
         }
 
         private void RefreshSpatialScope(DbConnection connection, Ship ship)
@@ -374,6 +428,9 @@ namespace Sea.Client
             subscribedPlayerEntityId = 0;
             subscribedChunkX = int.MinValue;
             subscribedChunkY = int.MinValue;
+            latestCommandId = 0;
+            latestCommandDescription = string.Empty;
+            CommandStatus = string.Empty;
         }
     }
 }

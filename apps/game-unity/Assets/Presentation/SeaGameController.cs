@@ -10,10 +10,13 @@ namespace Sea.Client
         [SerializeField] private Camera worldCamera;
         [SerializeField] private float movePlaneHeight;
 
-        public ulong SelectedTargetId { get; private set; }
-        public string SelectedAmmoId { get; private set; } = "round";
+        public ulong SelectedTargetId => TryGetLocalShip(out var ship) ? ship.TargetEntityId : 0;
+        public string SelectedAmmoId => TryGetLocalShip(out var ship) ? ship.SelectedAmmoId : "round";
         public string SelectedWeakPoint { get; private set; } = "hull";
-        public string LastAction { get; private set; } = "Click water to set course.";
+        private string localAction = "Click water to set course.";
+        public string LastAction => string.IsNullOrEmpty(connection?.CommandStatus)
+            ? localAction
+            : connection.CommandStatus;
         public bool IsReady => connection?.Connection != null && connection.IsSubscribed;
 
         public void ConfigureDependencies(SeaConnectionController connectionController, Camera camera)
@@ -55,13 +58,14 @@ namespace Sea.Client
                         new Vector2(worldObject.PositionX, worldObject.PositionY),
                         worldObject.Radius))
                 {
-                    LastAction = "Land cannot be selected as a sailing destination.";
+                    localAction = "Land cannot be selected as a sailing destination.";
                     return;
                 }
             }
 
-            connection.Connection.Reducers.SetCourse(destination.x, destination.y);
-            LastAction = $"Course set • {SeaChartCoordinates.LabelAt(destination.x, destination.y)}";
+            Issue(
+                new ShipCommand.SetCourse(new SetCourseCommand(destination.x, destination.y)),
+                $"Set course to {SeaChartCoordinates.LabelAt(destination.x, destination.y)}");
         }
 
         public void StopCourse()
@@ -71,8 +75,7 @@ namespace Sea.Client
                 return;
             }
 
-            connection.Connection.Reducers.StopCourse();
-            LastAction = "All stop ordered.";
+            Issue(new ShipCommand.StopCourse(new StopCourseCommand()), "All stop");
         }
 
         public void SelectNextEnemy(int direction = 1)
@@ -93,7 +96,7 @@ namespace Sea.Client
 
             if (enemies.Count == 0)
             {
-                LastAction = "No targets within chart range.";
+                localAction = "No targets within chart range.";
                 return;
             }
 
@@ -112,9 +115,9 @@ namespace Sea.Client
                 return;
             }
 
-            connection.Connection.Reducers.SelectTarget(entityId);
-            SelectedTargetId = entityId;
-            LastAction = $"Target marked • vessel {entityId}";
+            Issue(
+                new ShipCommand.SelectTarget(new SelectTargetCommand(entityId)),
+                $"Select vessel {entityId}");
         }
 
         public void ClearTarget()
@@ -124,9 +127,7 @@ namespace Sea.Client
                 return;
             }
 
-            connection.Connection.Reducers.ClearTarget();
-            SelectedTargetId = 0;
-            LastAction = "Target cleared.";
+            Issue(new ShipCommand.ClearTarget(new ClearTargetCommand()), "Clear target");
         }
 
         public bool TryNavigateToCoordinate(string coordinate, out string error)
@@ -144,8 +145,9 @@ namespace Sea.Client
                 return false;
             }
 
-            connection.Connection.Reducers.SetCourse(cell.X, cell.Y);
-            LastAction = $"Course set • {SeaChartCoordinates.LabelAt(cell.X, cell.Y)}";
+            Issue(
+                new ShipCommand.SetCourse(new SetCourseCommand(cell.X, cell.Y)),
+                $"Set course to {SeaChartCoordinates.LabelAt(cell.X, cell.Y)}");
             return true;
         }
 
@@ -156,15 +158,15 @@ namespace Sea.Client
                 return;
             }
 
-            connection.Connection.Reducers.SetAmmo(ammoId);
-            SelectedAmmoId = ammoId;
-            LastAction = $"{ammoId.ToUpperInvariant()} shot selected.";
+            Issue(
+                new ShipCommand.SetAmmo(new SetAmmoCommand(ammoId)),
+                $"Select {ammoId} shot");
         }
 
         public void SetSelectedWeakPoint(string weakPoint)
         {
             SelectedWeakPoint = weakPoint;
-            LastAction = $"Gunners aim for {weakPoint.ToUpperInvariant()}.";
+            localAction = $"Gunners aim for {weakPoint.ToUpperInvariant()}.";
         }
 
         public void FireBroadside(string side)
@@ -177,12 +179,14 @@ namespace Sea.Client
             if (SelectedTargetId == 0 &&
                 (!TryGetLocalShip(out var ship) || ship.TargetEntityId == 0))
             {
-                LastAction = "Select a target before firing.";
+                localAction = "Select a target before firing.";
                 return;
             }
 
-            connection.Connection.Reducers.FireBroadside(side, SelectedWeakPoint);
-            LastAction = $"{side.ToUpperInvariant()} broadside fired • {SelectedAmmoId.ToUpperInvariant()} • {SelectedWeakPoint.ToUpperInvariant()}";
+            Issue(
+                new ShipCommand.FireBroadside(
+                    new FireBroadsideCommand(side, SelectedWeakPoint)),
+                $"Fire {side} broadside");
         }
 
         public void ActivateAbility(string abilityId)
@@ -192,8 +196,9 @@ namespace Sea.Client
                 return;
             }
 
-            connection.Connection.Reducers.ActivateAbility(abilityId);
-            LastAction = $"{abilityId.Replace('_', ' ').ToUpperInvariant()} activated.";
+            Issue(
+                new ShipCommand.ActivateAbility(new ActivateAbilityCommand(abilityId)),
+                $"Activate {abilityId.Replace('_', ' ')}");
         }
 
         public void ToggleRepair()
@@ -206,13 +211,11 @@ namespace Sea.Client
             var channel = connection.Connection.Db.ShipChannel.ShipEntityId.Find(ship.EntityId);
             if (channel != null && channel.IsActive && channel.ChannelType == "repair")
             {
-                connection.Connection.Reducers.CancelRepair();
-                LastAction = "Repair cancelled.";
+                Issue(new ShipCommand.CancelChannel(new CancelChannelCommand()), "Cancel repair");
                 return;
             }
 
-            connection.Connection.Reducers.StartRepair();
-            LastAction = "Repair crews deployed.";
+            Issue(new ShipCommand.StartRepair(new StartRepairCommand()), "Start repair");
         }
 
         public void ToggleBoarding()
@@ -225,13 +228,11 @@ namespace Sea.Client
             var channel = connection.Connection.Db.ShipChannel.ShipEntityId.Find(ship.EntityId);
             if (channel != null && channel.IsActive && channel.ChannelType == "boarding")
             {
-                connection.Connection.Reducers.CancelBoarding();
-                LastAction = "Boarding cancelled.";
+                Issue(new ShipCommand.CancelChannel(new CancelChannelCommand()), "Cancel boarding");
                 return;
             }
 
-            connection.Connection.Reducers.StartBoarding();
-            LastAction = "Boarding party committed.";
+            Issue(new ShipCommand.StartBoarding(new StartBoardingCommand()), "Start boarding");
         }
 
         public bool TryGetLocalShip(out Ship ship)
@@ -276,6 +277,11 @@ namespace Sea.Client
             }
 
             return closestId;
+        }
+
+        private void Issue(ShipCommand command, string description)
+        {
+            connection.IssueCommand(command, description);
         }
     }
 }

@@ -31,6 +31,7 @@ namespace SpacetimeDB.Types
             AddTable(AmmoDefinition = new(conn));
             AddTable(CombatContribution = new(conn));
             AddTable(CombatEvent = new(conn));
+            AddTable(CommandResultEvent = new(conn));
             AddTable(Cooldown = new(conn));
             AddTable(CurrentZone = new(conn));
             AddTable(EnvironmentState = new(conn));
@@ -39,6 +40,7 @@ namespace SpacetimeDB.Types
             AddTable(Loot = new(conn));
             AddTable(NpcAi = new(conn));
             AddTable(NpcDefinition = new(conn));
+            AddTable(PlayerCommandState = new(conn));
             AddTable(PlayerOwnership = new(conn));
             AddTable(PlayerProgression = new(conn));
             AddTable(Ship = new(conn));
@@ -547,6 +549,7 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.AmmoDefinition().ToSql(),
             new QueryBuilder().From.CombatContribution().ToSql(),
             new QueryBuilder().From.CombatEvent().ToSql(),
+            new QueryBuilder().From.CommandResultEvent().ToSql(),
             new QueryBuilder().From.Cooldown().ToSql(),
             new QueryBuilder().From.CurrentZone().ToSql(),
             new QueryBuilder().From.EnvironmentState().ToSql(),
@@ -555,6 +558,7 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.Loot().ToSql(),
             new QueryBuilder().From.NpcAi().ToSql(),
             new QueryBuilder().From.NpcDefinition().ToSql(),
+            new QueryBuilder().From.PlayerCommandState().ToSql(),
             new QueryBuilder().From.PlayerOwnership().ToSql(),
             new QueryBuilder().From.PlayerProgression().ToSql(),
             new QueryBuilder().From.Ship().ToSql(),
@@ -573,6 +577,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<AmmoDefinition, AmmoDefinitionCols, AmmoDefinitionIxCols> AmmoDefinition() => new("ammo_definition", new AmmoDefinitionCols("ammo_definition"), new AmmoDefinitionIxCols("ammo_definition"));
         public global::SpacetimeDB.Table<CombatContribution, CombatContributionCols, CombatContributionIxCols> CombatContribution() => new("combat_contribution", new CombatContributionCols("combat_contribution"), new CombatContributionIxCols("combat_contribution"));
         public global::SpacetimeDB.Table<CombatEvent, CombatEventCols, CombatEventIxCols> CombatEvent() => new("combat_event", new CombatEventCols("combat_event"), new CombatEventIxCols("combat_event"));
+        public global::SpacetimeDB.Table<CommandResultEvent, CommandResultEventCols, CommandResultEventIxCols> CommandResultEvent() => new("command_result_event", new CommandResultEventCols("command_result_event"), new CommandResultEventIxCols("command_result_event"));
         public global::SpacetimeDB.Table<Cooldown, CooldownCols, CooldownIxCols> Cooldown() => new("cooldown", new CooldownCols("cooldown"), new CooldownIxCols("cooldown"));
         public global::SpacetimeDB.Table<CurrentZone, CurrentZoneCols, CurrentZoneIxCols> CurrentZone() => new("current_zone", new CurrentZoneCols("current_zone"), new CurrentZoneIxCols("current_zone"));
         public global::SpacetimeDB.Table<EnvironmentState, EnvironmentStateCols, EnvironmentStateIxCols> EnvironmentState() => new("environment_state", new EnvironmentStateCols("environment_state"), new EnvironmentStateIxCols("environment_state"));
@@ -581,6 +586,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<Loot, LootCols, LootIxCols> Loot() => new("loot", new LootCols("loot"), new LootIxCols("loot"));
         public global::SpacetimeDB.Table<NpcAi, NpcAiCols, NpcAiIxCols> NpcAi() => new("npc_ai", new NpcAiCols("npc_ai"), new NpcAiIxCols("npc_ai"));
         public global::SpacetimeDB.Table<NpcDefinition, NpcDefinitionCols, NpcDefinitionIxCols> NpcDefinition() => new("npc_definition", new NpcDefinitionCols("npc_definition"), new NpcDefinitionIxCols("npc_definition"));
+        public global::SpacetimeDB.Table<PlayerCommandState, PlayerCommandStateCols, PlayerCommandStateIxCols> PlayerCommandState() => new("player_command_state", new PlayerCommandStateCols("player_command_state"), new PlayerCommandStateIxCols("player_command_state"));
         public global::SpacetimeDB.Table<PlayerOwnership, PlayerOwnershipCols, PlayerOwnershipIxCols> PlayerOwnership() => new("player_ownership", new PlayerOwnershipCols("player_ownership"), new PlayerOwnershipIxCols("player_ownership"));
         public global::SpacetimeDB.Table<PlayerProgression, PlayerProgressionCols, PlayerProgressionIxCols> PlayerProgression() => new("player_progression", new PlayerProgressionCols("player_progression"), new PlayerProgressionIxCols("player_progression"));
         public global::SpacetimeDB.Table<Ship, ShipCols, ShipIxCols> Ship() => new("ship", new ShipCols("ship"), new ShipIxCols("ship"));
@@ -670,19 +676,8 @@ namespace SpacetimeDB.Types
             var eventContext = (ReducerEventContext)context;
             return reducer switch
             {
-                Reducer.ActivateAbility args => Reducers.InvokeActivateAbility(eventContext, args),
-                Reducer.CancelBoarding args => Reducers.InvokeCancelBoarding(eventContext, args),
-                Reducer.CancelRepair args => Reducers.InvokeCancelRepair(eventContext, args),
-                Reducer.ClearTarget args => Reducers.InvokeClearTarget(eventContext, args),
-                Reducer.FireBroadside args => Reducers.InvokeFireBroadside(eventContext, args),
+                Reducer.IssueShipCommand args => Reducers.InvokeIssueShipCommand(eventContext, args),
                 Reducer.LoadPlayer args => Reducers.InvokeLoadPlayer(eventContext, args),
-                Reducer.MoveTo args => Reducers.InvokeMoveTo(eventContext, args),
-                Reducer.SelectTarget args => Reducers.InvokeSelectTarget(eventContext, args),
-                Reducer.SetAmmo args => Reducers.InvokeSetAmmo(eventContext, args),
-                Reducer.SetCourse args => Reducers.InvokeSetCourse(eventContext, args),
-                Reducer.StartBoarding args => Reducers.InvokeStartBoarding(eventContext, args),
-                Reducer.StartRepair args => Reducers.InvokeStartRepair(eventContext, args),
-                Reducer.StopCourse args => Reducers.InvokeStopCourse(eventContext, args),
                 Reducer.UpgradeCannon args => Reducers.InvokeUpgradeCannon(eventContext, args),
                 _ => throw new ArgumentOutOfRangeException("Reducer", $"Unknown reducer {reducer}")
             };

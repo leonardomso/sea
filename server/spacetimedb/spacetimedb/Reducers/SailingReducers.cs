@@ -1,38 +1,28 @@
-using Sea.Server;
 using SpacetimeDB;
 
 public static partial class Module
 {
-    [SpacetimeDB.Reducer]
-    public static void SetCourse(ReducerContext ctx, float x, float y)
+    private static void ApplySetCourse(
+        ReducerContext ctx,
+        ref Ship ship,
+        SetCourseCommand command)
     {
-        if (!WorldRules.IsValidMove(x, y))
-        {
-            throw new Exception("The requested position is outside the map.");
-        }
-
-        var ship = FindPlayerShip(ctx, ctx.Sender);
         var blockers = NavigationBlockers(ctx);
-        if (NavigationRules.IsDestinationBlocked(x, y, blockers))
-        {
-            AppendEvent(ctx, ship.EntityId, "course_ignored", "destination_is_land");
-            return;
-        }
-
-        ship.DestinationX = x;
-        ship.DestinationY = y;
+        ship.DestinationX = command.X;
+        ship.DestinationY = command.Y;
         ConfigureNavigationWaypoint(ref ship, blockers);
-        ship.HasCourse = ship.PositionX != x || ship.PositionY != y;
+        ship.HasCourse = ship.PositionX != command.X || ship.PositionY != command.Y;
         ship.IsStopping = false;
-        ship.IsMoving = ship.PositionX != x || ship.PositionY != y;
-        ctx.Db.Ship.EntityId.Update(ship);
-        AppendEvent(ctx, ship.EntityId, "set_course", $"x={x:0.###},y={y:0.###}");
+        ship.IsMoving = ship.HasCourse;
+        AppendEvent(
+            ctx,
+            ship.EntityId,
+            "set_course",
+            $"x={command.X:0.###},y={command.Y:0.###}");
     }
 
-    [SpacetimeDB.Reducer]
-    public static void StopCourse(ReducerContext ctx)
+    private static void ApplyStopCourse(ReducerContext ctx, ref Ship ship)
     {
-        var ship = FindPlayerShip(ctx, ctx.Sender);
         ship.DestinationX = ship.PositionX;
         ship.DestinationY = ship.PositionY;
         ship.WaypointX = ship.PositionX;
@@ -41,67 +31,32 @@ public static partial class Module
         ship.HasCourse = false;
         ship.IsStopping = ship.Speed > 0f;
         ship.IsMoving = ship.Speed > 0f;
-        ctx.Db.Ship.EntityId.Update(ship);
         AppendEvent(ctx, ship.EntityId, "stop_course", "");
     }
 
-    [SpacetimeDB.Reducer]
-    public static void SelectTarget(ReducerContext ctx, ulong entityId)
+    private static void ApplySelectTarget(
+        ReducerContext ctx,
+        ref Ship ship,
+        SelectTargetCommand command)
     {
-        var target = FindShip(ctx, entityId);
-        if (!target.IsActive || !target.IsAlive || target.Faction == "player")
-        {
-            throw new Exception("The selected ship cannot be targeted.");
-        }
-
-        var ship = FindPlayerShip(ctx, ctx.Sender);
-        var world = ctx.Db.WorldState.Id.Find(1) ??
-            throw new Exception("World state is missing.");
-        var distance = CombatRules.Distance(
-            ship.PositionX,
-            ship.PositionY,
-            target.PositionX,
-            target.PositionY);
-        if (!TacticalRules.CanAcquireTarget(
-                HasActiveStatus(ctx, target.EntityId, "smoke_screen", world.Tick),
-                distance))
-        {
-            throw new Exception("Smoke conceals that ship at long range.");
-        }
-
-        ship.TargetEntityId = entityId;
+        ship.TargetEntityId = command.EntityId;
         ship.IsEngaged = false;
-        ctx.Db.Ship.EntityId.Update(ship);
-        AppendEvent(ctx, ship.EntityId, "select_target", $"entity_id={entityId}");
+        AppendEvent(ctx, ship.EntityId, "select_target", $"entity_id={command.EntityId}");
     }
 
-    [SpacetimeDB.Reducer]
-    public static void ClearTarget(ReducerContext ctx)
+    private static void ApplyClearTarget(ReducerContext ctx, ref Ship ship)
     {
-        var ship = FindPlayerShip(ctx, ctx.Sender);
         ship.TargetEntityId = 0;
         ship.IsEngaged = false;
-        ctx.Db.Ship.EntityId.Update(ship);
         AppendEvent(ctx, ship.EntityId, "clear_target", "");
     }
 
-    [SpacetimeDB.Reducer]
-    public static void SetAmmo(ReducerContext ctx, string ammoId)
+    private static void ApplySetAmmo(
+        ReducerContext ctx,
+        ref Ship ship,
+        SetAmmoCommand command)
     {
-        if (ctx.Db.AmmoDefinition.AmmoId.Find(ammoId) is null)
-        {
-            throw new Exception("The selected ammunition does not exist.");
-        }
-
-        var ship = FindPlayerShip(ctx, ctx.Sender);
-        if (FindInventory(ctx, ship.EntityId, ammoId) is null)
-        {
-            throw new Exception("The selected ammunition is not in this ship's inventory.");
-        }
-
-        ship.SelectedAmmoId = ammoId;
-        ctx.Db.Ship.EntityId.Update(ship);
-        AppendEvent(ctx, ship.EntityId, "set_ammo", $"ammo={ammoId}");
+        ship.SelectedAmmoId = command.AmmoId;
+        AppendEvent(ctx, ship.EntityId, "set_ammo", $"ammo={command.AmmoId}");
     }
-
 }

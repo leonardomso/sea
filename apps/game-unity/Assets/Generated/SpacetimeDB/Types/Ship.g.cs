@@ -57,6 +57,8 @@ namespace SpacetimeDB.Types
         public bool IsAlive;
         [DataMember(Name = "is_engaged")]
         public bool IsEngaged;
+        [DataMember(Name = "mode_code")]
+        public byte ModeCode;
         [DataMember(Name = "chunk_x")]
         public int ChunkX;
         [DataMember(Name = "chunk_y")]
@@ -119,6 +121,7 @@ namespace SpacetimeDB.Types
             bool IsActive,
             bool IsAlive,
             bool IsEngaged,
+            byte ModeCode,
             int ChunkX,
             int ChunkY,
             ulong TargetEntityId,
@@ -162,6 +165,7 @@ namespace SpacetimeDB.Types
             this.IsActive = IsActive;
             this.IsAlive = IsAlive;
             this.IsEngaged = IsEngaged;
+            this.ModeCode = ModeCode;
             this.ChunkX = ChunkX;
             this.ChunkY = ChunkY;
             this.TargetEntityId = TargetEntityId;

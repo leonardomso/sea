@@ -10,26 +10,55 @@ public sealed class ReducerIntegrationTests
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(15);
 
     [Fact]
-    public void RejectedReducerIsObservedAndDoesNotChangeShipState()
+    public void RejectedCommandIsAcknowledgedWithoutUnhandledErrorOrStateChange()
     {
         using var client = IntegrationClient.Connect();
         client.LoadPlayer();
         var before = client.OwnedShip();
 
-        var error = client.InvokeRejectedBroadside();
+        var result = client.IssueBroadside(commandId: 1);
         var after = client.OwnedShip();
 
-        Assert.Contains("target", error.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.False(result.Accepted);
+        Assert.Equal(12, result.RejectionCode);
+        Assert.False(result.IsDuplicate);
+        Assert.Null(client.UnhandledReducerError);
         Assert.Equal(before.EntityId, after.EntityId);
         Assert.Equal(before.Hull, after.Hull);
         Assert.Equal(before.TargetEntityId, after.TargetEntityId);
         Assert.Equal(before.NextPortFireTick, after.NextPortFireTick);
     }
 
+    [Fact]
+    public void DuplicateAndStaleCommandsNeverApplyAnEffectTwice()
+    {
+        using var client = IntegrationClient.Connect();
+        client.LoadPlayer();
+
+        var first = client.IssueSetCourse(commandId: 1, x: 10f, y: 10f);
+        var afterFirst = client.OwnedShip();
+        var duplicate = client.IssueSetCourse(commandId: 1, x: -10f, y: -10f);
+        var afterDuplicate = client.OwnedShip();
+        var stale = client.IssueSetCourse(commandId: 0, x: -20f, y: -20f);
+        var afterStale = client.OwnedShip();
+
+        Assert.True(first.Accepted);
+        Assert.True(duplicate.Accepted);
+        Assert.True(duplicate.IsDuplicate);
+        Assert.False(stale.Accepted);
+        Assert.Equal(1, stale.RejectionCode);
+        Assert.Equal(afterFirst.DestinationX, afterDuplicate.DestinationX);
+        Assert.Equal(afterFirst.DestinationY, afterDuplicate.DestinationY);
+        Assert.Equal(afterFirst.DestinationX, afterStale.DestinationX);
+        Assert.Equal(afterFirst.DestinationY, afterStale.DestinationY);
+        Assert.Null(client.UnhandledReducerError);
+    }
+
     private sealed class IntegrationClient : IDisposable
     {
         private readonly DbConnection connection;
         private readonly Identity identity;
+        private readonly List<CommandResultEvent> commandResults = [];
         private bool subscribed;
         private Exception? failure;
 
@@ -37,7 +66,17 @@ public sealed class ReducerIntegrationTests
         {
             this.connection = connection;
             this.identity = identity;
+            connection.OnUnhandledReducerError += (_, error) => UnhandledReducerError = error;
+            connection.Db.CommandResultEvent.OnInsert += (_, result) =>
+            {
+                if (result.Owner == identity)
+                {
+                    commandResults.Add(result);
+                }
+            };
         }
+
+        public Exception? UnhandledReducerError { get; private set; }
 
         public static IntegrationClient Connect()
         {
@@ -78,6 +117,8 @@ public sealed class ReducerIntegrationTests
                 .Subscribe([
                     "SELECT * FROM player_ownership",
                     "SELECT * FROM ship",
+                    "SELECT * FROM player_command_state",
+                    "SELECT * FROM command_result_event",
                 ]);
             PumpUntil(connection, () => subscribed || failure is not null);
             ThrowIfFailed();
@@ -97,22 +138,21 @@ public sealed class ReducerIntegrationTests
                 ?? throw new InvalidOperationException("The integration identity has no ship row.");
         }
 
-        public Exception InvokeRejectedBroadside()
-        {
-            Exception? reducerError = null;
-            void HandleError(ReducerEventContext _, Exception error) => reducerError = error;
+        public CommandResultEvent IssueBroadside(ulong commandId) => Issue(
+            commandId,
+            new ShipCommand.FireBroadside(new FireBroadsideCommand("port", "hull")));
 
-            connection.OnUnhandledReducerError += HandleError;
-            try
-            {
-                connection.Reducers.FireBroadside("port", "hull");
-                PumpUntil(connection, () => reducerError is not null);
-                return reducerError!;
-            }
-            finally
-            {
-                connection.OnUnhandledReducerError -= HandleError;
-            }
+        public CommandResultEvent IssueSetCourse(ulong commandId, float x, float y) => Issue(
+            commandId,
+            new ShipCommand.SetCourse(new SetCourseCommand(x, y)));
+
+        private CommandResultEvent Issue(ulong commandId, ShipCommand command)
+        {
+            var resultCount = commandResults.Count;
+            connection.Reducers.IssueShipCommand(new CommandEnvelope(commandId, command));
+            PumpUntil(connection, () => commandResults.Count > resultCount || failure is not null);
+            ThrowIfFailed();
+            return commandResults[^1];
         }
 
         public void Dispose() => connection.Disconnect();
