@@ -58,6 +58,9 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<WorldObject, int> ChunkY { get; }
         public global::SpacetimeDB.Col<WorldObject, bool> IsActive { get; }
         public global::SpacetimeDB.Col<WorldObject, bool> BlocksMovement { get; }
+        public global::SpacetimeDB.Col<WorldObject, float> DirectionDegrees { get; }
+        public global::SpacetimeDB.Col<WorldObject, float> MovementSpeed { get; }
+        public global::SpacetimeDB.Col<WorldObject, float> Intensity { get; }
 
         public WorldObjectCols(string tableName)
         {
@@ -70,6 +73,9 @@ namespace SpacetimeDB.Types
             ChunkY = new global::SpacetimeDB.Col<WorldObject, int>(tableName, "chunk_y");
             IsActive = new global::SpacetimeDB.Col<WorldObject, bool>(tableName, "is_active");
             BlocksMovement = new global::SpacetimeDB.Col<WorldObject, bool>(tableName, "blocks_movement");
+            DirectionDegrees = new global::SpacetimeDB.Col<WorldObject, float>(tableName, "direction_degrees");
+            MovementSpeed = new global::SpacetimeDB.Col<WorldObject, float>(tableName, "movement_speed");
+            Intensity = new global::SpacetimeDB.Col<WorldObject, float>(tableName, "intensity");
         }
     }
 

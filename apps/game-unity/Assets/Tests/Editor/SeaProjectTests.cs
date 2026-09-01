@@ -442,6 +442,15 @@ namespace Sea.Tests
         }
 
         [Test]
+        public void Player_subscription_includes_authoritative_tactical_channels()
+        {
+            var queries = SeaSubscriptionPlan.Player(42);
+
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM ship_channel WHERE ship_entity_id = 42"));
+        }
+
+        [Test]
         public void Spatial_subscription_plan_is_bounded_to_nearby_chunks_and_active_rows()
         {
             var queries = SeaSubscriptionPlan.Spatial(chunkX: 4, chunkY: 2, radius: 1);
@@ -503,6 +512,68 @@ namespace Sea.Tests
                 "Assets/Generated/SpacetimeDB/Reducers/SetAmmo.g.cs"), Is.True);
             Assert.That(File.Exists(
                 "Assets/Generated/SpacetimeDB/Reducers/Engage.g.cs"), Is.False);
+        }
+
+        [Test]
+        public void Tactical_reducer_bindings_are_generated_for_every_hotbar_command()
+        {
+            var reducers = new[]
+            {
+                "ActivateAbility.g.cs", "StartRepair.g.cs", "CancelRepair.g.cs",
+                "StartBoarding.g.cs", "CancelBoarding.g.cs",
+            };
+
+            Assert.That(reducers.All(file => File.Exists(
+                $"Assets/Generated/SpacetimeDB/Reducers/{file}")), Is.True);
+        }
+
+        [Test]
+        public void Shoals_and_storms_have_distinct_chart_geometry()
+        {
+            var shallows = SeaMaterialFactory.CreateTransparent(new Color(0.2f, 0.8f, 0.7f, 0.35f));
+            var storm = SeaMaterialFactory.CreateTransparent(new Color(0.12f, 0.16f, 0.2f, 0.7f));
+            var shoal = SeaWorldGeometryFactory.CreateShoal(
+                "Test Shoal", Vector3.zero, 10f, shallows);
+            var cloud = SeaWorldGeometryFactory.CreateStorm(
+                "Test Storm", Vector3.zero, 10f, storm);
+
+            Assert.That(shoal.transform.Find("Shoal Water"), Is.Not.Null);
+            Assert.That(cloud.GetComponentsInChildren<Renderer>(), Has.Length.GreaterThanOrEqualTo(5));
+            Assert.That(shoal.GetComponentsInChildren<Collider>(), Is.Empty);
+            Assert.That(cloud.GetComponentsInChildren<Collider>(), Is.Empty);
+            Object.DestroyImmediate(shoal);
+            Object.DestroyImmediate(cloud);
+            Object.DestroyImmediate(shallows);
+            Object.DestroyImmediate(storm);
+        }
+
+        [Theory]
+        [TestCase(10ul, 60ul, 10ul, 0f)]
+        [TestCase(10ul, 60ul, 35ul, 0.5f)]
+        [TestCase(10ul, 60ul, 60ul, 1f)]
+        public void Tactical_channel_progress_uses_authoritative_ticks(
+            ulong startedAtTick,
+            ulong completesAtTick,
+            ulong currentTick,
+            float expected)
+        {
+            Assert.That(SeaTacticalPresentationRules.ChannelProgress(
+                startedAtTick,
+                completesAtTick,
+                currentTick), Is.EqualTo(expected).Within(0.001f));
+        }
+
+        [Test]
+        public void Runtime_combat_observation_stays_inside_one_spatial_chunk_and_holds_position()
+        {
+            Assert.That(SeaRuntimeValidationRules.CombatObservationRange,
+                Is.LessThanOrEqualTo(25f));
+            Assert.That(SeaRuntimeValidationRules.ShouldHoldPositionBeforeFire(
+                distance: 12f,
+                targetSelected: true), Is.True);
+            Assert.That(SeaRuntimeValidationRules.ShouldHoldPositionBeforeFire(
+                distance: 25f,
+                targetSelected: true), Is.False);
         }
 
         [Theory]

@@ -10,6 +10,7 @@ namespace Sea.Client
         private SeaConnectionController connection;
         private bool enabledForThisRun;
         private bool combatEnabledForThisRun;
+        private bool tacticalEnabledForThisRun;
         private bool movementValidated;
         private bool moveRequested;
         private bool stopRequested;
@@ -20,11 +21,23 @@ namespace Sea.Client
         private bool combatTargetRequested;
         private bool combatFireRequested;
         private bool combatLaunchObserved;
+        private bool combatHoldRequested;
         private ulong combatTargetId;
         private uint combatInitialHull;
         private uint combatInitialAmmo;
         private float nextCombatCourseTime;
         private float combatFireRequestedAt;
+        private bool tacticalAbilityRequested;
+        private bool tacticalAbilityObserved;
+        private bool tacticalStormCourseRequested;
+        private bool tacticalDamageObserved;
+        private bool tacticalRetreatRequested;
+        private bool tacticalRepairRequested;
+        private bool tacticalRepairObserved;
+        private uint tacticalInitialHull;
+        private uint tacticalDamagedHull;
+        private Vector2 tacticalRetreat;
+        private float nextTacticalCourseTime;
 
         private void Awake()
         {
@@ -34,12 +47,15 @@ namespace Sea.Client
             combatEnabledForThisRun = Array.Exists(
                 Environment.GetCommandLineArgs(),
                 argument => argument == "-seaRuntimeCombatTest");
+            tacticalEnabledForThisRun = Array.Exists(
+                Environment.GetCommandLineArgs(),
+                argument => argument == "-seaRuntimeTacticalTest");
             connection = FindFirstObjectByType<SeaConnectionController>();
         }
 
         private void Update()
         {
-            if ((!enabledForThisRun && !combatEnabledForThisRun) ||
+            if ((!enabledForThisRun && !combatEnabledForThisRun && !tacticalEnabledForThisRun) ||
                 connection?.Connection == null ||
                 !connection.IsSubscribed)
             {
@@ -62,6 +78,10 @@ namespace Sea.Client
                 else if (combatEnabledForThisRun)
                 {
                     ObserveCombat(ship);
+                }
+                else if (tacticalEnabledForThisRun)
+                {
+                    ObserveTactical(ship);
                 }
             }
         }
@@ -120,7 +140,7 @@ namespace Sea.Client
             var playerPosition = new Vector2(player.PositionX, player.PositionY);
             var targetPosition = new Vector2(target.PositionX, target.PositionY);
             var distance = Vector2.Distance(playerPosition, targetPosition);
-            if (distance > 45f)
+            if (distance > SeaRuntimeValidationRules.CombatObservationRange)
             {
                 if (Time.unscaledTime >= nextCombatCourseTime)
                 {
@@ -130,7 +150,7 @@ namespace Sea.Client
                         outward = new Vector2(-1f, -1f).normalized;
                     }
 
-                    var approach = targetPosition + outward * 35f;
+                    var approach = targetPosition + outward * 10f;
                     connection.Connection.Reducers.SetCourse(
                         Mathf.Clamp(approach.x, -95f, 95f),
                         Mathf.Clamp(approach.y, -95f, 95f));
@@ -203,6 +223,21 @@ namespace Sea.Client
                 return;
             }
 
+            if (!combatHoldRequested &&
+                SeaRuntimeValidationRules.ShouldHoldPositionBeforeFire(
+                    distance,
+                    combatTargetRequested))
+            {
+                combatHoldRequested = true;
+                connection.Connection.Reducers.StopCourse();
+                return;
+            }
+
+            if (combatHoldRequested && player.Speed > 0.25f)
+            {
+                return;
+            }
+
             if (inventory == null || inventory.Quantity == 0)
             {
                 return;
@@ -213,6 +248,107 @@ namespace Sea.Client
             combatFireRequested = true;
             combatFireRequestedAt = Time.unscaledTime;
             connection.Connection.Reducers.FireBroadside("port", "hull");
+        }
+
+        private void ObserveTactical(Ship player)
+        {
+            var world = connection.Connection.Db.WorldState.Id.Find(1);
+            if (world == null)
+            {
+                return;
+            }
+
+            if (!tacticalAbilityRequested)
+            {
+                tacticalInitialHull = player.Hull;
+                tacticalAbilityRequested = true;
+                connection.Connection.Reducers.ActivateAbility("full_sail");
+                return;
+            }
+
+            if (!tacticalAbilityObserved)
+            {
+                var status = connection.Connection.Db.ShipStatus.ByShip
+                    .Filter(player.EntityId)
+                    .FirstOrDefault(item => item.StatusType == "full_sail" && item.IsActive);
+                var cooldown = connection.Connection.Db.Cooldown.ByShip
+                    .Filter(player.EntityId)
+                    .FirstOrDefault(item => item.CooldownType == "full_sail");
+                if (status == null || cooldown == null || cooldown.ReadyAtTick <= world.Tick)
+                {
+                    return;
+                }
+
+                tacticalAbilityObserved = true;
+            }
+
+            var storm = connection.Connection.Db.WorldObject.Iter()
+                .FirstOrDefault(item => item.Kind == "storm" && item.IsActive);
+            if (storm == null)
+            {
+                return;
+            }
+
+            var playerPosition = new Vector2(player.PositionX, player.PositionY);
+            var stormPosition = new Vector2(storm.PositionX, storm.PositionY);
+            if (!tacticalDamageObserved)
+            {
+                if (player.Hull < tacticalInitialHull)
+                {
+                    tacticalDamageObserved = true;
+                    tacticalDamagedHull = player.Hull;
+                    var outward = (playerPosition - stormPosition).normalized;
+                    if (outward.sqrMagnitude < 0.5f)
+                    {
+                        outward = Vector2.right;
+                    }
+
+                    tacticalRetreat = SeaChartCoordinates.ClampToMap(
+                        playerPosition + outward * (storm.Radius + 18f));
+                    connection.Connection.Reducers.SetCourse(tacticalRetreat.x, tacticalRetreat.y);
+                    tacticalRetreatRequested = true;
+                    return;
+                }
+
+                if (!tacticalStormCourseRequested || Time.unscaledTime >= nextTacticalCourseTime)
+                {
+                    connection.Connection.Reducers.SetCourse(storm.PositionX, storm.PositionY);
+                    tacticalStormCourseRequested = true;
+                    nextTacticalCourseTime = Time.unscaledTime + 1f;
+                }
+
+                return;
+            }
+
+            if (!tacticalRepairRequested)
+            {
+                if (!tacticalRetreatRequested ||
+                    Vector2.Distance(playerPosition, stormPosition) <= storm.Radius + 5f)
+                {
+                    if (Time.unscaledTime >= nextTacticalCourseTime)
+                    {
+                        connection.Connection.Reducers.SetCourse(tacticalRetreat.x, tacticalRetreat.y);
+                        nextTacticalCourseTime = Time.unscaledTime + 1f;
+                    }
+
+                    return;
+                }
+
+                connection.Connection.Reducers.StopCourse();
+                connection.Connection.Reducers.StartRepair();
+                tacticalRepairRequested = true;
+                return;
+            }
+
+            var channel = connection.Connection.Db.ShipChannel.ShipEntityId.Find(player.EntityId);
+            tacticalRepairObserved |= channel != null && channel.IsActive && channel.ChannelType == "repair";
+            if (tacticalRepairObserved && player.Hull > tacticalDamagedHull)
+            {
+                tacticalEnabledForThisRun = false;
+                Debug.Log(
+                    "Sea runtime observed tactical ability, storm damage, and progressive repair.",
+                    this);
+            }
         }
     }
 }

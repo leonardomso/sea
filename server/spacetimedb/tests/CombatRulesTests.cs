@@ -82,6 +82,14 @@ public sealed class CombatRulesTests
         Assert.Equal(FireRejection.OutsideArc, CombatRules.ValidateFire(request));
     }
 
+    [Fact]
+    public void Fire_admission_rejects_repair_and_boarding_channels()
+    {
+        var request = ValidFireRequest() with { IsChanneling = true };
+
+        Assert.Equal(FireRejection.Busy, CombatRules.ValidateFire(request));
+    }
+
     [Theory]
     [InlineData(0f, 1ul)]
     [InlineData(4f, 1ul)]

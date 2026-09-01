@@ -20,4 +20,7 @@ export default __t.row({
   chunkY: __t.i32().name("chunk_y"),
   isActive: __t.bool().name("is_active"),
   blocksMovement: __t.bool().name("blocks_movement"),
+  directionDegrees: __t.f32().name("direction_degrees"),
+  movementSpeed: __t.f32().name("movement_speed"),
+  intensity: __t.f32(),
 });

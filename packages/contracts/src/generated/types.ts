@@ -186,6 +186,20 @@ export const Ship = __t.object("Ship", {
 });
 export type Ship = __Infer<typeof Ship>;
 
+export const ShipChannel = __t.object("ShipChannel", {
+  shipEntityId: __t.u64(),
+  channelType: __t.string(),
+  targetEntityId: __t.u64(),
+  startedAtTick: __t.u64(),
+  completesAtTick: __t.u64(),
+  initialHull: __t.u32(),
+  initialSails: __t.u32(),
+  initialCannons: __t.u32(),
+  initialCrew: __t.u32(),
+  isActive: __t.bool(),
+});
+export type ShipChannel = __Infer<typeof ShipChannel>;
+
 export const ShipStatus = __t.object("ShipStatus", {
   statusId: __t.u64(),
   shipEntityId: __t.u64(),
@@ -234,6 +248,9 @@ export const WorldObject = __t.object("WorldObject", {
   chunkY: __t.i32(),
   isActive: __t.bool(),
   blocksMovement: __t.bool(),
+  directionDegrees: __t.f32(),
+  movementSpeed: __t.f32(),
+  intensity: __t.f32(),
 });
 export type WorldObject = __Infer<typeof WorldObject>;
 

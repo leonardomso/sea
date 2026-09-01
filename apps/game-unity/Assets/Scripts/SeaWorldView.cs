@@ -38,6 +38,8 @@ namespace Sea.Client
         private Material fogMaterial;
         private Material cannonballMaterial;
         private Material combatEffectMaterial;
+        private Material shoalMaterial;
+        private Material stormMaterial;
         private SeaCombatPresenter combatPresenter;
         private ulong playerEntityId;
         private LineRenderer courseLine;
@@ -118,6 +120,10 @@ namespace Sea.Client
             cannonballMaterial = SeaMaterialFactory.Create(new Color(0.04f, 0.035f, 0.03f, 1f));
             combatEffectMaterial = SeaMaterialFactory.CreateTransparent(
                 new Color(0.78f, 0.87f, 0.90f, 0.9f));
+            shoalMaterial = SeaMaterialFactory.CreateTransparent(
+                new Color(0.18f, 0.78f, 0.68f, 0.34f));
+            stormMaterial = SeaMaterialFactory.CreateTransparent(
+                new Color(0.10f, 0.14f, 0.18f, 0.82f));
             combatPresenter = new SeaCombatPresenter(cannonballMaterial, combatEffectMaterial);
         }
 
@@ -177,6 +183,16 @@ namespace Sea.Client
                         entity.Radius,
                         shallowsMaterial,
                         dockMaterial),
+                    "shoal" => SeaWorldGeometryFactory.CreateShoal(
+                        $"Map shoal {entity.EntityId}",
+                        position,
+                        entity.Radius,
+                        shoalMaterial),
+                    "storm" => SeaWorldGeometryFactory.CreateStorm(
+                        $"Map storm {entity.EntityId}",
+                        position,
+                        entity.Radius,
+                        stormMaterial),
                     _ => null,
                 };
                 if (geometry == null)
@@ -198,6 +214,7 @@ namespace Sea.Client
                 }
 
                 geometry.SetActive(entity.IsActive);
+                geometry.transform.position = ToWorld(entity.PositionX, entity.PositionY, 0f);
             }
         }
 

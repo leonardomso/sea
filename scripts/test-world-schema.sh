@@ -19,7 +19,7 @@ query_table() {
     "$database_url" >"$runtime_directory/$table_name.json"
 }
 
-for table_name in world_state ship volley inventory ammo_definition ability_definition npc_definition combat_event environment_state current_zone; do
+for table_name in world_state ship ship_status ship_channel cooldown volley inventory ammo_definition ability_definition npc_definition combat_event environment_state current_zone world_object; do
   query_table "$table_name"
 done
 
@@ -43,7 +43,7 @@ const columns = (table) => {
 };
 
 const world = rows("world_state");
-if (world.length !== 1 || world[0].tick_rate_hz !== 10 || world[0].content_version !== 1) {
+if (world.length !== 1 || world[0].tick_rate_hz !== 10 || world[0].content_version !== 2) {
   throw new Error("World state does not expose the 10 Hz versioned simulation contract.");
 }
 
@@ -79,6 +79,13 @@ visit(schema);
 if (!sourceNames.has("FireBroadside") || !sourceNames.has("SetAmmo")) {
   throw new Error("Manual broadside reducers are missing from the deployed module.");
 }
+for (const reducer of [
+  "ActivateAbility", "StartRepair", "CancelRepair", "StartBoarding", "CancelBoarding",
+]) {
+  if (!sourceNames.has(reducer)) {
+    throw new Error(`Tactical reducer ${reducer} is missing from the deployed module.`);
+  }
+}
 if (sourceNames.has("Engage")) {
   throw new Error("Prototype automatic engagement is still deployed.");
 }
@@ -88,6 +95,19 @@ if (rows("ability_definition").length !== 4) throw new Error("Expected four abil
 if (rows("npc_definition").length !== 3) throw new Error("Expected three NPC definitions.");
 if (rows("environment_state").length !== 1) throw new Error("Expected one deterministic wind state.");
 if (rows("current_zone").length !== 2) throw new Error("Expected two seeded current zones.");
+const worldObjects = rows("world_object");
+if (worldObjects.filter((item) => item.kind === "shoal").length !== 2) {
+  throw new Error("Expected two active shoal hazards.");
+}
+const storms = worldObjects.filter((item) => item.kind === "storm");
+if (storms.length !== 1 || storms[0].movement_speed <= 0 || storms[0].radius <= 0) {
+  throw new Error("Expected one moving storm hazard.");
+}
+for (const table of ["ship_status", "ship_channel", "cooldown"]) {
+  if (!Array.isArray(rows(table))) {
+    throw new Error(`Tactical state table ${table} is unavailable.`);
+  }
+}
 if (rows("combat_event").length > 100) throw new Error("Transient combat events are not bounded.");
 NODE
 

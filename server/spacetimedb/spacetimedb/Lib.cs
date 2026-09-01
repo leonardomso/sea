@@ -194,6 +194,23 @@ public static partial class Module
         public ulong ReadyAtTick;
     }
 
+    [SpacetimeDB.Table(Accessor = "ShipChannel", Public = true)]
+    [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
+    public partial struct ShipChannel
+    {
+        [PrimaryKey]
+        public ulong ShipEntityId;
+        public string ChannelType;
+        public ulong TargetEntityId;
+        public ulong StartedAtTick;
+        public ulong CompletesAtTick;
+        public uint InitialHull;
+        public uint InitialSails;
+        public uint InitialCannons;
+        public uint InitialCrew;
+        public bool IsActive;
+    }
+
     [SpacetimeDB.Table(Accessor = "CombatContribution", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByEncounter", Columns = new[] { nameof(EncounterId) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByContributor", Columns = new[] { nameof(ContributorEntityId) })]
@@ -240,6 +257,9 @@ public static partial class Module
         public int ChunkY;
         public bool IsActive;
         public bool BlocksMovement;
+        public float DirectionDegrees;
+        public float MovementSpeed;
+        public float Intensity;
     }
 
     [SpacetimeDB.Table(Accessor = "EnvironmentState", Public = true)]
@@ -324,7 +344,7 @@ public static partial class Module
             Tick = 0,
             TickRateHz = WorldRules.TickRateHz,
             NextEntityId = 1000,
-            ContentVersion = 1,
+            ContentVersion = 2,
         });
         SeedContent(ctx);
         SeedWorld(ctx);
@@ -432,6 +452,20 @@ public static partial class Module
         }
 
         var ship = FindPlayerShip(ctx, ctx.Sender);
+        var world = ctx.Db.WorldState.Id.Find(1) ??
+            throw new Exception("World state is missing.");
+        var distance = CombatRules.Distance(
+            ship.PositionX,
+            ship.PositionY,
+            target.PositionX,
+            target.PositionY);
+        if (!TacticalRules.CanAcquireTarget(
+                HasActiveStatus(ctx, target.EntityId, "smoke_screen", world.Tick),
+                distance))
+        {
+            throw new Exception("Smoke conceals that ship at long range.");
+        }
+
         ship.TargetEntityId = entityId;
         ship.IsEngaged = false;
         ctx.Db.Ship.EntityId.Update(ship);
@@ -510,6 +544,7 @@ public static partial class Module
             MaximumRange = WorldRules.CannonRange,
             RangeMultiplier = ammunition.RangeMultiplier,
             Side = parsedSide,
+            IsChanneling = FindActiveChannel(ctx, source.EntityId) is not null,
         });
         if (rejection != FireRejection.None)
         {
@@ -533,6 +568,11 @@ public static partial class Module
             source.CannonDamage,
             source.Cannons,
             source.MaxCannons);
+        var hazards = HazardsAt(ctx, source.PositionX, source.PositionY);
+        if (hazards.InStorm)
+        {
+            damage = ScaleCombatDamage(damage, hazards.Modifiers.WeaponEffectiveness);
+        }
         var distance = CombatRules.Distance(
             source.PositionX,
             source.PositionY,
@@ -547,13 +587,17 @@ public static partial class Module
         ctx.Db.Inventory.InventoryId.Update(selectedInventory);
         source.SelectedWeakPoint = weakPoint.ToLowerInvariant();
         source.IsEngaged = true;
+        var reloadTicks = TacticalRules.AdjustedReloadTicks(
+            source.CannonCooldownTicks,
+            source.Cannons,
+            source.MaxCannons);
         if (parsedSide == BroadsideSide.Port)
         {
-            source.NextPortFireTick = world.Tick + source.CannonCooldownTicks;
+            source.NextPortFireTick = world.Tick + reloadTicks;
         }
         else
         {
-            source.NextStarboardFireTick = world.Tick + source.CannonCooldownTicks;
+            source.NextStarboardFireTick = world.Tick + reloadTicks;
         }
 
         ctx.Db.Ship.EntityId.Update(source);
@@ -581,6 +625,143 @@ public static partial class Module
             source.EntityId,
             "broadside_fired",
             $"target={selectedTarget.EntityId},side={side},ammo={ammunition.AmmoId},impact_tick={impactAtTick}");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void ActivateAbility(ReducerContext ctx, string abilityId)
+    {
+        var ability = ctx.Db.AbilityDefinition.AbilityId.Find(abilityId);
+        var world = ctx.Db.WorldState.Id.Find(1) ??
+            throw new Exception("World state is missing.");
+        var ship = FindPlayerShip(ctx, ctx.Sender);
+        var cooldown = FindCooldown(ctx, ship.EntityId, abilityId);
+        var rejection = TacticalRules.ValidateAbility(new AbilityRequest(
+            ship.IsActive && ship.IsAlive,
+            ability is not null,
+            FindActiveChannel(ctx, ship.EntityId) is null,
+            world.Tick,
+            cooldown?.ReadyAtTick ?? 0));
+        if (rejection != AbilityRejection.None)
+        {
+            throw new Exception(AbilityRejectionMessage(rejection));
+        }
+
+        var selectedAbility = ability!.Value;
+        if (abilityId == "emergency_pump")
+        {
+            DeactivateStatus(ctx, ship.EntityId, "flooding", world.Tick);
+        }
+
+        ApplyStatus(
+            ctx,
+            ship.EntityId,
+            abilityId,
+            world.Tick,
+            selectedAbility.DurationTicks,
+            maximumStacks: 1);
+        SetCooldown(
+            ctx,
+            ship.EntityId,
+            abilityId,
+            world.Tick + selectedAbility.CooldownTicks);
+        AppendEvent(ctx, ship.EntityId, "ability_activated", $"ability={abilityId}");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void StartRepair(ReducerContext ctx)
+    {
+        var world = ctx.Db.WorldState.Id.Find(1) ??
+            throw new Exception("World state is missing.");
+        var ship = FindPlayerShip(ctx, ctx.Sender);
+        var kit = FindInventory(ctx, ship.EntityId, "repair_kit");
+        var rejection = TacticalRules.ValidateRepair(new RepairRequest(
+            ship.IsActive && ship.IsAlive,
+            FindActiveChannel(ctx, ship.EntityId) is null,
+            kit is Inventory item && item.Quantity > 0,
+            ship.Hull < ship.MaxHull || ship.Sails < ship.MaxSails ||
+                ship.Cannons < ship.MaxCannons || ship.Crew < ship.MaxCrew));
+        if (rejection != RepairRejection.None)
+        {
+            throw new Exception(RepairRejectionMessage(rejection));
+        }
+
+        var repairKit = kit!.Value;
+        repairKit.Quantity--;
+        ctx.Db.Inventory.InventoryId.Update(repairKit);
+        ctx.Db.ShipChannel.Insert(new ShipChannel
+        {
+            ShipEntityId = ship.EntityId,
+            ChannelType = "repair",
+            TargetEntityId = ship.EntityId,
+            StartedAtTick = world.Tick,
+            CompletesAtTick = world.Tick + TacticalRules.RepairDurationTicks,
+            InitialHull = ship.Hull,
+            InitialSails = ship.Sails,
+            InitialCannons = ship.Cannons,
+            InitialCrew = ship.Crew,
+            IsActive = true,
+        });
+        AppendEvent(ctx, ship.EntityId, "repair_started", "");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void CancelRepair(ReducerContext ctx)
+    {
+        var ship = FindPlayerShip(ctx, ctx.Sender);
+        CancelChannel(ctx, ship.EntityId, "repair", "repair_cancelled");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void StartBoarding(ReducerContext ctx)
+    {
+        var world = ctx.Db.WorldState.Id.Find(1) ??
+            throw new Exception("World state is missing.");
+        var source = FindPlayerShip(ctx, ctx.Sender);
+        var target = source.TargetEntityId == 0
+            ? default(Ship?)
+            : ctx.Db.Ship.EntityId.Find(source.TargetEntityId);
+        var cooldown = FindCooldown(ctx, source.EntityId, "boarding");
+        var rejection = TacticalRules.ValidateBoarding(new BoardingRequest(
+            source.IsActive && source.IsAlive,
+            target is Ship selected && selected.IsActive && selected.IsAlive,
+            FindActiveChannel(ctx, source.EntityId) is null,
+            target?.Hull ?? 0,
+            target?.MaxHull ?? 0,
+            target is Ship boardingTarget
+                ? CombatRules.Distance(
+                    source.PositionX,
+                    source.PositionY,
+                    boardingTarget.PositionX,
+                    boardingTarget.PositionY)
+                : float.PositiveInfinity,
+            world.Tick,
+            cooldown?.ReadyAtTick ?? 0));
+        if (rejection != BoardingRejection.None)
+        {
+            throw new Exception(BoardingRejectionMessage(rejection));
+        }
+
+        ctx.Db.ShipChannel.Insert(new ShipChannel
+        {
+            ShipEntityId = source.EntityId,
+            ChannelType = "boarding",
+            TargetEntityId = target!.Value.EntityId,
+            StartedAtTick = world.Tick,
+            CompletesAtTick = world.Tick + TacticalRules.BoardingDurationTicks,
+            InitialHull = source.Hull,
+            InitialSails = source.Sails,
+            InitialCannons = source.Cannons,
+            InitialCrew = source.Crew,
+            IsActive = true,
+        });
+        AppendEvent(ctx, source.EntityId, "boarding_started", $"target={target.Value.EntityId}");
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void CancelBoarding(ReducerContext ctx)
+    {
+        var ship = FindPlayerShip(ctx, ctx.Sender);
+        CancelChannel(ctx, ship.EntityId, "boarding", "boarding_cancelled");
     }
 
     [SpacetimeDB.Reducer]
@@ -615,7 +796,11 @@ public static partial class Module
         world.Tick++;
         ctx.Db.WorldState.Id.Update(world);
         UpdateWind(ctx, world.Tick);
+        MoveStorms(ctx);
+        ProcessStatuses(ctx, world.Tick);
+        ProcessChannels(ctx, world.Tick);
         AdvanceMovingShips(ctx);
+        ApplyEnvironmentalHazards(ctx, world.Tick);
         ResolveVolleys(ctx, world.Tick);
         ExpireTransientRows(ctx, world.Tick);
     }
@@ -731,6 +916,7 @@ public static partial class Module
     private static void AdvanceMovingShips(ReducerContext ctx)
     {
         var deltaSeconds = 1f / WorldRules.TickRateHz;
+        var worldTick = ctx.Db.WorldState.Id.Find(1)?.Tick ?? 0;
         var environment = ctx.Db.EnvironmentState.Id.Find(1);
         var navigationBlockers = NavigationBlockers(ctx);
         foreach (var ship in ctx.Db.Ship.ByMoving.Filter(true))
@@ -763,6 +949,18 @@ public static partial class Module
                     wind.WindDirectionDegrees,
                     wind.WindStrength)
                 : 1f;
+            var hazards = HazardsAt(ctx, routedShip.PositionX, routedShip.PositionY);
+            var movementModifiers = TacticalRules.MovementModifiers(
+                HasActiveStatus(ctx, routedShip.EntityId, "full_sail", worldTick),
+                ActiveStatusStacks(ctx, routedShip.EntityId, "slowed", worldTick),
+                routedShip.Sails == 0,
+                routedShip.MaxSails == 0
+                    ? 0f
+                    : (float)routedShip.Sails / routedShip.MaxSails,
+                hazards.InShoal,
+                hazards.InStorm,
+                FindActiveChannel(ctx, routedShip.EntityId) is ShipChannel channel &&
+                    channel.ChannelType == "repair");
             var step = SailingRules.Step(
                 new SailingState(
                     routedShip.PositionX,
@@ -773,10 +971,10 @@ public static partial class Module
                 navigationY,
                 routedShip.IsStopping,
                 new SailingParameters(
-                    routedShip.MaximumSpeed * windMultiplier,
-                    routedShip.Acceleration,
+                    routedShip.MaximumSpeed * windMultiplier * movementModifiers.MaximumSpeed,
+                    routedShip.Acceleration * movementModifiers.Acceleration,
                     routedShip.Deceleration,
-                    routedShip.TurnRateDegrees),
+                    routedShip.TurnRateDegrees * movementModifiers.TurnRate),
                 deltaSeconds);
             var current = CurrentVelocityAt(ctx, step.PositionX, step.PositionY);
             var nextX = step.PositionX + current.X * deltaSeconds;
@@ -888,6 +1086,256 @@ public static partial class Module
         return true;
     }
 
+    private static void MoveStorms(ReducerContext ctx)
+    {
+        var deltaSeconds = 1f / WorldRules.TickRateHz;
+        foreach (var worldObject in ctx.Db.WorldObject.Iter())
+        {
+            if (!worldObject.IsActive || worldObject.Kind != "storm" ||
+                worldObject.MovementSpeed <= 0f)
+            {
+                continue;
+            }
+
+            var position = TacticalRules.MoveStorm(
+                worldObject.PositionX,
+                worldObject.PositionY,
+                worldObject.DirectionDegrees,
+                worldObject.MovementSpeed,
+                deltaSeconds);
+            var moved = worldObject;
+            moved.PositionX = position.X;
+            moved.PositionY = position.Y;
+            moved.ChunkX = SpatialRules.ChunkCoordinate(position.X);
+            moved.ChunkY = SpatialRules.ChunkCoordinate(position.Y);
+            ctx.Db.WorldObject.EntityId.Update(moved);
+        }
+    }
+
+    private static void ProcessStatuses(ReducerContext ctx, ulong tick)
+    {
+        foreach (var status in ctx.Db.ShipStatus.ByActive.Filter(true))
+        {
+            if (tick >= status.ExpiresAtTick)
+            {
+                var lifecycle = TacticalRules.ExpireStatus(
+                    new TacticalStatusState(
+                        status.IsActive,
+                        status.Stacks,
+                        status.ExpiresAtTick,
+                        status.ImmunityUntilTick),
+                    tick,
+                    TacticalRules.StatusImmunityTicks);
+                var expired = status;
+                expired.IsActive = lifecycle.IsActive;
+                expired.Stacks = lifecycle.Stacks;
+                expired.ImmunityUntilTick = lifecycle.ImmunityUntilTick;
+                ctx.Db.ShipStatus.StatusId.Update(expired);
+                continue;
+            }
+
+            if (ctx.Db.Ship.EntityId.Find(status.ShipEntityId) is not Ship ship ||
+                !ship.IsActive || !ship.IsAlive)
+            {
+                continue;
+            }
+
+            var damage = TacticalRules.PeriodicStatusDamage(
+                status.StatusType,
+                status.Stacks,
+                tick);
+            if (damage > 0)
+            {
+                var damaged = ship;
+                ApplyDamageToShip(
+                    ctx,
+                    sourceEntityId: 0,
+                    ref damaged,
+                    new CombatDamage(damage, 0, 0, 0),
+                    tick,
+                    status.StatusType);
+                ctx.Db.Ship.EntityId.Update(damaged);
+                continue;
+            }
+
+            if (status.StatusType == "emergency_pump" && tick % 5 == 0 &&
+                ship.Hull < ship.MaxHull)
+            {
+                var restored = ship;
+                restored.Hull = Math.Min(restored.MaxHull, restored.Hull + 2);
+                ctx.Db.Ship.EntityId.Update(restored);
+            }
+        }
+    }
+
+    private static void ProcessChannels(ReducerContext ctx, ulong tick)
+    {
+        foreach (var channel in ctx.Db.ShipChannel.ByActive.Filter(true))
+        {
+            if (ctx.Db.Ship.EntityId.Find(channel.ShipEntityId) is not Ship source ||
+                !source.IsActive || !source.IsAlive)
+            {
+                ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
+                continue;
+            }
+
+            if (channel.ChannelType == "repair")
+            {
+                var elapsed = Math.Min(
+                    (ulong)TacticalRules.RepairDurationTicks,
+                    tick - channel.StartedAtTick);
+                var repaired = source;
+                repaired.Hull = TacticalRules.ProgressiveRestore(
+                    channel.InitialHull,
+                    source.MaxHull,
+                    restoreAmount: 50,
+                    elapsed,
+                    TacticalRules.RepairDurationTicks);
+                repaired.Sails = TacticalRules.ProgressiveRestore(
+                    channel.InitialSails,
+                    source.MaxSails,
+                    restoreAmount: 40,
+                    elapsed,
+                    TacticalRules.RepairDurationTicks);
+                repaired.Cannons = TacticalRules.ProgressiveRestore(
+                    channel.InitialCannons,
+                    source.MaxCannons,
+                    restoreAmount: 40,
+                    elapsed,
+                    TacticalRules.RepairDurationTicks);
+                repaired.Crew = TacticalRules.ProgressiveRestore(
+                    channel.InitialCrew,
+                    source.MaxCrew,
+                    restoreAmount: 20,
+                    elapsed,
+                    TacticalRules.RepairDurationTicks);
+                ctx.Db.Ship.EntityId.Update(repaired);
+                SynchronizeDisabledSails(ctx, repaired, tick);
+                if (tick >= channel.CompletesAtTick)
+                {
+                    ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
+                    AppendEvent(ctx, channel.ShipEntityId, "repair_completed", "");
+                }
+
+                continue;
+            }
+
+            if (channel.ChannelType != "boarding")
+            {
+                ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
+                continue;
+            }
+
+            if (ctx.Db.Ship.EntityId.Find(channel.TargetEntityId) is not Ship target ||
+                TacticalRules.ValidateBoarding(new BoardingRequest(
+                    source.IsActive && source.IsAlive,
+                    target.IsActive && target.IsAlive,
+                    IsIdle: true,
+                    target.Hull,
+                    target.MaxHull,
+                    CombatRules.Distance(
+                        source.PositionX,
+                        source.PositionY,
+                        target.PositionX,
+                        target.PositionY),
+                    CurrentTick: tick,
+                    ReadyAtTick: tick)) != BoardingRejection.None)
+            {
+                InterruptBoarding(ctx, channel.ShipEntityId, tick, "boarding_interrupted");
+                continue;
+            }
+
+            if (tick < channel.CompletesAtTick)
+            {
+                continue;
+            }
+
+            var fatigued = HasActiveStatus(ctx, source.EntityId, "boarding_fatigue", tick);
+            var succeeded = TacticalRules.BoardingSucceeds(source.Crew, target.Crew, fatigued);
+            if (succeeded)
+            {
+                var boarded = target;
+                boarded.Crew = WorldRules.ApplyDamage(boarded.Crew, 25);
+                ctx.Db.Ship.EntityId.Update(boarded);
+                AddInventory(ctx, source.EntityId, "boarding_cache", 1);
+                AppendEvent(
+                    ctx,
+                    source.EntityId,
+                    "boarding_succeeded",
+                    $"target={target.EntityId}");
+            }
+            else
+            {
+                ApplyStatus(
+                    ctx,
+                    source.EntityId,
+                    "boarding_fatigue",
+                    tick,
+                    TacticalRules.BoardingFatigueTicks,
+                    maximumStacks: 1);
+                AppendEvent(
+                    ctx,
+                    source.EntityId,
+                    "boarding_failed",
+                    $"target={target.EntityId}");
+            }
+
+            SetCooldown(
+                ctx,
+                source.EntityId,
+                "boarding",
+                tick + TacticalRules.BoardingCooldownTicks);
+            ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
+        }
+    }
+
+    private static void ApplyEnvironmentalHazards(ReducerContext ctx, ulong tick)
+    {
+        if (tick % WorldRules.TickRateHz != 0)
+        {
+            return;
+        }
+
+        foreach (var ship in ctx.Db.Ship.ByActive.Filter(true))
+        {
+            if (!ship.IsAlive)
+            {
+                continue;
+            }
+
+            var hazards = HazardsAt(ctx, ship.PositionX, ship.PositionY);
+            var affected = ship;
+            if (hazards.InStorm)
+            {
+                ApplyDamageToShip(
+                    ctx,
+                    sourceEntityId: 0,
+                    ref affected,
+                    new CombatDamage(2, 0, 0, 0),
+                    tick,
+                    "storm");
+            }
+
+            if (hazards.InShoal && TacticalRules.ShouldApplyStatus(
+                    ship.EntityId ^ tick,
+                    chancePercent: 35))
+            {
+                ApplyStatus(
+                    ctx,
+                    ship.EntityId,
+                    "flooding",
+                    tick,
+                    TacticalRules.StatusDurationTicks,
+                    maximumStacks: 3);
+            }
+
+            if (!affected.Equals(ship))
+            {
+                ctx.Db.Ship.EntityId.Update(affected);
+            }
+        }
+    }
+
     private static void ResolveVolleys(ReducerContext ctx, ulong tick)
     {
         foreach (var volley in ctx.Db.Volley.ByActive.Filter(true))
@@ -906,31 +1354,109 @@ public static partial class Module
             }
 
             var defender = target;
-            defender.Hull = WorldRules.ApplyDamage(defender.Hull, volley.HullDamage);
-            defender.Sails = WorldRules.ApplyDamage(defender.Sails, volley.SailDamage);
-            defender.Cannons = WorldRules.ApplyDamage(defender.Cannons, volley.CannonDamage);
-            defender.Crew = WorldRules.ApplyDamage(defender.Crew, volley.CrewDamage);
+            var appliedDamage = ApplyDamageToShip(
+                ctx,
+                volley.SourceEntityId,
+                ref defender,
+                new CombatDamage(
+                    volley.HullDamage,
+                    volley.SailDamage,
+                    volley.CannonDamage,
+                    volley.CrewDamage),
+                tick,
+                "broadside");
             if (defender.Hull == 0)
             {
-                defender.IsAlive = false;
-                defender.IsActive = false;
-                defender.IsMoving = false;
-                defender.HasCourse = false;
-                ClearTargetLocks(ctx, defender.EntityId);
                 AppendEvent(ctx, volley.SourceEntityId, "enemy_sunk", $"entity_id={defender.EntityId}");
             }
             else
             {
+                ApplyVolleyStatus(ctx, volley, defender, tick);
                 AppendEvent(
                     ctx,
                     volley.SourceEntityId,
                     "broadside_impact",
-                    $"entity_id={defender.EntityId},hull={volley.HullDamage},sails={volley.SailDamage},cannons={volley.CannonDamage},crew={volley.CrewDamage}");
+                    $"entity_id={defender.EntityId},hull={appliedDamage.Hull},sails={appliedDamage.Sails},cannons={appliedDamage.Cannons},crew={appliedDamage.Crew}");
             }
 
             ctx.Db.Ship.EntityId.Update(defender);
             ctx.Db.Volley.VolleyId.Delete(volley.VolleyId);
         }
+    }
+
+    private static CombatDamage ApplyDamageToShip(
+        ReducerContext ctx,
+        ulong sourceEntityId,
+        ref Ship defender,
+        CombatDamage incoming,
+        ulong tick,
+        string cause)
+    {
+        if (tick < defender.InvulnerableUntilTick)
+        {
+            return new CombatDamage(0, 0, 0, 0);
+        }
+
+        var brace = HasActiveStatus(ctx, defender.EntityId, "brace", tick);
+        var damage = new CombatDamage(
+            TacticalRules.ApplyIncomingDamage(incoming.Hull, brace),
+            TacticalRules.ApplyIncomingDamage(incoming.Sails, brace),
+            TacticalRules.ApplyIncomingDamage(incoming.Cannons, brace),
+            TacticalRules.ApplyIncomingDamage(incoming.Crew, brace));
+        if (damage.Hull == 0 && damage.Sails == 0 &&
+            damage.Cannons == 0 && damage.Crew == 0)
+        {
+            return damage;
+        }
+
+        InterruptActiveChannel(ctx, defender.EntityId, tick, cause);
+        defender.Hull = WorldRules.ApplyDamage(defender.Hull, damage.Hull);
+        defender.Sails = WorldRules.ApplyDamage(defender.Sails, damage.Sails);
+        defender.Cannons = WorldRules.ApplyDamage(defender.Cannons, damage.Cannons);
+        defender.Crew = WorldRules.ApplyDamage(defender.Crew, damage.Crew);
+        SynchronizeDisabledSails(ctx, defender, tick);
+        if (defender.Hull == 0)
+        {
+            defender.IsAlive = false;
+            defender.IsActive = false;
+            defender.IsMoving = false;
+            defender.HasCourse = false;
+            defender.IsStopping = false;
+            ClearTargetLocks(ctx, defender.EntityId);
+            if (sourceEntityId != 0)
+            {
+                defender.TargetEntityId = 0;
+            }
+        }
+
+        return damage;
+    }
+
+    private static void ApplyVolleyStatus(
+        ReducerContext ctx,
+        Volley volley,
+        Ship defender,
+        ulong tick)
+    {
+        if (ctx.Db.AmmoDefinition.AmmoId.Find(volley.AmmoId) is not AmmoDefinition ammo ||
+            ammo.AppliedStatus == "none")
+        {
+            return;
+        }
+
+        var chance = ammo.AppliedStatus == "flooding" ? 35u : 100u;
+        if (!TacticalRules.ShouldApplyStatus(volley.VolleyId ^ defender.EntityId, chance))
+        {
+            return;
+        }
+
+        ApplyStatus(
+            ctx,
+            defender.EntityId,
+            ammo.AppliedStatus,
+            tick,
+            TacticalRules.StatusDurationTicks,
+            maximumStacks: 3);
     }
 
     private static void ClearTargetLocks(ReducerContext ctx, ulong targetEntityId)
@@ -943,6 +1469,314 @@ public static partial class Module
             ctx.Db.Ship.EntityId.Update(cleared);
         }
     }
+
+    private static ShipStatus? FindStatus(
+        ReducerContext ctx,
+        ulong shipEntityId,
+        string statusType)
+    {
+        foreach (var status in ctx.Db.ShipStatus.ByShip.Filter(shipEntityId))
+        {
+            if (status.StatusType == statusType)
+            {
+                return status;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool HasActiveStatus(
+        ReducerContext ctx,
+        ulong shipEntityId,
+        string statusType,
+        ulong tick) =>
+        FindStatus(ctx, shipEntityId, statusType) is ShipStatus status &&
+        status.IsActive && tick < status.ExpiresAtTick;
+
+    private static uint ActiveStatusStacks(
+        ReducerContext ctx,
+        ulong shipEntityId,
+        string statusType,
+        ulong tick) =>
+        FindStatus(ctx, shipEntityId, statusType) is ShipStatus status &&
+        status.IsActive && tick < status.ExpiresAtTick
+            ? status.Stacks
+            : 0;
+
+    private static bool ApplyStatus(
+        ReducerContext ctx,
+        ulong shipEntityId,
+        string statusType,
+        ulong tick,
+        uint durationTicks,
+        uint maximumStacks)
+    {
+        var existing = FindStatus(ctx, shipEntityId, statusType);
+        var application = TacticalRules.ApplyStatus(
+            existing is ShipStatus row
+                ? new TacticalStatusState(
+                    row.IsActive,
+                    row.Stacks,
+                    row.ExpiresAtTick,
+                    row.ImmunityUntilTick)
+                : new TacticalStatusState(false, 0, 0, 0),
+            tick,
+            durationTicks,
+            maximumStacks);
+        if (!application.Applied)
+        {
+            return false;
+        }
+
+        if (existing is ShipStatus current)
+        {
+            current.Stacks = application.State.Stacks;
+            current.ExpiresAtTick = application.State.ExpiresAtTick;
+            current.ImmunityUntilTick = application.State.ImmunityUntilTick;
+            current.IsActive = true;
+            ctx.Db.ShipStatus.StatusId.Update(current);
+        }
+        else
+        {
+            ctx.Db.ShipStatus.Insert(new ShipStatus
+            {
+                ShipEntityId = shipEntityId,
+                StatusType = statusType,
+                Stacks = application.State.Stacks,
+                ExpiresAtTick = application.State.ExpiresAtTick,
+                ImmunityUntilTick = application.State.ImmunityUntilTick,
+                IsActive = true,
+            });
+        }
+
+        AppendEvent(ctx, shipEntityId, "status_applied", $"status={statusType}");
+        return true;
+    }
+
+    private static void DeactivateStatus(
+        ReducerContext ctx,
+        ulong shipEntityId,
+        string statusType,
+        ulong tick)
+    {
+        if (FindStatus(ctx, shipEntityId, statusType) is not ShipStatus status ||
+            !status.IsActive)
+        {
+            return;
+        }
+
+        status.IsActive = false;
+        status.Stacks = 0;
+        status.ImmunityUntilTick = tick + TacticalRules.StatusImmunityTicks;
+        ctx.Db.ShipStatus.StatusId.Update(status);
+    }
+
+    private static void SynchronizeDisabledSails(
+        ReducerContext ctx,
+        Ship ship,
+        ulong tick)
+    {
+        if (ship.Sails == 0)
+        {
+            if (FindStatus(ctx, ship.EntityId, "disabled_sails") is ShipStatus existing)
+            {
+                existing.IsActive = true;
+                existing.Stacks = 1;
+                existing.ExpiresAtTick = ulong.MaxValue;
+                existing.ImmunityUntilTick = 0;
+                ctx.Db.ShipStatus.StatusId.Update(existing);
+            }
+            else
+            {
+                ctx.Db.ShipStatus.Insert(new ShipStatus
+                {
+                    ShipEntityId = ship.EntityId,
+                    StatusType = "disabled_sails",
+                    Stacks = 1,
+                    ExpiresAtTick = ulong.MaxValue,
+                    ImmunityUntilTick = 0,
+                    IsActive = true,
+                });
+            }
+        }
+        else
+        {
+            DeactivateStatus(ctx, ship.EntityId, "disabled_sails", tick);
+        }
+    }
+
+    private static ShipChannel? FindActiveChannel(ReducerContext ctx, ulong shipEntityId) =>
+        ctx.Db.ShipChannel.ShipEntityId.Find(shipEntityId) is ShipChannel channel &&
+        channel.IsActive
+            ? channel
+            : null;
+
+    private static void CancelChannel(
+        ReducerContext ctx,
+        ulong shipEntityId,
+        string expectedType,
+        string eventType)
+    {
+        if (FindActiveChannel(ctx, shipEntityId) is not ShipChannel channel ||
+            channel.ChannelType != expectedType)
+        {
+            return;
+        }
+
+        ctx.Db.ShipChannel.ShipEntityId.Delete(shipEntityId);
+        AppendEvent(ctx, shipEntityId, eventType, "");
+    }
+
+    private static void InterruptActiveChannel(
+        ReducerContext ctx,
+        ulong shipEntityId,
+        ulong tick,
+        string cause)
+    {
+        if (FindActiveChannel(ctx, shipEntityId) is not ShipChannel channel)
+        {
+            return;
+        }
+
+        if (channel.ChannelType == "boarding")
+        {
+            SetCooldown(
+                ctx,
+                shipEntityId,
+                "boarding",
+                tick + TacticalRules.BoardingCooldownTicks);
+        }
+
+        ctx.Db.ShipChannel.ShipEntityId.Delete(shipEntityId);
+        AppendEvent(
+            ctx,
+            shipEntityId,
+            $"{channel.ChannelType}_interrupted",
+            $"cause={cause}");
+    }
+
+    private static void InterruptBoarding(
+        ReducerContext ctx,
+        ulong shipEntityId,
+        ulong tick,
+        string eventType)
+    {
+        SetCooldown(
+            ctx,
+            shipEntityId,
+            "boarding",
+            tick + TacticalRules.BoardingCooldownTicks);
+        ctx.Db.ShipChannel.ShipEntityId.Delete(shipEntityId);
+        AppendEvent(ctx, shipEntityId, eventType, "");
+    }
+
+    private static Cooldown? FindCooldown(
+        ReducerContext ctx,
+        ulong shipEntityId,
+        string cooldownType)
+    {
+        foreach (var cooldown in ctx.Db.Cooldown.ByShip.Filter(shipEntityId))
+        {
+            if (cooldown.CooldownType == cooldownType)
+            {
+                return cooldown;
+            }
+        }
+
+        return null;
+    }
+
+    private static void SetCooldown(
+        ReducerContext ctx,
+        ulong shipEntityId,
+        string cooldownType,
+        ulong readyAtTick)
+    {
+        if (FindCooldown(ctx, shipEntityId, cooldownType) is Cooldown cooldown)
+        {
+            cooldown.ReadyAtTick = readyAtTick;
+            ctx.Db.Cooldown.CooldownId.Update(cooldown);
+            return;
+        }
+
+        ctx.Db.Cooldown.Insert(new Cooldown
+        {
+            ShipEntityId = shipEntityId,
+            CooldownType = cooldownType,
+            ReadyAtTick = readyAtTick,
+        });
+    }
+
+    private static void AddInventory(
+        ReducerContext ctx,
+        ulong shipEntityId,
+        string itemId,
+        uint quantity)
+    {
+        if (FindInventory(ctx, shipEntityId, itemId) is Inventory existing)
+        {
+            existing.Quantity = checked(existing.Quantity + quantity);
+            ctx.Db.Inventory.InventoryId.Update(existing);
+            return;
+        }
+
+        ctx.Db.Inventory.Insert(new Inventory
+        {
+            ShipEntityId = shipEntityId,
+            ItemId = itemId,
+            Quantity = quantity,
+        });
+    }
+
+    private static (bool InStorm, bool InShoal, TacticalModifiers Modifiers) HazardsAt(
+        ReducerContext ctx,
+        float x,
+        float y)
+    {
+        var inStorm = false;
+        var inShoal = false;
+        foreach (var worldObject in ctx.Db.WorldObject.Iter())
+        {
+            if (!worldObject.IsActive ||
+                !WorldRules.IsInRange(
+                    x,
+                    y,
+                    worldObject.PositionX,
+                    worldObject.PositionY,
+                    worldObject.Radius))
+            {
+                continue;
+            }
+
+            inStorm |= worldObject.Kind == "storm";
+            inShoal |= worldObject.Kind == "shoal";
+        }
+
+        return (
+            inStorm,
+            inShoal,
+            TacticalRules.MovementModifiers(
+                fullSail: false,
+                slowedStacks: 0,
+                sailsDisabled: false,
+                sailIntegrity: 1f,
+                inShoal,
+                inStorm,
+                repairing: false));
+    }
+
+    private static CombatDamage ScaleCombatDamage(CombatDamage damage, float multiplier) =>
+        new(
+            ScaleDamage(damage.Hull, multiplier),
+            ScaleDamage(damage.Sails, multiplier),
+            ScaleDamage(damage.Cannons, multiplier),
+            ScaleDamage(damage.Crew, multiplier));
+
+    private static uint ScaleDamage(uint damage, float multiplier) =>
+        damage == 0
+            ? 0
+            : (uint)MathF.Round(damage * multiplier, MidpointRounding.AwayFromZero);
 
     private static Inventory? FindInventory(ReducerContext ctx, ulong shipEntityId, string itemId)
     {
@@ -967,7 +1801,37 @@ public static partial class Module
         FireRejection.Reloading => "That broadside is still reloading.",
         FireRejection.OutOfRange => "The selected target is out of range.",
         FireRejection.OutsideArc => "The selected target is outside that broadside arc.",
+        FireRejection.Busy => "Repair or boarding must finish before firing.",
         _ => "The broadside cannot fire.",
+    };
+
+    private static string AbilityRejectionMessage(AbilityRejection rejection) => rejection switch
+    {
+        AbilityRejection.SourceSunk => "A sunk ship cannot use abilities.",
+        AbilityRejection.UnknownAbility => "That ability does not exist.",
+        AbilityRejection.Cooldown => "That ability is still cooling down.",
+        AbilityRejection.Busy => "Finish the active channel before using an ability.",
+        _ => "The ability cannot be activated.",
+    };
+
+    private static string RepairRejectionMessage(RepairRejection rejection) => rejection switch
+    {
+        RepairRejection.SourceSunk => "A sunk ship cannot be repaired.",
+        RepairRejection.Busy => "Another channel is already active.",
+        RepairRejection.NoRepairKit => "No repair kits remain.",
+        RepairRejection.NothingToRepair => "The ship does not need repairs.",
+        _ => "Repair cannot start.",
+    };
+
+    private static string BoardingRejectionMessage(BoardingRejection rejection) => rejection switch
+    {
+        BoardingRejection.SourceSunk => "A sunk ship cannot board.",
+        BoardingRejection.TargetSunk => "Select a living target before boarding.",
+        BoardingRejection.Busy => "Another channel is already active.",
+        BoardingRejection.TargetTooStrong => "The target must be below 25% hull.",
+        BoardingRejection.OutOfRange => "Move within boarding range.",
+        BoardingRejection.Cooldown => "Boarding is still cooling down.",
+        _ => "Boarding cannot start.",
     };
 
     private static void ExpireTransientRows(ReducerContext ctx, ulong tick)
@@ -1087,6 +1951,19 @@ public static partial class Module
         InsertWorldObject(ctx, 7, "island", 4f, 70f, 9f, true);
         InsertWorldObject(ctx, 8, "reef", 24f, -61f, 8f, true);
         InsertWorldObject(ctx, 9, "reef", 68f, 58f, 9f, true);
+        InsertWorldObject(ctx, 11, "shoal", -4f, -42f, 15f, false, intensity: 0.7f);
+        InsertWorldObject(ctx, 12, "shoal", 48f, 45f, 12f, false, intensity: 0.8f);
+        InsertWorldObject(
+            ctx,
+            13,
+            "storm",
+            -72f,
+            3f,
+            14f,
+            false,
+            directionDegrees: 72f,
+            movementSpeed: 1.5f,
+            intensity: 1f);
 
         var trainingShip = CreateShip(10, "patrol", "npc", 45f, -10f);
         trainingShip.Hull = WorldRules.EnemyInitialHealth;
@@ -1223,7 +2100,10 @@ public static partial class Module
         float x,
         float y,
         float radius,
-        bool blocksMovement)
+        bool blocksMovement,
+        float directionDegrees = 0f,
+        float movementSpeed = 0f,
+        float intensity = 0f)
     {
         ctx.Db.WorldObject.Insert(new WorldObject
         {
@@ -1236,6 +2116,9 @@ public static partial class Module
             ChunkY = SpatialRules.ChunkCoordinate(y),
             IsActive = true,
             BlocksMovement = blocksMovement,
+            DirectionDegrees = directionDegrees,
+            MovementSpeed = movementSpeed,
+            Intensity = intensity,
         });
     }
 }

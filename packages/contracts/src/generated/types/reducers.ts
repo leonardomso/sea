@@ -6,6 +6,9 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
+import ActivateAbilityReducer from "../activate_ability_reducer";
+import CancelBoardingReducer from "../cancel_boarding_reducer";
+import CancelRepairReducer from "../cancel_repair_reducer";
 import ClearTargetReducer from "../clear_target_reducer";
 import FireBroadsideReducer from "../fire_broadside_reducer";
 import LoadPlayerReducer from "../load_player_reducer";
@@ -13,9 +16,14 @@ import MoveToReducer from "../move_to_reducer";
 import SelectTargetReducer from "../select_target_reducer";
 import SetAmmoReducer from "../set_ammo_reducer";
 import SetCourseReducer from "../set_course_reducer";
+import StartBoardingReducer from "../start_boarding_reducer";
+import StartRepairReducer from "../start_repair_reducer";
 import StopCourseReducer from "../stop_course_reducer";
 import UpgradeCannonReducer from "../upgrade_cannon_reducer";
 
+export type ActivateAbilityParams = __Infer<typeof ActivateAbilityReducer>;
+export type CancelBoardingParams = __Infer<typeof CancelBoardingReducer>;
+export type CancelRepairParams = __Infer<typeof CancelRepairReducer>;
 export type ClearTargetParams = __Infer<typeof ClearTargetReducer>;
 export type FireBroadsideParams = __Infer<typeof FireBroadsideReducer>;
 export type LoadPlayerParams = __Infer<typeof LoadPlayerReducer>;
@@ -23,5 +31,7 @@ export type MoveToParams = __Infer<typeof MoveToReducer>;
 export type SelectTargetParams = __Infer<typeof SelectTargetReducer>;
 export type SetAmmoParams = __Infer<typeof SetAmmoReducer>;
 export type SetCourseParams = __Infer<typeof SetCourseReducer>;
+export type StartBoardingParams = __Infer<typeof StartBoardingReducer>;
+export type StartRepairParams = __Infer<typeof StartRepairReducer>;
 export type StopCourseParams = __Infer<typeof StopCourseReducer>;
 export type UpgradeCannonParams = __Infer<typeof UpgradeCannonReducer>;

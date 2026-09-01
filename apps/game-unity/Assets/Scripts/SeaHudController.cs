@@ -166,12 +166,12 @@ namespace Sea.Client
             HookButton("ammo-incendiary", () => game?.SetSelectedAmmo("incendiary"));
             HookButton("port-broadside", () => game?.FireBroadside("port"));
             HookButton("starboard-broadside", () => game?.FireBroadside("starboard"));
-            HookButton("ability-full-sail", () => game?.RequestCombatIntent("Full Sail ordered."));
-            HookButton("ability-brace", () => game?.RequestCombatIntent("Brace ordered."));
-            HookButton("ability-pump", () => game?.RequestCombatIntent("Emergency Pump ordered."));
-            HookButton("ability-smoke", () => game?.RequestCombatIntent("Smoke Screen ordered."));
-            HookButton("repair", () => game?.RequestCombatIntent("Repair order toggled."));
-            HookButton("board", () => game?.RequestCombatIntent("Boarding order toggled."));
+            HookButton("ability-full-sail", () => game?.ActivateAbility("full_sail"));
+            HookButton("ability-brace", () => game?.ActivateAbility("brace"));
+            HookButton("ability-pump", () => game?.ActivateAbility("emergency_pump"));
+            HookButton("ability-smoke", () => game?.ActivateAbility("smoke_screen"));
+            HookButton("repair", () => game?.ToggleRepair());
+            HookButton("board", () => game?.ToggleBoarding());
             coordinateInput.RegisterCallback<KeyDownEvent>(HandleCoordinateKey);
             Apply(SeaHudViewModel.From(CaptureSnapshot()));
         }
@@ -264,6 +264,44 @@ namespace Sea.Client
             }
 
             snapshot.StatusText = statuses.Count == 0 ? "CLEAR" : string.Join("  •  ", statuses);
+            if (world != null)
+            {
+                var channel = connection.Connection.Db.ShipChannel.ShipEntityId.Find(ship.EntityId);
+                if (channel != null && channel.IsActive)
+                {
+                    snapshot.ProgressText = channel.ChannelType == "repair"
+                        ? "REPAIRING"
+                        : $"BOARDING  •  TARGET {channel.TargetEntityId}";
+                    snapshot.Progress = SeaTacticalPresentationRules.ChannelProgress(
+                        channel.StartedAtTick,
+                        channel.CompletesAtTick,
+                        world.Tick);
+                }
+
+                foreach (var cooldown in connection.Connection.Db.Cooldown.ByShip.Filter(ship.EntityId))
+                {
+                    var seconds = RemainingSeconds(
+                        cooldown.ReadyAtTick,
+                        world.Tick,
+                        Math.Max(1u, world.TickRateHz));
+                    switch (cooldown.CooldownType)
+                    {
+                        case "full_sail":
+                            snapshot.FullSailCooldownSeconds = seconds;
+                            break;
+                        case "brace":
+                            snapshot.BraceCooldownSeconds = seconds;
+                            break;
+                        case "emergency_pump":
+                            snapshot.PumpCooldownSeconds = seconds;
+                            break;
+                        case "smoke_screen":
+                            snapshot.SmokeCooldownSeconds = seconds;
+                            break;
+                    }
+                }
+            }
+
             return snapshot;
         }
 
@@ -310,6 +348,22 @@ namespace Sea.Client
             SetText("status-text", model.StatusText);
             SetText("channel-label", string.IsNullOrWhiteSpace(model.ProgressText) ? "NO ACTIVE ORDER" : model.ProgressText);
             SetProgress("channel-progress", model.Progress);
+            SetAbilityCooldown("ability-full-sail", "Z", model.FullSailCooldownSeconds);
+            SetAbilityCooldown("ability-brace", "X", model.BraceCooldownSeconds);
+            SetAbilityCooldown("ability-pump", "C", model.PumpCooldownSeconds);
+            SetAbilityCooldown("ability-smoke", "V", model.SmokeCooldownSeconds);
+        }
+
+        private void SetAbilityCooldown(string name, string binding, float seconds)
+        {
+            var button = root?.Q<Button>(name);
+            if (button == null)
+            {
+                return;
+            }
+
+            button.text = seconds <= 0f ? binding : $"{seconds:0.0}";
+            button.SetEnabled(seconds <= 0f);
         }
 
         private void PopulateRebindList()

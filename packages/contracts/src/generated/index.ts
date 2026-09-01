@@ -34,6 +34,9 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import ActivateAbilityReducer from "./activate_ability_reducer";
+import CancelBoardingReducer from "./cancel_boarding_reducer";
+import CancelRepairReducer from "./cancel_repair_reducer";
 import ClearTargetReducer from "./clear_target_reducer";
 import FireBroadsideReducer from "./fire_broadside_reducer";
 import LoadPlayerReducer from "./load_player_reducer";
@@ -41,6 +44,8 @@ import MoveToReducer from "./move_to_reducer";
 import SelectTargetReducer from "./select_target_reducer";
 import SetAmmoReducer from "./set_ammo_reducer";
 import SetCourseReducer from "./set_course_reducer";
+import StartBoardingReducer from "./start_boarding_reducer";
+import StartRepairReducer from "./start_repair_reducer";
 import StopCourseReducer from "./stop_course_reducer";
 import UpgradeCannonReducer from "./upgrade_cannon_reducer";
 
@@ -62,6 +67,7 @@ import NpcDefinitionRow from "./npc_definition_table";
 import PlayerOwnershipRow from "./player_ownership_table";
 import PlayerProgressionRow from "./player_progression_table";
 import ShipRow from "./ship_table";
+import ShipChannelRow from "./ship_channel_table";
 import ShipStatusRow from "./ship_status_table";
 import VolleyRow from "./volley_table";
 import WorldObjectRow from "./world_object_table";
@@ -293,6 +299,20 @@ const tablesSchema = __schema({
       { name: 'ship_entity_id_key', constraint: 'unique', columns: ['entityId'] },
     ],
   }, ShipRow),
+  shipChannel: __table({
+    name: 'ship_channel',
+    indexes: [
+      { accessor: 'ByActive', name: 'ship_channel_is_active_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+      ] },
+      { accessor: 'ShipEntityId', name: 'ship_channel_ship_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'shipEntityId',
+      ] },
+    ],
+    constraints: [
+      { name: 'ship_channel_ship_entity_id_key', constraint: 'unique', columns: ['shipEntityId'] },
+    ],
+  }, ShipChannelRow),
   shipStatus: __table({
     name: 'ship_status',
     indexes: [
@@ -361,6 +381,9 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("activate_ability", ActivateAbilityReducer),
+  __reducerSchema("cancel_boarding", CancelBoardingReducer),
+  __reducerSchema("cancel_repair", CancelRepairReducer),
   __reducerSchema("clear_target", ClearTargetReducer),
   __reducerSchema("fire_broadside", FireBroadsideReducer),
   __reducerSchema("load_player", LoadPlayerReducer),
@@ -368,6 +391,8 @@ const reducersSchema = __reducers(
   __reducerSchema("select_target", SelectTargetReducer),
   __reducerSchema("set_ammo", SetAmmoReducer),
   __reducerSchema("set_course", SetCourseReducer),
+  __reducerSchema("start_boarding", StartBoardingReducer),
+  __reducerSchema("start_repair", StartRepairReducer),
   __reducerSchema("stop_course", StopCourseReducer),
   __reducerSchema("upgrade_cannon", UpgradeCannonReducer),
 );
@@ -408,6 +433,8 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "PlayerProgression": Omit<typeof tablesSchema.schemaType.tables["playerProgression"], "accessorName"> & { readonly accessorName: "PlayerProgression" };
     /** @deprecated Use `ship` instead. This alias will be removed in the next major version. */
     readonly "Ship": Omit<typeof tablesSchema.schemaType.tables["ship"], "accessorName"> & { readonly accessorName: "Ship" };
+    /** @deprecated Use `shipChannel` instead. This alias will be removed in the next major version. */
+    readonly "ShipChannel": Omit<typeof tablesSchema.schemaType.tables["shipChannel"], "accessorName"> & { readonly accessorName: "ShipChannel" };
     /** @deprecated Use `shipStatus` instead. This alias will be removed in the next major version. */
     readonly "ShipStatus": Omit<typeof tablesSchema.schemaType.tables["shipStatus"], "accessorName"> & { readonly accessorName: "ShipStatus" };
     /** @deprecated Use `volley` instead. This alias will be removed in the next major version. */
@@ -449,6 +476,7 @@ const tableAccessorAliases = {
   "PlayerOwnership": "playerOwnership",
   "PlayerProgression": "playerProgression",
   "Ship": "ship",
+  "ShipChannel": "shipChannel",
   "ShipStatus": "shipStatus",
   "Volley": "volley",
   "WorldObject": "worldObject",
@@ -503,6 +531,8 @@ export type DbView = __DbViewBase & {
   readonly "PlayerProgression": __DbViewBase["playerProgression"];
   /** @deprecated Use `ship` instead. This alias will be removed in the next major version. */
   readonly "Ship": __DbViewBase["ship"];
+  /** @deprecated Use `shipChannel` instead. This alias will be removed in the next major version. */
+  readonly "ShipChannel": __DbViewBase["shipChannel"];
   /** @deprecated Use `shipStatus` instead. This alias will be removed in the next major version. */
   readonly "ShipStatus": __DbViewBase["shipStatus"];
   /** @deprecated Use `volley` instead. This alias will be removed in the next major version. */
@@ -545,6 +575,8 @@ export type Tables = __TablesBase & {
   readonly "PlayerProgression": __TablesBase["playerProgression"];
   /** @deprecated Use `ship` instead. This alias will be removed in the next major version. */
   readonly "Ship": __TablesBase["ship"];
+  /** @deprecated Use `shipChannel` instead. This alias will be removed in the next major version. */
+  readonly "ShipChannel": __TablesBase["shipChannel"];
   /** @deprecated Use `shipStatus` instead. This alias will be removed in the next major version. */
   readonly "ShipStatus": __TablesBase["shipStatus"];
   /** @deprecated Use `volley` instead. This alias will be removed in the next major version. */

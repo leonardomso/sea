@@ -96,6 +96,63 @@ namespace Sea.Client
             return root;
         }
 
+        public static GameObject CreateShoal(
+            string name,
+            Vector3 position,
+            float radius,
+            Material shallows)
+        {
+            ValidateRadius(radius);
+            var root = new GameObject(name);
+            root.transform.position = position;
+            CreateLayer(root.transform, "Shoal Water", radius * 2f, 0.025f, -0.14f, shallows);
+            for (var index = 0; index < 4; index++)
+            {
+                var ripple = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                ripple.name = $"Shoal Ripple {index + 1}";
+                ripple.transform.SetParent(root.transform, false);
+                ripple.transform.localPosition = new Vector3(
+                    Mathf.Cos(index * 1.7f) * radius * 0.35f,
+                    -0.1f,
+                    Mathf.Sin(index * 1.7f) * radius * 0.35f);
+                ripple.transform.localScale = new Vector3(
+                    radius * (0.32f + index * 0.04f),
+                    0.012f,
+                    radius * 0.09f);
+                PreparePrimitive(ripple, shallows);
+            }
+
+            return root;
+        }
+
+        public static GameObject CreateStorm(
+            string name,
+            Vector3 position,
+            float radius,
+            Material cloudMaterial)
+        {
+            ValidateRadius(radius);
+            var root = new GameObject(name);
+            root.transform.position = position;
+            for (var index = 0; index < 7; index++)
+            {
+                var angle = index * 2.399963f;
+                var distance = radius * (0.12f + index % 3 * 0.12f);
+                var cloud = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                cloud.name = $"Storm Cloud {index + 1}";
+                cloud.transform.SetParent(root.transform, false);
+                cloud.transform.localPosition = new Vector3(
+                    Mathf.Cos(angle) * distance,
+                    4.5f + index % 2 * 1.1f,
+                    Mathf.Sin(angle) * distance);
+                var size = radius * (0.32f + index % 3 * 0.045f);
+                cloud.transform.localScale = new Vector3(size * 1.55f, size * 0.62f, size);
+                PreparePrimitive(cloud, cloudMaterial);
+            }
+
+            return root;
+        }
+
         private static void CreateLayer(
             Transform parent,
             string name,

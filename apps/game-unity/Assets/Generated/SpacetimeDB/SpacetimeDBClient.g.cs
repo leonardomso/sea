@@ -42,6 +42,7 @@ namespace SpacetimeDB.Types
             AddTable(PlayerOwnership = new(conn));
             AddTable(PlayerProgression = new(conn));
             AddTable(Ship = new(conn));
+            AddTable(ShipChannel = new(conn));
             AddTable(ShipStatus = new(conn));
             AddTable(Volley = new(conn));
             AddTable(WorldObject = new(conn));
@@ -557,6 +558,7 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.PlayerOwnership().ToSql(),
             new QueryBuilder().From.PlayerProgression().ToSql(),
             new QueryBuilder().From.Ship().ToSql(),
+            new QueryBuilder().From.ShipChannel().ToSql(),
             new QueryBuilder().From.ShipStatus().ToSql(),
             new QueryBuilder().From.Volley().ToSql(),
             new QueryBuilder().From.WorldObject().ToSql(),
@@ -582,6 +584,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<PlayerOwnership, PlayerOwnershipCols, PlayerOwnershipIxCols> PlayerOwnership() => new("player_ownership", new PlayerOwnershipCols("player_ownership"), new PlayerOwnershipIxCols("player_ownership"));
         public global::SpacetimeDB.Table<PlayerProgression, PlayerProgressionCols, PlayerProgressionIxCols> PlayerProgression() => new("player_progression", new PlayerProgressionCols("player_progression"), new PlayerProgressionIxCols("player_progression"));
         public global::SpacetimeDB.Table<Ship, ShipCols, ShipIxCols> Ship() => new("ship", new ShipCols("ship"), new ShipIxCols("ship"));
+        public global::SpacetimeDB.Table<ShipChannel, ShipChannelCols, ShipChannelIxCols> ShipChannel() => new("ship_channel", new ShipChannelCols("ship_channel"), new ShipChannelIxCols("ship_channel"));
         public global::SpacetimeDB.Table<ShipStatus, ShipStatusCols, ShipStatusIxCols> ShipStatus() => new("ship_status", new ShipStatusCols("ship_status"), new ShipStatusIxCols("ship_status"));
         public global::SpacetimeDB.Table<Volley, VolleyCols, VolleyIxCols> Volley() => new("volley", new VolleyCols("volley"), new VolleyIxCols("volley"));
         public global::SpacetimeDB.Table<WorldObject, WorldObjectCols, WorldObjectIxCols> WorldObject() => new("world_object", new WorldObjectCols("world_object"), new WorldObjectIxCols("world_object"));
@@ -667,6 +670,9 @@ namespace SpacetimeDB.Types
             var eventContext = (ReducerEventContext)context;
             return reducer switch
             {
+                Reducer.ActivateAbility args => Reducers.InvokeActivateAbility(eventContext, args),
+                Reducer.CancelBoarding args => Reducers.InvokeCancelBoarding(eventContext, args),
+                Reducer.CancelRepair args => Reducers.InvokeCancelRepair(eventContext, args),
                 Reducer.ClearTarget args => Reducers.InvokeClearTarget(eventContext, args),
                 Reducer.FireBroadside args => Reducers.InvokeFireBroadside(eventContext, args),
                 Reducer.LoadPlayer args => Reducers.InvokeLoadPlayer(eventContext, args),
@@ -674,6 +680,8 @@ namespace SpacetimeDB.Types
                 Reducer.SelectTarget args => Reducers.InvokeSelectTarget(eventContext, args),
                 Reducer.SetAmmo args => Reducers.InvokeSetAmmo(eventContext, args),
                 Reducer.SetCourse args => Reducers.InvokeSetCourse(eventContext, args),
+                Reducer.StartBoarding args => Reducers.InvokeStartBoarding(eventContext, args),
+                Reducer.StartRepair args => Reducers.InvokeStartRepair(eventContext, args),
                 Reducer.StopCourse args => Reducers.InvokeStopCourse(eventContext, args),
                 Reducer.UpgradeCannon args => Reducers.InvokeUpgradeCannon(eventContext, args),
                 _ => throw new ArgumentOutOfRangeException("Reducer", $"Unknown reducer {reducer}")

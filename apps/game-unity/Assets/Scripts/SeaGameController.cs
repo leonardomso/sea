@@ -183,9 +183,53 @@ namespace Sea.Client
             LastAction = $"{side.ToUpperInvariant()} broadside fired • {SelectedAmmoId.ToUpperInvariant()} • {SelectedWeakPoint.ToUpperInvariant()}";
         }
 
-        public void RequestCombatIntent(string order)
+        public void ActivateAbility(string abilityId)
         {
-            LastAction = order;
+            if (!IsReady)
+            {
+                return;
+            }
+
+            connection.Connection.Reducers.ActivateAbility(abilityId);
+            LastAction = $"{abilityId.Replace('_', ' ').ToUpperInvariant()} activated.";
+        }
+
+        public void ToggleRepair()
+        {
+            if (!TryGetLocalShip(out var ship))
+            {
+                return;
+            }
+
+            var channel = connection.Connection.Db.ShipChannel.ShipEntityId.Find(ship.EntityId);
+            if (channel != null && channel.IsActive && channel.ChannelType == "repair")
+            {
+                connection.Connection.Reducers.CancelRepair();
+                LastAction = "Repair cancelled.";
+                return;
+            }
+
+            connection.Connection.Reducers.StartRepair();
+            LastAction = "Repair crews deployed.";
+        }
+
+        public void ToggleBoarding()
+        {
+            if (!TryGetLocalShip(out var ship))
+            {
+                return;
+            }
+
+            var channel = connection.Connection.Db.ShipChannel.ShipEntityId.Find(ship.EntityId);
+            if (channel != null && channel.IsActive && channel.ChannelType == "boarding")
+            {
+                connection.Connection.Reducers.CancelBoarding();
+                LastAction = "Boarding cancelled.";
+                return;
+            }
+
+            connection.Connection.Reducers.StartBoarding();
+            LastAction = "Boarding party committed.";
         }
 
         public bool TryGetLocalShip(out Ship ship)

@@ -17,6 +17,7 @@ public enum FireRejection
     Reloading,
     OutOfRange,
     OutsideArc,
+    Busy,
 }
 
 public enum WeakPoint
@@ -52,6 +53,7 @@ public readonly record struct FireRequest
     public float MaximumRange { get; init; }
     public float RangeMultiplier { get; init; }
     public BroadsideSide Side { get; init; }
+    public bool IsChanneling { get; init; }
 }
 
 public static class CombatRules
@@ -80,6 +82,11 @@ public static class CombatRules
         if (request.Cannons == 0)
         {
             return FireRejection.CannonsDisabled;
+        }
+
+        if (request.IsChanneling)
+        {
+            return FireRejection.Busy;
         }
 
         if (request.Ammunition == 0)

@@ -31,6 +31,12 @@ namespace SpacetimeDB.Types
         public bool IsActive;
         [DataMember(Name = "blocks_movement")]
         public bool BlocksMovement;
+        [DataMember(Name = "direction_degrees")]
+        public float DirectionDegrees;
+        [DataMember(Name = "movement_speed")]
+        public float MovementSpeed;
+        [DataMember(Name = "intensity")]
+        public float Intensity;
 
         public WorldObject(
             ulong EntityId,
@@ -41,7 +47,10 @@ namespace SpacetimeDB.Types
             int ChunkX,
             int ChunkY,
             bool IsActive,
-            bool BlocksMovement
+            bool BlocksMovement,
+            float DirectionDegrees,
+            float MovementSpeed,
+            float Intensity
         )
         {
             this.EntityId = EntityId;
@@ -53,6 +62,9 @@ namespace SpacetimeDB.Types
             this.ChunkY = ChunkY;
             this.IsActive = IsActive;
             this.BlocksMovement = BlocksMovement;
+            this.DirectionDegrees = DirectionDegrees;
+            this.MovementSpeed = MovementSpeed;
+            this.Intensity = Intensity;
         }
 
         public WorldObject()

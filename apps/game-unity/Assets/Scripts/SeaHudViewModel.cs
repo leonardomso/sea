@@ -35,6 +35,10 @@ namespace Sea.Client
         public string StatusText { get; set; } = "CLEAR";
         public string ProgressText { get; set; } = string.Empty;
         public float Progress { get; set; }
+        public float FullSailCooldownSeconds { get; set; }
+        public float BraceCooldownSeconds { get; set; }
+        public float PumpCooldownSeconds { get; set; }
+        public float SmokeCooldownSeconds { get; set; }
         public string LastAction { get; set; } = string.Empty;
     }
 
@@ -72,6 +76,10 @@ namespace Sea.Client
         public string StatusText { get; private set; }
         public string ProgressText { get; private set; }
         public float Progress { get; private set; }
+        public float FullSailCooldownSeconds { get; private set; }
+        public float BraceCooldownSeconds { get; private set; }
+        public float PumpCooldownSeconds { get; private set; }
+        public float SmokeCooldownSeconds { get; private set; }
         public string LastAction { get; private set; }
 
         public static SeaHudViewModel From(SeaHudSnapshot source)
@@ -117,6 +125,10 @@ namespace Sea.Client
                 StatusText = source.StatusText,
                 ProgressText = source.ProgressText,
                 Progress = Mathf.Clamp01(source.Progress),
+                FullSailCooldownSeconds = Mathf.Max(0f, source.FullSailCooldownSeconds),
+                BraceCooldownSeconds = Mathf.Max(0f, source.BraceCooldownSeconds),
+                PumpCooldownSeconds = Mathf.Max(0f, source.PumpCooldownSeconds),
+                SmokeCooldownSeconds = Mathf.Max(0f, source.SmokeCooldownSeconds),
                 LastAction = source.LastAction,
             };
         }
