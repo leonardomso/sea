@@ -4,6 +4,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <!-- Remove this debt baseline as Phases 9-12 split and harden the linked domain rules. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);$(SeaLegacyDomainWarnings)</WarningsNotAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,5 +16,10 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <PackageReference Include="FsCheck.Xunit" Version="3.4.0" />
+    <PackageReference Include="coverlet.collector" Version="10.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 </Project>

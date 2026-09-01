@@ -4,7 +4,14 @@ node_modules/
 dist/
 .turbo/
 .vite/
+.cache/
 *.tsbuildinfo
+
+# Test and profiling artifacts
+TestResults/
+coverage/
+BenchmarkDotNet.Artifacts/
+.stryker-output/
 
 # .NET generated output
 **/bin/

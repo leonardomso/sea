@@ -4,9 +4,11 @@
     <RuntimeIdentifier>wasi-wasm</RuntimeIdentifier>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Remove this debt baseline as Phases 9-12 split and harden the existing runtime. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);$(SeaLegacyDomainWarnings)</WarningsNotAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SpacetimeDB.Runtime" Version="2.*" />
+    <PackageReference Include="SpacetimeDB.Runtime" Version="2.8.3" />
   </ItemGroup>
 </Project>

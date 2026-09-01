@@ -15,21 +15,21 @@
     "check": "biome check"
   },
   "dependencies": {
-    "@tanstack/react-router": "latest",
-    "@tanstack/react-start": "latest",
+    "@tanstack/react-router": "1.170.32",
+    "@tanstack/react-start": "1.168.49",
     "nitro": "3.0.260610-beta",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.5",
-    "@tanstack/router-cli": "^1.132.0",
-    "@types/node": "^22.10.2",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "@vitejs/plugin-react": "^6.0.1",
-    "typescript": "^6.0.2",
-    "vite": "^8.0.0"
+    "@biomejs/biome": "2.5.11",
+    "@tanstack/router-cli": "1.167.33",
+    "@types/node": "24.13.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.5",
+    "@vitejs/plugin-react": "6.1.1",
+    "typescript": "7.0.2",
+    "vite": "8.2.2"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

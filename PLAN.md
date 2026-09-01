@@ -222,7 +222,7 @@ At the start of Phase 8:
 
 - Resolve the newest stable versions compatible with Unity `6000.3.23f1` and
   the local macOS SpacetimeDB toolchain.
-- Do not use preview packages.
+- Do not use preview packages when a compatible stable release exists.
 - Pin exact NuGet, npm, Unity, Docker, and tool versions.
 - Pin Docker images by immutable digest after selecting a stable tag.
 - Use one SpacetimeDB release for the image, CLI, C# runtime, Unity SDK, and
@@ -231,6 +231,13 @@ At the start of Phase 8:
 - Use .NET 10 inside Docker for load tests.
 - Remove `latest`, `2.*`, and other floating production references.
 - Commit generated bindings and lockfile changes with their owning phase.
+
+Phase 8 dependency note: current TanStack Start Node hosting requires Nitro 3,
+which has no stable release. Nitro `3.0.260610-beta` is the only preview
+exception. It is pinned exactly and covered by the production-build exit test.
+Addressables and Scriptable Build Pipeline are pinned to immutable commits from
+their package mirrors because unattended Unity registry downloads required an
+interactive Hub sign-in on this machine.
 
 ## Implementation phases
 
@@ -253,6 +260,8 @@ Acceptance:
 Commit: `docs(plan): define scalable combat completion roadmap`
 
 ### Phase 8: pin the toolchain and add quality tools
+
+Status: complete.
 
 - Align all SpacetimeDB components to one stable release.
 - Pin PostgreSQL 18, Redis, MinIO, Node, pnpm, .NET SDK, and Docker images.

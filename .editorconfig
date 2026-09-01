@@ -1,0 +1,40 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.{cs,csproj,props}]
+indent_style = space
+indent_size = 4
+
+[*.cs]
+dotnet_sort_system_directives_first = true
+csharp_new_line_before_open_brace = all
+csharp_style_namespace_declarations = file_scoped:suggestion
+
+# SpacetimeDB modules require a global Module type and public table fields.
+[server/spacetimedb/spacetimedb/*.cs]
+dotnet_diagnostic.CA1050.severity = none
+dotnet_diagnostic.CA1051.severity = none
+dotnet_diagnostic.CA1716.severity = none
+dotnet_diagnostic.MA0008.severity = none
+dotnet_diagnostic.MA0047.severity = none
+dotnet_diagnostic.MA0048.severity = none
+
+# Descriptive test names use underscores to read as behavior sentences.
+[server/spacetimedb/tests/*.cs]
+dotnet_diagnostic.CA1707.severity = none
+
+[*.{json,jsonc,ts,tsx,yaml,yml}]
+indent_style = tab
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+# Unity owns YAML serialization for imported asset metadata.
+[*.meta]
+trim_trailing_whitespace = false

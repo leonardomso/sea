@@ -61,4 +61,4 @@ pnpm server:generate:typescript
 
 Use `pnpm server:reset` when you intentionally want to clear and republish the local module data. It removes only the SpacetimeDB container and named volume; PostgreSQL, Redis, MinIO, and admin state are preserved.
 
-Local Compose services follow current image channels. This keeps validation close to the latest supported releases; before production work begins, we will replace these channels with tested image digests.
+Local Compose services use tested immutable image digests. Update the tag and digest together, then run the full local verification gate before committing an upgrade.

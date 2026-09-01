@@ -10,6 +10,6 @@
     "spacetimedb": "2.8.3"
   },
   "devDependencies": {
-    "typescript": "latest"
+    "typescript": "7.0.2"
   }
 }

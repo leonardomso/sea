@@ -32,7 +32,7 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(UseLocalBsatnRuntime)' != 'true'">
-    <PackageReference Include="SpacetimeDB.BSATN.Runtime" Version="2.8.*" />
+    <PackageReference Include="SpacetimeDB.BSATN.Runtime" Version="2.8.3" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(UseLocalBsatnRuntime)' == 'true'">
