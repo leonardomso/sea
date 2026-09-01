@@ -8,23 +8,23 @@ manifest="$unity_root/Packages/manifest.json"
 
 test -f "$project_version"
 test -f "$manifest"
-test -f "$unity_root/Assets/Scripts/SeaConnectionController.cs"
-test -f "$unity_root/Assets/Scripts/SeaConnectionRecoveryPolicy.cs"
-test -f "$unity_root/Assets/Scripts/SeaAuthTokenStore.cs"
-test -f "$unity_root/Assets/Scripts/SeaGameController.cs"
-test -f "$unity_root/Assets/Scripts/SeaShipMotion.cs"
-test -f "$unity_root/Assets/Scripts/SeaShipVisualFactory.cs"
-test -f "$unity_root/Assets/Scripts/SeaShipFeedback.cs"
-test -f "$unity_root/Assets/Scripts/SeaWorldGeometryFactory.cs"
-test -f "$unity_root/Assets/Scripts/SeaSubscriptionPlan.cs"
-test -f "$unity_root/Assets/Scripts/SeaChartCoordinates.cs"
-test -f "$unity_root/Assets/Scripts/SeaChartCameraController.cs"
-test -f "$unity_root/Assets/Scripts/SeaInputController.cs"
-test -f "$unity_root/Assets/Scripts/SeaHudController.cs"
-test -f "$unity_root/Assets/Scripts/SeaHudViewModel.cs"
-test -f "$unity_root/Assets/Scripts/SeaTacticalPresentationRules.cs"
-test -f "$unity_root/Assets/Scripts/SeaRuntimeValidationRules.cs"
-test -f "$unity_root/Assets/Scripts/SeaWorldView.cs"
+test -f "$unity_root/Assets/Networking/SeaConnectionController.cs"
+test -f "$unity_root/Assets/Domain/SeaConnectionRecoveryPolicy.cs"
+test -f "$unity_root/Assets/Networking/SeaAuthTokenStore.cs"
+test -f "$unity_root/Assets/Presentation/SeaGameController.cs"
+test -f "$unity_root/Assets/Domain/SeaShipMotion.cs"
+test -f "$unity_root/Assets/Presentation/SeaShipVisualFactory.cs"
+test -f "$unity_root/Assets/Presentation/SeaShipFeedback.cs"
+test -f "$unity_root/Assets/Presentation/SeaWorldGeometryFactory.cs"
+test -f "$unity_root/Assets/Domain/SeaSubscriptionPlan.cs"
+test -f "$unity_root/Assets/Domain/SeaChartCoordinates.cs"
+test -f "$unity_root/Assets/Presentation/SeaChartCameraController.cs"
+test -f "$unity_root/Assets/Input/SeaInputController.cs"
+test -f "$unity_root/Assets/UI/SeaHudController.cs"
+test -f "$unity_root/Assets/Domain/SeaHudViewModel.cs"
+test -f "$unity_root/Assets/Domain/SeaTacticalPresentationRules.cs"
+test -f "$unity_root/Assets/Domain/SeaRuntimeValidationRules.cs"
+test -f "$unity_root/Assets/Presentation/SeaWorldView.cs"
 test -f "$unity_root/Assets/Input/SeaControls.inputactions"
 test -f "$unity_root/Assets/UI/SeaHud.uxml"
 test -f "$unity_root/Assets/UI/SeaHud.uss"
@@ -41,21 +41,24 @@ grep -q 'com.clockworklabs.spacetimedbsdk.*file:../../../packages/spacetimedb-un
 grep -q 'com.unity.inputsystem.*1.15.0' "$manifest"
 grep -q '^  activeInputHandler: 1$' "$unity_root/ProjectSettings/ProjectSettings.asset"
 grep -q '^using System.Collections;$' "$project_root/packages/spacetimedb-unity/src/SpacetimeDBClient.cs"
-grep -q 'DbConnection\.Builder' "$unity_root/Assets/Scripts/SeaConnectionController.cs"
-grep -q 'Reducers\.SetCourse' "$unity_root/Assets/Scripts/SeaGameController.cs"
-grep -q 'Reducers\.StopCourse' "$unity_root/Assets/Scripts/SeaGameController.cs"
-grep -q 'Reducers\.ActivateAbility' "$unity_root/Assets/Scripts/SeaGameController.cs"
-grep -q 'Reducers\.StartRepair' "$unity_root/Assets/Scripts/SeaGameController.cs"
-grep -q 'Reducers\.StartBoarding' "$unity_root/Assets/Scripts/SeaGameController.cs"
-grep -q 'FindActionMap("Gameplay"' "$unity_root/Assets/Scripts/SeaInputController.cs"
+grep -q 'DbConnection\.Builder' "$unity_root/Assets/Networking/SeaConnectionController.cs"
+grep -q 'Reducers\.SetCourse' "$unity_root/Assets/Presentation/SeaGameController.cs"
+grep -q 'Reducers\.StopCourse' "$unity_root/Assets/Presentation/SeaGameController.cs"
+grep -q 'Reducers\.ActivateAbility' "$unity_root/Assets/Presentation/SeaGameController.cs"
+grep -q 'Reducers\.StartRepair' "$unity_root/Assets/Presentation/SeaGameController.cs"
+grep -q 'Reducers\.StartBoarding' "$unity_root/Assets/Presentation/SeaGameController.cs"
+grep -q 'FindActionMap("Gameplay"' "$unity_root/Assets/Input/SeaInputController.cs"
 grep -q 'name="port-broadside"' "$unity_root/Assets/UI/SeaHud.uxml"
 
-if grep -R -q --include='*.cs' 'SubscribeToAllTables' "$unity_root/Assets/Scripts"; then
+if grep -R -q --include='*.cs' 'SubscribeToAllTables' \
+  "$unity_root/Assets/Networking" "$unity_root/Assets/Presentation"; then
   echo "Runtime Unity code must use scoped subscriptions." >&2
   exit 1
 fi
 
-if grep -R -q --include='*.cs' -E 'void OnGUI\(|Input\.Get' "$unity_root/Assets/Scripts"; then
+if grep -R -q --include='*.cs' -E 'void OnGUI\(|Input\.Get' \
+  "$unity_root/Assets/Domain" "$unity_root/Assets/Networking" \
+  "$unity_root/Assets/Input" "$unity_root/Assets/Presentation" "$unity_root/Assets/UI"; then
   echo "Runtime Unity code must use UI Toolkit and the Input System exclusively." >&2
   exit 1
 fi

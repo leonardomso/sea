@@ -9,8 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="../spacetimedb/Rules.cs" Link="Rules.cs" />
-    <Compile Include="../spacetimedb/SailingRules.cs" Link="SailingRules.cs" />
+    <Compile Include="../spacetimedb/Domain/*.cs" Link="Domain/%(Filename)%(Extension)" />
     <Compile Include="../spacetimedb/CombatRules.cs" Link="CombatRules.cs" />
     <Compile Include="../spacetimedb/TacticalRules.cs" Link="TacticalRules.cs" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />

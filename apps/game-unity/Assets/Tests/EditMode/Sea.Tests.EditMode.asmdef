@@ -1,0 +1,20 @@
+{
+  "name": "Sea.Tests.EditMode",
+  "rootNamespace": "Sea.Tests",
+  "references": [
+    "Sea.Domain",
+    "Sea.Networking",
+    "Sea.Presentation",
+    "Sea.UI",
+    "Sea.Input",
+    "Sea.Bootstrap",
+    "Sea.Editor",
+    "Sea.Generated",
+    "com.clockworklabs.spacetimedbsdk",
+    "Unity.InputSystem",
+    "VContainer"
+  ],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "autoReferenced": false
+}

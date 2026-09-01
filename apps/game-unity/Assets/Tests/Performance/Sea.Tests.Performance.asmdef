@@ -1,0 +1,11 @@
+{
+  "name": "Sea.Tests.Performance",
+  "rootNamespace": "Sea.Tests.Performance",
+  "references": [
+    "Sea.Domain",
+    "Sea.Presentation",
+    "Unity.PerformanceTesting"
+  ],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "autoReferenced": false
+}

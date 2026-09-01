@@ -1,0 +1,8 @@
+{
+  "name": "Sea.Domain",
+  "rootNamespace": "Sea.Client",
+  "references": [
+    "com.clockworklabs.spacetimedbsdk"
+  ],
+  "autoReferenced": false
+}

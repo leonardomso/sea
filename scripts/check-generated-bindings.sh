@@ -35,7 +35,7 @@ if ! "$script_dir/spacetime.sh" generate --yes --lang typescript \
   exit 1
 fi
 
-diff -ru --exclude='*.meta' \
+diff -ru --exclude='*.meta' --exclude='*.asmdef' \
   apps/game-unity/Assets/Generated/SpacetimeDB \
   "$generated_root/csharp"
 diff -ruB packages/contracts/src/generated "$generated_root/typescript"

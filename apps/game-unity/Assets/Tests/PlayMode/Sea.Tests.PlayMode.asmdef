@@ -1,0 +1,14 @@
+{
+  "name": "Sea.Tests.PlayMode",
+  "rootNamespace": "Sea.Tests.PlayMode",
+  "references": [
+    "Sea.Domain",
+    "Sea.Networking",
+    "Sea.Presentation",
+    "Sea.UI",
+    "Sea.Input",
+    "Sea.Bootstrap"
+  ],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "autoReferenced": false
+}

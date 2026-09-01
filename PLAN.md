@@ -289,6 +289,8 @@ Commit: `build(tooling): pin performance and test dependencies`
 
 ### Phase 9: split server and Unity responsibilities
 
+Status: complete.
+
 - Split the SpacetimeDB partial module into schema, reducers, simulation,
   content, commands, rewards, and event files.
 - Keep pure rules in the module source tree. Link them into test and benchmark

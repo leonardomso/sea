@@ -1,0 +1,151 @@
+namespace Sea.Server;
+
+public readonly struct NavigationBlocker
+{
+    public NavigationBlocker(float x, float y, float radius)
+    {
+        X = x;
+        Y = y;
+        Radius = radius;
+    }
+
+    public float X { get; }
+    public float Y { get; }
+    public float Radius { get; }
+}
+
+public static class NavigationRules
+{
+    public const float DetourClearance = 4f;
+    public const float WaypointArrivalRadius = 2.5f;
+
+    public static bool IsDestinationBlocked(
+        float x,
+        float y,
+        IReadOnlyCollection<NavigationBlocker> blockers) => blockers.Any(blocker =>
+        Distance(x, y, blocker.X, blocker.Y) <=
+        blocker.Radius + WorldRules.CollisionPadding);
+
+    public static bool TryFindDetour(
+        float startX,
+        float startY,
+        float destinationX,
+        float destinationY,
+        IReadOnlyCollection<NavigationBlocker> blockers,
+        out SpawnPoint waypoint)
+    {
+        waypoint = default;
+        var courseX = destinationX - startX;
+        var courseY = destinationY - startY;
+        var courseLength = MathF.Sqrt(courseX * courseX + courseY * courseY);
+        if (courseLength <= 0.001f)
+        {
+            return false;
+        }
+
+        var directionX = courseX / courseLength;
+        var directionY = courseY / courseLength;
+        NavigationBlocker? nearest = null;
+        var nearestProjection = float.MaxValue;
+        foreach (var blocker in blockers)
+        {
+            var collisionRadius = blocker.Radius + WorldRules.CollisionPadding;
+            if (!SailingRules.SegmentIntersectsCircle(
+                    startX,
+                    startY,
+                    destinationX,
+                    destinationY,
+                    blocker.X,
+                    blocker.Y,
+                    collisionRadius))
+            {
+                continue;
+            }
+
+            var projection = (blocker.X - startX) * directionX +
+                (blocker.Y - startY) * directionY;
+            if (projection >= 0f && projection < nearestProjection)
+            {
+                nearest = blocker;
+                nearestProjection = projection;
+            }
+        }
+
+        if (nearest is not NavigationBlocker obstacle)
+        {
+            return false;
+        }
+
+        var perpendicularX = -directionY;
+        var perpendicularY = directionX;
+        var offset = obstacle.Radius + WorldRules.CollisionPadding + DetourClearance;
+        var first = new SpawnPoint(
+            obstacle.X + perpendicularX * offset,
+            obstacle.Y + perpendicularY * offset);
+        var second = new SpawnPoint(
+            obstacle.X - perpendicularX * offset,
+            obstacle.Y - perpendicularY * offset);
+        var firstScore = CandidateScore(
+            startX, startY, destinationX, destinationY, first, blockers);
+        var secondScore = CandidateScore(
+            startX, startY, destinationX, destinationY, second, blockers);
+        if (!float.IsFinite(firstScore) && !float.IsFinite(secondScore))
+        {
+            return false;
+        }
+
+        waypoint = firstScore <= secondScore ? first : second;
+        return true;
+    }
+
+    public static float Distance(float fromX, float fromY, float toX, float toY)
+    {
+        var x = toX - fromX;
+        var y = toY - fromY;
+        return MathF.Sqrt(x * x + y * y);
+    }
+
+    private static float CandidateScore(
+        float startX,
+        float startY,
+        float destinationX,
+        float destinationY,
+        SpawnPoint candidate,
+        IReadOnlyCollection<NavigationBlocker> blockers)
+    {
+        if (!WorldRules.IsInsideMap(candidate.X, candidate.Y) ||
+            !SegmentIsClear(startX, startY, candidate.X, candidate.Y, blockers))
+        {
+            return float.PositiveInfinity;
+        }
+
+        var score = Distance(startX, startY, candidate.X, candidate.Y) +
+            Distance(candidate.X, candidate.Y, destinationX, destinationY);
+        if (!SegmentIsClear(
+                candidate.X,
+                candidate.Y,
+                destinationX,
+                destinationY,
+                blockers))
+        {
+            score += 10_000f;
+        }
+
+        return score;
+    }
+
+    private static bool SegmentIsClear(
+        float startX,
+        float startY,
+        float endX,
+        float endY,
+        IReadOnlyCollection<NavigationBlocker> blockers) => blockers.All(blocker =>
+        !SailingRules.SegmentIntersectsCircle(
+            startX,
+            startY,
+            endX,
+            endY,
+            blocker.X,
+            blocker.Y,
+            blocker.Radius + WorldRules.CollisionPadding));
+}

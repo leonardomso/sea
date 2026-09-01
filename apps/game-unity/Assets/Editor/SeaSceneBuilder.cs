@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 using Sea.Client;
+using Sea.Bootstrap;
 
 namespace Sea.Editor
 {
@@ -30,11 +31,11 @@ namespace Sea.Editor
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             var root = new GameObject("SeaGame");
-            root.AddComponent<SeaConnectionController>();
+            var connection = root.AddComponent<SeaConnectionController>();
             root.AddComponent<SeaFrameRateController>();
             var chartCameraController = root.AddComponent<SeaChartCameraController>();
-            root.AddComponent<SeaGameController>();
-            root.AddComponent<SeaRuntimeValidationProbe>();
+            var game = root.AddComponent<SeaGameController>();
+            var validationProbe = root.AddComponent<SeaRuntimeValidationProbe>();
             var world = root.AddComponent<SeaWorldView>();
             var shipModel = AssetDatabase.LoadAssetAtPath<GameObject>(ShipModelPath);
             if (shipModel == null)
@@ -63,8 +64,10 @@ namespace Sea.Editor
             uiDocument.panelSettings = EnsurePanelSettings();
             uiDocument.visualTreeAsset = hudDocument;
             uiDocument.sortingOrder = 100;
-            root.AddComponent<SeaHudController>().Configure(hudStyle);
-            root.AddComponent<SeaInputController>().Configure(inputActions);
+            var hud = root.AddComponent<SeaHudController>();
+            hud.Configure(hudStyle);
+            var input = root.AddComponent<SeaInputController>();
+            input.Configure(inputActions);
 
             var cameraObject = new GameObject("Main Camera");
             var camera = cameraObject.AddComponent<Camera>();
@@ -88,6 +91,16 @@ namespace Sea.Editor
             miniMapCamera.rect = new Rect(0.82f, 0.69f, 0.17f, 0.21f);
             miniMapCamera.cullingMask &= ~(1 << 8);
             chartCameraController.Configure(camera, miniMapCamera);
+            root.AddComponent<SeaLifetimeScope>();
+            root.AddComponent<SeaSceneComposer>().Configure(
+                connection,
+                game,
+                chartCameraController,
+                world,
+                hud,
+                input,
+                validationProbe,
+                camera);
 
             var lightObject = new GameObject("Sun");
             var light = lightObject.AddComponent<Light>();

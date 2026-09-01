@@ -7,6 +7,9 @@ preference_domain="com.DefaultCompany.game-unity"
 token_key="spacetimedb.identity_token"
 runtime_directory="$(mktemp -d)"
 runtime_log="$runtime_directory/player.log"
+runtime_database="sea-runtime-$$"
+spacetime_state_relative=".cache/spacetime-runtime-$$"
+spacetime_state_directory="$project_root/$spacetime_state_relative"
 game_pid=""
 had_original_token=false
 original_token=""
@@ -23,12 +26,25 @@ cleanup() {
     defaults delete "$preference_domain" "$token_key" 2>/dev/null || true
   fi
 
+  SPACETIME_STATE_RELATIVE="$spacetime_state_relative" \
+    "$project_root/scripts/spacetime.sh" delete "$runtime_database" \
+      --server http://host.docker.internal:3000 --yes >/dev/null 2>&1 || true
+
   rm -rf "$runtime_directory"
+  rm -rf "$spacetime_state_directory"
 }
 trap cleanup EXIT
 
 test -x "$game_binary"
 curl --fail --silent --max-time 2 http://127.0.0.1:3000/v1/ping >/dev/null
+
+# The smoke scenario sinks its seeded NPC. Give each run an isolated database
+# and delete it with the same local CLI identity during cleanup.
+SPACETIME_STATE_RELATIVE="$spacetime_state_relative" \
+"$project_root/scripts/spacetime.sh" publish "$runtime_database" \
+  --server http://host.docker.internal:3000 \
+  --yes \
+  --module-path server/spacetimedb/spacetimedb >/dev/null
 
 if original_token=$(defaults read "$preference_domain" "$token_key" 2>/dev/null); then
   had_original_token=true
@@ -36,7 +52,10 @@ fi
 
 defaults write "$preference_domain" "$token_key" -string "invalid-local-runtime-test-token"
 
-"$game_binary" -batchmode -nographics -seaRuntimeMoveTest -seaRuntimeCombatTest -seaRuntimeTacticalTest -logFile "$runtime_log" >/dev/null 2>&1 &
+"$game_binary" -batchmode -nographics \
+  -seaDatabaseName "$runtime_database" \
+  -seaRuntimeMoveTest -seaRuntimeCombatTest -seaRuntimeTacticalTest \
+  -logFile "$runtime_log" >/dev/null 2>&1 &
 game_pid=$!
 
 validated=false

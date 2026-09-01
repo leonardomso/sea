@@ -16,7 +16,7 @@ csharp_new_line_before_open_brace = all
 csharp_style_namespace_declarations = file_scoped:suggestion
 
 # SpacetimeDB modules require a global Module type and public table fields.
-[server/spacetimedb/spacetimedb/*.cs]
+[server/spacetimedb/spacetimedb/**/*.cs]
 dotnet_diagnostic.CA1050.severity = none
 dotnet_diagnostic.CA1051.severity = none
 dotnet_diagnostic.CA1716.severity = none
