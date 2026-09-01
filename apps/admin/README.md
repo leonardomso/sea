@@ -1,32 +1,28 @@
-# admin
+# Local admin panel
 
-A minimal TanStack Start app with one route and plain CSS.
+The admin panel uses TanStack Start and TanStack Router. It is a local
+operational view, not a gameplay client and not part of the authoritative
+combat path.
 
-```bash
-pnpm install
-pnpm dev
+The root Docker Compose stack runs its production build. For host-side UI
+iteration:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm admin:dev
 ```
 
-Edit `src/routes/index.tsx` to get started. Add route files under
-`src/routes`; TanStack Router updates `src/routeTree.gen.ts` for you.
+Validate it with:
 
-Build the production app with:
-
-```bash
-pnpm build
+```sh
+pnpm admin:check
+pnpm admin:build
+pnpm admin:test:health
 ```
 
-## Deploy with Nitro
+Routes live under `src/routes`. TanStack Router generates `src/routeTree.gen.ts`;
+do not edit that file manually.
 
-This project uses Nitro as a generic server adapter, so it can run on any Node-compatible host.
-
-```bash
-npm run build
-node dist/server/index.mjs
-```
-
-The build output is a self-contained Node server. To deploy, push the `dist/` directory to your host (Render, Fly.io, your own VPS, etc.) and run the server command above.
-
-For host-specific presets (Vercel, Netlify, Cloudflare, AWS Lambda, etc.) and tuning, see https://v3.nitro.build/deploy.
-
-
+The lightweight health route must never load dashboard data, connect as a game
+client, or create a SpacetimeDB identity or ship. Cloud deployment is outside
+the current roadmap.

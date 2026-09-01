@@ -1,64 +1,94 @@
 # Local development
 
-The entire backend environment is local. Docker Compose runs the services, while the SpacetimeDB CLI and .NET test SDK are invoked from current Docker images through repository scripts. The module targets .NET 8 for macOS-compatible WASI tooling.
+Sea is developed and validated locally. Docker Compose runs SpacetimeDB,
+PostgreSQL, Redis, MinIO, and the production admin build. Unity runs on the
+macOS host.
 
-## Start
+## Required versions
+
+- Node.js `24.19.0`
+- pnpm `11.25.0`
+- Unity `6000.3.23f1` with macOS and WebGL build support
+- Docker Desktop with Docker Compose
+- Git LFS
+
+The repository scripts run the pinned .NET and SpacetimeDB toolchains in
+containers. Do not replace them with an unpinned host installation.
+
+## Install and start
 
 ```sh
 cp .env.example .env
-pnpm install
+corepack enable
+corepack prepare pnpm@11.25.0 --activate
+pnpm install --frozen-lockfile
 pnpm infra:up
+pnpm server:reset
 ```
 
-## Stop
+`server:reset` clears and republishes only the disposable SpacetimeDB world.
+PostgreSQL, Redis, MinIO, and admin data are preserved.
+
+Stop containers without deleting data:
 
 ```sh
 pnpm infra:down
 ```
 
-This keeps named volumes. Use `pnpm infra:reset` only when you intentionally want to remove local service data.
+Use `pnpm infra:reset` only when all local Compose volumes should be removed.
 
-## Run the admin on the host
+## Run the clients
 
-The Compose stack includes the admin service. For faster frontend iteration, it can also run directly on the host:
+The admin already runs as a production build in Compose. Run its development
+server on the host only when changing the interface:
 
 ```sh
 pnpm admin:dev
 ```
 
-## Service ownership
-
-- SpacetimeDB is the game state authority.
-- PostgreSQL and Redis are reserved for future consumers.
-- MinIO provides local S3-compatible object storage.
-- The Unity Editor and Unity builds run outside Docker.
-
-## Unity client
-
-The Unity project uses the exact editor patch recorded in `apps/game-unity/ProjectSettings/ProjectVersion.txt`. The client package manifest pins the SpacetimeDB Unity SDK to the same `v2.8.3` release used by the generated bindings.
+Build and open the macOS game:
 
 ```sh
-pnpm unity:scene
-pnpm unity:test
-pnpm unity:test:runtime
-pnpm unity:build:webgl
 pnpm unity:build:macos
+open apps/game-unity/Build/Sea.app
 ```
 
-`pnpm unity:scene` regenerates the main scene and build settings through an editor method. WebGL output is written to `apps/game-unity/Build/WebGL`; the macOS player is written to `apps/game-unity/Build/Sea.app`. Build outputs and Unity's regenerable folders are ignored by Git.
+Create a WebGL build with `pnpm unity:build:webgl`. Build output and Unity's
+regenerable folders are ignored by Git.
 
-`pnpm unity:test:runtime` requires the local SpacetimeDB service and a published `sea-local` database. It launches the built macOS player headlessly with a stale test identity and verifies that the client recovers, subscribes, reaches `Ready`, and starts without fatal shader errors. The original local identity preference is restored when the test exits.
-
-## SpacetimeDB module
+## Server development
 
 ```sh
 pnpm server:build
 pnpm server:test
+pnpm server:test:integration
 pnpm server:publish
-pnpm server:generate:csharp
-pnpm server:generate:typescript
 ```
 
-Use `pnpm server:reset` when you intentionally want to clear and republish the local module data. It removes only the SpacetimeDB container and named volume; PostgreSQL, Redis, MinIO, and admin state are preserved.
+After changing the schema, reducers, events, or tagged unions:
 
-Local Compose services use tested immutable image digests. Update the tag and digest together, then run the full local verification gate before committing an upgrade.
+```sh
+pnpm server:generate:csharp
+pnpm server:generate:typescript
+pnpm quality:bindings
+pnpm server:reset
+```
+
+Commit the schema and both generated binding sets together.
+
+## Validation levels
+
+- `pnpm ci:fast`: static checks, admin/type builds, and repository invariants.
+- `pnpm server:test`: fast pure domain and command tests in pinned .NET.
+- `pnpm verify`: normal phase gate, including the real module, local services,
+  Unity tests, runtime scenarios, and macOS/WebGL builds.
+- `pnpm verify:full`: Phase 18 and final load, soak, mutation, and performance
+  proof. It is not a routine pull-request check.
+
+`pnpm unity:test:runtime` publishes against `sea-local`, launches the built
+macOS client, and verifies connection, sailing, combat, NPC sinking, loot, XP,
+respawn, hazards, abilities, and repair. The script restores the original local
+identity preference when it exits.
+
+Compose images use immutable digests. Update a stable tag and its digest
+together, then run the complete local gate before committing the upgrade.

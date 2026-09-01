@@ -1,14 +1,48 @@
-# SpacetimeDB server module
+# SpacetimeDB server
 
-This directory contains the C# SpacetimeDB module for the local validation build.
+This directory contains Sea's authoritative C# game module. It targets .NET 8
+for the pinned macOS-compatible SpacetimeDB WASI toolchain.
 
-The module owns player identity, ship state, map entities, resources, events, intent reducers, and the fixed-tick simulation skeleton. `seed/world.json` documents the deterministic starter map; the compiled module seed is intentionally deterministic because SpacetimeDB reducers cannot read files at runtime.
+## Ownership
 
-The repository follows the current SpacetimeDB 2.x Docker image and matching 2.x C# runtime package. The module targets .NET 8 because the current C# quickstart supports it and the .NET 10 WASI workflow is not supported on macOS. The CLI can be run from the same image while the host toolchain is being finalized:
+The module owns identity, ships, movement, targeting, combat, statuses,
+abilities, repairs, boarding, hazards, NPC decisions, loot, progression,
+death, respawn, and rewards. Clients issue `IssueShipCommand` envelopes with a
+monotonic player-scoped command ID. Expected rejection produces a typed command
+result instead of an unhandled reducer error.
+
+The world simulation runs at 10 Hz and NPC decisions at 2 Hz. Hot systems
+process active and due rows through indexes and spatial chunks. Dormant ships
+must not create movement or AI work.
+
+## Layout
+
+- `spacetimedb`: schema, reducers, command policy and execution, simulation
+  systems, deterministic content, events, and rewards.
+- `tests`: pure unit, property, command-matrix, and replay tests.
+- `seed/world.json`: human-readable source for the deterministic starter map.
+
+Pure domain files are linked into tests and benchmarks without depending on
+SpacetimeDB runtime types.
+
+## Commands
+
+Run all tooling through the pinned repository scripts:
 
 ```sh
-docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp \
-  -v "$PWD:/workspace" -w /workspace \
-  clockworklabs/spacetime:latest \
-  build --module-path server/spacetimedb/spacetimedb
+pnpm server:build
+pnpm server:test
+pnpm server:test:integration
+pnpm server:publish
+pnpm server:reset
+pnpm server:generate:csharp
+pnpm server:generate:typescript
 ```
+
+`server:reset` destroys only disposable local SpacetimeDB state. Schema or
+public reducer changes require regenerated C# and TypeScript bindings in the
+same commit.
+
+Do not use floating SpacetimeDB images, SDK packages, or host CLI versions.
+The server image, CLI, runtime package, Unity SDK, and TypeScript SDK must stay
+on the same pinned stable release.
