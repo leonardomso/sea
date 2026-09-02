@@ -137,12 +137,12 @@ public static class SharedRewardRules
 
     private static void DistributeProportional(
         ulong pool,
-        IReadOnlyList<RewardContribution> contributions,
+        RewardContribution[] contributions,
         BigInteger totalScore,
         ulong[] shares)
     {
         var distributed = 0ul;
-        for (var index = 0; index < contributions.Count; index++)
+        for (var index = 0; index < contributions.Length; index++)
         {
             var share = (ulong)(pool * contributions[index].Score / totalScore);
             shares[index] += share;
