@@ -31,16 +31,18 @@ public static class EnvironmentRules
         float windDirectionDegrees,
         float windStrength)
     {
-        var difference = (headingDegrees - windDirectionDegrees) * (MathF.PI / 180f);
-        return 1f + MathF.Cos(difference) * Math.Clamp(windStrength, 0f, 1f) * 0.15f;
+        var difference = headingDegrees - windDirectionDegrees;
+        return 1f + TrigonometryRules.CosDegrees(difference) *
+            Math.Clamp(windStrength, 0f, 1f) * 0.15f;
     }
 
     public static (float X, float Y) DirectionalVelocity(
         float directionDegrees,
         float strength)
     {
-        var radians = directionDegrees * (MathF.PI / 180f);
-        return (MathF.Sin(radians) * strength, MathF.Cos(radians) * strength);
+        return (
+            TrigonometryRules.SinDegrees(directionDegrees) * strength,
+            TrigonometryRules.CosDegrees(directionDegrees) * strength);
     }
 
     private static ulong Mix(ulong value)

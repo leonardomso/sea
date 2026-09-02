@@ -56,6 +56,29 @@ public static partial class Module
         }
     }
 
+    private static IEnumerable<Ship> ActiveShipsInHazardShard(
+        ReducerContext ctx,
+        ChunkBounds bounds,
+        byte hazardShard)
+    {
+        for (var chunkX = bounds.MinX; chunkX <= bounds.MaxX; chunkX++)
+        {
+            for (var chunkY = bounds.MinY; chunkY <= bounds.MaxY; chunkY++)
+            {
+                foreach (var movement in ctx.Db.ShipMovement
+                             .ByActiveChunkHazardShard.Filter(
+                                 (true, chunkX, chunkY, hazardShard)))
+                {
+                    if (ctx.Db.Ship.EntityId.Find(movement.EntityId) is Ship ship)
+                    {
+                        CopyKinematics(movement, ref ship);
+                        yield return ship;
+                    }
+                }
+            }
+        }
+    }
+
     private static IEnumerable<Loot> ActiveLootIn(
         ReducerContext ctx,
         ChunkBounds bounds)

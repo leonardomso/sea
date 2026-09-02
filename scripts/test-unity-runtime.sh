@@ -8,6 +8,7 @@ runtime_profile="captain-runtime"
 token_key="spacetimedb.identity_token.$runtime_profile"
 runtime_directory="$(mktemp -d)"
 runtime_log="$runtime_directory/player.log"
+runtime_evidence="$runtime_directory/runtime-evidence.json"
 runtime_database="sea-runtime-$$"
 spacetime_state_relative=".cache/spacetime-runtime-$$"
 spacetime_state_directory="$project_root/$spacetime_state_relative"
@@ -58,6 +59,7 @@ defaults write "$preference_domain" "$token_key" -string "invalid-local-runtime-
   -seaProfile "$runtime_profile" \
   -seaRuntimeMoveTest -seaRuntimeCombatTest -seaRuntimeProgressionTest \
   -seaRuntimeTacticalTest \
+  -seaRuntimeEvidencePath "$runtime_evidence" \
   -logFile "$runtime_log" >/dev/null 2>&1 &
 game_pid=$!
 
@@ -79,7 +81,7 @@ for _ in {1..180}; do
   sleep 1
 done
 
-if [ "$validated" != true ]; then
+if [ "$validated" != true ] || [ ! -s "$runtime_evidence" ]; then
   echo "Unity runtime did not demonstrate sailing, broadside combat, and tactical recovery." >&2
   rg -n "Sea runtime|Rejected|Reducer|Exception|Fatal" "$runtime_log" >&2 || true
   tail -n 120 "$runtime_log" >&2 || true
@@ -92,6 +94,20 @@ rg -q "Sea runtime observed progressive sailing\." "$runtime_log"
 rg -q "Sea runtime observed authoritative manual broadside combat\." "$runtime_log"
 rg -q "Sea runtime observed NPC sinking, atomic loot, XP, and NPC respawn\." "$runtime_log"
 rg -q "Sea runtime observed tactical ability, storm damage, and progressive repair\." "$runtime_log"
+node - "$runtime_evidence" <<'NODE'
+const fs = require("node:fs");
+const evidence = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const passed = evidence.schemaVersion === 1 &&
+  evidence.movementRequired && evidence.movementObserved &&
+  evidence.combatRequired && evidence.combatObserved &&
+  evidence.progressionRequired && evidence.progressionObserved &&
+  evidence.tacticalRequired && evidence.tacticalObserved &&
+  evidence.runtimeErrors === 0;
+if (!passed) {
+  console.error(JSON.stringify(evidence, null, 2));
+  process.exit(1);
+}
+NODE
 if rg -q "No runtime-compatible shader|ArgumentNullException: Value cannot be null.*shader|Unhandled Exception|Fatal error" "$runtime_log"; then
   echo "Unity runtime reported a fatal or shader error." >&2
   tail -n 120 "$runtime_log" >&2

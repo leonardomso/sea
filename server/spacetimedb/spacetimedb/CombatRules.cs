@@ -148,10 +148,7 @@ public static class CombatRules
             throw new ArgumentOutOfRangeException(nameof(projectileSpeed));
         }
 
-        if (tickRateHz == 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(tickRateHz));
-        }
+        ArgumentOutOfRangeException.ThrowIfZero(tickRateHz);
 
         return Math.Max(1ul, (ulong)MathF.Ceiling(distance / projectileSpeed * tickRateHz));
     }
@@ -177,10 +174,7 @@ public static class CombatRules
         uint maxCannons)
     {
         ArgumentNullException.ThrowIfNull(ammunition);
-        if (maxCannons == 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(maxCannons));
-        }
+        ArgumentOutOfRangeException.ThrowIfZero(maxCannons);
 
         var effectiveness = (float)cannonPower / WorldRules.InitialCannonDamage *
             cannons / maxCannons;

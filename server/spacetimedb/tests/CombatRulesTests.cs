@@ -121,7 +121,8 @@ public sealed class CombatRulesTests
     [Fact]
     public void Weak_point_aim_amplifies_that_subsystem_without_changing_ammunition_identity()
     {
-        var chain = ContentCatalog.CreateDefault().Ammunition.Single(item => item.Id == "chain");
+        var chain = ContentCatalog.CreateDefault().Ammunition.Single(item =>
+            string.Equals(item.Id, "chain", StringComparison.Ordinal));
 
         var damage = CombatRules.DamageProfile(
             chain,
@@ -152,6 +153,56 @@ public sealed class CombatRulesTests
         Assert.False(CombatRules.TryParseWeakPoint("crew", out _));
     }
 
+    [Fact]
+    public void MissingSelectedTargetIsRejectedBeforeTargetState()
+    {
+        var request = ValidFireRequest() with { TargetSelected = false };
+
+        Assert.Equal(FireRejection.NoTarget, CombatRules.ValidateFire(request));
+    }
+
+    [Theory]
+    [InlineData(-1f, 40f, 10u)]
+    [InlineData(float.NaN, 40f, 10u)]
+    [InlineData(1f, 0f, 10u)]
+    [InlineData(1f, float.PositiveInfinity, 10u)]
+    public void InvalidVolleyTimingInputsAreRejected(
+        float distance,
+        float projectileSpeed,
+        uint tickRate)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            CombatRules.VolleyTravelTicks(distance, projectileSpeed, tickRate));
+    }
+
+    [Fact]
+    public void DamageProfileRejectsMissingContentAndZeroMaximumCannons()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            CombatRules.DamageProfile(null!, WeakPoint.Hull, 25, 1, 1));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            CombatRules.DamageProfile(
+                ContentCatalog.CreateDefault().Ammunition[0],
+                WeakPoint.Hull,
+                25,
+                1,
+                0));
+    }
+
+    [Fact]
+    public void ZeroCannonEffectivenessProducesNoDamage()
+    {
+        var damage = CombatRules.DamageProfile(
+            ContentCatalog.CreateDefault().Ammunition[0],
+            WeakPoint.Hull,
+            cannonPower: 0,
+            cannons: 100,
+            maxCannons: 100);
+
+        Assert.Equal(default, damage);
+        Assert.Equal(5f, CombatRules.Distance(0, 0, 3, 4));
+    }
+
     [Theory]
     [InlineData("round", WeakPoint.Hull, 31u)]
     [InlineData("round", WeakPoint.Sails, 6u)]
@@ -171,7 +222,7 @@ public sealed class CombatRulesTests
         uint expected)
     {
         var ammunition = ContentCatalog.CreateDefault().Ammunition
-            .Single(item => item.Id == ammunitionId);
+            .Single(item => string.Equals(item.Id, ammunitionId, StringComparison.Ordinal));
 
         var damage = CombatRules.DamageProfile(
             ammunition,

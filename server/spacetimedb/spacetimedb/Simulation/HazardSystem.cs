@@ -3,21 +3,16 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    private static void ApplyEnvironmentalHazards(
+    private static void ApplyEnvironmentalHazardKind(
         ReducerContext ctx,
         ShipTickBuffer ships,
-        ulong tick)
+        ulong tick,
+        WorldObjectCode kind,
+        byte shardId)
     {
-        if (tick % WorldRules.TickRateHz != 0)
-        {
-            return;
-        }
-
-        var exposures = new Dictionary<ulong, (bool InStorm, bool InShoal)>();
-        AddHazardExposures(ctx, ships, WorldObjectCode.Storm, exposures);
-        AddHazardExposures(ctx, ships, WorldObjectCode.Shoal, exposures);
-        ClearMissingExposures(ctx, ships, exposures);
-        foreach (var (shipEntityId, exposure) in exposures)
+        var exposedShips = FindExposedShips(ctx, ships, kind, shardId);
+        ClearMissingExposures(ctx, ships, kind, shardId, exposedShips);
+        foreach (var shipEntityId in exposedShips)
         {
             if (!ships.TryGet(ctx, shipEntityId, out var ship) || !ship.IsAlive)
             {
@@ -25,10 +20,11 @@ public static partial class Module
             }
 
             var affected = ship;
-            affected.EnvironmentExposureCode = (byte)(
-                (exposure.InStorm ? 1 : 0) |
-                (exposure.InShoal ? 2 : 0));
-            if (exposure.InStorm)
+            affected.EnvironmentExposureCode = HazardRules.SetExposure(
+                affected.EnvironmentExposureCode,
+                kind,
+                exposed: true);
+            if (kind == WorldObjectCode.Storm)
             {
                 ApplyDamageToShip(
                     ctx,
@@ -40,7 +36,7 @@ public static partial class Module
                     "storm");
             }
 
-            if (exposure.InShoal && TacticalRules.ShouldApplyStatus(
+            if (kind == WorldObjectCode.Shoal && TacticalRules.ShouldApplyStatus(
                     ship.EntityId ^ tick,
                     chancePercent: 35))
             {
@@ -63,13 +59,22 @@ public static partial class Module
     private static void ClearMissingExposures(
         ReducerContext ctx,
         ShipTickBuffer ships,
-        Dictionary<ulong, (bool InStorm, bool InShoal)> exposures)
+        WorldObjectCode kind,
+        byte shardId,
+        HashSet<ulong> exposedShips)
     {
         for (byte exposureCode = 1; exposureCode <= 3; exposureCode++)
         {
-            foreach (var indexedShip in ctx.Db.Ship.ByEnvironmentExposure.Filter(exposureCode))
+            if (!HazardRules.HasExposure(exposureCode, kind))
             {
-                if (exposures.ContainsKey(indexedShip.EntityId))
+                continue;
+            }
+
+            foreach (var indexedShip in ctx.Db.Ship
+                         .ByEnvironmentExposureHazardShard.Filter(
+                             (exposureCode, shardId)))
+            {
+                if (exposedShips.Contains(indexedShip.EntityId))
                 {
                     continue;
                 }
@@ -77,25 +82,29 @@ public static partial class Module
                 var ship = ships.TryGetStaged(indexedShip.EntityId, out var staged)
                     ? staged
                     : indexedShip;
-                ship.EnvironmentExposureCode = 0;
+                ship.EnvironmentExposureCode = HazardRules.SetExposure(
+                    ship.EnvironmentExposureCode,
+                    kind,
+                    exposed: false);
                 ships.Stage(ship);
             }
         }
     }
 
-    private static void AddHazardExposures(
+    private static HashSet<ulong> FindExposedShips(
         ReducerContext ctx,
         ShipTickBuffer ships,
         WorldObjectCode kind,
-        Dictionary<ulong, (bool InStorm, bool InShoal)> exposures)
+        byte shardId)
     {
+        var exposedShips = new HashSet<ulong>();
         foreach (var hazard in ctx.Db.WorldObject.ByActiveKind.Filter((true, (byte)kind)))
         {
             var bounds = SpatialRules.BoundsAround(
                 hazard.PositionX,
                 hazard.PositionY,
                 hazard.Radius);
-            foreach (var indexedShip in ActiveShipsIn(ctx, bounds))
+            foreach (var indexedShip in ActiveShipsInHazardShard(ctx, bounds, shardId))
             {
                 var ship = ships.TryGetStaged(indexedShip.EntityId, out var staged)
                     ? staged
@@ -111,12 +120,11 @@ public static partial class Module
                     continue;
                 }
 
-                exposures.TryGetValue(ship.EntityId, out var current);
-                exposures[ship.EntityId] = (
-                    current.InStorm || kind == WorldObjectCode.Storm,
-                    current.InShoal || kind == WorldObjectCode.Shoal);
+                exposedShips.Add(ship.EntityId);
             }
         }
+
+        return exposedShips;
     }
 
 }

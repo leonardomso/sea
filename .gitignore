@@ -9,6 +9,7 @@ dist/
 *.tsbuildinfo
 
 # Test and profiling artifacts
+/Build/
 TestResults/
 coverage/
 *.lcov
@@ -49,6 +50,8 @@ apps/game-unity/*.sln
 apps/game-unity/*.userprefs
 apps/game-unity/Assets/Resources/PerformanceTestRunInfo.json*
 apps/game-unity/Assets/Resources/PerformanceTestRunSettings.json*
+# Addressables generates and removes this linker manifest during build/test cycles.
+apps/game-unity/Assets/AddressableAssetsData/link.xml*
 
 # IDE and OS files
 .idea/

@@ -9,7 +9,7 @@ public static partial class Module
         var errors = ContentCatalog.Validate(content);
         if (errors.Count != 0)
         {
-            throw new Exception(string.Join(" ", errors));
+            throw new InvalidOperationException(string.Join(" ", errors));
         }
 
         foreach (var ammunition in content.Ammunition)
@@ -118,12 +118,14 @@ public static partial class Module
         ship.SelectedWeakPointCode = (byte)definition.PreferredWeakPoint;
         ship.EncounterId = entityId;
         ctx.Db.Ship.Insert(ship);
+        InsertShipMovement(ctx, ship);
         OpenNpcEncounter(ctx, ship, definition.GoldReward, definition.ExperienceReward, tick: 0);
         ctx.Db.NpcAi.Insert(new NpcAi
         {
             ShipEntityId = entityId,
             ArchetypeId = definition.Id,
             IsActive = true,
+            DecisionShard = SimulationWorkRules.NpcShard(entityId),
             NextDecisionTick = (ulong)archetypeIndex,
             HomeSeed = entityId * 17,
         });
@@ -143,11 +145,15 @@ public static partial class Module
             WindStrength = wind.Strength,
             NextWindChangeTick = EnvironmentRules.WindEpochTicks,
         });
-        InsertCurrentZone(ctx, 1, -55f, 35f, 28f, 70f, 1.25f);
-        InsertCurrentZone(ctx, 2, 55f, -45f, 24f, 235f, 1f);
+        var zones = new[]
+        {
+            InsertCurrentZone(ctx, 1, -55f, 35f, 28f, 70f, 1.25f),
+            InsertCurrentZone(ctx, 2, 55f, -45f, 24f, 235f, 1f),
+        };
+        ctx.Db.CurrentFieldState.Insert(BuildCurrentFieldState(zones));
     }
 
-    private static void InsertCurrentZone(
+    private static CurrentZone InsertCurrentZone(
         ReducerContext ctx,
         ulong zoneId,
         float x,
@@ -156,7 +162,7 @@ public static partial class Module
         float directionDegrees,
         float strength)
     {
-        ctx.Db.CurrentZone.Insert(new CurrentZone
+        var zone = new CurrentZone
         {
             ZoneId = zoneId,
             PositionX = x,
@@ -167,7 +173,53 @@ public static partial class Module
             ChunkX = SpatialRules.ChunkCoordinate(x),
             ChunkY = SpatialRules.ChunkCoordinate(y),
             IsActive = true,
-        });
+        };
+        ctx.Db.CurrentZone.Insert(zone);
+        return zone;
+    }
+
+    private static CurrentFieldState BuildCurrentFieldState(
+        IReadOnlyList<CurrentZone> source)
+    {
+        if (source.Count > 64)
+        {
+            throw new InvalidOperationException("A current field supports at most 64 zones.");
+        }
+
+        var masks = Enumerable.Repeat(
+                0UL,
+                SpatialRules.ChunkCountPerAxis * SpatialRules.ChunkCountPerAxis)
+            .ToList();
+        var zones = new List<CurrentFieldZone>(source.Count);
+        for (var index = 0; index < source.Count; index++)
+        {
+            var zone = source[index];
+            var velocity = EnvironmentRules.DirectionalVelocity(
+                zone.DirectionDegrees,
+                zone.Strength);
+            zones.Add(new CurrentFieldZone
+            {
+                PositionX = zone.PositionX,
+                PositionY = zone.PositionY,
+                Radius = zone.Radius,
+                VelocityX = velocity.X,
+                VelocityY = velocity.Y,
+            });
+            var bounds = SpatialRules.BoundsAround(
+                zone.PositionX,
+                zone.PositionY,
+                zone.Radius);
+            for (var chunkX = bounds.MinX; chunkX <= bounds.MaxX; chunkX++)
+            {
+                for (var chunkY = bounds.MinY; chunkY <= bounds.MaxY; chunkY++)
+                {
+                    var cell = chunkY * SpatialRules.ChunkCountPerAxis + chunkX;
+                    masks[cell] |= 1UL << index;
+                }
+            }
+        }
+
+        return new CurrentFieldState { Id = 1, Zones = zones, CellMasks = masks };
     }
 
 }

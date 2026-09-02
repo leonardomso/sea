@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Sea.Server;
 
 public readonly struct ChartCell
@@ -81,7 +83,7 @@ public static class ChartCoordinates
             StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         if (parts.Length != 2 ||
             !TryColumnIndex(parts[0], out var column) ||
-            !int.TryParse(parts[1], out var row) ||
+            !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var row) ||
             row < 0 ||
             row > MaximumRow)
         {

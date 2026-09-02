@@ -30,7 +30,7 @@ namespace Sea.Client
             if (!target.IsActive || !target.IsAlive)
             {
                 progressionSunkObserved = true;
-                progressionSinkPosition = new Vector2(target.PositionX, target.PositionY);
+                progressionSinkPosition = LivePosition(target);
                 SailToProgressionLoot(player);
                 return true;
             }
@@ -49,6 +49,7 @@ namespace Sea.Client
             {
                 progressionEnabledForThisRun = false;
                 combatEnabledForThisRun = false;
+                MarkRuntimeMilestone(SeaRuntimeMilestone.Progression);
                 Debug.Log(
                     "Sea runtime observed NPC sinking, atomic loot, XP, and NPC respawn.",
                     this);
@@ -78,6 +79,7 @@ namespace Sea.Client
                 .Subscribe(new[]
                 {
                     $"SELECT * FROM ship WHERE entity_id = {target.EntityId}",
+                    $"SELECT * FROM ship_movement WHERE entity_id = {target.EntityId}",
                 });
             progressionBaselineCaptured = true;
         }
@@ -108,7 +110,7 @@ namespace Sea.Client
                 ? progressionSinkPosition
                 : new Vector2(loot.PositionX, loot.PositionY);
             if (Vector2.Distance(
-                    new Vector2(player.PositionX, player.PositionY),
+                    LivePosition(player),
                     destination) <= 2f)
             {
                 return;

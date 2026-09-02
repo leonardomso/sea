@@ -3,7 +3,6 @@ using SpacetimeDB.ClientApi;
 
 using System;
 using System.Collections.Concurrent;
-using System.Linq;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
@@ -29,12 +28,8 @@ namespace SpacetimeDB
             public string Protocol;
         }
 
-        // WebSocket buffer for incoming messages
-        private static readonly int MAXMessageSize = 0x4000000; // 64MB
-
         // Connection parameters
         private readonly ConnectOptions _options;
-        private readonly byte[] _receiveBuffer = new byte[MAXMessageSize];
         private readonly ConcurrentQueue<Action> dispatchQueue = new();
 
 #if !(UNITY_5_3_OR_NEWER && (!UNITY_WEBGL || UNITY_EDITOR))
@@ -312,11 +307,13 @@ namespace SpacetimeDB
                 }
             }
 
+            using var receiveBuffer = new PooledReceiveBuffer();
             while (Ws.State == WebSocketState.Open)
             {
                 try
                 {
-                    var receiveResult = await Ws.ReceiveAsync(new ArraySegment<byte>(_receiveBuffer),
+                    receiveBuffer.Reset();
+                    var receiveResult = await Ws.ReceiveAsync(receiveBuffer.WritableSegment,
                         CancellationToken.None);
                     if (receiveResult.MessageType == WebSocketMessageType.Close)
                     {
@@ -368,13 +365,12 @@ namespace SpacetimeDB
                     }
 
                     var startReceive = DateTime.UtcNow;
-                    var count = receiveResult.Count;
+                    receiveBuffer.Advance(receiveResult.Count);
                     while (receiveResult.EndOfMessage == false)
                     {
-                        if (count >= MAXMessageSize)
+                        if (!receiveBuffer.EnsureWritableCapacity())
                         {
-                            // TODO: Improve this, we should allow clients to receive messages of whatever size
-                            var closeMessage = $"Maximum message size: {MAXMessageSize} bytes.";
+                            var closeMessage = $"Maximum message size: {PooledReceiveBuffer.MaximumCapacity} bytes.";
                             await Ws.CloseAsync(WebSocketCloseStatus.MessageTooBig, closeMessage,
                                 CancellationToken.None);
                             if (OnClose != null)
@@ -385,16 +381,15 @@ namespace SpacetimeDB
                         }
 
                         receiveResult = await Ws.ReceiveAsync(
-                            new ArraySegment<byte>(_receiveBuffer, count, MAXMessageSize - count),
+                            receiveBuffer.WritableSegment,
                             CancellationToken.None);
-                        count += receiveResult.Count;
+                        receiveBuffer.Advance(receiveResult.Count);
                     }
 
                     if (OnMessage != null)
                     {
-                        var message = _receiveBuffer.Take(count).ToArray();
                         // directly invoke message handling
-                        OnMessage(message, startReceive);
+                        OnMessage(receiveBuffer.CompleteMessage(), startReceive);
                     }
                 }
                 catch (WebSocketException ex)

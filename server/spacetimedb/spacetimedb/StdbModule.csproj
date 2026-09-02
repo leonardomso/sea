@@ -5,7 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <!-- Remove this debt baseline as Phases 9-12 split and harden the existing runtime. -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);$(SeaLegacyDomainWarnings)</WarningsNotAsErrors>
+    <!-- Spacetime schema contracts are grouped by table family and are not native interop types. -->
+    <NoWarn>$(NoWarn);MA0008;MA0048</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

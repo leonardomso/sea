@@ -39,6 +39,12 @@ export type AmmoDefinition = __Infer<typeof AmmoDefinition>;
 export const CancelChannelCommand = __t.object("CancelChannelCommand", {});
 export type CancelChannelCommand = __Infer<typeof CancelChannelCommand>;
 
+export const ChannelTimer = __t.object("ChannelTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type ChannelTimer = __Infer<typeof ChannelTimer>;
+
 export const ClearTargetCommand = __t.object("ClearTargetCommand", {});
 export type ClearTargetCommand = __Infer<typeof ClearTargetCommand>;
 
@@ -98,6 +104,24 @@ export const Cooldown = __t.object("Cooldown", {
 });
 export type Cooldown = __Infer<typeof Cooldown>;
 
+export const CurrentFieldState = __t.object("CurrentFieldState", {
+  id: __t.u32(),
+  get zones() {
+    return __t.array(CurrentFieldZone);
+  },
+  cellMasks: __t.array(__t.u64()),
+});
+export type CurrentFieldState = __Infer<typeof CurrentFieldState>;
+
+export const CurrentFieldZone = __t.object("CurrentFieldZone", {
+  positionX: __t.f32(),
+  positionY: __t.f32(),
+  radius: __t.f32(),
+  velocityX: __t.f32(),
+  velocityY: __t.f32(),
+});
+export type CurrentFieldZone = __Infer<typeof CurrentFieldZone>;
+
 export const CurrentZone = __t.object("CurrentZone", {
   zoneId: __t.u64(),
   positionX: __t.f32(),
@@ -147,6 +171,26 @@ export const FireBroadsideCommand = __t.object("FireBroadsideCommand", {
 });
 export type FireBroadsideCommand = __Infer<typeof FireBroadsideCommand>;
 
+export const HazardDispatchState = __t.object("HazardDispatchState", {
+  id: __t.u32(),
+  cursor: __t.u8(),
+});
+export type HazardDispatchState = __Infer<typeof HazardDispatchState>;
+
+export const HazardDispatchTimer = __t.object("HazardDispatchTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type HazardDispatchTimer = __Infer<typeof HazardDispatchTimer>;
+
+export const HazardTimer = __t.object("HazardTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+  hazardKindCode: __t.u8(),
+  shardId: __t.u8(),
+});
+export type HazardTimer = __Infer<typeof HazardTimer>;
+
 export const Inventory = __t.object("Inventory", {
   inventoryId: __t.u64(),
   shipEntityId: __t.u64(),
@@ -175,6 +219,21 @@ export const Loot = __t.object("Loot", {
 });
 export type Loot = __Infer<typeof Loot>;
 
+export const LootExpiryTimer = __t.object("LootExpiryTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type LootExpiryTimer = __Infer<typeof LootExpiryTimer>;
+
+export const MovementShardState = __t.object("MovementShardState", {
+  shardId: __t.u8(),
+  lastSimulatedTick: __t.u64(),
+  get ships() {
+    return __t.array(ShipKinematics);
+  },
+});
+export type MovementShardState = __Infer<typeof MovementShardState>;
+
 export const MovementShardTimer = __t.object("MovementShardTimer", {
   scheduledId: __t.u64(),
   scheduledAt: __t.scheduleAt(),
@@ -182,10 +241,48 @@ export const MovementShardTimer = __t.object("MovementShardTimer", {
 });
 export type MovementShardTimer = __Infer<typeof MovementShardTimer>;
 
+export const MovementSnapshotDispatchState = __t.object("MovementSnapshotDispatchState", {
+  id: __t.u32(),
+  cursor: __t.u16(),
+});
+export type MovementSnapshotDispatchState = __Infer<typeof MovementSnapshotDispatchState>;
+
+export const MovementSnapshotDispatchTimer = __t.object("MovementSnapshotDispatchTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type MovementSnapshotDispatchTimer = __Infer<typeof MovementSnapshotDispatchTimer>;
+
+export const MovementUpdate = __t.object("MovementUpdate", {
+  shipEntityId: __t.u64(),
+  shardId: __t.u8(),
+  replaceKinematics: __t.bool(),
+  get ship() {
+    return Ship;
+  },
+});
+export type MovementUpdate = __Infer<typeof MovementUpdate>;
+
+export const NavigationBlockerState = __t.object("NavigationBlockerState", {
+  x: __t.f32(),
+  y: __t.f32(),
+  radius: __t.f32(),
+});
+export type NavigationBlockerState = __Infer<typeof NavigationBlockerState>;
+
+export const NavigationFieldState = __t.object("NavigationFieldState", {
+  id: __t.u32(),
+  get blockers() {
+    return __t.array(NavigationBlockerState);
+  },
+});
+export type NavigationFieldState = __Infer<typeof NavigationFieldState>;
+
 export const NpcAi = __t.object("NpcAi", {
   shipEntityId: __t.u64(),
   archetypeId: __t.string(),
   isActive: __t.bool(),
+  decisionShard: __t.u8(),
   nextDecisionTick: __t.u64(),
   homeSeed: __t.u64(),
 });
@@ -205,6 +302,20 @@ export const NpcDefinition = __t.object("NpcDefinition", {
   experienceReward: __t.u64(),
 });
 export type NpcDefinition = __Infer<typeof NpcDefinition>;
+
+export const NpcTimer = __t.object("NpcTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+  shardId: __t.u8(),
+});
+export type NpcTimer = __Infer<typeof NpcTimer>;
+
+export const PlayerClock = __t.object("PlayerClock", {
+  owner: __t.identity(),
+  tick: __t.u64(),
+  tickRateHz: __t.u32(),
+});
+export type PlayerClock = __Infer<typeof PlayerClock>;
 
 export const PlayerCommandState = __t.object("PlayerCommandState", {
   owner: __t.identity(),
@@ -229,6 +340,12 @@ export const PlayerProgression = __t.object("PlayerProgression", {
   gold: __t.u32(),
 });
 export type PlayerProgression = __Infer<typeof PlayerProgression>;
+
+export const RespawnTimer = __t.object("RespawnTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type RespawnTimer = __Infer<typeof RespawnTimer>;
 
 export const RespawnWork = __t.object("RespawnWork", {
   shipEntityId: __t.u64(),
@@ -274,6 +391,7 @@ export const Ship = __t.object("Ship", {
   isStopping: __t.bool(),
   isMoving: __t.bool(),
   movementShard: __t.u8(),
+  hazardShard: __t.u8(),
   isActive: __t.bool(),
   isAlive: __t.bool(),
   isEngaged: __t.bool(),
@@ -356,6 +474,50 @@ export const ShipCommand = __t.enum("ShipCommand", {
 });
 export type ShipCommand = __Infer<typeof ShipCommand>;
 
+export const ShipKinematics = __t.object("ShipKinematics", {
+  entityId: __t.u64(),
+  positionX: __t.f32(),
+  positionY: __t.f32(),
+  destinationX: __t.f32(),
+  destinationY: __t.f32(),
+  waypointX: __t.f32(),
+  waypointY: __t.f32(),
+  hasWaypoint: __t.bool(),
+  desiredHeadingDegrees: __t.f32(),
+  headingDegrees: __t.f32(),
+  speed: __t.f32(),
+  tacticalMaximumSpeed: __t.f32(),
+  tacticalAcceleration: __t.f32(),
+  deceleration: __t.f32(),
+  tacticalTurnRateDegrees: __t.f32(),
+  effectiveMaximumSpeed: __t.f32(),
+  hasCourse: __t.bool(),
+  isStopping: __t.bool(),
+  isMoving: __t.bool(),
+  currentVelocityX: __t.f32(),
+  currentVelocityY: __t.f32(),
+  chunkX: __t.i32(),
+  chunkY: __t.i32(),
+});
+export type ShipKinematics = __Infer<typeof ShipKinematics>;
+
+export const ShipMovement = __t.object("ShipMovement", {
+  entityId: __t.u64(),
+  positionX: __t.f32(),
+  positionY: __t.f32(),
+  headingDegrees: __t.f32(),
+  speed: __t.f32(),
+  isMoving: __t.bool(),
+  isActive: __t.bool(),
+  isAlive: __t.bool(),
+  movementShard: __t.u8(),
+  hazardShard: __t.u8(),
+  chunkX: __t.i32(),
+  chunkY: __t.i32(),
+  snapshotTick: __t.u64(),
+});
+export type ShipMovement = __Infer<typeof ShipMovement>;
+
 export const ShipStatus = __t.object("ShipStatus", {
   statusId: __t.u64(),
   shipEntityId: __t.u64(),
@@ -369,6 +531,40 @@ export const ShipStatus = __t.object("ShipStatus", {
 });
 export type ShipStatus = __Infer<typeof ShipStatus>;
 
+export const SimulationClock = __t.object("SimulationClock", {
+  id: __t.u32(),
+  tick: __t.u64(),
+  nextEntityId: __t.u64(),
+  activeLootCount: __t.u32(),
+  connectedPlayerCount: __t.u32(),
+});
+export type SimulationClock = __Infer<typeof SimulationClock>;
+
+export const SimulationDispatchState = __t.object("SimulationDispatchState", {
+  id: __t.u32(),
+  slot: __t.u8(),
+  movementShard: __t.u8(),
+  npcShard: __t.u8(),
+  npcAccumulator: __t.u8(),
+});
+export type SimulationDispatchState = __Infer<typeof SimulationDispatchState>;
+
+export const SimulationDispatchTimer = __t.object("SimulationDispatchTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type SimulationDispatchTimer = __Infer<typeof SimulationDispatchTimer>;
+
+export const SimulationTelemetry = __t.object("SimulationTelemetry", {
+  id: __t.u32(),
+  observedAtTick: __t.u64(),
+  sampledMovementRows: __t.u64(),
+  sampledNpcRows: __t.u64(),
+  dormantMovementRows: __t.u64(),
+  dormantNpcRows: __t.u64(),
+});
+export type SimulationTelemetry = __Infer<typeof SimulationTelemetry>;
+
 export const SimulationTimer = __t.object("SimulationTimer", {
   scheduledId: __t.u64(),
   scheduledAt: __t.scheduleAt(),
@@ -380,6 +576,12 @@ export type StartBoardingCommand = __Infer<typeof StartBoardingCommand>;
 
 export const StartRepairCommand = __t.object("StartRepairCommand", {});
 export type StartRepairCommand = __Infer<typeof StartRepairCommand>;
+
+export const StatusTimer = __t.object("StatusTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type StatusTimer = __Infer<typeof StatusTimer>;
 
 export const StopCourseCommand = __t.object("StopCourseCommand", {});
 export type StopCourseCommand = __Infer<typeof StopCourseCommand>;
@@ -407,6 +609,12 @@ export const Volley = __t.object("Volley", {
   isActive: __t.bool(),
 });
 export type Volley = __Infer<typeof Volley>;
+
+export const VolleyTimer = __t.object("VolleyTimer", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+});
+export type VolleyTimer = __Infer<typeof VolleyTimer>;
 
 export const WorldObject = __t.object("WorldObject", {
   entityId: __t.u64(),

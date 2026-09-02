@@ -74,6 +74,7 @@ public static partial class Module
     {
         var ship = ctx.Db.Ship.EntityId.Find(ownership.ShipEntityId) ??
             throw new InvalidOperationException("Loaded player ship is missing.");
+        HydrateTrackedKinematics(ctx, ref ship);
         var decoded = DecodeCommand(envelope.Command);
         var snapshot = BuildCommandSnapshot(ctx, ship, decoded);
         var decision = CommandPolicy.Evaluate(snapshot, decoded.Kind);

@@ -53,6 +53,8 @@ namespace SpacetimeDB.Types
         public bool IsMoving;
         [DataMember(Name = "movement_shard")]
         public byte MovementShard;
+        [DataMember(Name = "hazard_shard")]
+        public byte HazardShard;
         [DataMember(Name = "is_active")]
         public bool IsActive;
         [DataMember(Name = "is_alive")]
@@ -131,6 +133,7 @@ namespace SpacetimeDB.Types
             bool IsStopping,
             bool IsMoving,
             byte MovementShard,
+            byte HazardShard,
             bool IsActive,
             bool IsAlive,
             bool IsEngaged,
@@ -181,6 +184,7 @@ namespace SpacetimeDB.Types
             this.IsStopping = IsStopping;
             this.IsMoving = IsMoving;
             this.MovementShard = MovementShard;
+            this.HazardShard = HazardShard;
             this.IsActive = IsActive;
             this.IsAlive = IsAlive;
             this.IsEngaged = IsEngaged;

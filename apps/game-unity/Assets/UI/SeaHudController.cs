@@ -241,10 +241,11 @@ namespace Sea.Client
             var world = connection.Connection.Db.WorldState.Id.Find(1);
             if (world != null)
             {
-                var tickRate = Math.Max(1u, world.TickRateHz);
+                var tickRate = connection.WorldTickRate;
+                var worldTick = connection.CurrentWorldTick;
                 snapshot.ReloadDurationSeconds = (float)ship.CannonCooldownTicks / tickRate;
-                snapshot.PortReloadRemainingSeconds = RemainingSeconds(ship.NextPortFireTick, world.Tick, tickRate);
-                snapshot.StarboardReloadRemainingSeconds = RemainingSeconds(ship.NextStarboardFireTick, world.Tick, tickRate);
+                snapshot.PortReloadRemainingSeconds = RemainingSeconds(ship.NextPortFireTick, worldTick, tickRate);
+                snapshot.StarboardReloadRemainingSeconds = RemainingSeconds(ship.NextStarboardFireTick, worldTick, tickRate);
             }
 
             var targetId = ship.TargetEntityId != 0 ? ship.TargetEntityId : game.SelectedTargetId;
@@ -287,15 +288,15 @@ namespace Sea.Client
                     snapshot.Progress = SeaTacticalPresentationRules.ChannelProgress(
                         channel.StartedAtTick,
                         channel.CompletesAtTick,
-                        world.Tick);
+                        connection.CurrentWorldTick);
                 }
 
                 foreach (var cooldown in connection.Connection.Db.Cooldown.ByShip.Filter(ship.EntityId))
                 {
                     var seconds = RemainingSeconds(
                         cooldown.ReadyAtTick,
-                        world.Tick,
-                        Math.Max(1u, world.TickRateHz));
+                        connection.CurrentWorldTick,
+                        connection.WorldTickRate);
                     switch (cooldown.CooldownType)
                     {
                         case "full_sail":

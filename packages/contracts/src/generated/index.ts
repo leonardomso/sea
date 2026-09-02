@@ -55,13 +55,16 @@ import LevelDefinitionRow from "./level_definition_table";
 import LootRow from "./loot_table";
 import NpcAiRow from "./npc_ai_table";
 import NpcDefinitionRow from "./npc_definition_table";
+import PlayerClockRow from "./player_clock_table";
 import PlayerCommandStateRow from "./player_command_state_table";
 import PlayerOwnershipRow from "./player_ownership_table";
 import PlayerProgressionRow from "./player_progression_table";
 import RespawnWorkRow from "./respawn_work_table";
 import ShipRow from "./ship_table";
 import ShipChannelRow from "./ship_channel_table";
+import ShipMovementRow from "./ship_movement_table";
 import ShipStatusRow from "./ship_status_table";
+import SimulationTelemetryRow from "./simulation_telemetry_table";
 import VolleyRow from "./volley_table";
 import WorldObjectRow from "./world_object_table";
 import WorldStateRow from "./world_state_table";
@@ -253,8 +256,9 @@ const tablesSchema = __schema({
   npcAi: __table({
     name: 'npc_ai',
     indexes: [
-      { accessor: 'ByDecisionDue', name: 'npc_ai_is_active_next_decision_tick_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'ByDecisionDueShard', name: 'npc_ai_is_active_decision_shard_next_decision_tick_idx_btree', algorithm: 'btree', columns: [
         'isActive',
+        'decisionShard',
         'nextDecisionTick',
       ] },
       { accessor: 'ShipEntityId', name: 'npc_ai_ship_entity_id_idx_btree', algorithm: 'btree', columns: [
@@ -280,6 +284,17 @@ const tablesSchema = __schema({
       { name: 'npc_definition_npc_id_key', constraint: 'unique', columns: ['npcId'] },
     ],
   }, NpcDefinitionRow),
+  playerClock: __table({
+    name: 'player_clock',
+    indexes: [
+      { accessor: 'Owner', name: 'player_clock_owner_idx_btree', algorithm: 'btree', columns: [
+        'owner',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_clock_owner_key', constraint: 'unique', columns: ['owner'] },
+    ],
+  }, PlayerClockRow),
   playerCommandState: __table({
     name: 'player_command_state',
     indexes: [
@@ -338,6 +353,10 @@ const tablesSchema = __schema({
       { accessor: 'EntityId', name: 'ship_entity_id_idx_btree', algorithm: 'btree', columns: [
         'entityId',
       ] },
+      { accessor: 'ByEnvironmentExposureHazardShard', name: 'ship_environment_exposure_code_hazard_shard_idx_btree', algorithm: 'btree', columns: [
+        'environmentExposureCode',
+        'hazardShard',
+      ] },
       { accessor: 'ByEnvironmentExposure', name: 'ship_environment_exposure_code_idx_btree', algorithm: 'btree', columns: [
         'environmentExposureCode',
       ] },
@@ -345,6 +364,12 @@ const tablesSchema = __schema({
         'isActive',
         'chunkX',
         'chunkY',
+      ] },
+      { accessor: 'ByActiveChunkShard', name: 'ship_is_active_chunk_x_chunk_y_movement_shard_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+        'chunkX',
+        'chunkY',
+        'movementShard',
       ] },
       { accessor: 'ByActive', name: 'ship_is_active_idx_btree', algorithm: 'btree', columns: [
         'isActive',
@@ -382,6 +407,28 @@ const tablesSchema = __schema({
       { name: 'ship_channel_ship_entity_id_key', constraint: 'unique', columns: ['shipEntityId'] },
     ],
   }, ShipChannelRow),
+  shipMovement: __table({
+    name: 'ship_movement',
+    indexes: [
+      { accessor: 'EntityId', name: 'ship_movement_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'entityId',
+      ] },
+      { accessor: 'ByActiveChunkHazardShard', name: 'ship_movement_is_active_chunk_x_chunk_y_hazard_shard_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+        'chunkX',
+        'chunkY',
+        'hazardShard',
+      ] },
+      { accessor: 'ByActiveChunk', name: 'ship_movement_is_active_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+        'chunkX',
+        'chunkY',
+      ] },
+    ],
+    constraints: [
+      { name: 'ship_movement_entity_id_key', constraint: 'unique', columns: ['entityId'] },
+    ],
+  }, ShipMovementRow),
   shipStatus: __table({
     name: 'ship_status',
     indexes: [
@@ -407,6 +454,17 @@ const tablesSchema = __schema({
       { name: 'ship_status_status_id_key', constraint: 'unique', columns: ['statusId'] },
     ],
   }, ShipStatusRow),
+  simulationTelemetry: __table({
+    name: 'simulation_telemetry',
+    indexes: [
+      { accessor: 'Id', name: 'simulation_telemetry_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'simulation_telemetry_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, SimulationTelemetryRow),
   volley: __table({
     name: 'volley',
     indexes: [
@@ -505,6 +563,8 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "NpcAi": Omit<typeof tablesSchema.schemaType.tables["npcAi"], "accessorName"> & { readonly accessorName: "NpcAi" };
     /** @deprecated Use `npcDefinition` instead. This alias will be removed in the next major version. */
     readonly "NpcDefinition": Omit<typeof tablesSchema.schemaType.tables["npcDefinition"], "accessorName"> & { readonly accessorName: "NpcDefinition" };
+    /** @deprecated Use `playerClock` instead. This alias will be removed in the next major version. */
+    readonly "PlayerClock": Omit<typeof tablesSchema.schemaType.tables["playerClock"], "accessorName"> & { readonly accessorName: "PlayerClock" };
     /** @deprecated Use `playerCommandState` instead. This alias will be removed in the next major version. */
     readonly "PlayerCommandState": Omit<typeof tablesSchema.schemaType.tables["playerCommandState"], "accessorName"> & { readonly accessorName: "PlayerCommandState" };
     /** @deprecated Use `playerOwnership` instead. This alias will be removed in the next major version. */
@@ -517,8 +577,12 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "Ship": Omit<typeof tablesSchema.schemaType.tables["ship"], "accessorName"> & { readonly accessorName: "Ship" };
     /** @deprecated Use `shipChannel` instead. This alias will be removed in the next major version. */
     readonly "ShipChannel": Omit<typeof tablesSchema.schemaType.tables["shipChannel"], "accessorName"> & { readonly accessorName: "ShipChannel" };
+    /** @deprecated Use `shipMovement` instead. This alias will be removed in the next major version. */
+    readonly "ShipMovement": Omit<typeof tablesSchema.schemaType.tables["shipMovement"], "accessorName"> & { readonly accessorName: "ShipMovement" };
     /** @deprecated Use `shipStatus` instead. This alias will be removed in the next major version. */
     readonly "ShipStatus": Omit<typeof tablesSchema.schemaType.tables["shipStatus"], "accessorName"> & { readonly accessorName: "ShipStatus" };
+    /** @deprecated Use `simulationTelemetry` instead. This alias will be removed in the next major version. */
+    readonly "SimulationTelemetry": Omit<typeof tablesSchema.schemaType.tables["simulationTelemetry"], "accessorName"> & { readonly accessorName: "SimulationTelemetry" };
     /** @deprecated Use `volley` instead. This alias will be removed in the next major version. */
     readonly "Volley": Omit<typeof tablesSchema.schemaType.tables["volley"], "accessorName"> & { readonly accessorName: "Volley" };
     /** @deprecated Use `worldObject` instead. This alias will be removed in the next major version. */
@@ -557,13 +621,16 @@ const tableAccessorAliases = {
   "Loot": "loot",
   "NpcAi": "npcAi",
   "NpcDefinition": "npcDefinition",
+  "PlayerClock": "playerClock",
   "PlayerCommandState": "playerCommandState",
   "PlayerOwnership": "playerOwnership",
   "PlayerProgression": "playerProgression",
   "RespawnWork": "respawnWork",
   "Ship": "ship",
   "ShipChannel": "shipChannel",
+  "ShipMovement": "shipMovement",
   "ShipStatus": "shipStatus",
+  "SimulationTelemetry": "simulationTelemetry",
   "Volley": "volley",
   "WorldObject": "worldObject",
   "WorldState": "worldState",
@@ -615,6 +682,8 @@ export type DbView = __DbViewBase & {
   readonly "NpcAi": __DbViewBase["npcAi"];
   /** @deprecated Use `npcDefinition` instead. This alias will be removed in the next major version. */
   readonly "NpcDefinition": __DbViewBase["npcDefinition"];
+  /** @deprecated Use `playerClock` instead. This alias will be removed in the next major version. */
+  readonly "PlayerClock": __DbViewBase["playerClock"];
   /** @deprecated Use `playerCommandState` instead. This alias will be removed in the next major version. */
   readonly "PlayerCommandState": __DbViewBase["playerCommandState"];
   /** @deprecated Use `playerOwnership` instead. This alias will be removed in the next major version. */
@@ -627,8 +696,12 @@ export type DbView = __DbViewBase & {
   readonly "Ship": __DbViewBase["ship"];
   /** @deprecated Use `shipChannel` instead. This alias will be removed in the next major version. */
   readonly "ShipChannel": __DbViewBase["shipChannel"];
+  /** @deprecated Use `shipMovement` instead. This alias will be removed in the next major version. */
+  readonly "ShipMovement": __DbViewBase["shipMovement"];
   /** @deprecated Use `shipStatus` instead. This alias will be removed in the next major version. */
   readonly "ShipStatus": __DbViewBase["shipStatus"];
+  /** @deprecated Use `simulationTelemetry` instead. This alias will be removed in the next major version. */
+  readonly "SimulationTelemetry": __DbViewBase["simulationTelemetry"];
   /** @deprecated Use `volley` instead. This alias will be removed in the next major version. */
   readonly "Volley": __DbViewBase["volley"];
   /** @deprecated Use `worldObject` instead. This alias will be removed in the next major version. */
@@ -667,6 +740,8 @@ export type Tables = __TablesBase & {
   readonly "NpcAi": __TablesBase["npcAi"];
   /** @deprecated Use `npcDefinition` instead. This alias will be removed in the next major version. */
   readonly "NpcDefinition": __TablesBase["npcDefinition"];
+  /** @deprecated Use `playerClock` instead. This alias will be removed in the next major version. */
+  readonly "PlayerClock": __TablesBase["playerClock"];
   /** @deprecated Use `playerCommandState` instead. This alias will be removed in the next major version. */
   readonly "PlayerCommandState": __TablesBase["playerCommandState"];
   /** @deprecated Use `playerOwnership` instead. This alias will be removed in the next major version. */
@@ -679,8 +754,12 @@ export type Tables = __TablesBase & {
   readonly "Ship": __TablesBase["ship"];
   /** @deprecated Use `shipChannel` instead. This alias will be removed in the next major version. */
   readonly "ShipChannel": __TablesBase["shipChannel"];
+  /** @deprecated Use `shipMovement` instead. This alias will be removed in the next major version. */
+  readonly "ShipMovement": __TablesBase["shipMovement"];
   /** @deprecated Use `shipStatus` instead. This alias will be removed in the next major version. */
   readonly "ShipStatus": __TablesBase["shipStatus"];
+  /** @deprecated Use `simulationTelemetry` instead. This alias will be removed in the next major version. */
+  readonly "SimulationTelemetry": __TablesBase["simulationTelemetry"];
   /** @deprecated Use `volley` instead. This alias will be removed in the next major version. */
   readonly "Volley": __TablesBase["volley"];
   /** @deprecated Use `worldObject` instead. This alias will be removed in the next major version. */

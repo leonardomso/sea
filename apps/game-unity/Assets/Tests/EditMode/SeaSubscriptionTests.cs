@@ -21,9 +21,19 @@ namespace Sea.Tests
                 "SELECT * FROM encounter_reward_event WHERE owner = 0xabc123"));
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM encounter_reward WHERE owner = 0xabc123"));
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM player_clock WHERE owner = 0xabc123"));
             Assert.That(queries, Does.Contain("SELECT * FROM world_state"));
             Assert.That(queries, Does.Not.Contain("SELECT * FROM world_object"));
             Assert.That(queries.Any(query => query == "SELECT * FROM ship"), Is.False);
+        }
+
+        [Test]
+        public void Owner_clock_estimates_ticks_without_global_row_updates()
+        {
+            Assert.That(SeaWorldClock.Estimate(100, 10, 50d, 51.25d), Is.EqualTo(112));
+            Assert.That(SeaWorldClock.Estimate(100, 10, 50d, 49d), Is.EqualTo(100));
+            Assert.That(SeaWorldClock.Estimate(100, 0, 50d, 52d), Is.EqualTo(102));
         }
 
         [Test]
@@ -33,6 +43,8 @@ namespace Sea.Tests
 
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM ship_channel WHERE ship_entity_id = 42"));
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM ship_movement WHERE entity_id = 42"));
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM combat_event WHERE owner_entity_id = 42"));
             Assert.That(queries, Has.Some.EqualTo(
@@ -46,6 +58,8 @@ namespace Sea.Tests
             var queries = SeaSubscriptionPlan.Focus(localShipEntityId: 7, targetEntityId: 42);
 
             Assert.That(queries, Does.Contain("SELECT * FROM ship WHERE entity_id = 42"));
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM ship_movement WHERE entity_id = 42"));
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM ship_status WHERE ship_entity_id = 42"));
             Assert.That(queries, Does.Contain(
@@ -66,6 +80,7 @@ namespace Sea.Tests
             Assert.That(queries, Has.Some.Contains("chunk_y <= 3"));
             Assert.That(queries.All(query => query.Contains("is_active = true")), Is.True);
             Assert.That(queries, Has.Some.StartsWith("SELECT * FROM world_object"));
+            Assert.That(queries, Has.Some.StartsWith("SELECT * FROM ship_movement"));
         }
 
         [Test]

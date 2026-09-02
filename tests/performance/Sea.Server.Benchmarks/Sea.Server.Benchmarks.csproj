@@ -4,13 +4,12 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);$(SeaLegacyDomainWarnings)</WarningsNotAsErrors>
+    <!-- Linked domain contract families intentionally share their owning rule files. -->
+    <NoWarn>$(NoWarn);MA0008;MA0048</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="../../../server/spacetimedb/spacetimedb/Domain/*.cs" Link="Domain/%(Filename)%(Extension)" />
-    <Compile Include="../../../server/spacetimedb/spacetimedb/CombatRules.cs" Link="CombatRules.cs" />
-    <Compile Include="../../../server/spacetimedb/spacetimedb/TacticalRules.cs" Link="TacticalRules.cs" />
+    <ProjectReference Include="../../../server/spacetimedb/domain/Sea.Server.Domain.csproj" />
     <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
   </ItemGroup>
 </Project>

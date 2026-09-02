@@ -80,20 +80,16 @@ public static class ServerBenchmarks
     [MemoryDiagnoser]
     public class RewardDistributionBenchmark
     {
-        private readonly uint[] contributions = Enumerable.Range(1, 100)
-            .Select(value => (uint)value)
+        private readonly RewardContribution[] contributions = Enumerable.Range(1, 100)
+            .Select(value => new RewardContribution(
+                (ulong)value,
+                (ulong)value * 100,
+                (ulong)(value % 5) * 20,
+                (ulong)(value % 3) * 10))
             .ToArray();
 
         [Benchmark]
-        public ulong SumContributions()
-        {
-            ulong total = 0;
-            foreach (var contribution in contributions)
-            {
-                total += contribution;
-            }
-
-            return total;
-        }
+        public IReadOnlyList<RewardShare> DistributeRewards() =>
+            SharedRewardRules.Distribute(100_000, contributions);
     }
 }

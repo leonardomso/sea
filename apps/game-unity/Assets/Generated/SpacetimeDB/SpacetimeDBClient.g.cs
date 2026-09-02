@@ -41,13 +41,16 @@ namespace SpacetimeDB.Types
             AddTable(Loot = new(conn));
             AddTable(NpcAi = new(conn));
             AddTable(NpcDefinition = new(conn));
+            AddTable(PlayerClock = new(conn));
             AddTable(PlayerCommandState = new(conn));
             AddTable(PlayerOwnership = new(conn));
             AddTable(PlayerProgression = new(conn));
             AddTable(RespawnWork = new(conn));
             AddTable(Ship = new(conn));
             AddTable(ShipChannel = new(conn));
+            AddTable(ShipMovement = new(conn));
             AddTable(ShipStatus = new(conn));
+            AddTable(SimulationTelemetry = new(conn));
             AddTable(Volley = new(conn));
             AddTable(WorldObject = new(conn));
             AddTable(WorldState = new(conn));
@@ -561,13 +564,16 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.Loot().ToSql(),
             new QueryBuilder().From.NpcAi().ToSql(),
             new QueryBuilder().From.NpcDefinition().ToSql(),
+            new QueryBuilder().From.PlayerClock().ToSql(),
             new QueryBuilder().From.PlayerCommandState().ToSql(),
             new QueryBuilder().From.PlayerOwnership().ToSql(),
             new QueryBuilder().From.PlayerProgression().ToSql(),
             new QueryBuilder().From.RespawnWork().ToSql(),
             new QueryBuilder().From.Ship().ToSql(),
             new QueryBuilder().From.ShipChannel().ToSql(),
+            new QueryBuilder().From.ShipMovement().ToSql(),
             new QueryBuilder().From.ShipStatus().ToSql(),
+            new QueryBuilder().From.SimulationTelemetry().ToSql(),
             new QueryBuilder().From.Volley().ToSql(),
             new QueryBuilder().From.WorldObject().ToSql(),
             new QueryBuilder().From.WorldState().ToSql(),
@@ -591,13 +597,16 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<Loot, LootCols, LootIxCols> Loot() => new("loot", new LootCols("loot"), new LootIxCols("loot"));
         public global::SpacetimeDB.Table<NpcAi, NpcAiCols, NpcAiIxCols> NpcAi() => new("npc_ai", new NpcAiCols("npc_ai"), new NpcAiIxCols("npc_ai"));
         public global::SpacetimeDB.Table<NpcDefinition, NpcDefinitionCols, NpcDefinitionIxCols> NpcDefinition() => new("npc_definition", new NpcDefinitionCols("npc_definition"), new NpcDefinitionIxCols("npc_definition"));
+        public global::SpacetimeDB.Table<PlayerClock, PlayerClockCols, PlayerClockIxCols> PlayerClock() => new("player_clock", new PlayerClockCols("player_clock"), new PlayerClockIxCols("player_clock"));
         public global::SpacetimeDB.Table<PlayerCommandState, PlayerCommandStateCols, PlayerCommandStateIxCols> PlayerCommandState() => new("player_command_state", new PlayerCommandStateCols("player_command_state"), new PlayerCommandStateIxCols("player_command_state"));
         public global::SpacetimeDB.Table<PlayerOwnership, PlayerOwnershipCols, PlayerOwnershipIxCols> PlayerOwnership() => new("player_ownership", new PlayerOwnershipCols("player_ownership"), new PlayerOwnershipIxCols("player_ownership"));
         public global::SpacetimeDB.Table<PlayerProgression, PlayerProgressionCols, PlayerProgressionIxCols> PlayerProgression() => new("player_progression", new PlayerProgressionCols("player_progression"), new PlayerProgressionIxCols("player_progression"));
         public global::SpacetimeDB.Table<RespawnWork, RespawnWorkCols, RespawnWorkIxCols> RespawnWork() => new("respawn_work", new RespawnWorkCols("respawn_work"), new RespawnWorkIxCols("respawn_work"));
         public global::SpacetimeDB.Table<Ship, ShipCols, ShipIxCols> Ship() => new("ship", new ShipCols("ship"), new ShipIxCols("ship"));
         public global::SpacetimeDB.Table<ShipChannel, ShipChannelCols, ShipChannelIxCols> ShipChannel() => new("ship_channel", new ShipChannelCols("ship_channel"), new ShipChannelIxCols("ship_channel"));
+        public global::SpacetimeDB.Table<ShipMovement, ShipMovementCols, ShipMovementIxCols> ShipMovement() => new("ship_movement", new ShipMovementCols("ship_movement"), new ShipMovementIxCols("ship_movement"));
         public global::SpacetimeDB.Table<ShipStatus, ShipStatusCols, ShipStatusIxCols> ShipStatus() => new("ship_status", new ShipStatusCols("ship_status"), new ShipStatusIxCols("ship_status"));
+        public global::SpacetimeDB.Table<SimulationTelemetry, SimulationTelemetryCols, SimulationTelemetryIxCols> SimulationTelemetry() => new("simulation_telemetry", new SimulationTelemetryCols("simulation_telemetry"), new SimulationTelemetryIxCols("simulation_telemetry"));
         public global::SpacetimeDB.Table<Volley, VolleyCols, VolleyIxCols> Volley() => new("volley", new VolleyCols("volley"), new VolleyIxCols("volley"));
         public global::SpacetimeDB.Table<WorldObject, WorldObjectCols, WorldObjectIxCols> WorldObject() => new("world_object", new WorldObjectCols("world_object"), new WorldObjectIxCols("world_object"));
         public global::SpacetimeDB.Table<WorldState, WorldStateCols, WorldStateIxCols> WorldState() => new("world_state", new WorldStateCols("world_state"), new WorldStateIxCols("world_state"));

@@ -19,6 +19,8 @@ namespace SpacetimeDB.Types
         public string ArchetypeId;
         [DataMember(Name = "is_active")]
         public bool IsActive;
+        [DataMember(Name = "decision_shard")]
+        public byte DecisionShard;
         [DataMember(Name = "next_decision_tick")]
         public ulong NextDecisionTick;
         [DataMember(Name = "home_seed")]
@@ -28,6 +30,7 @@ namespace SpacetimeDB.Types
             ulong ShipEntityId,
             string ArchetypeId,
             bool IsActive,
+            byte DecisionShard,
             ulong NextDecisionTick,
             ulong HomeSeed
         )
@@ -35,6 +38,7 @@ namespace SpacetimeDB.Types
             this.ShipEntityId = ShipEntityId;
             this.ArchetypeId = ArchetypeId;
             this.IsActive = IsActive;
+            this.DecisionShard = DecisionShard;
             this.NextDecisionTick = NextDecisionTick;
             this.HomeSeed = HomeSeed;
         }

@@ -30,6 +30,32 @@ public sealed class ReducerIntegrationTests
     }
 
     [Fact]
+    public void PlayerClockAnchorsOnceWhileThePrivateSimulationContinues()
+    {
+        using var client = IntegrationClient.Connect();
+        client.LoadPlayer();
+        var clock = client.OwnedClock();
+        var start = client.OwnedShip();
+
+        var destinationX = MathF.Abs(start.PositionX) > 1f || MathF.Abs(start.PositionY) > 1f
+            ? 0f
+            : 20f;
+        var course = client.IssueSetCourse(1, destinationX, 0f);
+        Assert.True(
+            course.Accepted,
+            $"SetCourse was rejected with code {course.RejectionCode}.");
+        PumpAllUntil([client], () =>
+        {
+            var moved = client.OwnedShip();
+            return MathF.Abs(moved.PositionX - start.PositionX) > 0.1f ||
+                MathF.Abs(moved.PositionY - start.PositionY) > 0.1f;
+        });
+
+        Assert.Equal(clock.Tick, client.OwnedClock().Tick);
+        Assert.Equal(10u, clock.TickRateHz);
+    }
+
+    [Fact]
     public void DuplicateAndStaleCommandsNeverApplyAnEffectTwice()
     {
         using var client = IntegrationClient.Connect();
@@ -66,7 +92,10 @@ public sealed class ReducerIntegrationTests
         foreach (var client in clients)
         {
             client.LoadPlayer();
-            Assert.True(client.IssueSetCourse(1, 0f, 0f).Accepted);
+            var course = client.IssueSetCourse(1, 0f, 0f);
+            Assert.True(
+                course.Accepted,
+                $"SetCourse was rejected with code {course.RejectionCode}.");
         }
 
         PumpAllUntil(clients, () => clients.All(client => client.IsNear(0f, 0f, 14f)));

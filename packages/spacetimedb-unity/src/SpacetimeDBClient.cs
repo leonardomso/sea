@@ -11,7 +11,6 @@ using UnityEngine;
 #endif
 using SpacetimeDB.BSATN;
 using SpacetimeDB.ClientApi;
-using Thread = System.Threading.Thread;
 
 namespace SpacetimeDB
 {
@@ -217,7 +216,7 @@ namespace SpacetimeDB
         }
 
         private bool isClosing;
-        private readonly Thread networkMessageParseThread;
+        private int parseWorkerScheduled;
         public readonly Stats stats = new();
 
         protected DbConnectionBase()
@@ -244,12 +243,6 @@ namespace SpacetimeDB
 #endif
 #endif
 
-#if !(UNITY_WEBGL && !UNITY_EDITOR)
-            // For targets other than webgl we start a thread to parse messages
-            networkMessageParseThread = new Thread(ParseMessages);
-            networkMessageParseThread.Name = "SpacetimeDB Network Thread";
-            networkMessageParseThread.Start();
-#endif
         }
 
         internal struct UnparsedMessage
@@ -448,7 +441,21 @@ namespace SpacetimeDB
 #endif
                 try
                 {
+#if UNITY_WEBGL && !UNITY_EDITOR
                     var message = _parseQueue.Take(_parseCancellationToken);
+#else
+                    if (!_parseQueue.TryTake(out var message))
+                    {
+                        Interlocked.Exchange(ref parseWorkerScheduled, 0);
+                        if (_parseQueue.Count == 0 ||
+                            Interlocked.CompareExchange(ref parseWorkerScheduled, 1, 0) != 0)
+                        {
+                            return;
+                        }
+
+                        continue;
+                    }
+#endif
                     var parsedMessage = ParseMessage(message);
                     _applyQueue.Add(parsedMessage, _parseCancellationToken);
                 }
@@ -860,7 +867,22 @@ namespace SpacetimeDB
         internal void OnMessageReceived(byte[] bytes, DateTime timestamp)
         {
             _parseQueue.Add(new UnparsedMessage { bytes = bytes, timestamp = timestamp, parseQueueTrackerId = stats.ParseMessageQueueTracker.StartTrackingRequest() });
+#if !(UNITY_WEBGL && !UNITY_EDITOR)
+            ScheduleMessageParsing();
+#endif
         }
+
+#if !(UNITY_WEBGL && !UNITY_EDITOR)
+        private void ScheduleMessageParsing()
+        {
+            if (isClosing || Interlocked.CompareExchange(ref parseWorkerScheduled, 1, 0) != 0)
+            {
+                return;
+            }
+
+            _ = Task.Run(ParseMessages);
+        }
+#endif
 
         void IDbConnection.InternalCallReducer<T>(T args)
         {

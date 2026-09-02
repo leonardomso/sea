@@ -56,7 +56,8 @@ internal sealed class IntegrationClient : IDisposable
             })
             .OnConnectError(error => connectionError = error)
             .WithUri(server)
-            .WithDatabaseName(database);
+            .WithDatabaseName(database)
+            .WithConfirmedReads(false);
         if (!string.IsNullOrWhiteSpace(token))
         {
             builder.WithToken(token);
@@ -84,6 +85,7 @@ internal sealed class IntegrationClient : IDisposable
                 $"SELECT * FROM player_ownership WHERE owner = {ownerLiteral}",
                 $"SELECT * FROM player_progression WHERE owner = {ownerLiteral}",
                 $"SELECT * FROM player_command_state WHERE owner = {ownerLiteral}",
+                $"SELECT * FROM player_clock WHERE owner = {ownerLiteral}",
                 $"SELECT * FROM command_result_event WHERE owner = {ownerLiteral}",
                 $"SELECT * FROM encounter_reward WHERE owner = {ownerLiteral}",
                 $"SELECT * FROM encounter_reward_event WHERE owner = {ownerLiteral}",
@@ -160,6 +162,9 @@ internal sealed class IntegrationClient : IDisposable
         return connection.Db.Ship.EntityId.Find(ownership.ShipEntityId)
             ?? throw new InvalidOperationException("The integration identity has no ship row.");
     }
+
+    public PlayerClock OwnedClock() => connection.Db.PlayerClock.Owner.Find(identity)
+        ?? throw new InvalidOperationException("The integration identity has no clock row.");
 
     public Ship Npc(ulong entityId) => connection.Db.Ship.EntityId.Find(entityId)
         ?? throw new InvalidOperationException($"NPC {entityId} is not subscribed.");

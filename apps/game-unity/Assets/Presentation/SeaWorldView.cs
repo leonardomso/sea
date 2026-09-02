@@ -126,6 +126,8 @@ namespace Sea.Client
                 return;
             }
 
+            worldTick = connection.CurrentWorldTick;
+
             using (VisibilityMarker.Auto())
             {
                 ReconcileVisibility();

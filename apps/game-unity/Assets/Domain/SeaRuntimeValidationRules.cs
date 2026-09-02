@@ -25,6 +25,8 @@ namespace Sea.Client
         public const float CombatApproachRange = 42f;
         public const string RuntimeNpcSubscriptionQuery =
             "SELECT * FROM ship WHERE faction_code = 2";
+        public const string RuntimeMovementSubscriptionQuery =
+            "SELECT * FROM ship_movement WHERE is_active = true";
 
         private const float SeededStormX = -72f;
         private const float SeededStormY = 3f;
@@ -72,6 +74,23 @@ namespace Sea.Client
             int requiredCount) =>
             visibleCount < requiredCount;
 
+        public static bool HasObservedStop(
+            bool stopRequested,
+            float travelled,
+            float speedBeforeStop,
+            float currentSpeed,
+            bool isMoving,
+            bool isStopping)
+        {
+            if (!stopRequested || travelled <= 0.1f || speedBeforeStop <= 0f)
+            {
+                return false;
+            }
+
+            return isStopping && currentSpeed < speedBeforeStop ||
+                !isMoving && currentSpeed <= Mathf.Epsilon;
+        }
+
         public static bool CanIssueTacticalCommand(
             bool isActive,
             bool isAlive,
@@ -89,16 +108,20 @@ namespace Sea.Client
 
         public static Vector2 SyntheticFleetPosition(
             int index,
+            int totalCount,
             Vector2 center,
             int columns = 10,
             float spacing = 6f)
         {
             var row = index / columns;
             var column = index % columns;
-            var halfSpan = (columns - 1) * spacing * 0.5f;
+            var populatedColumns = Mathf.Min(columns, totalCount);
+            var rows = Mathf.CeilToInt(totalCount / (float)columns);
+            var halfWidth = (populatedColumns - 1) * spacing * 0.5f;
+            var halfHeight = (rows - 1) * spacing * 0.5f;
             return center + new Vector2(
-                column * spacing - halfSpan,
-                row * spacing - halfSpan);
+                column * spacing - halfWidth,
+                row * spacing - halfHeight);
         }
 
         public static Vector2 SeededStormPosition(ulong worldTick)

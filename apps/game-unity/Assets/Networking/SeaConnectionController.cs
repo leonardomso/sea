@@ -109,7 +109,8 @@ namespace Sea.Client
                 .OnConnectError(HandleConnectionError)
                 .OnDisconnect(HandleDisconnected)
                 .WithUri(serverUrl)
-                .WithDatabaseName(databaseName);
+                .WithDatabaseName(databaseName)
+                .WithConfirmedReads(false);
 
             var token = authTokens.Token;
             attemptedWithToken = !string.IsNullOrWhiteSpace(token);

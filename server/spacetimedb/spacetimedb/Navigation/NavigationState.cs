@@ -6,7 +6,7 @@ public static partial class Module
     private static SpawnPoint FindSafeSpawn(ReducerContext ctx, ulong seed)
     {
         var blockers = new List<SpawnBlocker>();
-        foreach (var worldObject in BlockingWorldObjects(ctx))
+        foreach (var worldObject in UnsafeSpawnWorldObjects(ctx))
         {
             if (worldObject.IsActive && worldObject.BlocksMovement)
             {
@@ -17,17 +17,9 @@ public static partial class Module
             }
         }
 
-        foreach (var ship in ctx.Db.Ship.ByActive.Filter(true))
-        {
-            if (ship.IsAlive)
-            {
-                blockers.Add(new SpawnBlocker(ship.PositionX, ship.PositionY, 4f));
-            }
-        }
-
         if (!SpawnRules.TryFindSafePosition(seed, blockers, out var point))
         {
-            throw new Exception("No safe player spawn is available.");
+            throw new InvalidOperationException("No safe player spawn is available.");
         }
 
         return point;
@@ -54,14 +46,6 @@ public static partial class Module
             }
         }
 
-        foreach (var ship in ctx.Db.Ship.ByActive.Filter(true))
-        {
-            if (ship.IsAlive)
-            {
-                blockers.Add(new SpawnBlocker(ship.PositionX, ship.PositionY, 4f));
-            }
-        }
-
         if (!SpawnRules.TryFindSafePosition(seed, blockers, out var point))
         {
             throw new InvalidOperationException("No safe respawn position is available.");
@@ -70,36 +54,33 @@ public static partial class Module
         return point;
     }
 
-    private static List<NavigationBlocker> NavigationBlockersAt(
-        ReducerContext ctx,
-        float x,
-        float y)
+    private static List<NavigationBlocker> NavigationBlockers(ReducerContext ctx)
     {
-        var blockers = new List<NavigationBlocker>();
-        var bounds = SpatialRules.BoundsAround(
-            x,
-            y,
-            SpatialRules.MaximumWorldInfluenceRadius);
-        AddNavigationBlockers(WorldObjectsIn(ctx, bounds), blockers);
+        var field = ctx.Db.NavigationFieldState.Id.Find(1) ??
+            throw new InvalidOperationException("Navigation field state is missing.");
+        var blockers = new List<NavigationBlocker>(field.Blockers.Count);
+        foreach (var blocker in field.Blockers)
+        {
+            blockers.Add(new NavigationBlocker(blocker.X, blocker.Y, blocker.Radius));
+        }
+
         return blockers;
     }
 
-    private static List<NavigationBlocker> NavigationBlockersForCourse(
-        ReducerContext ctx,
-        float startX,
-        float startY,
-        float destinationX,
-        float destinationY)
+    private static void SeedNavigationField(ReducerContext ctx)
     {
         var blockers = new List<NavigationBlocker>();
-        var bounds = SpatialRules.BoundsForSegment(
-            startX,
-            startY,
-            destinationX,
-            destinationY,
-            SpatialRules.MaximumWorldInfluenceRadius);
-        AddNavigationBlockers(WorldObjectsIn(ctx, bounds), blockers);
-        return blockers;
+        AddNavigationBlockers(BlockingWorldObjects(ctx), blockers);
+        ctx.Db.NavigationFieldState.Insert(new NavigationFieldState
+        {
+            Id = 1,
+            Blockers = blockers.Select(blocker => new NavigationBlockerState
+            {
+                X = blocker.X,
+                Y = blocker.Y,
+                Radius = blocker.Radius,
+            }).ToList(),
+        });
     }
 
     private static IEnumerable<WorldObject> BlockingWorldObjects(ReducerContext ctx)
@@ -114,9 +95,27 @@ public static partial class Module
         }
     }
 
+    private static IEnumerable<WorldObject> UnsafeSpawnWorldObjects(ReducerContext ctx)
+    {
+        foreach (var kind in new[]
+                 {
+                     WorldObjectCode.Island,
+                     WorldObjectCode.Reef,
+                     WorldObjectCode.Storm,
+                     WorldObjectCode.Shoal,
+                 })
+        {
+            foreach (var worldObject in ctx.Db.WorldObject.ByActiveKind.Filter(
+                         (true, (byte)kind)))
+            {
+                yield return worldObject;
+            }
+        }
+    }
+
     private static void AddNavigationBlockers(
         IEnumerable<WorldObject> worldObjects,
-        ICollection<NavigationBlocker> blockers)
+        List<NavigationBlocker> blockers)
     {
         foreach (var worldObject in worldObjects)
         {
@@ -146,6 +145,26 @@ public static partial class Module
             out var waypoint);
         ship.WaypointX = ship.HasWaypoint ? waypoint.X : ship.DestinationX;
         ship.WaypointY = ship.HasWaypoint ? waypoint.Y : ship.DestinationY;
+    }
+
+    private static void ConfigureNavigationWaypoint(
+        ref ShipKinematics ship,
+        IReadOnlyCollection<NavigationBlocker> blockers)
+    {
+        ship.HasWaypoint = NavigationRules.TryFindDetour(
+            ship.PositionX,
+            ship.PositionY,
+            ship.DestinationX,
+            ship.DestinationY,
+            blockers,
+            out var waypoint);
+        ship.WaypointX = ship.HasWaypoint ? waypoint.X : ship.DestinationX;
+        ship.WaypointY = ship.HasWaypoint ? waypoint.Y : ship.DestinationY;
+        ship.DesiredHeadingDegrees = SailingRules.DesiredHeading(
+            ship.PositionX,
+            ship.PositionY,
+            ship.WaypointX,
+            ship.WaypointY);
     }
 
     private static ulong IdentitySeed(Identity identity)

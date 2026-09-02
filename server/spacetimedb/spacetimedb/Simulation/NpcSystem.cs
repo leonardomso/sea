@@ -3,13 +3,26 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    private static void ProcessNpcDecisions(ReducerContext ctx, ulong tick)
+    private static (uint Processed, uint Dormant) ProcessNpcDecisions(
+        ReducerContext ctx,
+        ulong tick,
+        byte shardId)
     {
-        foreach (var ai in ctx.Db.NpcAi.ByDecisionDue.Filter(
-                     (true, new Bound<ulong>(0, tick))))
+        var processed = 0u;
+        var dormant = 0u;
+        foreach (var ai in ctx.Db.NpcAi.ByDecisionDueShard.Filter(
+                     (true, shardId, new Bound<ulong>(0, tick))))
         {
+            processed++;
+            if (!ai.IsActive)
+            {
+                dormant++;
+            }
+
             ProcessNpcDecision(ctx, ai, tick);
         }
+
+        return (processed, dormant);
     }
 
     private static void ProcessNpcDecision(ReducerContext ctx, NpcAi ai, ulong tick)
@@ -28,12 +41,14 @@ public static partial class Module
         var target = ship.TargetEntityId == 0
             ? default(Ship?)
             : ctx.Db.Ship.EntityId.Find(ship.TargetEntityId);
-        var candidate = definition.AggroRange <= 0f
-            ? default(Ship?)
-            : FindNearestPlayer(ctx, ship, definition.AggroRange);
         var targetAvailable = target is Ship selected &&
             selected.IsActive && selected.IsAlive &&
             selected.FactionCode == (byte)FactionCode.Player;
+        var candidate = NpcRules.ShouldSearchForTarget(
+                targetAvailable,
+                definition.AggroRange)
+            ? FindNearestPlayer(ctx, ship, definition.AggroRange)
+            : default(Ship?);
         ExecuteNpcDecision(ctx, ship, NpcRules.Decide(BuildNpcSnapshot(
             ctx,
             ai,
@@ -160,6 +175,8 @@ public static partial class Module
         {
             return;
         }
+
+        HydrateTrackedKinematics(ctx, ref ship);
 
         var decoded = DecodeCommand(command);
         var snapshot = BuildCommandSnapshot(ctx, ship, decoded);

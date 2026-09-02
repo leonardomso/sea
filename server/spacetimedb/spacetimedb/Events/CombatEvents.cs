@@ -7,7 +7,7 @@ public static partial class Module
     {
         foreach (var item in ctx.Db.Inventory.ByShip.Filter(shipEntityId))
         {
-            if (item.ItemId == itemId)
+            if (string.Equals(item.ItemId, itemId, StringComparison.Ordinal))
             {
                 return item;
             }
@@ -65,6 +65,7 @@ public static partial class Module
                      (true, new Bound<ulong>(0, tick))))
         {
             ctx.Db.Loot.LootId.Delete(loot.LootId);
+            ChangeActiveLootCount(ctx, -1);
         }
     }
 
@@ -74,7 +75,7 @@ public static partial class Module
         string eventType,
         string details)
     {
-        var tick = ctx.Db.WorldState.Id.Find(1)?.Tick ?? 0;
+        var tick = ctx.Db.SimulationClock.Id.Find(1)?.Tick ?? 0;
         ctx.Db.CombatEvent.Insert(new CombatEvent
         {
             OwnerEntityId = ownerEntityId,

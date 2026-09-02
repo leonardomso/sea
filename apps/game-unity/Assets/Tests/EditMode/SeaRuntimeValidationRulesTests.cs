@@ -90,11 +90,115 @@ namespace Sea.Tests
             var center = new Vector2(140f, -85f);
 
             Assert.That(
-                SeaRuntimeValidationRules.SyntheticFleetPosition(0, center),
+                SeaRuntimeValidationRules.SyntheticFleetPosition(0, 100, center),
                 Is.EqualTo(center + new Vector2(-27f, -27f)));
             Assert.That(
-                SeaRuntimeValidationRules.SyntheticFleetPosition(99, center),
+                SeaRuntimeValidationRules.SyntheticFleetPosition(99, 100, center),
                 Is.EqualTo(center + new Vector2(27f, 27f)));
+        }
+
+        [Test]
+        public void Macos_performance_fleet_keeps_all_250_ships_visible()
+        {
+            var center = Vector2.zero;
+
+            for (var index = 0; index < 250; index++)
+            {
+                var position = SeaRuntimeValidationRules.SyntheticFleetPosition(
+                    index,
+                    250,
+                    center);
+                Assert.That(
+                    SeaPresentationRules.LevelFor(position.magnitude, false),
+                    Is.Not.EqualTo(SeaPresentationLevel.Hidden),
+                    $"Synthetic ship {index} was outside the presentation radius.");
+            }
+        }
+
+        [TestCase(true, 2f, 6f, 0f, false, false, true)]
+        [TestCase(true, 2f, 6f, 3f, true, true, true)]
+        [TestCase(true, 2f, 6f, 6f, true, true, false)]
+        [TestCase(false, 2f, 6f, 0f, false, false, false)]
+        public void Runtime_movement_accepts_progressive_or_completed_stop(
+            bool stopRequested,
+            float travelled,
+            float speedBeforeStop,
+            float currentSpeed,
+            bool isMoving,
+            bool isStopping,
+            bool expected)
+        {
+            Assert.That(
+                SeaRuntimeValidationRules.HasObservedStop(
+                    stopRequested,
+                    travelled,
+                    speedBeforeStop,
+                    currentSpeed,
+                    isMoving,
+                    isStopping),
+                Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void Client_performance_evidence_requires_every_budget()
+        {
+            var evidence = new SeaClientPerformanceEvidence
+            {
+                platform = "OSXPlayer",
+                recordedAtUtc = "2026-09-02T00:00:00.0000000Z",
+                visibleShips = 250,
+                frameP95Milliseconds = 16.7f,
+                frameP99Milliseconds = 25f,
+                idleBytesPerFrame = 0,
+                poolsStable = true,
+                runtimeErrors = 0,
+                missingAssets = 0,
+            };
+
+            Assert.That(evidence.MeetsBudget(250), Is.True);
+
+            evidence.idleBytesPerFrame = 1;
+            Assert.That(evidence.MeetsBudget(250), Is.False);
+        }
+
+        [Test]
+        public void Runtime_arguments_support_command_line_and_webgl_query_values()
+        {
+            var arguments = new[] { "game", "-seaProfile", "captain-1" };
+            var url = "http://127.0.0.1:4173/?seaPresentationPerformanceTest=1" +
+                "&seaProfile=web%20captain";
+
+            Assert.That(
+                SeaRuntimeArguments.Has(
+                    "-seaPresentationPerformanceTest",
+                    arguments,
+                    url),
+                Is.True);
+            Assert.That(
+                SeaRuntimeArguments.Value("-seaProfile", arguments, url),
+                Is.EqualTo("captain-1"));
+            Assert.That(
+                SeaRuntimeArguments.Value("-missing", arguments, url),
+                Is.Null);
+        }
+
+        [Test]
+        public void Runtime_evidence_requires_each_requested_scenario()
+        {
+            var evidence = new SeaRuntimeScenarioEvidence
+            {
+                movementRequired = true,
+                combatRequired = true,
+                progressionRequired = false,
+                tacticalRequired = false,
+                movementObserved = true,
+                combatObserved = false,
+            };
+
+            Assert.That(evidence.IsComplete(), Is.False);
+
+            evidence.combatObserved = true;
+            Assert.That(evidence.IsComplete(), Is.True);
         }
 
         [Test]
@@ -106,6 +210,9 @@ namespace Sea.Tests
             Assert.That(
                 SeaRuntimeValidationRules.RuntimeNpcSubscriptionQuery,
                 Does.Not.Contain("faction_code = 1"));
+            Assert.That(
+                SeaRuntimeValidationRules.RuntimeMovementSubscriptionQuery,
+                Is.EqualTo("SELECT * FROM ship_movement WHERE is_active = true"));
         }
 
         [Test]

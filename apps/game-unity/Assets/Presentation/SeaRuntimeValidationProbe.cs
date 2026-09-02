@@ -12,7 +12,6 @@ namespace Sea.Client
         private bool enabledForThisRun;
         private bool combatEnabledForThisRun;
         private bool tacticalEnabledForThisRun;
-        private bool presentationPerformanceEnabledForThisRun;
         private bool movementValidated;
         private bool moveRequested;
         private bool stopRequested;
@@ -29,10 +28,6 @@ namespace Sea.Client
         private uint combatInitialAmmo;
         private float nextCombatCourseTime;
         private float combatFireRequestedAt;
-        private readonly float[] presentationFrameTimes = new float[300];
-        private int presentationWarmupFrames;
-        private int presentationMeasuredFrames;
-        private bool presentationFleetSeeded;
 
         private void Awake()
         {
@@ -48,15 +43,7 @@ namespace Sea.Client
             progressionEnabledForThisRun = Array.Exists(
                 Environment.GetCommandLineArgs(),
                 argument => argument == "-seaRuntimeProgressionTest");
-            presentationPerformanceEnabledForThisRun = Array.Exists(
-                Environment.GetCommandLineArgs(),
-                argument => argument == "-seaPresentationPerformanceTest");
-            if (presentationPerformanceEnabledForThisRun)
-            {
-                Screen.SetResolution(1920, 1080, FullScreenMode.Windowed);
-                QualitySettings.vSyncCount = 0;
-                Application.targetFrameRate = 1_000;
-            }
+            ConfigureValidationEvidence();
         }
 
         public void ConfigureDependencies(
@@ -94,7 +81,12 @@ namespace Sea.Client
             {
                 if (enabledForThisRun && !movementValidated)
                 {
-                    ObserveShip(ship);
+                    var movement = connection.Connection.Db.ShipMovement.EntityId.Find(
+                        ownership.ShipEntityId);
+                    if (movement != null)
+                    {
+                        ObserveShip(ship, movement);
+                    }
                 }
                 else if (combatEnabledForThisRun || progressionEnabledForThisRun)
                 {
@@ -107,57 +99,9 @@ namespace Sea.Client
             }
         }
 
-        private void ObservePresentationPerformance()
+        private void ObserveShip(Ship ship, ShipMovement movement)
         {
-            const int requiredShipCount = 100;
-            Application.targetFrameRate = 1_000;
-            if (worldView == null)
-            {
-                return;
-            }
-
-            if (!presentationFleetSeeded ||
-                SeaRuntimeValidationRules.ShouldRestoreSyntheticFleet(
-                    worldView.VisibleShipPresentationCount,
-                    requiredShipCount))
-            {
-                worldView.SeedSyntheticPerformanceFleet(requiredShipCount);
-                presentationFleetSeeded = true;
-                presentationWarmupFrames = 0;
-                presentationMeasuredFrames = 0;
-                return;
-            }
-
-            worldView.RunSyntheticPerformanceFrame();
-            if (presentationWarmupFrames < 180)
-            {
-                presentationWarmupFrames++;
-                return;
-            }
-
-            presentationFrameTimes[presentationMeasuredFrames] = Time.unscaledDeltaTime * 1_000f;
-            presentationMeasuredFrames++;
-            if (presentationMeasuredFrames < presentationFrameTimes.Length)
-            {
-                return;
-            }
-
-            Array.Sort(presentationFrameTimes);
-            var percentileIndex = Mathf.CeilToInt(presentationFrameTimes.Length * 0.95f) - 1;
-            var p95Milliseconds = presentationFrameTimes[percentileIndex];
-            var visibleCount = worldView.VisibleShipPresentationCount;
-            var passed = visibleCount >= requiredShipCount && p95Milliseconds <= 16.7f;
-            Debug.Log(
-                $"Sea presentation performance: visible={visibleCount}, " +
-                $"frame-p95-ms={p95Milliseconds:F3}, passed={passed}.",
-                this);
-            presentationPerformanceEnabledForThisRun = false;
-            Application.Quit(passed ? 0 : 3);
-        }
-
-        private void ObserveShip(Ship ship)
-        {
-            var position = new Vector2(ship.PositionX, ship.PositionY);
+            var position = new Vector2(movement.PositionX, movement.PositionY);
             if (!moveRequested)
             {
                 start = position;
@@ -173,17 +117,25 @@ namespace Sea.Client
 
             var travelled = Vector2.Distance(start, position);
             var remaining = Vector2.Distance(position, destination);
-            if (!stopRequested && ship.IsMoving && ship.Speed > 0.5f && travelled > 0.1f && remaining > 0.1f)
+            if (!stopRequested && movement.IsMoving && movement.Speed > 0.5f &&
+                travelled > 0.1f && remaining > 0.1f)
             {
-                speedBeforeStop = ship.Speed;
+                speedBeforeStop = movement.Speed;
                 stopRequested = true;
                 StopCourse();
                 return;
             }
 
-            if (stopRequested && ship.IsStopping && ship.Speed > 0f && ship.Speed < speedBeforeStop)
+            if (SeaRuntimeValidationRules.HasObservedStop(
+                    stopRequested,
+                    travelled,
+                    speedBeforeStop,
+                    movement.Speed,
+                    movement.IsMoving,
+                    ship.IsStopping))
             {
                 movementValidated = true;
+                MarkRuntimeMilestone(SeaRuntimeMilestone.Movement);
                 Debug.Log("Sea runtime observed progressive sailing.", this);
             }
         }
@@ -191,7 +143,11 @@ namespace Sea.Client
         private void ObserveCombat(Ship player)
         {
             runtimeCombatTargetsSubscription ??= connection.Connection.SubscriptionBuilder()
-                .Subscribe(new[] { SeaRuntimeValidationRules.RuntimeNpcSubscriptionQuery });
+                .Subscribe(new[]
+                {
+                    SeaRuntimeValidationRules.RuntimeNpcSubscriptionQuery,
+                    SeaRuntimeValidationRules.RuntimeMovementSubscriptionQuery,
+                });
             var target = combatTargetId == 0
                 ? connection.Connection.Db.Ship.Iter()
                     .Where(ship =>
@@ -200,8 +156,7 @@ namespace Sea.Client
                         ship.IsActive &&
                         ship.IsAlive)
                     .OrderBy(ship => Vector2.SqrMagnitude(
-                        new Vector2(ship.PositionX - player.PositionX,
-                            ship.PositionY - player.PositionY)))
+                        LivePosition(ship) - LivePosition(player)))
                     .FirstOrDefault()
                 : connection.Connection.Db.Ship.EntityId.Find(combatTargetId);
             if (target == null)
@@ -221,8 +176,8 @@ namespace Sea.Client
                 return;
             }
 
-            var playerPosition = new Vector2(player.PositionX, player.PositionY);
-            var targetPosition = new Vector2(target.PositionX, target.PositionY);
+            var playerPosition = LivePosition(player);
+            var targetPosition = LivePosition(target);
             var distance = Vector2.Distance(playerPosition, targetPosition);
             if (distance > SeaRuntimeValidationRules.CombatObservationRange)
             {
@@ -277,6 +232,7 @@ namespace Sea.Client
                     if (!combatValidated)
                     {
                         combatValidated = true;
+                        MarkRuntimeMilestone(SeaRuntimeMilestone.Combat);
                         Debug.Log("Sea runtime observed authoritative manual broadside combat.", this);
                     }
 
@@ -303,7 +259,7 @@ namespace Sea.Client
 
             var broadside = SeaRuntimeValidationRules.PlanBroadside(
                 playerPosition,
-                player.HeadingDegrees,
+                LiveHeading(player),
                 targetPosition);
             if (!broadside.CanFire)
             {
@@ -352,5 +308,20 @@ namespace Sea.Client
 
         private void Issue(ShipCommand command, string description) =>
             connection.IssueCommand(command, description);
+
+        private Vector2 LivePosition(Ship ship)
+        {
+            var movement = connection.Connection.Db.ShipMovement.EntityId.Find(ship.EntityId);
+            return movement == null
+                ? new Vector2(ship.PositionX, ship.PositionY)
+                : new Vector2(movement.PositionX, movement.PositionY);
+        }
+
+        private float LiveHeading(Ship ship)
+        {
+            var movement = connection.Connection.Db.ShipMovement.EntityId.Find(ship.EntityId);
+            return movement?.HeadingDegrees ?? ship.HeadingDegrees;
+        }
+
     }
 }

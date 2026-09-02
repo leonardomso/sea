@@ -9,6 +9,8 @@ namespace Sea.Client
 
         internal int VisibleShipPresentationCount => entities.Count;
 
+        internal int SyntheticShipPoolCreatedCount => shipPool?.CreatedCount ?? 0;
+
         internal void SeedSyntheticPerformanceFleet(int count)
         {
             var cameraTransform = Camera.main != null ? Camera.main.transform : null;
@@ -17,7 +19,10 @@ namespace Sea.Client
                 : new Vector2(cameraTransform.position.x, cameraTransform.position.z);
             for (var index = 0; index < count; index++)
             {
-                var position = SeaRuntimeValidationRules.SyntheticFleetPosition(index, center);
+                var position = SeaRuntimeValidationRules.SyntheticFleetPosition(
+                    index,
+                    count,
+                    center);
                 HandleShipChanged(new Ship
                 {
                     EntityId = SyntheticPerformanceEntityBase + (ulong)index,

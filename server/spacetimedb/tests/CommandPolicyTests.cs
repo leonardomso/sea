@@ -192,6 +192,79 @@ public sealed class CommandPolicyTests
         Assert.Equal(expected, CommandSequencePolicy.Evaluate(lastProcessed, requested));
     }
 
+    [Fact]
+    public void ArgumentValidationTakesPrecedenceWithoutApplyingAnEffect()
+    {
+        var snapshot = ValidSnapshot(ShipMode.Operational) with
+        {
+            ArgumentRejection = CommandRejectionCode.InvalidBroadsideSide,
+        };
+
+        var decision = CommandPolicy.Evaluate(snapshot, ShipCommandKind.FireBroadside);
+
+        Assert.Equal(CommandRejectionCode.InvalidBroadsideSide, decision.Rejection);
+        Assert.Equal(CommandEffect.None, decision.Effects);
+    }
+
+    [Fact]
+    public void ConcealedTargetAndMissingAmmunitionHaveStableCodes()
+    {
+        var concealed = ValidSnapshot(ShipMode.Operational) with { TargetConcealed = true };
+        var missingAmmo = ValidSnapshot(ShipMode.Operational) with { AmmoOwned = false };
+
+        Assert.Equal(CommandRejectionCode.TargetConcealed,
+            CommandPolicy.Evaluate(concealed, ShipCommandKind.SelectTarget).Rejection);
+        Assert.Equal(CommandRejectionCode.AmmunitionNotOwned,
+            CommandPolicy.Evaluate(missingAmmo, ShipCommandKind.SetAmmo).Rejection);
+    }
+
+    [Theory]
+    [InlineData(FireRejection.Busy, ShipCommandKind.FireBroadside)]
+    [InlineData(AbilityRejection.Busy, ShipCommandKind.ActivateAbility)]
+    [InlineData(RepairRejection.Busy, ShipCommandKind.StartRepair)]
+    [InlineData(BoardingRejection.Busy, ShipCommandKind.StartBoarding)]
+    public void BusySubsystemsMapToModeConflict(object rejection, ShipCommandKind command)
+    {
+        var snapshot = ValidSnapshot(ShipMode.Operational) with
+        {
+            FireRejection = rejection is FireRejection fire ? fire : FireRejection.None,
+            AbilityRejection = rejection is AbilityRejection ability
+                ? ability
+                : AbilityRejection.None,
+            RepairRejection = rejection is RepairRejection repair
+                ? repair
+                : RepairRejection.None,
+            BoardingRejection = rejection is BoardingRejection boarding
+                ? boarding
+                : BoardingRejection.None,
+        };
+
+        Assert.Equal(CommandRejectionCode.ModeConflict,
+            CommandPolicy.Evaluate(snapshot, command).Rejection);
+    }
+
+    [Fact]
+    public void UnknownCommandCodeIsRejectedAsCorruptInput()
+    {
+        var decision = CommandPolicy.Evaluate(
+            ValidSnapshot(ShipMode.Operational),
+            (ShipCommandKind)byte.MaxValue);
+
+        Assert.Equal(CommandRejectionCode.MissingResource, decision.Rejection);
+        Assert.Equal(CommandEffect.None, decision.Effects);
+    }
+
+    [Fact]
+    public void UnknownShipModeCannotAuthorizeACommand()
+    {
+        var snapshot = ValidSnapshot((ShipMode)byte.MaxValue);
+
+        var decision = CommandPolicy.Evaluate(snapshot, ShipCommandKind.SetCourse);
+
+        Assert.Equal(CommandRejectionCode.ModeConflict, decision.Rejection);
+        Assert.Equal(CommandEffect.None, decision.Effects);
+    }
+
     private static CommandSnapshot ValidSnapshot(ShipMode mode) => new()
     {
         Mode = mode,

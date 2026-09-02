@@ -1,50 +1,98 @@
+using NBomber;
 using NBomber.CSharp;
+using NBomber.Contracts;
 using Sea.LoadTests;
-using System.Globalization;
+using System.Diagnostics;
 
-var database = Environment.GetEnvironmentVariable("SEA_LOAD_DATABASE");
-if (string.IsNullOrWhiteSpace(database))
-{
-    Console.WriteLine("Set SEA_LOAD_DATABASE to run the real SpacetimeDB load smoke.");
-    return;
-}
+var options = LoadRunOptions.FromEnvironment();
+var tracker = new LoadRunTracker();
+var activePool = new ClientPool<LoadClientSession>();
+LoadClientPopulation? population = null;
+LoadMeasurementWindow? measurementWindow = null;
+var process = Process.GetCurrentProcess();
+var cpuStart = process.TotalProcessorTime;
+var wallStart = Stopwatch.StartNew();
 
-var server = Environment.GetEnvironmentVariable("SEA_LOAD_SERVER")
-    ?? "http://host.docker.internal:3000";
-var clients = int.TryParse(
-    Environment.GetEnvironmentVariable("SEA_LOAD_CLIENTS"),
-    NumberStyles.Integer,
-    CultureInfo.InvariantCulture,
-    out var count)
-    ? count
-    : 10;
-var duration = int.TryParse(
-    Environment.GetEnvironmentVariable("SEA_LOAD_SECONDS"),
-    NumberStyles.Integer,
-    CultureInfo.InvariantCulture,
-    out var seconds)
-    ? seconds
-    : 10;
-
-var scenario = Scenario.Create("spacetimedb_real_client", async _ =>
+var scenario = Scenario.Create("spacetimedb_real_client", RunActiveIterationAsync)
+    .WithInit(async _ =>
     {
-        var client = await SpacetimeLoadClient.ConnectAsync(server, database)
+        population = await LoadClientPopulation.ConnectAsync(options, tracker)
             .ConfigureAwait(false);
-        try
+        measurementWindow = new LoadMeasurementWindow(
+            DateTimeOffset.UtcNow + options.SetupDuration);
+        foreach (var session in population.Sessions.Take(options.ActiveClients))
         {
-            await client.LoadPlayerAsync().ConfigureAwait(false);
-            await client.StartSailingAsync().ConfigureAwait(false);
-            await Task.Delay(TimeSpan.FromSeconds(duration)).ConfigureAwait(false);
-            return Response.Ok();
-        }
-        finally
-        {
-            await client.DisposeAsync().ConfigureAwait(false);
+            activePool.AddClient(session);
         }
     })
-    .WithoutWarmUp()
-    .WithLoadSimulations(Simulation.KeepConstant(
-        copies: clients,
-        during: TimeSpan.FromSeconds(duration + 5)));
+    .WithClean(async _ =>
+    {
+        if (population is null)
+        {
+            return;
+        }
 
-NBomberRunner.RegisterScenarios(scenario).Run();
+        population.RecordRetention(tracker);
+        await population.DisposeAsync().ConfigureAwait(false);
+    })
+    .WithWarmUpDuration(options.SetupDuration)
+    .WithLoadSimulations(
+        Simulation.KeepConstant(
+            copies: options.ActiveClients,
+            during: options.MeasureDuration));
+
+try
+{
+    NBomberRunner.RegisterScenarios(scenario)
+        .WithReportFolder(options.ReportDirectory)
+        .Run();
+}
+catch (Exception error)
+{
+    tracker.RecordFailure(error);
+}
+
+var processorCount = Math.Max(1, Environment.ProcessorCount);
+var cpuPercent = wallStart.Elapsed <= TimeSpan.Zero
+    ? 0
+    : (process.TotalProcessorTime - cpuStart).TotalMilliseconds /
+        wallStart.Elapsed.TotalMilliseconds / processorCount * 100;
+var evidence = tracker.Snapshot(
+    options.ActiveClients,
+    options.TotalClients - options.ActiveClients,
+    cpuPercent);
+LoadEvidenceDocument.Write(options.EvidencePath, evidence);
+Console.WriteLine(
+    $"SEA_LOAD_EVIDENCE={Path.GetFullPath(options.EvidencePath)}; " +
+    $"cpu={cpuPercent:0.###}%; failures={evidence.FailedClients}");
+
+return evidence.FailedClients == 0 ? 0 : 1;
+
+async Task<IResponse> RunActiveIterationAsync(IScenarioContext context)
+{
+    try
+    {
+        var session = activePool.GetClient(context.ScenarioInfo.InstanceNumber);
+        await Task.Delay(
+                session.TakeCourseDelay(),
+                context.ScenarioCancellationToken)
+            .ConfigureAwait(false);
+        var acknowledgement = await session.Client.TryStartSailingAsync(session.Plan)
+            .ConfigureAwait(false);
+        if (acknowledgement is TimeSpan latency &&
+            measurementWindow?.Contains(DateTimeOffset.UtcNow) == true)
+        {
+            tracker.RecordAcknowledgement(latency);
+        }
+        return Response.Ok();
+    }
+    catch (OperationCanceledException) when (context.ScenarioCancellationToken.IsCancellationRequested)
+    {
+        return Response.Ok();
+    }
+    catch (Exception error)
+    {
+        tracker.RecordFailure(error);
+        return Response.Fail();
+    }
+}

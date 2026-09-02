@@ -98,11 +98,11 @@ grep -q 'Addressables.Release' \
   "$unity_root/Assets/Presentation/SeaOwnedAssetLease.cs"
 grep -q 'SeaDirtyState' "$unity_root/Assets/UI/SeaHudEvents.cs"
 grep -q -- '-seaPresentationPerformanceTest' \
-  "$unity_root/Assets/Presentation/SeaRuntimeValidationProbe.cs"
+  "$unity_root"/Assets/Presentation/SeaRuntimeValidationProbe*.cs
 grep -q 'SeedSyntheticPerformanceFleet(requiredShipCount)' \
-  "$unity_root/Assets/Presentation/SeaRuntimeValidationProbe.cs"
+  "$unity_root"/Assets/Presentation/SeaRuntimeValidationProbe*.cs
 grep -q 'ShouldRestoreSyntheticFleet' \
-  "$unity_root/Assets/Presentation/SeaRuntimeValidationProbe.cs"
+  "$unity_root"/Assets/Presentation/SeaRuntimeValidationProbe*.cs
 grep -q 'test-unity-presentation-performance.sh' "$project_root/scripts/verify-unity.sh"
 
 if grep -R -q --include='*.cs' -E 'void OnGUI\(|Input\.Get' \

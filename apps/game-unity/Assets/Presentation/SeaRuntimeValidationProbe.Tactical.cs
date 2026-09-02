@@ -28,7 +28,8 @@ namespace Sea.Client
                 return;
             }
 
-            if (!ObserveTacticalAbility(player, world))
+            var worldTick = connection.CurrentWorldTick;
+            if (!ObserveTacticalAbility(player, worldTick))
             {
                 return;
             }
@@ -37,14 +38,14 @@ namespace Sea.Client
                 .FirstOrDefault(item => item.Kind == "storm" && item.IsActive);
             if (storm == null)
             {
-                SailToPredictedStorm(world.Tick);
+                SailToPredictedStorm(worldTick);
                 return;
             }
 
             ObserveStormAndRepair(player, storm);
         }
 
-        private bool ObserveTacticalAbility(Ship player, WorldState world)
+        private bool ObserveTacticalAbility(Ship player, ulong worldTick)
         {
             if (!tacticalAbilityRequested)
             {
@@ -74,7 +75,7 @@ namespace Sea.Client
                 .Filter(player.EntityId)
                 .FirstOrDefault(item => item.CooldownType == "full_sail");
             tacticalAbilityObserved = status != null && cooldown != null &&
-                cooldown.ReadyAtTick > world.Tick;
+                cooldown.ReadyAtTick > worldTick;
             if (!tacticalAbilityObserved &&
                 SeaRuntimeValidationRules.ShouldRetryTacticalCommand(
                     observed: false,
@@ -102,7 +103,7 @@ namespace Sea.Client
 
         private void ObserveStormAndRepair(Ship player, WorldObject storm)
         {
-            var playerPosition = new Vector2(player.PositionX, player.PositionY);
+            var playerPosition = LivePosition(player);
             var stormPosition = new Vector2(storm.PositionX, storm.PositionY);
             if (!tacticalDamageObserved)
             {
@@ -180,6 +181,7 @@ namespace Sea.Client
             if (tacticalRepairObserved && player.Hull > tacticalDamagedHull)
             {
                 tacticalEnabledForThisRun = false;
+                MarkRuntimeMilestone(SeaRuntimeMilestone.Tactical);
                 Debug.Log(
                     "Sea runtime observed tactical ability, storm damage, and progressive repair.",
                     this);

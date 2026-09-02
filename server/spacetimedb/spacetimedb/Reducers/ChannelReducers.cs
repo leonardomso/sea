@@ -5,8 +5,8 @@ public static partial class Module
 {
     private static void ApplyStartRepair(ReducerContext ctx, ref Ship ship)
     {
-        var world = ctx.Db.WorldState.Id.Find(1) ??
-            throw new InvalidOperationException("World state is missing.");
+        var world = ctx.Db.SimulationClock.Id.Find(1) ??
+            throw new InvalidOperationException("Simulation clock is missing.");
         var repairKit = FindInventory(ctx, ship.EntityId, "repair_kit") ??
             throw new InvalidOperationException("Accepted repair has no repair kit.");
 
@@ -32,8 +32,8 @@ public static partial class Module
 
     private static void ApplyStartBoarding(ReducerContext ctx, ref Ship source)
     {
-        var world = ctx.Db.WorldState.Id.Find(1) ??
-            throw new InvalidOperationException("World state is missing.");
+        var world = ctx.Db.SimulationClock.Id.Find(1) ??
+            throw new InvalidOperationException("Simulation clock is missing.");
         var target = ctx.Db.Ship.EntityId.Find(source.TargetEntityId) ??
             throw new InvalidOperationException("Accepted boarding has no target.");
 
@@ -70,14 +70,14 @@ public static partial class Module
         var cost = checked(100u * progression.Level);
         if (progression.Gold < cost)
         {
-            throw new Exception("The player cannot afford this cannon upgrade.");
+            throw new InvalidOperationException("The player cannot afford this cannon upgrade.");
         }
 
         progression.Gold -= cost;
         ctx.Db.PlayerProgression.Owner.Update(progression);
         var ship = FindPlayerShip(ctx, ctx.Sender);
         ship.CannonDamage += WorldRules.CannonDamagePerUpgrade;
-        ctx.Db.Ship.EntityId.Update(ship);
+        PersistShip(ctx, ship);
         AppendEvent(ctx, ship.EntityId, "cannon_upgraded", $"cost={cost}");
     }
 }
