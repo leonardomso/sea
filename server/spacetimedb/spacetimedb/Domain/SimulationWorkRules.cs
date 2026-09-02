@@ -4,8 +4,8 @@ public static class SimulationWorkRules
 {
     public const bool ShipsBlockMovement = false;
     public const ulong PeriodicEffectIntervalTicks = 5;
-    public const byte MovementShardCount = 64;
-    public const byte HazardShardCount = 16;
+    public const byte MovementShardCount = 8;
+    public const byte HazardShardCount = 8;
     public const byte NpcShardCount = 4;
     public const byte CurrentRefreshBucketCount = 16;
     public const byte LootPickupBucketCount = 10;
@@ -15,7 +15,7 @@ public static class SimulationWorkRules
     public const byte DispatchSlotsPerWorldTick = 10;
     public const byte MaximumMovementCatchUpTicks = 8;
     public const byte MovementSnapshotPartitionCount = 1;
-    public const ushort MovementSnapshotDispatchIntervalMilliseconds = 16;
+    public const ushort MovementSnapshotDispatchIntervalMilliseconds = 12;
     public const byte HazardDispatchRateHz = 32;
     public const ushort IdleDispatchIntervalMilliseconds = 100;
     public const ushort IdleBackgroundIntervalMilliseconds = 1_000;

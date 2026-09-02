@@ -118,6 +118,32 @@ public sealed class SimulationWorkRulesTests
     }
 
     [Fact]
+    public void EveryMovementShardIsSimulatedAtLeastOncePerWorldTick()
+    {
+        var movementSlotsPerWorldTick =
+            SimulationWorkRules.DispatchSlotsPerWorldTick - 1;
+
+        Assert.True(
+            SimulationWorkRules.MovementShardCount <= movementSlotsPerWorldTick,
+            $"{SimulationWorkRules.MovementShardCount} movement shards cannot all be " +
+            $"advanced inside the {movementSlotsPerWorldTick} movement slots of a world tick.");
+    }
+
+    [Fact]
+    public void EveryShipSnapshotIsPublishedAtLeastOncePerWorldTick()
+    {
+        var snapshotPeriodMilliseconds =
+            SimulationWorkRules.MovementShardCount *
+            SimulationWorkRules.MovementSnapshotPartitionCount *
+            SimulationWorkRules.MovementSnapshotDispatchIntervalMilliseconds;
+
+        Assert.True(
+            snapshotPeriodMilliseconds <= 1000d / WorldRules.TickRateHz,
+            $"A ship snapshot is published every {snapshotPeriodMilliseconds} ms, " +
+            $"slower than the {WorldRules.TickRateHz} Hz world tick.");
+    }
+
+    [Fact]
     public void DispatcherAdvancesTheWorldClockAtTenHertz()
     {
         Assert.Equal(
@@ -130,7 +156,7 @@ public sealed class SimulationWorkRulesTests
     public void SimulationCadenceSlowsOnlyWhenNoPlayerIsConnected()
     {
         Assert.Equal(10d, SimulationWorkRules.DispatchIntervalMilliseconds(true));
-        Assert.Equal(16d, SimulationWorkRules.SnapshotIntervalMilliseconds(true));
+        Assert.Equal(12d, SimulationWorkRules.SnapshotIntervalMilliseconds(true));
         Assert.Equal(31.25d, SimulationWorkRules.HazardIntervalMilliseconds(true));
         Assert.Equal(100d, SimulationWorkRules.DispatchIntervalMilliseconds(false));
         Assert.Equal(1_000d, SimulationWorkRules.SnapshotIntervalMilliseconds(false));
