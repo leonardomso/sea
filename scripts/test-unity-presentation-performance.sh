@@ -5,6 +5,7 @@ project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 game_binary="$project_root/apps/game-unity/Build/Sea.app/Contents/MacOS/game-unity"
 test_directory="$(mktemp -d)"
 performance_log="$test_directory/presentation-performance.log"
+performance_evidence="$test_directory/presentation-performance.json"
 game_pid=""
 
 cleanup() {
@@ -22,6 +23,7 @@ test -x "$game_binary"
 "$game_binary" -batchmode \
   -screen-width 1920 -screen-height 1080 \
   -seaPresentationPerformanceTest \
+  -seaPerformanceEvidencePath "$performance_evidence" \
   -logFile "$performance_log" >/dev/null 2>&1 &
 game_pid=$!
 
@@ -39,7 +41,7 @@ for _ in {1..90}; do
   sleep 1
 done
 
-if [ "$completed" != true ]; then
+if [ "$completed" != true ] || [ ! -s "$performance_evidence" ]; then
   echo "The built macOS presentation performance probe failed." >&2
   tail -n 120 "$performance_log" >&2 || true
   exit 1
@@ -51,4 +53,20 @@ if rg -q 'Unhandled Exception|Fatal error|MissingReferenceException' "$performan
   exit 1
 fi
 
+node - "$performance_evidence" <<'NODE'
+const fs = require("node:fs");
+const evidence = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const passed = evidence.schemaVersion === 1 &&
+  evidence.visibleShips >= 250 &&
+  evidence.frameP95Milliseconds <= 16.7 &&
+  evidence.frameP99Milliseconds <= 25 &&
+  evidence.idleBytesPerFrame === 0 &&
+  evidence.poolsStable === true &&
+  evidence.runtimeErrors === 0 &&
+  evidence.missingAssets === 0;
+if (!passed) {
+  console.error(JSON.stringify(evidence, null, 2));
+  process.exit(1);
+}
+NODE
 rg 'Sea presentation performance:' "$performance_log"

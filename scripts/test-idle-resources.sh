@@ -5,7 +5,7 @@ runtime_directory="$(mktemp -d)"
 metrics_before="$runtime_directory/metrics-before.txt"
 metrics_after="$runtime_directory/metrics-after.txt"
 cpu_samples="$runtime_directory/cpu-samples.txt"
-tick_interval_usec=50000
+tick_interval_usec=10000
 database_identity="$(curl --fail --silent --max-time 3 \
   http://127.0.0.1:3000/v1/database/sea-local/identity)"
 
@@ -21,7 +21,7 @@ metric_value() {
   awk -v metric_name="$metric_name" -v database_identity="$database_identity" '
     index($1, metric_name "{") == 1 &&
     index($1, "db=\"" database_identity "\"") > 0 &&
-    index($1, "reducer=\"run_simulation_tick\"") > 0 &&
+    index($1, "reducer=\"run_simulation_dispatch\"") > 0 &&
     (metric_name != "spacetime_num_txns_total" ||
       index($1, "txn_type=\"Reducer\"") > 0) &&
     index($1, "committed=\"false\"") == 0 {
@@ -55,6 +55,8 @@ if ! awk -v duration="$average_tick_usec" -v budget="$tick_interval_usec" \
   exit 1
 fi
 
+# Let short-lived integration and build activity drain before measuring idle load.
+sleep 5
 for _ in {1..3}; do
   docker stats --no-stream --format '{{.CPUPerc}}' \
     sea-spacetimedb-1 sea-admin-1 sea-postgres-1 sea-redis-1 sea-minio-1 \

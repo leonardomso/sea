@@ -8,12 +8,7 @@ public static partial class Module
         ref Ship ship,
         SetCourseCommand command)
     {
-        var blockers = NavigationBlockersForCourse(
-            ctx,
-            ship.PositionX,
-            ship.PositionY,
-            command.X,
-            command.Y);
+        var blockers = NavigationBlockers(ctx);
         ship.DestinationX = command.X;
         ship.DestinationY = command.Y;
         ConfigureNavigationWaypoint(ref ship, blockers);

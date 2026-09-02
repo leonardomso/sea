@@ -14,6 +14,7 @@ export default __t.row({
   shipEntityId: __t.u64().primaryKey().name("ship_entity_id"),
   archetypeId: __t.string().name("archetype_id"),
   isActive: __t.bool().name("is_active"),
+  decisionShard: __t.u8().name("decision_shard"),
   nextDecisionTick: __t.u64().name("next_decision_tick"),
   homeSeed: __t.u64().name("home_seed"),
 });

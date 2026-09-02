@@ -24,6 +24,50 @@ public sealed class ProgressionRulesTests
     }
 
     [Fact]
+    public void Grant_uses_the_same_level_rule_as_production()
+    {
+        var thresholds = new[]
+        {
+            new LevelThreshold(1, 0),
+            new LevelThreshold(2, 500),
+            new LevelThreshold(3, 1_500),
+        };
+
+        var result = ProgressionRules.ApplyGrant(
+            new ProgressionState(Experience: 490, Gold: 90, Level: 1),
+            new ProgressionGrant(Experience: 1_020, Gold: 25),
+            thresholds);
+
+        Assert.Equal(new ProgressionState(1_510, 115, 3), result);
+    }
+
+    [Fact]
+    public void Grant_saturates_experience_and_gold()
+    {
+        var result = ProgressionRules.ApplyGrant(
+            new ProgressionState(ulong.MaxValue - 2, uint.MaxValue - 1, 1),
+            new ProgressionGrant(10, 10),
+            [new LevelThreshold(1, 0)]);
+
+        Assert.Equal(ulong.MaxValue, result.Experience);
+        Assert.Equal(uint.MaxValue, result.Gold);
+        Assert.Equal(1u, result.Level);
+    }
+
+    [Fact]
+    public void Level_selection_uses_the_highest_eligible_level_regardless_of_row_order()
+    {
+        var thresholds = new[]
+        {
+            new LevelThreshold(10, 1_000),
+            new LevelThreshold(2, 2_000),
+            new LevelThreshold(7, 500),
+        };
+
+        Assert.Equal(10u, ProgressionRules.LevelFor(2_500, thresholds));
+    }
+
+    [Fact]
     public void Loot_winner_is_nearest_then_lowest_entity_id()
     {
         var candidates = new[]

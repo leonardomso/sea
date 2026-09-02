@@ -19,21 +19,49 @@ public static partial class Module
             NextEntityId = 1000,
             ContentVersion = 4,
         });
+        ctx.Db.SimulationClock.Insert(new SimulationClock
+        {
+            Id = 1,
+            Tick = 0,
+            NextEntityId = 1000,
+        });
+        ctx.Db.SimulationTelemetry.Insert(new SimulationTelemetry { Id = 1 });
+        ctx.Db.SimulationDispatchState.Insert(new SimulationDispatchState { Id = 1 });
+        ctx.Db.MovementSnapshotDispatchState.Insert(
+            new MovementSnapshotDispatchState { Id = 1 });
+        ctx.Db.HazardDispatchState.Insert(new HazardDispatchState { Id = 1 });
         SeedContent(ctx);
         SeedWorld(ctx);
+        SeedNavigationField(ctx);
         SeedEnvironment(ctx);
-        ctx.Db.SimulationTimer.Insert(new SimulationTimer
+        ScheduleSimulationSystems(ctx);
+    }
+
+    private static void ScheduleSimulationSystems(ReducerContext ctx)
+    {
+        ctx.Db.SimulationDispatchTimer.Insert(new SimulationDispatchTimer
         {
             ScheduledAt = new ScheduleAt.Interval(
-                TimeSpan.FromMilliseconds(1000d / WorldRules.TickRateHz)),
+                TimeSpan.FromMilliseconds(
+                    SimulationWorkRules.DispatchIntervalMilliseconds(false))),
+        });
+        ctx.Db.MovementSnapshotDispatchTimer.Insert(new MovementSnapshotDispatchTimer
+        {
+            ScheduledAt = new ScheduleAt.Interval(TimeSpan.FromMilliseconds(
+                SimulationWorkRules.SnapshotIntervalMilliseconds(false))),
+        });
+        ctx.Db.HazardDispatchTimer.Insert(new HazardDispatchTimer
+        {
+            ScheduledAt = new ScheduleAt.Interval(TimeSpan.FromMilliseconds(
+                SimulationWorkRules.HazardIntervalMilliseconds(false))),
         });
         for (byte shardId = 0; shardId < SimulationWorkRules.MovementShardCount; shardId++)
         {
-            ctx.Db.MovementShardTimer.Insert(new MovementShardTimer
+            ctx.Db.MovementShardState.Insert(new MovementShardState
             {
                 ShardId = shardId,
-                ScheduledAt = new ScheduleAt.Interval(
-                    TimeSpan.FromMilliseconds(1000d / WorldRules.TickRateHz)),
+                LastSimulatedTick = 0,
+                Ships = [],
             });
         }
     }
@@ -55,10 +83,10 @@ public static partial class Module
     {
         if (ctx.Db.PlayerOwnership.Owner.Find(ctx.Sender) is PlayerOwnership ownership)
         {
-            ownership.IsConnected = true;
-            ctx.Db.PlayerOwnership.Owner.Update(ownership);
+            SetLoadedConnectionState(ctx, ref ownership, true);
             EnsureProgression(ctx, ctx.Sender);
             EnsureCommandState(ctx, ctx.Sender, ownership.ShipEntityId);
+            SynchronizePlayerClock(ctx, ctx.Sender);
             return;
         }
 
@@ -66,12 +94,14 @@ public static partial class Module
         var spawn = FindSafeSpawn(ctx, IdentitySeed(ctx.Sender));
         var ship = CreateShip(entityId, "player_sloop", "player", spawn.X, spawn.Y);
         ctx.Db.Ship.Insert(ship);
+        InsertShipMovement(ctx, ship);
         ctx.Db.PlayerOwnership.Insert(new PlayerOwnership
         {
             Owner = ctx.Sender,
             ShipEntityId = entityId,
             IsConnected = true,
         });
+        AdjustConnectedPlayerCount(ctx, 1);
         ctx.Db.PlayerProgression.Insert(new PlayerProgression
         {
             Owner = ctx.Sender,
@@ -82,6 +112,27 @@ public static partial class Module
         EnsureCommandState(ctx, ctx.Sender, entityId);
         SeedPlayerInventory(ctx, entityId);
         AppendEvent(ctx, entityId, "player_loaded", $"entity_id={entityId}");
+        SynchronizePlayerClock(ctx, ctx.Sender);
+    }
+
+    private static void SynchronizePlayerClock(ReducerContext ctx, Identity owner)
+    {
+        var clock = ctx.Db.SimulationClock.Id.Find(1) ??
+            throw new InvalidOperationException("Simulation clock is missing.");
+        var playerClock = ctx.Db.PlayerClock.Owner.Find(owner) ?? new PlayerClock
+        {
+            Owner = owner,
+        };
+        playerClock.Tick = clock.Tick;
+        playerClock.TickRateHz = WorldRules.TickRateHz;
+        if (ctx.Db.PlayerClock.Owner.Find(owner) is null)
+        {
+            ctx.Db.PlayerClock.Insert(playerClock);
+        }
+        else
+        {
+            ctx.Db.PlayerClock.Owner.Update(playerClock);
+        }
     }
 
 }

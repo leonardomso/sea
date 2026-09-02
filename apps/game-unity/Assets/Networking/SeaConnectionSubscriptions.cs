@@ -41,6 +41,19 @@ namespace Sea.Client
             }
         }
 
+        private void RefreshSpatialScope(DbConnection connection, ShipMovement movement)
+        {
+            if (movement.EntityId != subscribedPlayerEntityId)
+            {
+                return;
+            }
+
+            spatialInterest.Observe(
+                movement.ChunkX,
+                movement.ChunkY,
+                Time.realtimeSinceStartupAsDouble);
+        }
+
         private void SubscribeSpatialScope(DbConnection connection, int chunkX, int chunkY)
         {
             spatialInterest.Observe(

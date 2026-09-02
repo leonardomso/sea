@@ -12,7 +12,7 @@ public static partial class Module
             DestinationBlocked = NavigationRules.IsDestinationBlocked(
                 command.X,
                 command.Y,
-                NavigationBlockersAt(ctx, command.X, command.Y)),
+                NavigationBlockers(ctx)),
         };
 
     private static CommandSnapshot TargetSnapshot(
@@ -28,8 +28,8 @@ public static partial class Module
         var concealed = false;
         if (valid)
         {
-            var world = ctx.Db.WorldState.Id.Find(1) ??
-                throw new InvalidOperationException("World state is missing.");
+            var world = ctx.Db.SimulationClock.Id.Find(1) ??
+                throw new InvalidOperationException("Simulation clock is missing.");
             var selected = target!.Value;
             concealed = !TacticalRules.CanAcquireTarget(
                 HasActiveStatus(ctx, selected.EntityId, StatusCode.SmokeScreen, world.Tick),
@@ -86,8 +86,8 @@ public static partial class Module
             };
         }
 
-        var world = ctx.Db.WorldState.Id.Find(1) ??
-            throw new InvalidOperationException("World state is missing.");
+        var world = ctx.Db.SimulationClock.Id.Find(1) ??
+            throw new InvalidOperationException("Simulation clock is missing.");
         var ammunition = ctx.Db.AmmoDefinition.AmmoCode.Find(source.SelectedAmmoCode) ??
             throw new InvalidOperationException("Selected ammunition definition is missing.");
         var target = source.TargetEntityId == 0
@@ -129,8 +129,8 @@ public static partial class Module
         CommandSnapshot snapshot,
         ActivateAbilityCommand command)
     {
-        var world = ctx.Db.WorldState.Id.Find(1) ??
-            throw new InvalidOperationException("World state is missing.");
+        var world = ctx.Db.SimulationClock.Id.Find(1) ??
+            throw new InvalidOperationException("Simulation clock is missing.");
         var knownCode = HotPathCodes.TryParseAbility(command.AbilityId, out var abilityCode);
         var ability = !knownCode
             ? default(AbilityDefinition?)
@@ -172,8 +172,8 @@ public static partial class Module
         Ship source,
         CommandSnapshot snapshot)
     {
-        var world = ctx.Db.WorldState.Id.Find(1) ??
-            throw new InvalidOperationException("World state is missing.");
+        var world = ctx.Db.SimulationClock.Id.Find(1) ??
+            throw new InvalidOperationException("Simulation clock is missing.");
         var target = source.TargetEntityId == 0
             ? default(Ship?)
             : ctx.Db.Ship.EntityId.Find(source.TargetEntityId);

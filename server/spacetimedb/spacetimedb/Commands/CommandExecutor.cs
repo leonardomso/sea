@@ -122,7 +122,7 @@ public static partial class Module
         }
 
         ship.ModeCode = (byte)decision.NextMode;
-        ctx.Db.Ship.EntityId.Update(ship);
+        PersistCommandShip(ctx, ship);
     }
 
     private static ShipMode ResolveMode(Ship ship)

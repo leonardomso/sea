@@ -3,42 +3,16 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    [SpacetimeDB.Table(Accessor = "WorldState", Public = true)]
-    public partial struct WorldState
-    {
-        [PrimaryKey]
-        public uint Id;
-        public ulong Tick;
-        public uint TickRateHz;
-        public ulong NextEntityId;
-        public uint ContentVersion;
-    }
-
-    [SpacetimeDB.Table(Accessor = "SimulationTimer", Scheduled = "RunSimulationTick", ScheduledAt = "ScheduledAt")]
-    public partial struct SimulationTimer
-    {
-        [PrimaryKey]
-        [AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "MovementShardTimer", Scheduled = "RunMovementShard", ScheduledAt = "ScheduledAt")]
-    public partial struct MovementShardTimer
-    {
-        [PrimaryKey]
-        [AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-        public byte ShardId;
-    }
-
     [SpacetimeDB.Table(Accessor = "Ship", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByMoving", Columns = new[] { nameof(IsMoving) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByMovingShard", Columns = new[] { nameof(IsMoving), nameof(MovementShard) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByActiveChunk", Columns = new[] { nameof(IsActive), nameof(ChunkX), nameof(ChunkY) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByActiveChunkShard", Columns = new[] { nameof(IsActive), nameof(ChunkX), nameof(ChunkY), nameof(MovementShard) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByEnvironmentExposure", Columns = new[] { nameof(EnvironmentExposureCode) })]
+    [SpacetimeDB.Index.BTree(
+        Accessor = "ByEnvironmentExposureHazardShard",
+        Columns = new[] { nameof(EnvironmentExposureCode), nameof(HazardShard) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByTarget", Columns = new[] { nameof(TargetEntityId) })]
     public partial struct Ship
     {
@@ -63,6 +37,7 @@ public static partial class Module
         public bool IsStopping;
         public bool IsMoving;
         public byte MovementShard;
+        public byte HazardShard;
         public bool IsActive;
         public bool IsAlive;
         public bool IsEngaged;
@@ -91,6 +66,34 @@ public static partial class Module
         public ulong RespawnAtTick;
         public ulong InvulnerableUntilTick;
         public ulong EncounterId;
+    }
+
+    [SpacetimeDB.Table(Accessor = "ShipMovement", Public = true)]
+    [SpacetimeDB.Index.BTree(
+        Accessor = "ByActiveChunk",
+        Columns = new[] { nameof(IsActive), nameof(ChunkX), nameof(ChunkY) })]
+    [SpacetimeDB.Index.BTree(
+        Accessor = "ByActiveChunkHazardShard",
+        Columns = new[]
+        {
+            nameof(IsActive), nameof(ChunkX), nameof(ChunkY), nameof(HazardShard),
+        })]
+    public partial struct ShipMovement
+    {
+        [PrimaryKey]
+        public ulong EntityId;
+        public float PositionX;
+        public float PositionY;
+        public float HeadingDegrees;
+        public float Speed;
+        public bool IsMoving;
+        public bool IsActive;
+        public bool IsAlive;
+        public byte MovementShard;
+        public byte HazardShard;
+        public int ChunkX;
+        public int ChunkY;
+        public ulong SnapshotTick;
     }
 
     [SpacetimeDB.Table(Accessor = "RespawnWork", Public = true)]
@@ -124,13 +127,14 @@ public static partial class Module
     }
 
     [SpacetimeDB.Table(Accessor = "NpcAi", Public = true)]
-    [SpacetimeDB.Index.BTree(Accessor = "ByDecisionDue", Columns = new[] { nameof(IsActive), nameof(NextDecisionTick) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByDecisionDueShard", Columns = new[] { nameof(IsActive), nameof(DecisionShard), nameof(NextDecisionTick) })]
     public partial struct NpcAi
     {
         [PrimaryKey]
         public ulong ShipEntityId;
         public string ArchetypeId;
         public bool IsActive;
+        public byte DecisionShard;
         public ulong NextDecisionTick;
         public ulong HomeSeed;
     }
@@ -254,9 +258,10 @@ public static partial class Module
         public bool IsActive;
     }
 
-    [SpacetimeDB.Table(Accessor = "CombatContribution", Public = true)]
+    [SpacetimeDB.Table(Accessor = "CombatContribution")]
     [SpacetimeDB.Index.BTree(Accessor = "ByEncounter", Columns = new[] { nameof(EncounterId) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByContributor", Columns = new[] { nameof(ContributorEntityId) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByEncounterContributor", Columns = new[] { nameof(EncounterId), nameof(ContributorEntityId) })]
     public partial struct CombatContribution
     {
         [PrimaryKey]
@@ -267,7 +272,48 @@ public static partial class Module
         public ulong Damage;
         public ulong Boarding;
         public ulong Support;
-        public bool Rewarded;
+    }
+
+    [SpacetimeDB.Table(Accessor = "CombatEncounter")]
+    [SpacetimeDB.Index.BTree(Accessor = "ByNpc", Columns = new[] { nameof(NpcEntityId) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByState", Columns = new[] { nameof(StateCode) })]
+    public partial struct CombatEncounter
+    {
+        [PrimaryKey]
+        public ulong EncounterId;
+        public ulong NpcEntityId;
+        public byte StateCode;
+        public uint GoldPool;
+        public ulong ExperiencePool;
+        public ulong OpenedAtTick;
+        public ulong SettledAtTick;
+    }
+
+    [SpacetimeDB.Table(Accessor = "EncounterReward", Public = true)]
+    [SpacetimeDB.Index.BTree(Accessor = "ByOwner", Columns = new[] { nameof(Owner) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByEncounter", Columns = new[] { nameof(EncounterId) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByEncounterContributor", Columns = new[] { nameof(EncounterId), nameof(ContributorEntityId) })]
+    public partial struct EncounterReward
+    {
+        [PrimaryKey]
+        [AutoInc]
+        public ulong RewardId;
+        public ulong EncounterId;
+        public Identity Owner;
+        public ulong ContributorEntityId;
+        public uint Gold;
+        public ulong Experience;
+        public ulong AwardedAtTick;
+    }
+
+    [SpacetimeDB.Table(Accessor = "EncounterRewardEvent", Public = true, Event = true)]
+    public partial struct EncounterRewardEvent
+    {
+        public Identity Owner;
+        public ulong EncounterId;
+        public ulong ContributorEntityId;
+        public uint Gold;
+        public ulong Experience;
     }
 
     [SpacetimeDB.Table(Accessor = "CombatEvent", Public = true, Event = true)]
@@ -278,6 +324,16 @@ public static partial class Module
         public string Details;
         public ulong Tick;
     }
+
+#pragma warning disable STDB_UNSTABLE
+    [SpacetimeDB.ClientVisibilityFilter]
+    public static readonly Filter EncounterRewardOwnerFilter = new Filter.Sql(
+        "SELECT * FROM encounter_reward WHERE encounter_reward.owner = :sender");
+
+    [SpacetimeDB.ClientVisibilityFilter]
+    public static readonly Filter EncounterRewardEventOwnerFilter = new Filter.Sql(
+        "SELECT * FROM encounter_reward_event WHERE encounter_reward_event.owner = :sender");
+#pragma warning restore STDB_UNSTABLE
 
     [SpacetimeDB.Table(Accessor = "WorldObject", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByChunk", Columns = new[] { nameof(ChunkX), nameof(ChunkY) })]

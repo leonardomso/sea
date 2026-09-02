@@ -3,6 +3,19 @@ using SpacetimeDB;
 
 public static partial class Module
 {
+    private static void ProcessLootClaimsForMovingShip(
+        ReducerContext ctx,
+        ShipKinematics kinematics)
+    {
+        if (ctx.Db.Ship.EntityId.Find(kinematics.EntityId) is not Ship ship)
+        {
+            return;
+        }
+
+        CopyKinematics(kinematics, ref ship);
+        ProcessLootClaimsForMovingShip(ctx, ship);
+    }
+
     private static void ProcessLootClaimsForMovingShip(ReducerContext ctx, Ship movingShip)
     {
         if (!movingShip.IsActive || !movingShip.IsAlive ||
@@ -57,6 +70,7 @@ public static partial class Module
         }
 
         ctx.Db.Loot.LootId.Delete(loot.LootId);
+        ChangeActiveLootCount(ctx, -1);
         AwardProgression(
             ctx,
             claimant,
@@ -85,11 +99,27 @@ public static partial class Module
             PositionY = npc.PositionY,
             ChunkX = npc.ChunkX,
             ChunkY = npc.ChunkY,
-            LootType = "gold",
-            Quantity = definition.GoldReward,
+            LootType = "salvage",
+            Quantity = Math.Max(4u, definition.GoldReward / 10),
             IsActive = true,
             ExpiresAtTick = tick + LootRules.LifetimeTicks,
             ClaimedByEntityId = 0,
         });
+        ChangeActiveLootCount(ctx, 1);
+    }
+
+    private static void ChangeActiveLootCount(ReducerContext ctx, int delta)
+    {
+        var clock = ctx.Db.SimulationClock.Id.Find(1) ??
+            throw new InvalidOperationException("Simulation clock is missing.");
+        if (delta < 0 && clock.ActiveLootCount == 0)
+        {
+            throw new InvalidOperationException("Active loot count cannot be negative.");
+        }
+
+        clock.ActiveLootCount = delta < 0
+            ? clock.ActiveLootCount - 1
+            : checked(clock.ActiveLootCount + 1);
+        ctx.Db.SimulationClock.Id.Update(clock);
     }
 }

@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using UnityEditor;
+using UnityEditor.AddressableAssets.Settings;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 
@@ -22,6 +23,14 @@ namespace Sea.Editor
 
         private static void Build(BuildTarget target, string fallbackOutputPath)
         {
+            SeaOwnedAssetEditorLifecycle.PrepareForBuild();
+            AddressableAssetSettings.BuildPlayerContent(out var addressablesResult);
+            if (!string.IsNullOrEmpty(addressablesResult.Error))
+            {
+                throw new InvalidOperationException(
+                    $"Addressables build failed: {addressablesResult.Error}");
+            }
+
             PlayerSettings.runInBackground = true;
             if (target == BuildTarget.StandaloneOSX)
             {

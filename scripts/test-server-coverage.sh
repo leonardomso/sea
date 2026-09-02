@@ -13,7 +13,18 @@ docker run --rm \
   -w /workspace \
   --entrypoint /bin/sh \
   "$dotnet_image" \
-  -c 'dotnet test server/spacetimedb/tests/Sea.Server.Tests.csproj --collect:"XPlat Code Coverage" --results-directory coverage/server/raw -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.IncludeTestAssembly=true DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ExcludeByFile="**/Generated/**,**/*.g.cs,**/packages/spacetimedb-unity/**" && dotnet tool restore && dotnet tool run reportgenerator -reports:"coverage/server/raw/**/coverage.cobertura.xml" -targetdir:coverage/server/report -reporttypes:"Html;Cobertura;TextSummary"'
+  -c 'dotnet test server/spacetimedb/tests/Sea.Server.Tests.csproj --collect:"XPlat Code Coverage" --results-directory coverage/server/raw -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.IncludeTestAssembly=true DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.ExcludeByFile="**/Generated/**,**/*.g.cs,**/packages/spacetimedb-unity/**,**/server/spacetimedb/tests/**,**/Microsoft.NET.Test.Sdk.Program.cs" && dotnet tool restore && dotnet tool run reportgenerator -reports:"coverage/server/raw/**/coverage.cobertura.xml" -targetdir:coverage/server/report -reporttypes:"Html;Cobertura;TextSummary"'
 
 test -f "$project_root/coverage/server/report/Summary.txt"
 rg -q 'Assemblies: [1-9]' "$project_root/coverage/server/report/Summary.txt"
+
+line_coverage="$(awk '/^  Line coverage:/ { gsub("%", "", $3); print $3; exit }' \
+  "$project_root/coverage/server/report/Summary.txt")"
+branch_coverage="$(awk '/^  Branch coverage:/ { gsub("%", "", $3); print $3; exit }' \
+  "$project_root/coverage/server/report/Summary.txt")"
+if ! awk -v line="$line_coverage" -v branch="$branch_coverage" \
+  'BEGIN { exit !(line >= 95 && branch >= 90) }'; then
+  cat "$project_root/coverage/server/report/Summary.txt" >&2
+  echo "Pure domain coverage must remain at least 95% line and 90% branch." >&2
+  exit 1
+fi

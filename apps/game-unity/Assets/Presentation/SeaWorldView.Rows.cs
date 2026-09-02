@@ -9,20 +9,16 @@ namespace Sea.Client
     public sealed partial class SeaWorldView
     {
         private readonly HashSet<ulong> relevantEndpointIds = new();
+        private readonly SeaRowRegistry<ulong, ShipMovement> movementRows = new();
 
         private void HandleShipChanged(Ship ship)
         {
             shipRows.Upsert(ship.EntityId, ship);
-            if (!targets.TryGetValue(ship.EntityId, out var interpolation))
-            {
-                interpolation = new SeaInterpolationBuffer();
-                targets.Add(ship.EntityId, interpolation);
-            }
-
-            interpolation.Push(
-                ToWorld(ship.PositionX, ship.PositionY, ShipRootHeight),
-                ship.HeadingDegrees,
-                Time.realtimeSinceStartupAsDouble);
+            PushMovementSample(
+                ship.EntityId,
+                ship.PositionX,
+                ship.PositionY,
+                ship.HeadingDegrees);
             if (ship.EntityId == connection.LocalShipEntityId)
             {
                 localShip = ship;
@@ -30,6 +26,35 @@ namespace Sea.Client
             }
 
             visibilityDirty = true;
+        }
+
+        private void HandleShipMovementChanged(ShipMovement movement)
+        {
+            movementRows.Upsert(movement.EntityId, movement);
+            PushMovementSample(
+                movement.EntityId,
+                movement.PositionX,
+                movement.PositionY,
+                movement.HeadingDegrees);
+            visibilityDirty = true;
+        }
+
+        private void PushMovementSample(
+            ulong entityId,
+            float positionX,
+            float positionY,
+            float headingDegrees)
+        {
+            if (!targets.TryGetValue(entityId, out var interpolation))
+            {
+                interpolation = new SeaInterpolationBuffer();
+                targets.Add(entityId, interpolation);
+            }
+
+            interpolation.Push(
+                ToWorld(positionX, positionY, ShipRootHeight),
+                headingDegrees,
+                Time.realtimeSinceStartupAsDouble);
         }
 
         private void HandleWorldObjectChanged(WorldObject entity)
@@ -123,12 +148,17 @@ namespace Sea.Client
 
         private void ReconcileVisibility()
         {
+            if (!assetsReady)
+            {
+                return;
+            }
+
             var cameraTransform = Camera.main != null ? Camera.main.transform : null;
             var origin = cameraTransform != null
                 ? new Vector3(cameraTransform.position.x, 0f, cameraTransform.position.z)
                 : localShip == null
                     ? Vector3.zero
-                    : new Vector3(localShip.PositionX, 0f, localShip.PositionY);
+                    : MovementPosition(localShip);
             if (!visibilityDirty && (origin - previousVisibilityOrigin).sqrMagnitude < 0.25f)
             {
                 return;
@@ -146,7 +176,8 @@ namespace Sea.Client
                 }
 
                 visibilityEntityIds[trackedCount] = ship.EntityId;
-                visibilityPositions[trackedCount] = new float2(ship.PositionX, ship.PositionY);
+                var position = MovementPosition2(ship);
+                visibilityPositions[trackedCount] = new float2(position.x, position.y);
                 trackedCount++;
             }
 
@@ -216,15 +247,17 @@ namespace Sea.Client
 
                 if (!entities.TryGetValue(candidate.EntityId, out var shipObject))
                 {
-                    shipObject = CreateShip(ShipName(ship), ship.EntityId);
+                    shipObject = CreateShip(ShipName(ship), ship);
                     if (shipObject == null)
                     {
                         break;
                     }
 
                     shipObject.transform.position = ToWorld(
-                        ship.PositionX,
-                        ship.PositionY,
+                        movementRows.TryGetValue(ship.EntityId, out var movement)
+                            ? movement.PositionX
+                            : ship.PositionX,
+                        movement != null ? movement.PositionY : ship.PositionY,
                         ShipRootHeight);
                     entities.Add(ship.EntityId, shipObject);
                     if (ship.EntityId == playerEntityId)
@@ -237,10 +270,13 @@ namespace Sea.Client
                 shipObject.GetComponent<SeaShipPresentation>().Apply(
                     ship.Hull,
                     ship.MaxHull,
-                    ship.Speed,
+                    movementRows.TryGetValue(ship.EntityId, out var latestMovement)
+                        ? latestMovement.Speed
+                        : ship.Speed,
                     ship.MaximumSpeed,
                     candidate.Level,
-                    ship.FactionCode == 1);
+                    ship.FactionCode,
+                    ship.ArchetypeCode);
             }
         }
 
@@ -253,7 +289,9 @@ namespace Sea.Client
 
             fogMaterial.SetVector(
                 "_PlayerPosition",
-                new Vector4(localShip.PositionX, localShip.PositionY, 0f, 0f));
+                movementRows.TryGetValue(localShip.EntityId, out var movement)
+                    ? new Vector4(movement.PositionX, movement.PositionY, 0f, 0f)
+                    : new Vector4(localShip.PositionX, localShip.PositionY, 0f, 0f));
             UpdateTargetRing(localShip);
             UpdateCourseIndicator(localShip);
         }
@@ -261,6 +299,17 @@ namespace Sea.Client
         private static string ShipName(Ship ship) => ship.FactionCode == 1
             ? $"Player Ship {ship.EntityId}"
             : $"Enemy Ship {ship.EntityId}";
+
+        private Vector3 MovementPosition(Ship ship)
+        {
+            var position = MovementPosition2(ship);
+            return new Vector3(position.x, 0f, position.y);
+        }
+
+        private Vector2 MovementPosition2(Ship ship) =>
+            movementRows.TryGetValue(ship.EntityId, out var movement)
+                ? new Vector2(movement.PositionX, movement.PositionY)
+                : new Vector2(ship.PositionX, ship.PositionY);
 
         private void ReleaseShipPresentation(ulong entityId)
         {

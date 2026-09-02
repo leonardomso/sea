@@ -85,15 +85,8 @@ public static class TacticalRules
         uint durationTicks,
         uint maximumStacks)
     {
-        if (durationTicks == 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(durationTicks));
-        }
-
-        if (maximumStacks == 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(maximumStacks));
-        }
+        ArgumentOutOfRangeException.ThrowIfZero(durationTicks);
+        ArgumentOutOfRangeException.ThrowIfZero(maximumStacks);
 
         if (!existing.IsActive && currentTick < existing.ImmunityUntilTick)
         {
@@ -185,11 +178,8 @@ public static class TacticalRules
         uint cannons,
         uint maximumCannons)
     {
-        if (baseTicks == 0 || maximumCannons == 0)
-        {
-            throw new ArgumentOutOfRangeException(
-                baseTicks == 0 ? nameof(baseTicks) : nameof(maximumCannons));
-        }
+        ArgumentOutOfRangeException.ThrowIfZero(baseTicks);
+        ArgumentOutOfRangeException.ThrowIfZero(maximumCannons);
 
         var integrity = Math.Clamp((float)cannons / maximumCannons, 1f / 3f, 1f);
         return checked((uint)MathF.Ceiling(baseTicks / integrity));
@@ -265,10 +255,7 @@ public static class TacticalRules
         ulong elapsedTicks,
         uint durationTicks)
     {
-        if (durationTicks == 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(durationTicks));
-        }
+        ArgumentOutOfRangeException.ThrowIfZero(durationTicks);
 
         var progress = Math.Clamp((float)elapsedTicks / durationTicks, 0f, 1f);
         var restored = (uint)MathF.Round(

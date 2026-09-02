@@ -3,110 +3,208 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    private static void AdvanceMovingShips(
+    private static (uint Processed, uint Dormant) AdvanceMovingShips(
         ReducerContext ctx,
-        ShipTickBuffer ships,
         SpatialTickCache spatial,
         ulong tick,
-        byte shardId)
+        byte shardId,
+        bool hasActiveLoot)
     {
-        var deltaSeconds = 1f / WorldRules.TickRateHz;
+        var shard = ctx.Db.MovementShardState.ShardId.Find(shardId) ??
+            throw new InvalidOperationException("Movement shard state is missing.");
+        ApplyPendingMovementUpdates(ctx, ref shard);
         var environment = ctx.Db.EnvironmentState.Id.Find(1);
-        foreach (var indexedShip in ctx.Db.Ship.ByMovingShard.Filter((true, shardId)))
+        var currentField = ctx.Db.CurrentFieldState.Id.Find(1);
+        var processed = 0u;
+        var firstTick = SimulationWorkRules.FirstMovementTick(
+            shard.LastSimulatedTick,
+            tick);
+        processed = ProcessMovementBatch(
+            ctx,
+            spatial,
+            environment,
+            currentField,
+            shard.Ships,
+            firstTick,
+            tick,
+            hasActiveLoot);
+
+        shard.LastSimulatedTick = tick;
+        ctx.Db.MovementShardState.ShardId.Update(shard);
+        return (processed, 0);
+    }
+
+    private static uint ProcessMovementBatch(
+        ReducerContext ctx,
+        SpatialTickCache spatial,
+        EnvironmentState? environment,
+        CurrentFieldState? currentField,
+        List<ShipKinematics> ships,
+        ulong firstTick,
+        ulong lastTick,
+        bool hasActiveLoot)
+    {
+        var processed = 0u;
+        var writeIndex = 0;
+        for (var readIndex = 0; readIndex < ships.Count; readIndex++)
         {
-            var ship = ships.TryGetStaged(indexedShip.EntityId, out var staged)
-                ? staged
-                : indexedShip;
-
-            if (!ship.IsActive || !ship.IsAlive)
+            var ship = ships[readIndex];
+            for (var tick = firstTick; tick <= lastTick; tick++)
             {
-                continue;
-            }
-
-            var routedShip = ship;
-            const int currentRefreshBuckets = 8;
-            var chunkKey = routedShip.ChunkY * SpatialRules.ChunkCountPerAxis + routedShip.ChunkX;
-            if (chunkKey % currentRefreshBuckets == (int)(tick % currentRefreshBuckets))
-            {
-                var current = CurrentVelocityAt(
-                    ctx,
-                    spatial,
-                    routedShip.PositionX,
-                    routedShip.PositionY);
-                routedShip.CurrentVelocityX = current.X;
-                routedShip.CurrentVelocityY = current.Y;
-            }
-            if (routedShip.HasWaypoint && NavigationRules.Distance(
-                    routedShip.PositionX,
-                    routedShip.PositionY,
-                    routedShip.WaypointX,
-                    routedShip.WaypointY) <= NavigationRules.WaypointArrivalRadius)
-            {
-                routedShip.HasWaypoint = false;
-                ConfigureNavigationWaypoint(
-                    ref routedShip,
-                    NavigationBlockersForCourse(
+                processed++;
+                if (ship.IsMoving)
+                {
+                    ProcessMovingShip(
                         ctx,
-                        routedShip.PositionX,
-                        routedShip.PositionY,
-                        routedShip.DestinationX,
-                        routedShip.DestinationY));
+                        spatial,
+                        environment,
+                        currentField,
+                        ref ship,
+                        tick,
+                        1f / WorldRules.TickRateHz,
+                        hasActiveLoot);
+                }
+
             }
 
-            var navigationX = routedShip.HasWaypoint
-                ? routedShip.WaypointX
-                : routedShip.DestinationX;
-            var navigationY = routedShip.HasWaypoint
-                ? routedShip.WaypointY
-                : routedShip.DestinationY;
-            var windMultiplier = environment is EnvironmentState wind
-                ? EnvironmentRules.WindSpeedMultiplier(
-                    routedShip.HeadingDegrees,
-                    wind.WindDirectionDegrees,
-                    wind.WindStrength)
-                : 1f;
-            var exposure = routedShip.EnvironmentExposureCode;
-            var movementModifiers = TacticalRules.MovementModifiers(
-                (routedShip.MovementStatusMask & HotPathCodes.FullSailMovementMask) != 0,
-                (routedShip.MovementStatusMask & HotPathCodes.SlowedMovementMask) != 0 ? 1u : 0u,
-                routedShip.Sails == 0,
-                routedShip.MaxSails == 0
-                    ? 0f
-                    : (float)routedShip.Sails / routedShip.MaxSails,
-                (exposure & 2) != 0,
-                (exposure & 1) != 0,
-                routedShip.ModeCode == (byte)ShipMode.Repairing);
-            var step = SailingRules.Step(
-                new SailingState(
-                    routedShip.PositionX,
-                    routedShip.PositionY,
-                    routedShip.HeadingDegrees,
-                    routedShip.Speed),
-                navigationX,
-                navigationY,
-                routedShip.IsStopping,
-                new SailingParameters(
-                    routedShip.MaximumSpeed * windMultiplier * movementModifiers.MaximumSpeed,
-                    routedShip.Acceleration * movementModifiers.Acceleration,
-                    routedShip.Deceleration,
-                    routedShip.TurnRateDegrees * movementModifiers.TurnRate),
-                deltaSeconds);
-            var nextX = step.PositionX + routedShip.CurrentVelocityX * deltaSeconds;
-            var nextY = step.PositionY + routedShip.CurrentVelocityY * deltaSeconds;
-            var moved = routedShip;
-            moved.HeadingDegrees = step.HeadingDegrees;
-            moved.Speed = step.Speed;
-            moved.IsMoving = step.IsMoving;
-            moved.HasCourse = routedShip.HasCourse && (!step.Arrived || routedShip.HasWaypoint);
-            moved.IsStopping = routedShip.IsStopping && step.Speed > 0f;
-            moved.PositionX = Math.Clamp(nextX, WorldRules.MapMin, WorldRules.MapMax);
-            moved.PositionY = Math.Clamp(nextY, WorldRules.MapMin, WorldRules.MapMax);
-
-            moved.ChunkX = SpatialRules.ChunkCoordinate(moved.PositionX);
-            moved.ChunkY = SpatialRules.ChunkCoordinate(moved.PositionY);
-            ships.Stage(moved);
-            ProcessLootClaimsForMovingShip(ctx, moved);
+            if (ship.IsMoving)
+            {
+                ships[writeIndex++] = ship;
+            }
+            if (!ship.IsMoving)
+            {
+                WriteMovementSnapshot(ctx, ship, lastTick);
+            }
         }
+
+        if (writeIndex < ships.Count)
+        {
+            ships.RemoveRange(writeIndex, ships.Count - writeIndex);
+        }
+
+        return processed;
+    }
+
+    private static void ProcessMovingShip(
+        ReducerContext ctx,
+        SpatialTickCache spatial,
+        EnvironmentState? environment,
+        CurrentFieldState? currentField,
+        ref ShipKinematics ship,
+        ulong tick,
+        float deltaSeconds,
+        bool hasActiveLoot)
+    {
+        RefreshEnvironment(currentField, environment, ref ship, tick);
+        AdvanceNavigationWaypoint(ctx, ref ship);
+        var destination = NavigationDestination(ship);
+        var parameters = MovementParameters(ship);
+        var step = SailingRules.StepTowardHeading(
+            new SailingState(ship.PositionX, ship.PositionY, ship.HeadingDegrees, ship.Speed),
+            destination.X,
+            destination.Y,
+            ship.DesiredHeadingDegrees,
+            ship.IsStopping,
+            parameters,
+            deltaSeconds);
+        ApplySailingStep(ref ship, step, deltaSeconds);
+        if (hasActiveLoot &&
+            SimulationWorkRules.ShouldProcessLootPickup(ship.EntityId, tick))
+        {
+            ProcessLootClaimsForMovingShip(ctx, ship);
+        }
+    }
+
+    private static void RefreshEnvironment(
+        CurrentFieldState? currentField,
+        EnvironmentState? environment,
+        ref ShipKinematics ship,
+        ulong tick)
+    {
+        var refreshCurrent = SimulationWorkRules.ShouldRefreshCurrent(
+            ship.EntityId,
+            tick);
+        if (!refreshCurrent && ship.EffectiveMaximumSpeed >= 0f)
+        {
+            return;
+        }
+
+        if (refreshCurrent)
+        {
+            var current = CurrentVelocityAt(currentField, ship.PositionX, ship.PositionY);
+            ship.CurrentVelocityX = current.X;
+            ship.CurrentVelocityY = current.Y;
+            var destination = NavigationDestination(ship);
+            ship.DesiredHeadingDegrees = SailingRules.DesiredHeading(
+                ship.PositionX,
+                ship.PositionY,
+                destination.X,
+                destination.Y);
+        }
+
+        var windMultiplier = environment is EnvironmentState wind
+            ? EnvironmentRules.WindSpeedMultiplier(
+                ship.HeadingDegrees,
+                wind.WindDirectionDegrees,
+                wind.WindStrength)
+            : 1f;
+        ship.EffectiveMaximumSpeed = ship.TacticalMaximumSpeed * windMultiplier;
+    }
+
+    private static void AdvanceNavigationWaypoint(
+        ReducerContext ctx,
+        ref ShipKinematics ship)
+    {
+        if (!ship.HasWaypoint || NavigationRules.Distance(
+                ship.PositionX,
+                ship.PositionY,
+                ship.WaypointX,
+                ship.WaypointY) > NavigationRules.WaypointArrivalRadius)
+        {
+            return;
+        }
+
+        ship.HasWaypoint = false;
+        ConfigureNavigationWaypoint(
+            ref ship,
+            NavigationBlockers(ctx));
+    }
+
+    private static (float X, float Y) NavigationDestination(ShipKinematics ship) =>
+        ship.HasWaypoint
+            ? (ship.WaypointX, ship.WaypointY)
+            : (ship.DestinationX, ship.DestinationY);
+
+    private static SailingParameters MovementParameters(ShipKinematics ship) =>
+        new(
+            ship.EffectiveMaximumSpeed,
+            ship.TacticalAcceleration,
+            ship.Deceleration,
+            ship.TacticalTurnRateDegrees);
+
+    private static void ApplySailingStep(
+        ref ShipKinematics ship,
+        AuthoritativeSailingStep step,
+        float deltaSeconds)
+    {
+        var hasCourse = ship.HasCourse;
+        var hasWaypoint = ship.HasWaypoint;
+        var wasStopping = ship.IsStopping;
+        ship.HeadingDegrees = step.HeadingDegrees;
+        ship.Speed = step.Speed;
+        ship.IsMoving = step.IsMoving;
+        ship.HasCourse = hasCourse && (!step.Arrived || hasWaypoint);
+        ship.IsStopping = wasStopping && step.Speed > 0f;
+        ship.PositionX = Math.Clamp(
+            step.PositionX + ship.CurrentVelocityX * deltaSeconds,
+            WorldRules.MapMin,
+            WorldRules.MapMax);
+        ship.PositionY = Math.Clamp(
+            step.PositionY + ship.CurrentVelocityY * deltaSeconds,
+            WorldRules.MapMin,
+            WorldRules.MapMax);
+        ship.ChunkX = SpatialRules.ChunkCoordinate(ship.PositionX);
+        ship.ChunkY = SpatialRules.ChunkCoordinate(ship.PositionY);
     }
 
     private static void UpdateWind(ReducerContext ctx, ulong tick)
@@ -126,26 +224,34 @@ public static partial class Module
     }
 
     private static (float X, float Y) CurrentVelocityAt(
-        ReducerContext ctx,
-        SpatialTickCache spatial,
+        CurrentFieldState? currentField,
         float x,
         float y)
     {
+        if (currentField is not CurrentFieldState field)
+        {
+            return (0f, 0f);
+        }
+
         var velocityX = 0f;
         var velocityY = 0f;
-        foreach (var zone in spatial.CurrentZonesNear(ctx, x, y))
+        var chunkX = SpatialRules.ChunkCoordinate(x);
+        var chunkY = SpatialRules.ChunkCoordinate(y);
+        var cell = chunkY * SpatialRules.ChunkCountPerAxis + chunkX;
+        var mask = field.CellMasks[cell];
+        for (var index = 0; index < field.Zones.Count && mask != 0; index++, mask >>= 1)
         {
-            if (!zone.IsActive ||
-                !WorldRules.IsInRange(x, y, zone.PositionX, zone.PositionY, zone.Radius))
+            if ((mask & 1UL) == 0)
             {
                 continue;
             }
 
-            var velocity = EnvironmentRules.DirectionalVelocity(
-                zone.DirectionDegrees,
-                zone.Strength);
-            velocityX += velocity.X;
-            velocityY += velocity.Y;
+            var zone = field.Zones[index];
+            if (WorldRules.IsInRange(x, y, zone.PositionX, zone.PositionY, zone.Radius))
+            {
+                velocityX += zone.VelocityX;
+                velocityY += zone.VelocityY;
+            }
         }
 
         return (velocityX, velocityY);
@@ -187,11 +293,6 @@ public static partial class Module
 
     private static void MoveStorms(ReducerContext ctx, ulong tick)
     {
-        if (tick % SimulationWorkRules.PeriodicEffectIntervalTicks != 0)
-        {
-            return;
-        }
-
         var deltaSeconds = (float)SimulationWorkRules.PeriodicEffectIntervalTicks /
             WorldRules.TickRateHz;
         foreach (var worldObject in ctx.Db.WorldObject.ByActiveKind.Filter(

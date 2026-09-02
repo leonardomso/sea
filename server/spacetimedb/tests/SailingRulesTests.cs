@@ -78,6 +78,69 @@ public sealed class SailingRulesTests
         Assert.Equal(30f, step.HeadingDegrees, 3);
     }
 
+    [Theory]
+    [InlineData(0f, 100f, 0f)]
+    [InlineData(100f, 0f, 90f)]
+    [InlineData(0f, -100f, 180f)]
+    [InlineData(-100f, 0f, 270f)]
+    public void Desired_heading_uses_the_chart_compass(
+        float destinationX,
+        float destinationY,
+        float expected)
+    {
+        Assert.Equal(
+            expected,
+            SailingRules.DesiredHeading(0f, 0f, destinationX, destinationY),
+            3);
+    }
+
+    [Fact]
+    public void Cached_heading_produces_the_same_sailing_step()
+    {
+        var state = new SailingState(-12f, 4f, 35f, 7f);
+        var parameters = new SailingParameters(12f, 3f, 4f, 90f);
+        var desired = SailingRules.DesiredHeading(-12f, 4f, 70f, -55f);
+
+        var direct = SailingRules.Step(
+            state,
+            70f,
+            -55f,
+            stopping: false,
+            parameters,
+            deltaSeconds: 0.1f);
+        var cached = SailingRules.StepTowardHeading(
+            state,
+            70f,
+            -55f,
+            desired,
+            stopping: false,
+            parameters,
+            deltaSeconds: 0.1f);
+
+        Assert.Equal(direct, cached);
+    }
+
+    [Theory]
+    [InlineData(-720f)]
+    [InlineData(-17.4f)]
+    [InlineData(0f)]
+    [InlineData(44.9f)]
+    [InlineData(359.9f)]
+    [InlineData(721f)]
+    public void Trigonometry_lookup_stays_within_quarter_degree_accuracy(float degrees)
+    {
+        var radians = degrees * (MathF.PI / 180f);
+
+        Assert.InRange(
+            MathF.Abs(TrigonometryRules.SinDegrees(degrees) - MathF.Sin(radians)),
+            0f,
+            0.0022f);
+        Assert.InRange(
+            MathF.Abs(TrigonometryRules.CosDegrees(degrees) - MathF.Cos(radians)),
+            0f,
+            0.0022f);
+    }
+
     [Fact]
     public void Sailing_to_a_destination_behind_the_ship_turns_before_applying_full_thrust()
     {

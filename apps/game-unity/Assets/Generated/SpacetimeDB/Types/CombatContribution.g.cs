@@ -25,8 +25,6 @@ namespace SpacetimeDB.Types
         public ulong Boarding;
         [DataMember(Name = "support")]
         public ulong Support;
-        [DataMember(Name = "rewarded")]
-        public bool Rewarded;
 
         public CombatContribution(
             ulong ContributionId,
@@ -34,8 +32,7 @@ namespace SpacetimeDB.Types
             ulong ContributorEntityId,
             ulong Damage,
             ulong Boarding,
-            ulong Support,
-            bool Rewarded
+            ulong Support
         )
         {
             this.ContributionId = ContributionId;
@@ -44,7 +41,6 @@ namespace SpacetimeDB.Types
             this.Damage = Damage;
             this.Boarding = Boarding;
             this.Support = Support;
-            this.Rewarded = Rewarded;
         }
 
         public CombatContribution()

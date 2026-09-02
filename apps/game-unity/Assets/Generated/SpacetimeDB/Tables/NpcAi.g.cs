@@ -17,14 +17,14 @@ namespace SpacetimeDB.Types
         {
             public override string RemoteTableName => "npc_ai";
 
-            public sealed class ByDecisionDueIndex : BTreeIndexBase<(bool IsActive, ulong NextDecisionTick)>
+            public sealed class ByDecisionDueShardIndex : BTreeIndexBase<(bool IsActive, byte DecisionShard, ulong NextDecisionTick)>
             {
-                protected override (bool IsActive, ulong NextDecisionTick) GetKey(NpcAi row) => (row.IsActive, row.NextDecisionTick);
+                protected override (bool IsActive, byte DecisionShard, ulong NextDecisionTick) GetKey(NpcAi row) => (row.IsActive, row.DecisionShard, row.NextDecisionTick);
 
-                public ByDecisionDueIndex(NpcAiHandle table) : base(table) { }
+                public ByDecisionDueShardIndex(NpcAiHandle table) : base(table) { }
             }
 
-            public readonly ByDecisionDueIndex ByDecisionDue;
+            public readonly ByDecisionDueShardIndex ByDecisionDueShard;
 
             public sealed class ShipEntityIdUniqueIndex : UniqueIndexBase<ulong>
             {
@@ -37,7 +37,7 @@ namespace SpacetimeDB.Types
 
             internal NpcAiHandle(DbConnection conn) : base(conn)
             {
-                ByDecisionDue = new(this);
+                ByDecisionDueShard = new(this);
                 ShipEntityId = new(this);
             }
 
@@ -52,6 +52,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<NpcAi, ulong> ShipEntityId { get; }
         public global::SpacetimeDB.Col<NpcAi, string> ArchetypeId { get; }
         public global::SpacetimeDB.Col<NpcAi, bool> IsActive { get; }
+        public global::SpacetimeDB.Col<NpcAi, byte> DecisionShard { get; }
         public global::SpacetimeDB.Col<NpcAi, ulong> NextDecisionTick { get; }
         public global::SpacetimeDB.Col<NpcAi, ulong> HomeSeed { get; }
 
@@ -60,6 +61,7 @@ namespace SpacetimeDB.Types
             ShipEntityId = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "ship_entity_id");
             ArchetypeId = new global::SpacetimeDB.Col<NpcAi, string>(tableName, "archetype_id");
             IsActive = new global::SpacetimeDB.Col<NpcAi, bool>(tableName, "is_active");
+            DecisionShard = new global::SpacetimeDB.Col<NpcAi, byte>(tableName, "decision_shard");
             NextDecisionTick = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "next_decision_tick");
             HomeSeed = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "home_seed");
         }
@@ -69,12 +71,14 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.IxCol<NpcAi, ulong> ShipEntityId { get; }
         public global::SpacetimeDB.IxCol<NpcAi, bool> IsActive { get; }
+        public global::SpacetimeDB.IxCol<NpcAi, byte> DecisionShard { get; }
         public global::SpacetimeDB.IxCol<NpcAi, ulong> NextDecisionTick { get; }
 
         public NpcAiIxCols(string tableName)
         {
             ShipEntityId = new global::SpacetimeDB.IxCol<NpcAi, ulong>(tableName, "ship_entity_id");
             IsActive = new global::SpacetimeDB.IxCol<NpcAi, bool>(tableName, "is_active");
+            DecisionShard = new global::SpacetimeDB.IxCol<NpcAi, byte>(tableName, "decision_shard");
             NextDecisionTick = new global::SpacetimeDB.IxCol<NpcAi, ulong>(tableName, "next_decision_tick");
         }
     }

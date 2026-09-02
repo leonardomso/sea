@@ -1,11 +1,12 @@
 namespace Sea.Server;
 
 public readonly record struct LevelThreshold(uint Level, ulong RequiredExperience);
+public readonly record struct ProgressionState(ulong Experience, uint Gold, uint Level);
+public readonly record struct ProgressionGrant(ulong Experience, uint Gold);
 
 public static class ProgressionRules
 {
     public const ulong DamageExperienceDivisor = 5;
-    public const ulong KillExperience = 100;
     public const ulong BoardingExperience = 25;
 
     public static uint LevelFor(
@@ -18,14 +19,12 @@ public static class ProgressionRules
         }
 
         var level = 0u;
-        var requirement = 0ul;
         foreach (var threshold in thresholds)
         {
             if (threshold.RequiredExperience <= experience &&
-                (threshold.RequiredExperience > requirement || threshold.Level > level))
+                threshold.Level > level)
             {
                 level = threshold.Level;
-                requirement = threshold.RequiredExperience;
             }
         }
 
@@ -37,6 +36,19 @@ public static class ProgressionRules
 
     public static ulong AddSaturating(ulong current, ulong amount) =>
         ulong.MaxValue - current < amount ? ulong.MaxValue : current + amount;
+
+    public static ProgressionState ApplyGrant(
+        ProgressionState current,
+        ProgressionGrant grant,
+        IReadOnlyCollection<LevelThreshold> thresholds)
+    {
+        var experience = AddSaturating(current.Experience, grant.Experience);
+        var gold = uint.MaxValue - current.Gold < grant.Gold
+            ? uint.MaxValue
+            : current.Gold + grant.Gold;
+
+        return new ProgressionState(experience, gold, LevelFor(experience, thresholds));
+    }
 }
 
 public readonly record struct LootCandidate(ulong EntityId, float Distance);

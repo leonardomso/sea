@@ -108,7 +108,7 @@ public static class ContentCatalog
     private static void ValidateIds(
         IEnumerable<string> ids,
         string kind,
-        ICollection<string> errors)
+        List<string> errors)
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var id in ids)

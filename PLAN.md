@@ -567,6 +567,30 @@ Commit: `feat(world): add roaming combat and progression`
 
 ### Phase 16: add shared PvE rewards
 
+Status: complete.
+
+Each NPC life now owns a persisted encounter. Indexed contribution rows record
+damage, boarding, and future support credit, then an atomic settlement closes
+the encounter once, conserves both configured pools, grants progression, emits
+owner-filtered feedback, and removes mutable contribution work. Persisted
+owner-filtered reward rows survive disconnects; NPC respawn opens a new
+encounter. Exact integer arithmetic enforces the 5 percent threshold and the
+30/70 equal/proportional split with deterministic remainder ordering.
+
+The real-module suite now owns subscription handles and runs serially against
+its mutable test world. The four-client disconnect/reconnect settlement test
+passed three additional isolated stress runs before the complete integration
+suite passed. Local world reset also clears server-issued credentials after a
+volume recreation, preventing stale-token publish failures. The built macOS
+probe was hardened to retry authoritative tactical commands and use either
+legal broadside while sailing.
+
+The canonical gate passed 293 server tests, five real-module integration
+tests, 110 Unity EditMode tests, one PlayMode test, two Unity performance tests,
+both production builds, identity and schema audits, and the built-player
+runtime. Idle simulation averaged 5.124 ms with 17.93 percent aggregate stack
+CPU. The presentation probe rendered 102 ships at 5.973 ms p95.
+
 - Track damage, boarding, and future support contribution per encounter.
 - Mark players eligible at 5 percent contribution.
 - Reserve 30 percent for equal distribution among eligible players.
@@ -597,6 +621,29 @@ Acceptance:
 Commit: `feat(combat): add shared reward contracts`
 
 ### Phase 17: finish the owned-asset presentation
+
+Status: complete.
+
+Owned art now enters the game through one catalog and lifecycle module. The
+module owns import policy, validation, stable Addressable entries, typed ship
+roles, asynchronous loading, and idempotent release. Player, patrol, raider,
+and gunship slots can be replaced independently. A globally bounded keyed pool
+keeps those role variants reusable without allowing the combined pools to grow
+past the platform presentation limit.
+
+Apricum remains the current model for all four roles. Shared material property
+blocks provide original role colors without material instances. Near and
+medium presentations plus a distant silhouette share the same scale and
+forward direction. Required FBX, texture, material, pivot, waterline, shader,
+and Addressable rules now fail before a build. Optional world, combat, UI, and
+audio slots declare explicit procedural or silent fallbacks.
+
+The phase passed 111 Unity EditMode tests, two PlayMode tests, both production
+builds, and the built macOS gameplay probe. Both macOS and WebGL artifacts
+contain their platform catalog and owned-asset bundle. Build logs contain no
+missing or pink owned-asset errors. The canonical `pnpm verify` gate passed;
+idle simulation averaged 6.077 ms with 17.36 percent local stack CPU, and the
+102-ship presentation probe measured 4.005 ms p95.
 
 - Put Apricum and other user-provided ships behind Addressables.
 - Validate FBX scale, forward axis, pivot, texture import, materials, and bounds.

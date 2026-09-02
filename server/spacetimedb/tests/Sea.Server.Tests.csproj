@@ -4,14 +4,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <!-- Remove this debt baseline as Phases 9-12 split and harden the linked domain rules. -->
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);$(SeaLegacyDomainWarnings)</WarningsNotAsErrors>
+    <!-- Contract families stay grouped for locality; record structs are not native interop types. -->
+    <NoWarn>$(NoWarn);MA0008;MA0048</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="../spacetimedb/Domain/*.cs" Link="Domain/%(Filename)%(Extension)" />
-    <Compile Include="../spacetimedb/CombatRules.cs" Link="CombatRules.cs" />
-    <Compile Include="../spacetimedb/TacticalRules.cs" Link="TacticalRules.cs" />
+    <ProjectReference Include="../domain/Sea.Server.Domain.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />

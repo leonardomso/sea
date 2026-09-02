@@ -9,8 +9,10 @@ public sealed class PropertyRulesTests
     public bool Coordinate_centers_round_trip(GeneratedCoordinate coordinate)
     {
         var center = ChartCoordinates.CellCenter(coordinate.Column, coordinate.Row);
-        return ChartCoordinates.LabelAt(center.X, center.Y) ==
-            $"{ChartCoordinates.ColumnLabel(coordinate.Column)} {coordinate.Row}";
+        return string.Equals(
+            ChartCoordinates.LabelAt(center.X, center.Y),
+            $"{ChartCoordinates.ColumnLabel(coordinate.Column)} {coordinate.Row}",
+            StringComparison.Ordinal);
     }
 
     [Property(MaxTest = 250, Arbitrary = new[] { typeof(GameArbitraries) })]

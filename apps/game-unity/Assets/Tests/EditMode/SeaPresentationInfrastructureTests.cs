@@ -34,6 +34,41 @@ namespace Sea.Tests
         }
 
         [Test]
+        public void Keyed_pool_reuses_the_matching_role_and_enforces_one_global_limit()
+        {
+            var nextId = 0;
+            var pool = new SeaKeyedBoundedPool<string, PooledValue>(
+                _ => new PooledValue(++nextId),
+                _ => { },
+                maximumCapacity: 2);
+
+            Assert.That(pool.TryAcquire("player", out var player), Is.True);
+            Assert.That(pool.TryAcquire("raider", out var raider), Is.True);
+            Assert.That(pool.TryAcquire("gunship", out _), Is.False);
+
+            pool.Release(player);
+            Assert.That(pool.TryAcquire("player", out var reused), Is.True);
+            Assert.That(reused, Is.SameAs(player));
+            Assert.That(raider, Is.Not.SameAs(reused));
+            Assert.That(pool.CreatedCount, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void Keyed_pool_rejects_foreign_and_duplicate_releases()
+        {
+            var pool = new SeaKeyedBoundedPool<string, PooledValue>(
+                _ => new PooledValue(1),
+                _ => { },
+                maximumCapacity: 1);
+            Assert.That(pool.TryAcquire("player", out var player), Is.True);
+
+            Assert.Throws<System.InvalidOperationException>(() =>
+                pool.Release(new PooledValue(2)));
+            pool.Release(player);
+            Assert.Throws<System.InvalidOperationException>(() => pool.Release(player));
+        }
+
+        [Test]
         public void Dirty_state_coalesces_changes_until_the_consumer_applies_them()
         {
             var dirty = new SeaDirtyState(initiallyDirty: false);

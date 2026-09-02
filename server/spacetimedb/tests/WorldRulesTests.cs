@@ -154,4 +154,80 @@ public sealed class WorldRulesTests
         Assert.Equal(3, content.Npcs.Count);
         Assert.Empty(ContentCatalog.Validate(content));
     }
+
+    [Theory]
+    [InlineData(WorldObjectCode.Island, true)]
+    [InlineData(WorldObjectCode.Reef, true)]
+    [InlineData(WorldObjectCode.Harbor, false)]
+    [InlineData(WorldObjectCode.Shoal, false)]
+    [InlineData(WorldObjectCode.Storm, false)]
+    public void TypedWorldObjectsOwnCollisionBehavior(WorldObjectCode kind, bool expected)
+    {
+        Assert.Equal(expected, WorldRules.IsBlocked(kind, 0, 0, 5, 0, 0));
+    }
+
+    [Theory]
+    [InlineData(0f)]
+    [InlineData(-1f)]
+    [InlineData(float.NaN)]
+    public void AdvanceTowardsRejectsInvalidMaximumDistance(float maximumDistance)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            WorldRules.AdvanceTowards(0, 0, 1, 1, maximumDistance));
+    }
+
+    [Fact]
+    public void CheckedUpgradeArithmeticRejectsOverflow()
+    {
+        Assert.Throws<OverflowException>(() => WorldRules.CannonUpgradeCost(uint.MaxValue));
+        Assert.Throws<OverflowException>(() =>
+            WorldRules.CannonDamageAfterUpgrade(uint.MaxValue, 1));
+    }
+
+    [Fact]
+    public void SpatialBoundsClampAndRejectInvalidValues()
+    {
+        Assert.Equal(new ChunkBounds(0, 7, 0, 7),
+            SpatialRules.BoundsAround(0, 0, 500));
+        Assert.Equal(new ChunkBounds(0, 7, 0, 7),
+            SpatialRules.BoundsForSegment(-100, 100, 100, -100, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            SpatialRules.BoundsAround(0, 0, float.NaN));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            SpatialRules.ChunkCoordinate(float.PositiveInfinity));
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(78)]
+    public void CoordinateColumnsRejectOutOfRangeIndexes(int column)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            ChartCoordinates.ColumnLabel(column));
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            ChartCoordinates.CellCenter(column, 0));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("A")]
+    [InlineData("AAA")]
+    [InlineData("A!")]
+    [InlineData("ZZ")]
+    public void InvalidCoordinateColumnLabelsAreRejected(string? label)
+    {
+        Assert.False(ChartCoordinates.TryColumnIndex(label, out _));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("AA")]
+    [InlineData("AA nope")]
+    [InlineData("AA -1")]
+    [InlineData("AA 61")]
+    public void InvalidCoordinateCellsAreRejected(string coordinate)
+    {
+        Assert.False(ChartCoordinates.TryCellCenter(coordinate, out _));
+    }
 }

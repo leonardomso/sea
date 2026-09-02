@@ -8,7 +8,9 @@
     "com.clockworklabs.spacetimedbsdk",
     "Unity.Burst",
     "Unity.Collections",
-    "Unity.Mathematics"
+    "Unity.Mathematics",
+    "Unity.Addressables",
+    "Unity.ResourceManager"
   ],
   "autoReferenced": false
 }

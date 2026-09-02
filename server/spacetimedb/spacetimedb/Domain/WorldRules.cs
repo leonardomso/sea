@@ -73,7 +73,8 @@ public static class WorldRules
 
     public static bool IsBlocked(string kind, float entityX, float entityY, float radius, float x, float y)
     {
-        if (kind != "island" && kind != "reef")
+        if (!string.Equals(kind, "island", StringComparison.Ordinal) &&
+            !string.Equals(kind, "reef", StringComparison.Ordinal))
         {
             return false;
         }

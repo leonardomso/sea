@@ -96,8 +96,10 @@ public static partial class Module
             crewBefore - defender.Crew);
         SynchronizeDisabledSails(ctx, defender, tick);
         var sunk = hullBefore > 0 && defender.Hull == 0;
+        RecordCombatProgress(ctx, sourceEntityId, defender, applied);
         if (sunk)
         {
+            SettleNpcEncounter(ctx, defender, tick);
             SinkShip(ctx, ships, sourceEntityId, ref defender, tick);
         }
         else if (sourceEntityId != 0 &&
@@ -108,7 +110,6 @@ public static partial class Module
             defender.IsEngaged = true;
         }
 
-        RecordCombatProgress(ctx, sourceEntityId, defender, applied, sunk);
         return applied;
     }
 

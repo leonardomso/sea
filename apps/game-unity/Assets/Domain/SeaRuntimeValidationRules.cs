@@ -2,41 +2,126 @@ using UnityEngine;
 
 namespace Sea.Client
 {
+    public readonly struct RuntimeBroadsidePlan
+    {
+        public RuntimeBroadsidePlan(
+            bool canFire,
+            string side,
+            float desiredHeadingDegrees)
+        {
+            CanFire = canFire;
+            Side = side;
+            DesiredHeadingDegrees = desiredHeadingDegrees;
+        }
+
+        public bool CanFire { get; }
+        public string Side { get; }
+        public float DesiredHeadingDegrees { get; }
+    }
+
     public static class SeaRuntimeValidationRules
     {
         public const float CombatObservationRange = 52f;
         public const float CombatApproachRange = 42f;
         public const string RuntimeNpcSubscriptionQuery =
             "SELECT * FROM ship WHERE faction_code = 2";
+        public const string RuntimeMovementSubscriptionQuery =
+            "SELECT * FROM ship_movement WHERE is_active = true";
 
         private const float SeededStormX = -72f;
         private const float SeededStormY = 3f;
         private const float SeededStormDirectionDegrees = 72f;
         private const float SeededStormSpeed = 1.5f;
         private const float SimulationTicksPerSecond = 10f;
+        private const float SafeBroadsideHalfArcDegrees = 44f;
 
-        public static bool ShouldHoldPositionBeforeFire(
-            float distance,
-            bool targetSelected) =>
-            targetSelected && distance <= CombatObservationRange;
+        public static RuntimeBroadsidePlan PlanBroadside(
+            Vector2 source,
+            float headingDegrees,
+            Vector2 target)
+        {
+            var delta = target - source;
+            if (delta.sqrMagnitude <= Mathf.Epsilon)
+            {
+                return new RuntimeBroadsidePlan(false, string.Empty, headingDegrees);
+            }
+
+            var bearing = Mathf.Atan2(delta.x, delta.y) * Mathf.Rad2Deg;
+            var portError = Mathf.Abs(Mathf.DeltaAngle(headingDegrees - 90f, bearing));
+            var starboardError = Mathf.Abs(Mathf.DeltaAngle(headingDegrees + 90f, bearing));
+            var portCanFire = portError <= SafeBroadsideHalfArcDegrees;
+            var starboardCanFire = starboardError <= SafeBroadsideHalfArcDegrees;
+            if (portCanFire || starboardCanFire)
+            {
+                var side = portCanFire && (!starboardCanFire || portError <= starboardError)
+                    ? "port"
+                    : "starboard";
+                return new RuntimeBroadsidePlan(true, side, headingDegrees);
+            }
+
+            var portHeading = bearing + 90f;
+            var starboardHeading = bearing - 90f;
+            var portTurn = Mathf.Abs(Mathf.DeltaAngle(headingDegrees, portHeading));
+            var starboardTurn = Mathf.Abs(Mathf.DeltaAngle(headingDegrees, starboardHeading));
+            return new RuntimeBroadsidePlan(
+                false,
+                string.Empty,
+                portTurn <= starboardTurn ? portHeading : starboardHeading);
+        }
 
         public static bool ShouldRestoreSyntheticFleet(
             int visibleCount,
             int requiredCount) =>
             visibleCount < requiredCount;
 
+        public static bool HasObservedStop(
+            bool stopRequested,
+            float travelled,
+            float speedBeforeStop,
+            float currentSpeed,
+            bool isMoving,
+            bool isStopping)
+        {
+            if (!stopRequested || travelled <= 0.1f || speedBeforeStop <= 0f)
+            {
+                return false;
+            }
+
+            return isStopping && currentSpeed < speedBeforeStop ||
+                !isMoving && currentSpeed <= Mathf.Epsilon;
+        }
+
+        public static bool CanIssueTacticalCommand(
+            bool isActive,
+            bool isAlive,
+            byte modeCode) =>
+            isActive && isAlive && modeCode == 0;
+
+        public static bool ShouldRetryTacticalCommand(
+            bool observed,
+            float requestedAt,
+            float now) =>
+            !observed && now - requestedAt >= 2f;
+
+        public static bool HasStormExposure(byte exposureCode) =>
+            (exposureCode & 1) != 0;
+
         public static Vector2 SyntheticFleetPosition(
             int index,
+            int totalCount,
             Vector2 center,
             int columns = 10,
             float spacing = 6f)
         {
             var row = index / columns;
             var column = index % columns;
-            var halfSpan = (columns - 1) * spacing * 0.5f;
+            var populatedColumns = Mathf.Min(columns, totalCount);
+            var rows = Mathf.CeilToInt(totalCount / (float)columns);
+            var halfWidth = (populatedColumns - 1) * spacing * 0.5f;
+            var halfHeight = (rows - 1) * spacing * 0.5f;
             return center + new Vector2(
-                column * spacing - halfSpan,
-                row * spacing - halfSpan);
+                column * spacing - halfWidth,
+                row * spacing - halfHeight);
         }
 
         public static Vector2 SeededStormPosition(ulong worldTick)

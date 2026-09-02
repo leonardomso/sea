@@ -257,4 +257,75 @@ public sealed class TacticalRulesTests
         Assert.True(TacticalRules.ShouldApplyStatus(72, 100));
         Assert.False(TacticalRules.ShouldApplyStatus(72, 0));
     }
+
+    [Theory]
+    [InlineData(0u, 1u)]
+    [InlineData(1u, 0u)]
+    public void StatusApplicationRejectsZeroTimingOrStackLimits(
+        uint durationTicks,
+        uint maximumStacks)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => TacticalRules.ApplyStatus(
+            default,
+            currentTick: 1,
+            durationTicks,
+            maximumStacks));
+    }
+
+    [Fact]
+    public void UnexpiredAndInactiveStatusesRemainUnchanged()
+    {
+        var inactive = new TacticalStatusState(false, 0, 10, 20);
+        var active = new TacticalStatusState(true, 1, 20, 0);
+
+        Assert.Equal(inactive, TacticalRules.ExpireStatus(inactive, 30, 10));
+        Assert.Equal(active, TacticalRules.ExpireStatus(active, 19, 10));
+    }
+
+    [Theory]
+    [InlineData(0u, 1u)]
+    [InlineData(1u, 0u)]
+    public void ReloadRejectsZeroBaseOrMaximum(uint baseTicks, uint maximumCannons)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            TacticalRules.AdjustedReloadTicks(baseTicks, 1, maximumCannons));
+    }
+
+    [Fact]
+    public void StatusCodeDamageAvoidsStringDispatch()
+    {
+        Assert.Equal(4u, TacticalRules.PeriodicStatusDamage(StatusCode.Burning, 2));
+        Assert.Equal(2u, TacticalRules.PeriodicStatusDamage(StatusCode.Flooding, 2));
+        Assert.Equal(0u, TacticalRules.PeriodicStatusDamage(StatusCode.Slowed, 2));
+        Assert.Equal(0u, TacticalRules.PeriodicStatusDamage(StatusCode.Burning, 0));
+        Assert.Equal(0u, TacticalRules.ApplyIncomingDamage(0, braceActive: true));
+    }
+
+    [Fact]
+    public void RepairProgressRejectsZeroDurationAndClampsElapsedTime()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            TacticalRules.ProgressiveRestore(1, 10, 5, 1, 0));
+        Assert.Equal(1u, TacticalRules.ProgressiveRestore(1, 10, 5, 0, 10));
+        Assert.Equal(6u, TacticalRules.ProgressiveRestore(1, 10, 5, 100, 10));
+    }
+
+    [Fact]
+    public void BoardingRejectsZeroTargetHullCapacityAndNonFiniteDistance()
+    {
+        Assert.Equal(BoardingRejection.TargetTooStrong, TacticalRules.ValidateBoarding(
+            new BoardingRequest(true, true, true, 0, 0, 1, 10, 10)));
+        Assert.Equal(BoardingRejection.OutOfRange, TacticalRules.ValidateBoarding(
+            new BoardingRequest(true, true, true, 1, 100, float.NaN, 10, 10)));
+    }
+
+    [Fact]
+    public void StormMovementWrapsBelowAndAcrossMultipleMapSpans()
+    {
+        var below = TacticalRules.MoveStorm(-99, 0, 270, 4, 1);
+        var multiple = TacticalRules.MoveStorm(0, 0, 90, 450, 1);
+
+        Assert.Equal(97f, below.X, 4);
+        Assert.Equal(50f, multiple.X, 4);
+    }
 }

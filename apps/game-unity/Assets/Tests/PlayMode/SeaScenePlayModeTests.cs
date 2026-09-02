@@ -28,5 +28,36 @@ namespace Sea.Tests.PlayMode
 
             Object.FindFirstObjectByType<SeaConnectionController>().Disconnect();
         }
+
+        [UnityTest]
+        public IEnumerator Owned_assets_load_for_runtime_and_release_idempotently()
+        {
+            SceneManager.LoadScene("Main", LoadSceneMode.Single);
+            yield return null;
+            var world = Object.FindFirstObjectByType<SeaWorldView>();
+            var lease = new SeaOwnedAssetLease();
+            SeaOwnedAssetSet loaded = null;
+            System.Exception failure = null;
+
+            lease.Load(world.OwnedAssets, value => loaded = value, error => failure = error);
+            for (var frame = 0; frame < 300 && loaded == null && failure == null; frame++)
+            {
+                yield return null;
+            }
+
+            Assert.That(failure, Is.Null);
+            Assert.That(lease.IsReady, Is.True);
+            Assert.That(loaded, Is.Not.Null);
+            Assert.That(loaded.ShipModel(SeaOwnedShipRole.Player), Is.Not.Null);
+            Assert.That(loaded.ShipModel(SeaOwnedShipRole.Patrol), Is.Not.Null);
+            Assert.That(loaded.ShipModel(SeaOwnedShipRole.Raider), Is.Not.Null);
+            Assert.That(loaded.ShipModel(SeaOwnedShipRole.Gunship), Is.Not.Null);
+            Assert.That(loaded.ShipMaterial, Is.Not.Null);
+
+            lease.Release();
+            lease.Release();
+            Assert.That(lease.IsReleased, Is.True);
+            Object.FindFirstObjectByType<SeaConnectionController>().Disconnect();
+        }
     }
 }

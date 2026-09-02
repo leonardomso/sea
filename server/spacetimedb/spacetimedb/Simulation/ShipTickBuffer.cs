@@ -34,7 +34,7 @@ public static partial class Module
         {
             foreach (var ship in ships.Values)
             {
-                ctx.Db.Ship.EntityId.Update(ship);
+                PersistShip(ctx, ship);
             }
         }
     }

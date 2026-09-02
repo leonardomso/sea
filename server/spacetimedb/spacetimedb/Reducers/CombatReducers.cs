@@ -10,8 +10,8 @@ public static partial class Module
         BroadsideSide side,
         WeakPoint weakPoint)
     {
-        var world = ctx.Db.WorldState.Id.Find(1) ??
-            throw new InvalidOperationException("World state is missing.");
+        var world = ctx.Db.SimulationClock.Id.Find(1) ??
+            throw new InvalidOperationException("Simulation clock is missing.");
         var target = ctx.Db.Ship.EntityId.Find(source.TargetEntityId) ??
             throw new InvalidOperationException("Accepted broadside has no target.");
         var ammunition = ctx.Db.AmmoDefinition.AmmoCode.Find(source.SelectedAmmoCode) ??
@@ -27,7 +27,7 @@ public static partial class Module
         var impactAtTick = world.Tick + CombatRules.VolleyTravelTicks(
             distance,
             CombatRules.ProjectileSpeed,
-            world.TickRateHz);
+            WorldRules.TickRateHz);
 
         inventory.Quantity--;
         ctx.Db.Inventory.InventoryId.Update(inventory);
@@ -118,8 +118,8 @@ public static partial class Module
         var ability = ctx.Db.AbilityDefinition.AbilityId.Find(command.AbilityId) ??
             throw new InvalidOperationException("Accepted ability definition is missing.");
         var abilityCode = (AbilityCode)ability.AbilityCode;
-        var world = ctx.Db.WorldState.Id.Find(1) ??
-            throw new InvalidOperationException("World state is missing.");
+        var world = ctx.Db.SimulationClock.Id.Find(1) ??
+            throw new InvalidOperationException("Simulation clock is missing.");
         if (abilityCode == AbilityCode.EmergencyPump)
         {
             DeactivateStatus(ctx, ship.EntityId, StatusCode.Flooding, world.Tick);

@@ -31,6 +31,7 @@ export default __t.row({
   isStopping: __t.bool().name("is_stopping"),
   isMoving: __t.bool().name("is_moving"),
   movementShard: __t.u8().name("movement_shard"),
+  hazardShard: __t.u8().name("hazard_shard"),
   isActive: __t.bool().name("is_active"),
   isAlive: __t.bool().name("is_alive"),
   isEngaged: __t.bool().name("is_engaged"),

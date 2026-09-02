@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- Contract families stay grouped for locality; record structs are not native interop types. -->
+    <NoWarn>$(NoWarn);MA0008;MA0048</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../spacetimedb/Domain/*.cs" Link="Domain/%(Filename)%(Extension)" />
+    <Compile Include="../spacetimedb/CombatRules.cs" Link="CombatRules.cs" />
+    <Compile Include="../spacetimedb/TacticalRules.cs" Link="TacticalRules.cs" />
+  </ItemGroup>
+</Project>

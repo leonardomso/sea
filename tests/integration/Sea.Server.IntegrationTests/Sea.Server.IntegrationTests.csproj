@@ -4,7 +4,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);$(SeaLegacyDomainWarnings)</WarningsNotAsErrors>
+    <!-- Generated SDK structs and grouped domain contracts are not native interop types. -->
+    <NoWarn>$(NoWarn);MA0008;MA0048</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

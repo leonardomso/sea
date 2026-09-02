@@ -20,6 +20,7 @@
     "runtime:test:identity": "./scripts/test-identity-leak.sh",
     "runtime:test:world": "./scripts/test-world-schema.sh",
     "runtime:test:scale-smoke": "./scripts/test-server-scale-smoke.sh",
+    "runtime:test:scale-isolated": "./scripts/with-isolated-spacetimedb.sh ./scripts/test-server-scale-smoke.sh",
     "runtime:test:shared-world": "./scripts/test-shared-world.sh",
     "runtime:launch:clients": "./scripts/launch-local-clients.sh",
     "runtime:stop:clients": "./scripts/stop-local-clients.sh",
@@ -29,6 +30,7 @@
     "unity:test:performance": "./scripts/test-unity-performance.sh",
     "unity:test:runtime": "./scripts/test-unity-runtime.sh",
     "unity:test:presentation-performance": "./scripts/test-unity-presentation-performance.sh",
+    "unity:test:webgl-performance": "node scripts/test-webgl-presentation-performance.mjs",
     "unity:build:webgl": "unity build apps/game-unity --target WebGL --execute-method Sea.Editor.SeaBuild.PerformWebGLBuild --output-path apps/game-unity/Build/WebGL --no-tail",
     "unity:build:macos": "unity build apps/game-unity --target StandaloneOSX --execute-method Sea.Editor.SeaBuild.PerformMacOSBuild --output-path apps/game-unity/Build/Sea.app --no-tail",
     "unity:source-check": "./scripts/check-unity-source.sh",
@@ -41,6 +43,7 @@
     "server:test": "./scripts/dotnet.sh test server/spacetimedb/tests/Sea.Server.Tests.csproj",
     "server:test:integration": "./scripts/test-server-integration.sh",
     "server:test:coverage": "./scripts/test-server-coverage.sh",
+    "server:test:mutation": "./scripts/test-server-mutation.sh",
     "tools:build": "./scripts/dotnet.sh build tests/performance/Sea.Server.Benchmarks/Sea.Server.Benchmarks.csproj && ./scripts/dotnet10.sh build tests/load/Sea.LoadTests/Sea.LoadTests.csproj",
     "quality:csharp-size": "./scripts/check-csharp-size.sh",
     "quality:bindings": "./scripts/check-generated-bindings.sh",
@@ -49,9 +52,13 @@
     "quality:unity-architecture": "./scripts/check-unity-architecture.sh",
     "quality:test-foundation": "./scripts/check-test-foundation.sh",
     "quality:server-simulation": "./scripts/check-server-simulation.sh",
+    "quality:scripts": "node --test scripts/lib/*.test.mjs",
     "ci:fast": "pnpm infra:config && pnpm quality:pins && pnpm admin:check && pnpm --filter @sea/contracts run check && pnpm quality:csharp-size && pnpm quality:unity-architecture && pnpm quality:test-foundation && pnpm quality:server-simulation && pnpm unity:source-check && pnpm admin:build",
-    "check": "pnpm infra:config && pnpm quality:pins && pnpm admin:check && pnpm --filter @sea/contracts run check && pnpm quality:csharp-size && pnpm quality:unity-architecture && pnpm quality:test-foundation && pnpm quality:server-simulation && pnpm quality:dotnet-format",
+    "check": "pnpm infra:config && pnpm quality:pins && pnpm admin:check && pnpm --filter @sea/contracts run check && pnpm quality:csharp-size && pnpm quality:unity-architecture && pnpm quality:test-foundation && pnpm quality:server-simulation && pnpm quality:scripts && pnpm quality:dotnet-format",
     "verify": "pnpm check && pnpm server:build && pnpm quality:bindings && pnpm server:test && pnpm server:test:integration && pnpm tools:build && pnpm admin:build && pnpm admin:test:health && pnpm runtime:test:identity && pnpm runtime:test:world && pnpm runtime:test:idle && pnpm unity:verify",
     "verify:full": "pnpm verify"
+  },
+  "devDependencies": {
+    "playwright-core": "1.61.0"
   }
 }

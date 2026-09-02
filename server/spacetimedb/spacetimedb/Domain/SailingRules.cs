@@ -72,45 +72,58 @@ public static class SailingRules
         SailingParameters parameters,
         float deltaSeconds)
     {
-        if (!float.IsFinite(deltaSeconds) || deltaSeconds <= 0f)
-        {
-            throw new ArgumentOutOfRangeException(nameof(deltaSeconds));
-        }
+        return StepTowardHeading(
+            state,
+            destinationX,
+            destinationY,
+            DesiredHeading(state.PositionX, state.PositionY, destinationX, destinationY),
+            stopping,
+            parameters,
+            deltaSeconds);
+    }
+
+    public static AuthoritativeSailingStep StepTowardHeading(
+        SailingState state,
+        float destinationX,
+        float destinationY,
+        float desiredHeadingDegrees,
+        bool stopping,
+        SailingParameters parameters,
+        float deltaSeconds)
+    {
+        ValidateDeltaSeconds(deltaSeconds);
 
         var deltaX = destinationX - state.PositionX;
         var deltaY = destinationY - state.PositionY;
-        var remaining = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
-        var heading = NormalizeAngle(state.HeadingDegrees);
-        var thrustAlignment = 1f;
-        if (!stopping && remaining > 0.001f)
-        {
-            var desiredHeading = NormalizeAngle(
-                MathF.Atan2(deltaX, deltaY) * (180f / MathF.PI));
-            heading = MoveTowardsAngle(
-                heading,
-                desiredHeading,
-                parameters.TurnRateDegrees * deltaSeconds);
-            var headingErrorRadians = NormalizeSignedAngle(desiredHeading - heading) *
-                (MathF.PI / 180f);
-            thrustAlignment = MathF.Max(0f, MathF.Cos(headingErrorRadians));
-        }
+        var remainingSquared = deltaX * deltaX + deltaY * deltaY;
+        var heading = ResolveHeading(
+            state.HeadingDegrees,
+            desiredHeadingDegrees,
+            remainingSquared,
+            stopping,
+            parameters.TurnRateDegrees * deltaSeconds,
+            out var thrustAlignment);
 
-        var brakingSpeed = stopping
-            ? 0f
-            : MathF.Sqrt(MathF.Max(0f, 2f * parameters.Deceleration * remaining));
         var alignedMaximumSpeed = parameters.MaximumSpeed * thrustAlignment;
-        var targetSpeed = MathF.Min(alignedMaximumSpeed, brakingSpeed);
+        var targetSpeed = stopping
+            ? 0f
+            : BrakingLimitedSpeed(
+                alignedMaximumSpeed,
+                parameters.Deceleration,
+                remainingSquared);
         var speedChange = targetSpeed > state.Speed
             ? parameters.Acceleration * deltaSeconds
             : parameters.Deceleration * deltaSeconds;
         var speed = MoveTowards(state.Speed, targetSpeed, speedChange);
         var averageSpeed = (state.Speed + speed) * 0.5f;
         var travel = averageSpeed * deltaSeconds;
+        var directionX = TrigonometryRules.SinDegrees(heading);
+        var directionY = TrigonometryRules.CosDegrees(heading);
 
         if (!stopping &&
-            ((remaining <= MathF.Max(0.05f, travel) &&
+            ((remainingSquared <= Square(MathF.Max(0.05f, travel)) &&
               speed <= parameters.Deceleration * deltaSeconds) ||
-             (travel >= remaining && thrustAlignment >= 0.95f)))
+             (travel * travel >= remainingSquared && thrustAlignment >= 0.95f)))
         {
             return new AuthoritativeSailingStep(
                 destinationX,
@@ -121,10 +134,9 @@ public static class SailingRules
                 true);
         }
 
-        var radians = heading * (MathF.PI / 180f);
-        var positionX = state.PositionX + MathF.Sin(radians) * travel;
-        var positionY = state.PositionY + MathF.Cos(radians) * travel;
-        var moving = speed > 0.001f || (!stopping && remaining > 0.05f);
+        var positionX = state.PositionX + directionX * travel;
+        var positionY = state.PositionY + directionY * travel;
+        var moving = speed > 0.001f || (!stopping && remainingSquared > 0.0025f);
         return new AuthoritativeSailingStep(
             positionX,
             positionY,
@@ -133,6 +145,71 @@ public static class SailingRules
             moving,
             false);
     }
+
+    private static void ValidateDeltaSeconds(float deltaSeconds)
+    {
+        if (!float.IsFinite(deltaSeconds) || deltaSeconds <= 0f)
+        {
+            throw new ArgumentOutOfRangeException(nameof(deltaSeconds));
+        }
+    }
+
+    public static float DesiredHeading(
+        float positionX,
+        float positionY,
+        float destinationX,
+        float destinationY)
+    {
+        var deltaX = destinationX - positionX;
+        var deltaY = destinationY - positionY;
+        return deltaX * deltaX + deltaY * deltaY <= 0.000001f
+            ? 0f
+            : NormalizeAngle(MathF.Atan2(deltaX, deltaY) * (180f / MathF.PI));
+    }
+
+    private static float ResolveHeading(
+        float currentHeading,
+        float desiredHeading,
+        float remainingSquared,
+        bool stopping,
+        float maximumTurn,
+        out float thrustAlignment)
+    {
+        var heading = NormalizeAngle(currentHeading);
+        thrustAlignment = 1f;
+        if (stopping || remainingSquared <= 0.000001f)
+        {
+            return heading;
+        }
+
+        desiredHeading = NormalizeAngle(desiredHeading);
+        heading = MoveTowardsAngle(heading, desiredHeading, maximumTurn);
+        var headingError = NormalizeSignedAngle(desiredHeading - heading);
+        thrustAlignment = MathF.Max(0f, TrigonometryRules.CosDegrees(headingError));
+        return heading;
+    }
+
+    private static float BrakingLimitedSpeed(
+        float maximumSpeed,
+        float deceleration,
+        float remainingSquared)
+    {
+        if (deceleration <= 0f)
+        {
+            return maximumSpeed;
+        }
+
+        var brakingDistance = maximumSpeed * maximumSpeed / (2f * deceleration);
+        if (remainingSquared >= brakingDistance * brakingDistance)
+        {
+            return maximumSpeed;
+        }
+
+        return MathF.Sqrt(
+            MathF.Max(0f, 2f * deceleration * MathF.Sqrt(remainingSquared)));
+    }
+
+    private static float Square(float value) => value * value;
 
     public static bool SegmentIntersectsCircle(
         float startX,

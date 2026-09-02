@@ -23,6 +23,8 @@ namespace Sea.Client
             interestConnection.ShipLeftInterest += RemoveShipPresentation;
             interestConnection.WorldObjectLeftInterest += RemoveWorldObjectPresentation;
             interestConnection.ShipChanged += HandleShipChanged;
+            interestConnection.ShipMovementChanged += HandleShipMovementChanged;
+            interestConnection.ShipMovementLeftInterest += HandleShipMovementRemoved;
             interestConnection.WorldObjectChanged += HandleWorldObjectChanged;
             interestConnection.VolleyChanged += HandleVolleyChanged;
             interestConnection.VolleyLeftInterest += HandleVolleyRemoved;
@@ -42,6 +44,8 @@ namespace Sea.Client
             interestConnection.ShipLeftInterest -= RemoveShipPresentation;
             interestConnection.WorldObjectLeftInterest -= RemoveWorldObjectPresentation;
             interestConnection.ShipChanged -= HandleShipChanged;
+            interestConnection.ShipMovementChanged -= HandleShipMovementChanged;
+            interestConnection.ShipMovementLeftInterest -= HandleShipMovementRemoved;
             interestConnection.WorldObjectChanged -= HandleWorldObjectChanged;
             interestConnection.VolleyChanged -= HandleVolleyChanged;
             interestConnection.VolleyLeftInterest -= HandleVolleyRemoved;
@@ -56,6 +60,7 @@ namespace Sea.Client
         {
             targets.Remove(entityId);
             shipRows.Remove(entityId);
+            movementRows.Remove(entityId);
             if (localShip?.EntityId == entityId)
             {
                 localShip = null;
@@ -65,6 +70,9 @@ namespace Sea.Client
             ReleaseShipPresentation(entityId);
             visibilityDirty = true;
         }
+
+        private void HandleShipMovementRemoved(ulong entityId) =>
+            movementRows.Remove(entityId);
 
         private void RemoveWorldObjectPresentation(ulong entityId)
         {
@@ -97,6 +105,7 @@ namespace Sea.Client
 
             mapGeometry.Clear();
             shipRows.Clear();
+            movementRows.Clear();
             targets.Clear();
             volleyRows.Clear();
             relevantEndpointIds.Clear();
@@ -126,6 +135,7 @@ namespace Sea.Client
         private void OnDestroy()
         {
             UnbindInterestCallbacks();
+            ownedAssetLease?.Release();
             if (visibilityPositions.IsCreated)
             {
                 visibilityPositions.Dispose();

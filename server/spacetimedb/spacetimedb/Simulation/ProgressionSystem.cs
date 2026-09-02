@@ -7,8 +7,7 @@ public static partial class Module
         ReducerContext ctx,
         ulong sourceEntityId,
         Ship defender,
-        CombatDamage damage,
-        bool sunk)
+        CombatDamage damage)
     {
         if (sourceEntityId == 0 || defender.FactionCode != (byte)FactionCode.Npc ||
             ctx.Db.PlayerOwnership.ShipEntityId.Find(sourceEntityId) is null)
@@ -27,11 +26,6 @@ public static partial class Module
                 gold: 0);
         }
 
-        if (sunk && ctx.Db.NpcDefinition.ArchetypeCode.Find(defender.ArchetypeCode) is
-            NpcDefinition definition)
-        {
-            AwardProgression(ctx, sourceEntityId, definition.ExperienceReward, gold: 0);
-        }
     }
 
     private static void RecordBoardingProgress(
@@ -70,13 +64,9 @@ public static partial class Module
             return;
         }
 
-        foreach (var existing in ctx.Db.CombatContribution.ByEncounter.Filter(encounterId))
+        foreach (var existing in ctx.Db.CombatContribution.ByEncounterContributor.Filter(
+                     (encounterId, contributorEntityId)))
         {
-            if (existing.ContributorEntityId != contributorEntityId)
-            {
-                continue;
-            }
-
             var updated = existing;
             updated.Damage = ProgressionRules.AddSaturating(updated.Damage, damage);
             updated.Boarding = ProgressionRules.AddSaturating(updated.Boarding, boarding);
@@ -91,7 +81,6 @@ public static partial class Module
             Damage = damage,
             Boarding = boarding,
             Support = 0,
-            Rewarded = false,
         });
     }
 
@@ -109,17 +98,20 @@ public static partial class Module
             return;
         }
 
-        progression.Experience = ProgressionRules.AddSaturating(
-            progression.Experience,
-            experience);
-        progression.Gold = uint.MaxValue - progression.Gold < gold
-            ? uint.MaxValue
-            : progression.Gold + gold;
-        while (ctx.Db.LevelDefinition.Level.Find(progression.Level + 1) is
-            LevelDefinition next && next.RequiredExperience <= progression.Experience)
-        {
-            progression.Level = next.Level;
-        }
+        var thresholds = ctx.Db.LevelDefinition.Iter()
+            .Select(definition =>
+                new LevelThreshold(definition.Level, definition.RequiredExperience))
+            .ToArray();
+        var updated = ProgressionRules.ApplyGrant(
+            new ProgressionState(
+                progression.Experience,
+                progression.Gold,
+                progression.Level),
+            new ProgressionGrant(experience, gold),
+            thresholds);
+        progression.Experience = updated.Experience;
+        progression.Gold = updated.Gold;
+        progression.Level = updated.Level;
 
         ctx.Db.PlayerProgression.Owner.Update(progression);
     }

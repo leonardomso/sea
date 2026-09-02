@@ -4,44 +4,151 @@ using SpacetimeDB;
 public static partial class Module
 {
     [SpacetimeDB.Reducer]
-    public static void RunSimulationTick(ReducerContext ctx, SimulationTimer _timer)
+    public static void RunSimulationTick(ReducerContext ctx, SimulationTimer timer)
     {
-        if (ctx.Db.WorldState.Id.Find(1) is not WorldState world)
+        if (ctx.Db.SimulationClock.Id.Find(1) is not SimulationClock world)
         {
             return;
         }
 
         world.Tick++;
-        ctx.Db.WorldState.Id.Update(world);
-        var ships = new ShipTickBuffer();
+        ctx.Db.SimulationClock.Id.Update(world);
         UpdateWind(ctx, world.Tick);
-        MoveStorms(ctx, world.Tick);
-        ProcessStatuses(ctx, ships, world.Tick);
-        ProcessChannels(ctx, ships, world.Tick);
-        ApplyEnvironmentalHazards(ctx, ships, world.Tick);
-        ResolveVolleys(ctx, ships, world.Tick);
-        ProcessRespawns(ctx, ships, world.Tick);
-        ProcessLootExpiry(ctx, world.Tick);
-        ships.Flush(ctx);
-        ProcessNpcDecisions(ctx, world.Tick);
     }
 
     [SpacetimeDB.Reducer]
-    public static void RunMovementShard(ReducerContext ctx, MovementShardTimer timer)
+    public static void RunStatusTick(ReducerContext ctx, StatusTimer timer) =>
+        RunShipWork(ctx, ProcessStatuses);
+
+    [SpacetimeDB.Reducer]
+    public static void RunChannelTick(ReducerContext ctx, ChannelTimer timer) =>
+        RunShipWork(ctx, ProcessChannels);
+
+    [SpacetimeDB.Reducer]
+    public static void RunVolleyTick(ReducerContext ctx, VolleyTimer timer) =>
+        RunShipWork(ctx, ResolveVolleys);
+
+    [SpacetimeDB.Reducer]
+    public static void RunRespawnTick(ReducerContext ctx, RespawnTimer timer) =>
+        RunShipWork(ctx, ProcessRespawns);
+
+    [SpacetimeDB.Reducer]
+    public static void RunLootExpiryTick(ReducerContext ctx, LootExpiryTimer timer)
     {
-        if (ctx.Db.WorldState.Id.Find(1) is not WorldState world)
+        if (ctx.Db.SimulationClock.Id.Find(1) is SimulationClock world)
+        {
+            ProcessLootExpiry(ctx, world.Tick);
+        }
+    }
+
+    private static void RunShipWork(
+        ReducerContext ctx,
+        Action<ReducerContext, ShipTickBuffer, ulong> process)
+    {
+        if (ctx.Db.SimulationClock.Id.Find(1) is not SimulationClock world)
         {
             return;
         }
 
         var ships = new ShipTickBuffer();
-        AdvanceMovingShips(
+        process(ctx, ships, world.Tick);
+        ships.Flush(ctx);
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void RunHazardTick(ReducerContext ctx, HazardTimer timer)
+    {
+        if (ctx.Db.SimulationClock.Id.Find(1) is not SimulationClock world)
+        {
+            return;
+        }
+
+        var kind = (WorldObjectCode)timer.HazardKindCode;
+        if (kind is not WorldObjectCode.Storm and not WorldObjectCode.Shoal)
+        {
+            throw new InvalidOperationException("The hazard timer has an invalid kind.");
+        }
+        if (timer.ShardId >= SimulationWorkRules.HazardShardCount)
+        {
+            throw new InvalidOperationException("The hazard timer has an invalid shard.");
+        }
+
+        var ships = new ShipTickBuffer();
+        if (kind == WorldObjectCode.Storm && timer.ShardId == 0)
+        {
+            MoveStorms(ctx, world.Tick);
+        }
+
+        ApplyEnvironmentalHazardKind(ctx, ships, world.Tick, kind, timer.ShardId);
+        ships.Flush(ctx);
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void RunNpcTick(ReducerContext ctx, NpcTimer timer)
+    {
+        if (ctx.Db.SimulationClock.Id.Find(1) is not SimulationClock world)
+        {
+            return;
+        }
+
+        if (timer.ShardId >= SimulationWorkRules.NpcShardCount)
+        {
+            throw new InvalidOperationException("The NPC timer has an invalid shard.");
+        }
+
+        var npcWork = ProcessNpcDecisions(ctx, world.Tick, timer.ShardId);
+        RecordNpcTelemetry(ctx, world.Tick, npcWork);
+    }
+
+    [SpacetimeDB.Reducer]
+    public static void RunMovementShard(ReducerContext ctx, MovementShardTimer timer)
+    {
+        if (ctx.Db.SimulationClock.Id.Find(1) is not SimulationClock world)
+        {
+            return;
+        }
+
+        var movementWork = AdvanceMovingShips(
             ctx,
-            ships,
             new SpatialTickCache(),
             world.Tick,
-            timer.ShardId);
-        ships.Flush(ctx);
+            timer.ShardId,
+            world.ActiveLootCount > 0);
+        RecordMovementTelemetry(ctx, world.Tick, movementWork);
+    }
+
+    private static void RecordMovementTelemetry(
+        ReducerContext ctx,
+        ulong tick,
+        (uint Processed, uint Dormant) work)
+    {
+        if (!SimulationWorkRules.ShouldSampleTelemetry(tick) ||
+            ctx.Db.SimulationTelemetry.Id.Find(1) is not SimulationTelemetry telemetry)
+        {
+            return;
+        }
+
+        telemetry.ObservedAtTick = tick;
+        telemetry.SampledMovementRows += work.Processed;
+        telemetry.DormantMovementRows += work.Dormant;
+        ctx.Db.SimulationTelemetry.Id.Update(telemetry);
+    }
+
+    private static void RecordNpcTelemetry(
+        ReducerContext ctx,
+        ulong tick,
+        (uint Processed, uint Dormant) work)
+    {
+        if (!SimulationWorkRules.ShouldSampleTelemetry(tick) ||
+            ctx.Db.SimulationTelemetry.Id.Find(1) is not SimulationTelemetry telemetry)
+        {
+            return;
+        }
+
+        telemetry.ObservedAtTick = tick;
+        telemetry.SampledNpcRows += work.Processed;
+        telemetry.DormantNpcRows += work.Dormant;
+        ctx.Db.SimulationTelemetry.Id.Update(telemetry);
     }
 
     private static void SetConnectionStateIfLoaded(
@@ -54,17 +161,46 @@ public static partial class Module
             return;
         }
 
+        SetLoadedConnectionState(ctx, ref ownership, connected);
+    }
+
+    private static void SetLoadedConnectionState(
+        ReducerContext ctx,
+        ref PlayerOwnership ownership,
+        bool connected)
+    {
+        if (ownership.IsConnected == connected)
+        {
+            return;
+        }
+
         ownership.IsConnected = connected;
         ctx.Db.PlayerOwnership.Owner.Update(ownership);
+        AdjustConnectedPlayerCount(ctx, connected ? 1 : -1);
+    }
+
+    private static void AdjustConnectedPlayerCount(ReducerContext ctx, int delta)
+    {
+        var clock = ctx.Db.SimulationClock.Id.Find(1) ??
+            throw new InvalidOperationException("Simulation clock is missing.");
+        var previous = clock.ConnectedPlayerCount;
+        clock.ConnectedPlayerCount = delta > 0
+            ? checked(previous + (uint)delta)
+            : previous - Math.Min(previous, (uint)-delta);
+        ctx.Db.SimulationClock.Id.Update(clock);
+        if ((previous == 0) != (clock.ConnectedPlayerCount == 0))
+        {
+            SetSimulationCadence(ctx, clock.ConnectedPlayerCount > 0);
+        }
     }
 
     private static ulong AllocateEntityId(ReducerContext ctx)
     {
-        var world = ctx.Db.WorldState.Id.Find(1) ??
-            throw new Exception("World state is missing.");
+        var world = ctx.Db.SimulationClock.Id.Find(1) ??
+            throw new InvalidOperationException("Simulation clock is missing.");
         var entityId = world.NextEntityId;
         world.NextEntityId++;
-        ctx.Db.WorldState.Id.Update(world);
+        ctx.Db.SimulationClock.Id.Update(world);
         return entityId;
     }
 
@@ -79,7 +215,7 @@ public static partial class Module
         {
             EntityId = entityId,
             ArchetypeCode = (byte)HotPathCodes.ShipArchetype(archetypeId),
-            FactionCode = faction == "player"
+            FactionCode = string.Equals(faction, "player", StringComparison.Ordinal)
                 ? (byte)FactionCode.Player
                 : (byte)FactionCode.Npc,
             PositionX = x,
@@ -99,6 +235,8 @@ public static partial class Module
             IsStopping = false,
             IsMoving = false,
             MovementShard = SimulationWorkRules.MovementShard(entityId),
+            HazardShard = SimulationWorkRules.HazardShard(
+                SimulationWorkRules.MovementShard(entityId)),
             IsActive = true,
             IsAlive = true,
             IsEngaged = false,
@@ -133,17 +271,17 @@ public static partial class Module
     private static Ship FindPlayerShip(ReducerContext ctx, Identity owner)
     {
         var ownership = ctx.Db.PlayerOwnership.Owner.Find(owner) ??
-            throw new Exception("Player has not been loaded.");
+            throw new InvalidOperationException("Player has not been loaded.");
         return FindShip(ctx, ownership.ShipEntityId);
     }
 
     private static Ship FindShip(ReducerContext ctx, ulong entityId) =>
         ctx.Db.Ship.EntityId.Find(entityId) ??
-        throw new Exception("The requested ship does not exist.");
+        throw new InvalidOperationException("The requested ship does not exist.");
 
     private static PlayerProgression FindProgression(ReducerContext ctx, Identity owner) =>
         ctx.Db.PlayerProgression.Owner.Find(owner) ??
-        throw new Exception("Player progression is missing.");
+        throw new InvalidOperationException("Player progression is missing.");
 
     private static void EnsureProgression(ReducerContext ctx, Identity owner)
     {

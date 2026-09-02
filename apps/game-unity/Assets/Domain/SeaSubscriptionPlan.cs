@@ -22,9 +22,12 @@ namespace Sea.Client
                 "SELECT * FROM npc_definition",
                 "SELECT * FROM level_definition",
                 $"SELECT * FROM command_result_event WHERE owner = {ownerSqlLiteral}",
+                $"SELECT * FROM encounter_reward_event WHERE owner = {ownerSqlLiteral}",
+                $"SELECT * FROM encounter_reward WHERE owner = {ownerSqlLiteral}",
                 $"SELECT * FROM player_ownership WHERE owner = {ownerSqlLiteral}",
                 $"SELECT * FROM player_progression WHERE owner = {ownerSqlLiteral}",
                 $"SELECT * FROM player_command_state WHERE owner = {ownerSqlLiteral}",
+                $"SELECT * FROM player_clock WHERE owner = {ownerSqlLiteral}",
             };
         }
 
@@ -33,6 +36,7 @@ namespace Sea.Client
             return new[]
             {
                 $"SELECT * FROM ship WHERE entity_id = {shipEntityId}",
+                $"SELECT * FROM ship_movement WHERE entity_id = {shipEntityId}",
                 $"SELECT * FROM inventory WHERE ship_entity_id = {shipEntityId}",
                 $"SELECT * FROM ship_status WHERE ship_entity_id = {shipEntityId}",
                 $"SELECT * FROM cooldown WHERE ship_entity_id = {shipEntityId}",
@@ -89,6 +93,7 @@ namespace Sea.Client
             return new[]
             {
                 $"SELECT * FROM ship WHERE {targetPredicate}",
+                $"SELECT * FROM ship_movement WHERE {targetPredicate}",
                 $"SELECT * FROM ship_status WHERE {statusPredicate}",
                 $"SELECT * FROM cooldown WHERE {statusPredicate}",
                 $"SELECT * FROM ship_channel WHERE {statusPredicate}",
@@ -114,6 +119,7 @@ namespace Sea.Client
             return new[]
             {
                 $"SELECT * FROM ship WHERE is_active = true AND {bounds}",
+                $"SELECT * FROM ship_movement WHERE is_active = true AND {bounds}",
                 $"SELECT * FROM volley WHERE is_active = true AND {bounds}",
                 $"SELECT * FROM loot WHERE is_active = true AND {bounds}",
                 $"SELECT * FROM world_object WHERE is_active = true AND {bounds}",

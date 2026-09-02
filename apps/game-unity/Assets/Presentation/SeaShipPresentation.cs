@@ -8,8 +8,11 @@ namespace Sea.Client
         private static readonly int ColorId = Shader.PropertyToID("_Color");
 
         private MaterialPropertyBlock properties;
-        private Transform fullVisual;
+        private Transform nearVisual;
+        private GameObject mediumVisual;
         private GameObject distantSilhouette;
+        private Renderer[] nearRenderers;
+        private Renderer[] mediumRenderers;
         private Transform healthBar;
         private Renderer healthRenderer;
         private Renderer silhouetteRenderer;
@@ -20,17 +23,23 @@ namespace Sea.Client
 
         public void Configure(
             Transform visual,
+            GameObject medium,
             SeaShipFeedback feedback,
             Transform health,
             GameObject silhouette)
         {
             properties = new MaterialPropertyBlock();
-            fullVisual = visual;
+            nearVisual = visual;
+            mediumVisual = medium;
+            nearRenderers = visual.GetComponentsInChildren<Renderer>(true);
+            mediumRenderers = medium.GetComponentsInChildren<Renderer>(true);
             Feedback = feedback;
             healthBar = health;
             healthRenderer = health.GetComponent<Renderer>();
             distantSilhouette = silhouette;
-            silhouetteRenderer = silhouette.GetComponent<Renderer>();
+            silhouetteRenderer = silhouette.GetComponentInChildren<Renderer>(true);
+            mediumVisual.SetActive(false);
+            distantSilhouette.SetActive(false);
         }
 
         public void Bind(ulong entityId, string presentationName)
@@ -47,11 +56,12 @@ namespace Sea.Client
             float speed,
             float maximumSpeed,
             SeaPresentationLevel level,
-            bool isPlayerFaction)
+            byte factionCode,
+            byte archetypeCode)
         {
             Feedback.SetMotion(speed, maximumSpeed);
-            var showFull = level is SeaPresentationLevel.Near or SeaPresentationLevel.Medium;
-            fullVisual.gameObject.SetActive(showFull);
+            nearVisual.gameObject.SetActive(level == SeaPresentationLevel.Near);
+            mediumVisual.SetActive(level == SeaPresentationLevel.Medium);
             distantSilhouette.SetActive(level == SeaPresentationLevel.Distant);
             healthBar.gameObject.SetActive(level == SeaPresentationLevel.Near);
             healthBar.localScale = new Vector3(
@@ -59,25 +69,46 @@ namespace Sea.Client
                 0.12f,
                 0.12f);
 
+            var isPlayerFaction = factionCode == 1;
             var color = isPlayerFaction
                 ? new Color(0.25f, 0.72f, 1f, 1f)
                 : new Color(0.28f, 0.95f, 0.45f, 1f);
             ApplyColor(healthRenderer, color);
-            ApplyColor(silhouetteRenderer, isPlayerFaction
-                ? new Color(0.15f, 0.55f, 0.85f, 1f)
-                : new Color(0.30f, 0.34f, 0.36f, 1f));
+            var variant = SeaShipVariantPolicy.Tint(factionCode, archetypeCode);
+            ApplyColor(nearRenderers, variant);
+            ApplyColor(mediumRenderers, variant);
+            ApplyColor(silhouetteRenderer, variant);
         }
 
         public void ResetForPool()
         {
             EntityId = 0;
             Feedback.ResetPresentation();
-            fullVisual.gameObject.SetActive(true);
+            nearVisual.gameObject.SetActive(true);
+            mediumVisual.SetActive(false);
             distantSilhouette.SetActive(false);
             healthBar.gameObject.SetActive(false);
             healthRenderer.SetPropertyBlock(null);
             silhouetteRenderer.SetPropertyBlock(null);
+            ClearColors(nearRenderers);
+            ClearColors(mediumRenderers);
             gameObject.SetActive(false);
+        }
+
+        private void ApplyColor(Renderer[] renderers, Color color)
+        {
+            foreach (var renderer in renderers)
+            {
+                ApplyColor(renderer, color);
+            }
+        }
+
+        private static void ClearColors(Renderer[] renderers)
+        {
+            foreach (var renderer in renderers)
+            {
+                renderer.SetPropertyBlock(null);
+            }
         }
 
         private void ApplyColor(Renderer renderer, Color color)

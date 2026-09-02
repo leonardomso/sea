@@ -122,6 +122,11 @@ public static class CommandPolicy
         CommandSnapshot snapshot,
         ShipCommandKind command)
     {
+        if ((byte)command > (byte)ShipCommandKind.CancelChannel)
+        {
+            return Reject(snapshot.Mode, CommandRejectionCode.MissingResource);
+        }
+
         if (snapshot.Mode == ShipMode.Sunk)
         {
             return Reject(snapshot.Mode, CommandRejectionCode.Sunk);

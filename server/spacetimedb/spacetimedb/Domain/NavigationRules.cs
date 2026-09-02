@@ -45,19 +45,58 @@ public static class NavigationRules
 
         var directionX = courseX / courseLength;
         var directionY = courseY / courseLength;
+        var obstacle = NearestBlocker(
+            startX,
+            startY,
+            destinationX,
+            destinationY,
+            directionX,
+            directionY,
+            blockers);
+        if (obstacle is not NavigationBlocker nearest)
+        {
+            return false;
+        }
+
+        var perpendicularX = -directionY;
+        var perpendicularY = directionX;
+        var offset = nearest.Radius + WorldRules.CollisionPadding + DetourClearance;
+        var first = new SpawnPoint(
+            nearest.X + perpendicularX * offset,
+            nearest.Y + perpendicularY * offset);
+        var second = new SpawnPoint(
+            nearest.X - perpendicularX * offset,
+            nearest.Y - perpendicularY * offset);
+        var firstScore = CandidateScore(
+            startX, startY, destinationX, destinationY, first, blockers);
+        var secondScore = CandidateScore(
+            startX, startY, destinationX, destinationY, second, blockers);
+        if (!float.IsFinite(firstScore) && !float.IsFinite(secondScore))
+        {
+            return false;
+        }
+
+        waypoint = firstScore <= secondScore ? first : second;
+        return true;
+    }
+
+    private static NavigationBlocker? NearestBlocker(
+        float startX,
+        float startY,
+        float destinationX,
+        float destinationY,
+        float directionX,
+        float directionY,
+        IReadOnlyCollection<NavigationBlocker> blockers)
+    {
         NavigationBlocker? nearest = null;
         var nearestProjection = float.MaxValue;
         foreach (var blocker in blockers)
         {
             var collisionRadius = blocker.Radius + WorldRules.CollisionPadding;
             if (!SailingRules.SegmentIntersectsCircle(
-                    startX,
-                    startY,
-                    destinationX,
-                    destinationY,
-                    blocker.X,
-                    blocker.Y,
-                    collisionRadius))
+                    startX, startY, destinationX, destinationY,
+                    blocker.X, blocker.Y, collisionRadius))
             {
                 continue;
             }
@@ -71,31 +110,7 @@ public static class NavigationRules
             }
         }
 
-        if (nearest is not NavigationBlocker obstacle)
-        {
-            return false;
-        }
-
-        var perpendicularX = -directionY;
-        var perpendicularY = directionX;
-        var offset = obstacle.Radius + WorldRules.CollisionPadding + DetourClearance;
-        var first = new SpawnPoint(
-            obstacle.X + perpendicularX * offset,
-            obstacle.Y + perpendicularY * offset);
-        var second = new SpawnPoint(
-            obstacle.X - perpendicularX * offset,
-            obstacle.Y - perpendicularY * offset);
-        var firstScore = CandidateScore(
-            startX, startY, destinationX, destinationY, first, blockers);
-        var secondScore = CandidateScore(
-            startX, startY, destinationX, destinationY, second, blockers);
-        if (!float.IsFinite(firstScore) && !float.IsFinite(secondScore))
-        {
-            return false;
-        }
-
-        waypoint = firstScore <= secondScore ? first : second;
-        return true;
+        return nearest;
     }
 
     public static float Distance(float fromX, float fromY, float toX, float toY)

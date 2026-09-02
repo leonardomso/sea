@@ -142,6 +142,92 @@ public sealed class NpcRulesTests
         Assert.Equal(expected, NpcRules.HasAutomaticAggroCapacity(currentAttackers));
     }
 
+    [Theory]
+    [InlineData(false, ShipMode.Operational)]
+    [InlineData(true, ShipMode.Sunk)]
+    [InlineData(true, ShipMode.Repairing)]
+    [InlineData(true, ShipMode.Boarding)]
+    public void InactiveOrNonOperationalNpcHolds(bool active, ShipMode mode)
+    {
+        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Raider) with
+        {
+            Active = active,
+            Mode = mode,
+        });
+
+        Assert.Equal(NpcActionKind.Hold, decision.Action);
+    }
+
+    [Fact]
+    public void RoamingNpcKeepsItsExistingCourse()
+    {
+        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Patrol) with
+        {
+            HasCourse = true,
+        });
+
+        Assert.Equal(NpcActionKind.Hold, decision.Action);
+    }
+
+    [Fact]
+    public void LostTargetIsClearedBeforeAnotherAction()
+    {
+        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Gunship) with
+        {
+            TargetEntityId = 42,
+            TargetAvailable = false,
+        });
+
+        Assert.Equal(NpcActionKind.ClearTarget, decision.Action);
+    }
+
+    [Theory]
+    [InlineData(false, 65f, true)]
+    [InlineData(true, 65f, false)]
+    [InlineData(false, 0f, false)]
+    public void NpcSearchesOnlyWhenItNeedsAnAggroTarget(
+        bool targetAvailable,
+        float aggroRange,
+        bool expected)
+    {
+        Assert.Equal(expected, NpcRules.ShouldSearchForTarget(targetAvailable, aggroRange));
+    }
+
+    [Fact]
+    public void NpcSelectsItsLoadoutBeforeFiring()
+    {
+        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Gunship) with
+        {
+            TargetEntityId = 42,
+            TargetAvailable = true,
+            DistanceToTarget = 48,
+            TargetX = -48,
+            SelectedAmmunition = AmmunitionCode.Round,
+        });
+
+        Assert.Equal(NpcActionKind.SetAmmo, decision.Action);
+        Assert.Equal(AmmunitionCode.Incendiary, decision.Ammunition);
+    }
+
+    [Fact]
+    public void StarboardArcFiresAndUnavailableArcsTurn()
+    {
+        var starboard = Snapshot(ShipArchetypeCode.Patrol) with
+        {
+            TargetEntityId = 42,
+            TargetAvailable = true,
+            DistanceToTarget = 45,
+            TargetX = 45,
+            SelectedAmmunition = AmmunitionCode.Round,
+            PortReady = false,
+            StarboardReady = true,
+        };
+
+        Assert.Equal(NpcActionKind.FireStarboard, NpcRules.Decide(starboard).Action);
+        Assert.Equal(NpcActionKind.SetCourse,
+            NpcRules.Decide(starboard with { StarboardReady = false }).Action);
+    }
+
     private static NpcSnapshot Snapshot(ShipArchetypeCode archetype) => new()
     {
         Archetype = archetype,

@@ -60,6 +60,9 @@ public static class NpcRules
     public static bool HasAutomaticAggroCapacity(int currentAttackers) =>
         currentAttackers < MaximumAutomaticAttackersPerPlayer;
 
+    public static bool ShouldSearchForTarget(bool targetAvailable, float aggroRange) =>
+        !targetAvailable && aggroRange > 0f;
+
     public static bool ShouldAttemptRepair(uint hull, uint maximumHull) =>
         maximumHull > 0 && (float)hull / maximumHull <= RepairHullRatio;
 
