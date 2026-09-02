@@ -1,7 +1,11 @@
 # Repository instructions
 
 These instructions apply to the entire repository. `PLAN.md` is the source of
-truth for scope, phase order, acceptance gates, and commit boundaries.
+truth for scope, milestone order, acceptance gates, and commit boundaries.
+`docs/SEA_1_KNOWLEDGE.md`, `docs/SEA_2_MATH.md`, `docs/SEA_3_MECHANICS.md`,
+and `docs/SEA_4_TECHNICAL.md` are the design of record: where they and the
+code disagree, the docs win, and `docs/SEA_5_GAP_ANALYSIS.md` records how each
+difference is resolved.
 
 ## Project boundaries
 
@@ -28,7 +32,8 @@ truth for scope, phase order, acceptance gates, and commit boundaries.
 - `packages/contracts`: generated TypeScript SpacetimeDB bindings.
 - `apps/game-unity/Assets/Generated/SpacetimeDB`: generated C# bindings.
 - `tests/integration`: tests against a published real module.
-- `tests/performance` and `tests/load`: Phase 18 performance tooling.
+- `tests/performance` and `tests/load`: capacity and performance evidence
+  tooling used by milestone gates.
 - `scripts`: canonical local commands. Extend these instead of documenting
   one-off shell procedures.
 
@@ -65,10 +70,10 @@ pnpm verify
 ```
 
 `pnpm verify` is the normal phase gate and requires Docker and Unity. Run
-`pnpm verify:full` only for the roadmap phases that own load, soak, mutation,
+`pnpm verify:full` only for the roadmap sub-phases that own load, soak, mutation,
 and production performance proof.
 
-Every roadmap phase receives one conventional commit. Before committing,
+Every roadmap sub-phase receives one conventional commit. Before committing,
 review the diff for unrelated changes, secrets, debug code, generated drift,
 and unlicensed assets. Do not rewrite or discard user changes.
 

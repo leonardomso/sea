@@ -10,19 +10,18 @@ owns movement, combat, NPC decisions, loot, progression, death, and respawn.
 
 ## Current state
 
-Phase 15 is complete. The local build includes:
+The scalable PvE vertical slice (previous plan, Phases 0 through 17) is
+complete. It includes click-to-sail navigation with island and reef avoidance,
+broadside combat, repairs, boarding, statuses, wind, currents, storms, twelve
+roaming NPCs, loot, respawn, shared rewards, four-client shared-world support,
+and a macOS and WebGL Unity client using the owned Apricum ship asset.
 
-- Click-to-sail navigation with island and reef avoidance.
-- Manual port and starboard broadsides, ammunition, weak points, and abilities.
-- Repairs, boarding, statuses, wind, currents, storms, shoals, and reefs.
-- Twelve roaming NPCs: four patrols, four raiders, and four gunships.
-- Atomic sail-over loot, XP, sinking, safe respawn, and NPC respawn.
-- Four-client shared-world support and spatial interest subscriptions.
-- A macOS and WebGL Unity client using the owned Apricum ship asset.
-
-Shared reward settlement, final asset presentation, and full load proof remain
-in Phases 16 through 19. See [PLAN.md](./PLAN.md) for the accepted roadmap and
-phase gates.
+The game is now built to the design in `docs/SEA_1_KNOWLEDGE.md` through
+`docs/SEA_4_TECHNICAL.md`. Milestone 1 of [PLAN.md](./PLAN.md) replaces the
+slice's combat rules with the design's: one map (Havenmere), magazine firing
+at a selected target, facing armor, channelled repair, port rules, and enemies
+derived from the base player ship. `docs/SEA_5_GAP_ANALYSIS.md` lists every
+difference between the slice and the design.
 
 ## Architecture
 
@@ -60,7 +59,7 @@ remain blocked.
 | `infra` | Pinned Docker Compose services |
 | `scripts` | Build, generation, verification, runtime, and launch entry points |
 | `docs` | Focused development documentation |
-| `PLAN.md` | Source of truth for scope, phases, acceptance gates, and commit boundaries |
+| `PLAN.md` | Source of truth for scope, milestones, acceptance gates, and commit boundaries |
 | `AGENTS.md` | Repository rules for AI and human contributors |
 
 ## Prerequisites
@@ -122,7 +121,7 @@ pnpm verify                   # complete normal local gate
 `pnpm verify` is intentionally thorough. It builds both Unity players and runs
 real local services. Pull-request CI uses `pnpm ci:fast` plus server unit tests
 so routine reviews remain short. Load, soak, mutation, and 5,000-client checks
-belong to Phase 18 and `pnpm verify:full`.
+belong to the milestone validation sub-phases and `pnpm verify:full`.
 
 ## Changing the server schema
 

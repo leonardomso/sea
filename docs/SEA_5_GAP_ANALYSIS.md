@@ -8,16 +8,18 @@ and a survey of `server/spacetimedb`, `apps/game-unity`, `apps/admin`,
 
 Purpose: state precisely what the build already has, what the four design
 docs require, where the two disagree, and how each disagreement is resolved.
-`docs/SEA_6_ROADMAP.md` turns this into an ordered plan.
+`PLAN.md` turns this into an ordered plan.
 
 ## 1. Where the build stands
 
-`PLAN.md` phases 0 through 17 are complete. Two phases remain open:
+The previous plan ("Sea scalability and PvE completion plan", now section 6
+of `PLAN.md`) completed phases 0 through 17. Its last two phases were dropped
+when the new roadmap was adopted:
 
 | Phase | Goal | State |
 | --- | --- | --- |
-| 18 | Prove 5,000 clients and 1,000 active ships, mutation and coverage gates, `pnpm verify:full` | Tooling landed in `644e94c` (evidence assembler, scale smoke, mutation and coverage scripts). No run is recorded and the phase has no completion line. |
-| 19 | Automated gates plus a 10 to 15 minute user playtest of the vertical slice | Not started. |
+| 18 | Prove 5,000 clients and 1,000 active ships, mutation and coverage gates, `pnpm verify:full` | Tooling landed in `644e94c` (evidence assembler, scale smoke, mutation and coverage scripts). No run was recorded. The gates moved to Milestone 1f. |
+| 19 | Automated gates plus a 10 to 15 minute user playtest of the vertical slice | Dropped. Milestone 1f playtests the new combat model instead. |
 
 The vertical slice that exists today:
 
@@ -118,10 +120,9 @@ still needs, given section 3:
 - Phase 5, money and operations: Better Auth, Stripe, Diamonds, cosmetics,
   Sea Pass, market, auction, admin writes, replay viewer, cloud deployment.
 
-## 5. Rules that change once the roadmap is adopted
+## 5. Rules that changed when the roadmap was adopted
 
-- `PLAN.md` is replaced by `docs/SEA_6_ROADMAP.md` as the source of truth.
-  `AGENTS.md` points at the new file. The scope rule "no PvP, parties, chat,
+- `PLAN.md` is replaced by the new roadmap (adopted 2026-09-02). The scope rule "no PvP, parties, chat,
   cloud, bosses, quests, or economy before their phase" stays, with the new
   milestones as the phases.
 - `PLAN.md` locked decisions that lapse: ships never collide (M3 adds it),
