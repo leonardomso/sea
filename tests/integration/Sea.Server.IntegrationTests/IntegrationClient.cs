@@ -41,7 +41,7 @@ internal sealed class IntegrationClient : IDisposable
     {
         var database = RequiredEnvironment("SEA_TEST_DATABASE");
         var server = Environment.GetEnvironmentVariable("SEA_TEST_SERVER")
-            ?? "http://host.docker.internal:3000";
+            ?? "http://host.docker.internal:43000";
         DbConnection? connectedClient = null;
         Identity connectedIdentityValue = default;
         var connectedTokenValue = string.Empty;

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$project_root/scripts/lib/local-ports.sh"
 database_name="sea-integration-$$"
 state_relative=".cache/spacetime-integration-$$"
 state_directory="$project_root/$state_relative"
@@ -9,16 +10,16 @@ state_directory="$project_root/$state_relative"
 cleanup() {
   SPACETIME_STATE_RELATIVE="$state_relative" \
     "$project_root/scripts/spacetime.sh" delete "$database_name" \
-      --server http://host.docker.internal:3000 --yes >/dev/null 2>&1 || true
+      --server "$SEA_SPACETIME_DOCKER_URL" --yes >/dev/null 2>&1 || true
   rm -rf "$state_directory"
 }
 trap cleanup EXIT
 
-curl --fail --silent --max-time 2 http://127.0.0.1:3000/v1/ping >/dev/null
+curl --fail --silent --max-time 2 "$SEA_SPACETIME_LOCAL_URL/v1/ping" >/dev/null
 
 SPACETIME_STATE_RELATIVE="$state_relative" \
   "$project_root/scripts/spacetime.sh" publish "$database_name" \
-    --server http://host.docker.internal:3000 \
+    --server "$SEA_SPACETIME_DOCKER_URL" \
     --yes \
     --module-path server/spacetimedb/spacetimedb >/dev/null
 
@@ -31,5 +32,5 @@ if [ -n "${SEA_TEST_FILTER:-}" ]; then
 fi
 
 SEA_TEST_DATABASE="$database_name" \
-SEA_TEST_SERVER="http://host.docker.internal:3000" \
+SEA_TEST_SERVER="$SEA_SPACETIME_DOCKER_URL" \
   "$project_root/scripts/dotnet.sh" "${test_arguments[@]}"

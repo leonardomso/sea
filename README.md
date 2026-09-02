@@ -94,12 +94,12 @@ Local endpoints:
 
 | Service | Address |
 |---|---|
-| Game server | `http://localhost:3000` |
-| Admin panel | `http://localhost:3001` |
-| PostgreSQL | `localhost:5432` |
-| Redis | `localhost:6379` |
-| MinIO API | `http://localhost:9000` |
-| MinIO console | `http://localhost:9001` |
+| Game server | `http://localhost:43000` |
+| Admin panel | `http://localhost:43001` |
+| PostgreSQL | `localhost:45432` |
+| Redis | `localhost:46379` |
+| MinIO API | `http://localhost:49000` |
+| MinIO console | `http://localhost:49001` |
 
 ## Daily commands
 

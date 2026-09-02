@@ -2,6 +2,7 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$project_root/scripts/lib/local-ports.sh"
 game_binary="$project_root/apps/game-unity/Build/Sea.app/Contents/MacOS/game-unity"
 preference_domain="com.DefaultCompany.game-unity"
 runtime_profile="captain-runtime"
@@ -30,7 +31,7 @@ cleanup() {
 
   SPACETIME_STATE_RELATIVE="$spacetime_state_relative" \
     "$project_root/scripts/spacetime.sh" delete "$runtime_database" \
-      --server http://host.docker.internal:3000 --yes >/dev/null 2>&1 || true
+      --server "$SEA_SPACETIME_DOCKER_URL" --yes >/dev/null 2>&1 || true
 
   rm -rf "$runtime_directory"
   rm -rf "$spacetime_state_directory"
@@ -38,13 +39,13 @@ cleanup() {
 trap cleanup EXIT
 
 test -x "$game_binary"
-curl --fail --silent --max-time 2 http://127.0.0.1:3000/v1/ping >/dev/null
+curl --fail --silent --max-time 2 "$SEA_SPACETIME_LOCAL_URL/v1/ping" >/dev/null
 
 # The smoke scenario sinks its seeded NPC. Give each run an isolated database
 # and delete it with the same local CLI identity during cleanup.
 SPACETIME_STATE_RELATIVE="$spacetime_state_relative" \
 "$project_root/scripts/spacetime.sh" publish "$runtime_database" \
-  --server http://host.docker.internal:3000 \
+  --server "$SEA_SPACETIME_DOCKER_URL" \
   --yes \
   --module-path server/spacetimedb/spacetimedb >/dev/null
 

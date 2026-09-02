@@ -45,7 +45,7 @@ export type OperationsSnapshot = {
 };
 
 function spacetimeUrl() {
-	return process.env.SEA_SPACETIMEDB_URL ?? "http://127.0.0.1:3000";
+	return process.env.SEA_SPACETIMEDB_URL ?? "http://127.0.0.1:43000";
 }
 
 async function fetchSql() {

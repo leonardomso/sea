@@ -2,6 +2,7 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$project_root/scripts/lib/local-ports.sh"
 database_name="sea-scale-smoke-$$"
 state_relative=".cache/spacetime-scale-smoke-$$"
 state_directory="$project_root/$state_relative"
@@ -27,9 +28,9 @@ sample_interval="${SEA_TICK_SAMPLE_INTERVAL_SECONDS:-0.1}"
 load_evidence_output="${SEA_LOAD_EVIDENCE_OUTPUT:-}"
 server_evidence_output="${SEA_SERVER_EVIDENCE_OUTPUT:-}"
 spacetime_container="${SEA_SPACETIME_CONTAINER:-}"
-load_server="http://host.docker.internal:3000"
+load_server="$SEA_SPACETIME_DOCKER_URL"
 if [ -n "${SEA_DOCKER_NETWORK:-}" ]; then
-  load_server="http://$spacetime_container:3000"
+  load_server="http://$spacetime_container:3000" # container network: internal port
 fi
 mkdir -p "$runtime_directory"
 
@@ -44,7 +45,7 @@ cleanup() {
   fi
   SPACETIME_STATE_RELATIVE="$state_relative" \
     "$project_root/scripts/spacetime.sh" delete "$database_name" \
-      --server http://host.docker.internal:3000 --yes >/dev/null 2>&1 || true
+      --server "$SEA_SPACETIME_DOCKER_URL" --yes >/dev/null 2>&1 || true
   rm -rf "$state_directory"
   if [ "${SEA_KEEP_PERF_ARTIFACTS:-0}" = "1" ]; then
     mkdir -p "$project_root/Build/performance"
@@ -81,7 +82,7 @@ metric_value() {
 }
 
 metrics_snapshot() {
-  curl --fail --silent --max-time 3 http://127.0.0.1:3000/v1/metrics
+  curl --fail --silent --max-time 3 "$SEA_SPACETIME_LOCAL_URL/v1/metrics"
 }
 
 active_ship_count() {
@@ -90,7 +91,7 @@ active_ship_count() {
     --request POST \
     --header "content-type: text/plain" \
     --data "SELECT * FROM ship WHERE is_moving = true" \
-    "http://127.0.0.1:3000/v1/database/$database_name/sql")"; then
+    "$SEA_SPACETIME_LOCAL_URL/v1/database/$database_name/sql")"; then
     echo 0
     return
   fi
@@ -103,7 +104,7 @@ simulation_telemetry() {
     --request POST \
     --header "content-type: text/plain" \
     --data "SELECT * FROM simulation_telemetry WHERE id = 1" \
-    "http://127.0.0.1:3000/v1/database/$database_name/sql"
+    "$SEA_SPACETIME_LOCAL_URL/v1/database/$database_name/sql"
 }
 
 table_count() {
@@ -112,7 +113,7 @@ table_count() {
     --request POST \
     --header "content-type: text/plain" \
     --data "SELECT * FROM $table_name" \
-    "http://127.0.0.1:3000/v1/database/$database_name/sql" |
+    "$SEA_SPACETIME_LOCAL_URL/v1/database/$database_name/sql" |
     node "$project_root/scripts/lib/sql-result.mjs"
 }
 
@@ -132,15 +133,15 @@ sample_container_resources() {
   done
 }
 
-curl --fail --silent --max-time 2 http://127.0.0.1:3000/v1/ping >/dev/null
+curl --fail --silent --max-time 2 "$SEA_SPACETIME_LOCAL_URL/v1/ping" >/dev/null
 SPACETIME_STATE_RELATIVE="$state_relative" \
   "$project_root/scripts/spacetime.sh" publish "$database_name" \
-    --server http://host.docker.internal:3000 \
+    --server "$SEA_SPACETIME_DOCKER_URL" \
     --yes \
     --module-path server/spacetimedb/spacetimedb >/dev/null
 
 database_identity="$(curl --fail --silent --max-time 3 \
-  "http://127.0.0.1:3000/v1/database/$database_name/identity")"
+  "$SEA_SPACETIME_LOCAL_URL/v1/database/$database_name/identity")"
 "$project_root/scripts/dotnet10.sh" build \
   tests/load/Sea.LoadTests/Sea.LoadTests.csproj >/dev/null
 SEA_LOAD_DATABASE="$database_name" \

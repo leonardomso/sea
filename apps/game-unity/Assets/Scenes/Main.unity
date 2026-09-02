@@ -407,7 +407,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cecdc32bf740a4bd6a71e17a3646ca0d, type: 3}
   m_Name:
   m_EditorClassIdentifier: Sea.Networking::Sea.Client.SeaConnectionController
-  serverUrl: http://127.0.0.1:3000
+  serverUrl: http://127.0.0.1:43000
   databaseName: sea-local
   connectOnStart: 1
 --- !u!4 &691758777

@@ -2,11 +2,12 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$project_root/scripts/lib/local-ports.sh"
 runtime_directory="$(mktemp -d)"
 runtime_log="$runtime_directory/admin.log"
 health_body="$runtime_directory/health.json"
 admin_pid=""
-admin_port="${SEA_TEST_ADMIN_PORT:-3101}"
+admin_port="${SEA_TEST_ADMIN_PORT:-43101}"
 
 cleanup() {
   if [ -n "$admin_pid" ] && kill -0 "$admin_pid" 2>/dev/null; then

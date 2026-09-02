@@ -54,7 +54,7 @@ pnpm unity:build:macos
 pnpm unity:build:webgl
 ```
 
-The generated main scene connects to `http://127.0.0.1:3000`, database
+The generated main scene connects to `http://127.0.0.1:43000`, database
 `sea-local`. Start Docker and publish or reset the module before runtime tests.
 The macOS player is written to `Build/Sea.app`; WebGL output is written to
 `Build/WebGL`.

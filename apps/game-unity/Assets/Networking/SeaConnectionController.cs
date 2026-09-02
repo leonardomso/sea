@@ -13,7 +13,7 @@ namespace Sea.Client
         private static readonly ProfilerMarker NetworkingMarker =
             new("Sea.Networking.FrameTick");
 
-        [SerializeField] private string serverUrl = "http://127.0.0.1:3000";
+        [SerializeField] private string serverUrl = "http://127.0.0.1:43000";
         [SerializeField] private string databaseName = "sea-local";
         [SerializeField] private bool connectOnStart = true;
 

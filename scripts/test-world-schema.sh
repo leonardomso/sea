@@ -2,8 +2,9 @@
 set -euo pipefail
 
 runtime_directory="$(mktemp -d)"
-database_url="http://127.0.0.1:3000/v1/database/sea-local/sql"
+database_url="$SEA_SPACETIME_LOCAL_URL/v1/database/sea-local/sql"
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$project_root/scripts/lib/local-ports.sh"
 
 cleanup() {
   rm -rf "$runtime_directory"
@@ -24,7 +25,7 @@ for table_name in world_state ship ship_status ship_channel cooldown volley inve
 done
 
 "$project_root/scripts/spacetime.sh" describe sea-local \
-  --server http://host.docker.internal:3000 \
+  --server "$SEA_SPACETIME_DOCKER_URL" \
   --json >"$runtime_directory/schema.json"
 
 node - "$runtime_directory" <<'NODE'

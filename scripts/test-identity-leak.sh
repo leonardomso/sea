@@ -2,6 +2,7 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$project_root/scripts/lib/local-ports.sh"
 runtime_directory="$(mktemp -d)"
 sql_result="$runtime_directory/identities.json"
 
@@ -15,7 +16,7 @@ identity_count() {
     --request POST \
     --header "content-type: text/plain" \
     --data "SELECT * FROM player_ownership" \
-    "http://127.0.0.1:3000/v1/database/sea-local/sql" >"$sql_result"
+    "$SEA_SPACETIME_LOCAL_URL/v1/database/sea-local/sql" >"$sql_result"
 
   node -e '
     const fs = require("node:fs");
@@ -24,17 +25,17 @@ identity_count() {
   ' "$sql_result"
 }
 
-curl --fail --silent --max-time 3 http://127.0.0.1:3000/v1/ping >/dev/null
-curl --fail --silent --max-time 3 http://127.0.0.1:3001/health >/dev/null
+curl --fail --silent --max-time 3 "$SEA_SPACETIME_LOCAL_URL/v1/ping" >/dev/null
+curl --fail --silent --max-time 3 "$SEA_ADMIN_LOCAL_URL/health" >/dev/null
 
 before="$(identity_count)"
 
 for _ in {1..25}; do
-  curl --fail --silent --max-time 3 http://127.0.0.1:3001/health >/dev/null
+  curl --fail --silent --max-time 3 "$SEA_ADMIN_LOCAL_URL/health" >/dev/null
 done
 
 for _ in {1..5}; do
-  curl --fail --silent --max-time 5 http://127.0.0.1:3001/ >/dev/null
+  curl --fail --silent --max-time 5 "$SEA_ADMIN_LOCAL_URL/" >/dev/null
 done
 
 after="$(identity_count)"
