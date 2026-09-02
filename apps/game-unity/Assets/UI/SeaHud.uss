@@ -271,7 +271,6 @@
 .hull-bar .unity-progress-bar__progress { background-color: var(--crimson); }
 .sails-bar .unity-progress-bar__progress { background-color: var(--sea-glass); }
 .cannon-bar .unity-progress-bar__progress { background-color: var(--bronze); }
-.xp-bar .unity-progress-bar__progress { background-color: var(--bronze-bright); }
 
 .bottom-deck {
     position: absolute;
@@ -284,7 +283,9 @@
     justify-content: center;
 }
 
-.player-ledger { position: absolute; left: 0; bottom: 0; width: 210px; height: 95px; padding: 8px; }
+.player-ledger { position: absolute; left: 0; bottom: 0; width: 210px; padding: 8px; }
+.ledger-heading .instrument-value { width: auto; margin-left: 4px; }
+.ledger-heading .data-label { flex-grow: 1; -unity-text-align: middle-right; font-size: 9px; }
 .ledger-heading, .meter-heading, .rail-heading { flex-direction: row; justify-content: space-between; align-items: center; }
 .meter-heading { margin-top: 6px; }
 .player-meter { height: 10px; margin-top: 3px; }

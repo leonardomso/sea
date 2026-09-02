@@ -146,7 +146,18 @@ public static partial class Module
             target.Crew = WorldRules.ApplyDamage(target.Crew, 25);
             ships.Stage(target);
             AddInventory(ctx, source.EntityId, "boarding_cache", 1);
-            RecordBoardingProgress(ctx, source.EntityId, target);
+            // Boarding channels are created only by IssueShipCommand, which rejects senders
+            // without PlayerOwnership, so `source` is always a player ship.
+            if (target.FactionCode == (byte)FactionCode.Npc)
+            {
+                RecordContribution(
+                    ctx,
+                    target.EncounterId,
+                    source.EntityId,
+                    damage: 0,
+                    ProgressionRules.BoardingContribution);
+            }
+
             AppendEvent(ctx, source.EntityId, "boarding_succeeded", $"target={target.EntityId}");
             return;
         }

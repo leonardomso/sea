@@ -50,7 +50,6 @@ namespace SpacetimeDB.Types
     public sealed class NpcAiCols
     {
         public global::SpacetimeDB.Col<NpcAi, ulong> ShipEntityId { get; }
-        public global::SpacetimeDB.Col<NpcAi, string> ArchetypeId { get; }
         public global::SpacetimeDB.Col<NpcAi, bool> IsActive { get; }
         public global::SpacetimeDB.Col<NpcAi, byte> DecisionShard { get; }
         public global::SpacetimeDB.Col<NpcAi, ulong> NextDecisionTick { get; }
@@ -59,7 +58,6 @@ namespace SpacetimeDB.Types
         public NpcAiCols(string tableName)
         {
             ShipEntityId = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "ship_entity_id");
-            ArchetypeId = new global::SpacetimeDB.Col<NpcAi, string>(tableName, "archetype_id");
             IsActive = new global::SpacetimeDB.Col<NpcAi, bool>(tableName, "is_active");
             DecisionShard = new global::SpacetimeDB.Col<NpcAi, byte>(tableName, "decision_shard");
             NextDecisionTick = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "next_decision_tick");

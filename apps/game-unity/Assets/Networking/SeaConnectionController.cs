@@ -295,7 +295,7 @@ namespace Sea.Client
                 return;
             }
 
-            CommandStatus = $"Shared reward • +{reward.Gold} gold • +{reward.Experience} XP";
+            CommandStatus = $"Shared reward • +{reward.Gold} gold";
             NotifyHudStateChanged();
         }
 

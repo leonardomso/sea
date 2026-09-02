@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-runtime_directory="$(mktemp -d)"
-database_url="$SEA_SPACETIME_LOCAL_URL/v1/database/sea-local/sql"
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$project_root/scripts/lib/local-ports.sh"
+runtime_directory="$(mktemp -d)"
+database_url="$SEA_SPACETIME_LOCAL_URL/v1/database/sea-local/sql"
 
 cleanup() {
   rm -rf "$runtime_directory"
@@ -20,7 +20,7 @@ query_table() {
     "$database_url" >"$runtime_directory/$table_name.json"
 }
 
-for table_name in world_state ship ship_status ship_channel cooldown volley inventory ammo_definition ability_definition npc_definition npc_ai respawn_work loot player_progression encounter_reward combat_event environment_state current_zone world_object; do
+for table_name in world_state ship ship_status ship_channel cooldown volley inventory map_def sector hull_def cannon_def ammo_def ability_def npc_def stat_caps hull ship_stats npc_ai respawn_work loot player_progression encounter_reward combat_event environment_state current_zone world_object; do
   query_table "$table_name"
 done
 
@@ -43,8 +43,8 @@ const columns = (table) => {
 };
 
 const world = rows("world_state");
-if (world.length !== 1 || world[0].tick_rate_hz !== 10 || world[0].content_version !== 4) {
-  throw new Error("World state does not expose the 10 Hz versioned simulation contract.");
+if (world.length !== 1 || world[0].tick_rate_hz !== 10 || world[0].content_version !== 5) {
+  throw new Error("World state does not expose the 10 Hz versioned simulation contract (content version 5).");
 }
 
 const ships = rows("ship");
@@ -65,7 +65,6 @@ for (const archetypeCode of [1, 2, 3]) {
     throw new Error(`Expected four NPC ships for archetype ${archetypeCode}.`);
   }
 }
-if (rows("npc_ai").length !== 12) throw new Error("Expected twelve NPC AI work rows.");
 
 const volleyColumns = columns("volley");
 for (const field of ["hull_damage", "sail_damage", "cannon_damage", "crew_damage"]) {
@@ -94,7 +93,7 @@ if (!sourceNames.has("IssueShipCommand")) {
 for (const reducer of [
   "MoveTo", "SetCourse", "StopCourse", "SelectTarget", "ClearTarget", "SetAmmo",
   "FireBroadside", "ActivateAbility", "StartRepair", "CancelRepair", "StartBoarding",
-  "CancelBoarding",
+  "CancelBoarding", "UpgradeCannon",
 ]) {
   if (sourceNames.has(reducer)) {
     throw new Error(`Legacy gameplay reducer ${reducer} is still deployed.`);
@@ -114,17 +113,46 @@ if (sourceNames.has("Engage")) {
   throw new Error("Prototype automatic engagement is still deployed.");
 }
 
-if (rows("ammo_definition").length !== 4) throw new Error("Expected four ammunition definitions.");
-if (rows("ability_definition").length !== 4) throw new Error("Expected four ability definitions.");
-const npcDefinitions = rows("npc_definition");
-if (npcDefinitions.length !== 3) throw new Error("Expected three NPC definitions.");
+// Row counts the seed guarantees. One table-driven pass reports actual vs expected so
+// a content change names the table that moved instead of failing on a pasted literal.
+for (const [table, expected] of [
+  ["npc_ai", 12],
+  ["ammo_def", 4],
+  ["ability_def", 4],
+  ["npc_def", 3],
+  ["map_def", 1],
+  ["sector", 400],
+  ["hull_def", 1],
+  ["cannon_def", 1],
+  ["stat_caps", 1],
+  ["environment_state", 1],
+  ["current_zone", 2],
+]) {
+  const actual = rows(table).length;
+  if (actual !== expected) {
+    throw new Error(`Expected ${expected} ${table} rows, found ${actual}.`);
+  }
+}
+
+const npcDefinitions = rows("npc_def");
 if (npcDefinitions.some((definition) =>
   definition.maximum_speed <= 0 || definition.cannon_damage <= 0 ||
   definition.gold_reward <= 0 || definition.experience_reward <= 0)) {
   throw new Error("NPC combat and reward definitions must be positive.");
 }
-if (rows("environment_state").length !== 1) throw new Error("Expected one deterministic wind state.");
-if (rows("current_zone").length !== 2) throw new Error("Expected two seeded current zones.");
+const maps = rows("map_def");
+if (maps[0].code !== "1/1" || maps[0].width !== 20 || maps[0].height !== 20) {
+  throw new Error("Expected the Havenmere map definition (1/1, 20x20).");
+}
+const caps = rows("stat_caps");
+if (caps[0].combat_power_budget !== 45) {
+  throw new Error("Expected a 45 point Combat Power budget in stat_caps.");
+}
+const progressionColumns = columns("player_progression");
+if (!progressionColumns.includes("map_rank") || progressionColumns.includes("level") ||
+  progressionColumns.includes("experience")) {
+  throw new Error("player_progression must expose map_rank and drop level and experience.");
+}
 const worldObjects = rows("world_object");
 if (worldObjects.filter((item) => item.kind === "shoal").length !== 2) {
   throw new Error("Expected two active shoal hazards.");
@@ -136,6 +164,11 @@ if (storms.length !== 1 || storms[0].movement_speed <= 0 || storms[0].radius <= 
 for (const table of ["ship_status", "ship_channel", "cooldown"]) {
   if (!Array.isArray(rows(table))) {
     throw new Error(`Tactical state table ${table} is unavailable.`);
+  }
+}
+for (const table of ["hull", "ship_stats"]) {
+  if (columns(table).length === 0) {
+    throw new Error(`Dock table ${table} does not expose a schema.`);
   }
 }
 if (rows("combat_event").length > 100) throw new Error("Transient combat events are not bounded.");

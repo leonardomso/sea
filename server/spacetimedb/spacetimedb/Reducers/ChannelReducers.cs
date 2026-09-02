@@ -62,22 +62,4 @@ public static partial class Module
         ctx.Db.ShipChannel.ShipEntityId.Delete(ship.EntityId);
         AppendEvent(ctx, ship.EntityId, $"{channel.ChannelType}_cancelled", "");
     }
-
-    [SpacetimeDB.Reducer]
-    public static void UpgradeCannon(ReducerContext ctx)
-    {
-        var progression = FindProgression(ctx, ctx.Sender);
-        var cost = checked(100u * progression.Level);
-        if (progression.Gold < cost)
-        {
-            throw new InvalidOperationException("The player cannot afford this cannon upgrade.");
-        }
-
-        progression.Gold -= cost;
-        ctx.Db.PlayerProgression.Owner.Update(progression);
-        var ship = FindPlayerShip(ctx, ctx.Sender);
-        ship.CannonDamage += WorldRules.CannonDamagePerUpgrade;
-        PersistShip(ctx, ship);
-        AppendEvent(ctx, ship.EntityId, "cannon_upgraded", $"cost={cost}");
-    }
 }

@@ -1,0 +1,19 @@
+{
+  "hulls": [
+    {
+      "id": "hull_t1",
+      "name": "Sloop",
+      "tier": 1,
+      "hitPoints": 1600,
+      "armorFront": 0.15,
+      "armorSides": 0.08,
+      "armorBack": 0.03,
+      "cannonSlots": 8,
+      "speedSquaresPerSecond": 2.4,
+      "turnDegreesPerSecond": 60,
+      "magazine": 3,
+      "costGold": 0,
+      "mapRankRequired": 1
+    }
+  ]
+}

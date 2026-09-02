@@ -34,7 +34,10 @@ public enum VolleyResolution
     Harmless,
 }
 
-public readonly record struct CombatDamage(uint Hull, uint Sails, uint Cannons, uint Crew);
+public readonly record struct CombatDamage(uint Hull, uint Sails, uint Cannons, uint Crew)
+{
+    public ulong Total => (ulong)Hull + Sails + Cannons + Crew;
+}
 
 public readonly record struct FireRequest
 {

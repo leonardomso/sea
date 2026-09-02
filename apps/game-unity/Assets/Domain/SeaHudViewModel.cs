@@ -1,4 +1,3 @@
-using System;
 using System.Globalization;
 using UnityEngine;
 
@@ -13,11 +12,17 @@ namespace Sea.Client
         public float Speed { get; set; }
         public uint Hull { get; set; }
         public uint MaxHull { get; set; }
-        public ulong Experience { get; set; }
-        public ulong CurrentLevelExperience { get; set; }
-        public ulong NextLevelExperience { get; set; }
-        public uint Level { get; set; } = 1;
+        public byte MapRank { get; set; } = 1;
         public uint Gold { get; set; }
+        public string HullName { get; set; } = string.Empty;
+        public string CannonName { get; set; } = string.Empty;
+        public byte CannonTier { get; set; }
+        public uint VolleyDamage { get; set; }
+        public uint ReloadMilliseconds { get; set; }
+        public byte MagazineSize { get; set; }
+        public float CombatPowerUsed { get; set; }
+        public float CombatPowerBudget { get; set; }
+        public string SelectedAmmoName { get; set; } = string.Empty;
         public string TargetName { get; set; } = string.Empty;
         public uint TargetHull { get; set; }
         public uint TargetMaxHull { get; set; }
@@ -50,11 +55,12 @@ namespace Sea.Client
         public string ConnectionStatus { get; private set; }
         public string NavigationText { get; private set; }
         public string HullText { get; private set; }
-        public string ExperienceText { get; private set; }
-        public string LevelText { get; private set; }
+        public string MapRankText { get; private set; }
         public string GoldText { get; private set; }
+        public string ShipText { get; private set; }
+        public string VolleyText { get; private set; }
+        public string CombatPowerText { get; private set; }
         public float HullProgress { get; private set; }
-        public float ExperienceProgress { get; private set; }
         public bool HasTarget { get; private set; }
         public string TargetName { get; private set; }
         public float TargetHullProgress { get; private set; }
@@ -66,6 +72,7 @@ namespace Sea.Client
         public string TargetRangeText { get; private set; }
         public string SelectedWeakPoint { get; private set; }
         public string SelectedAmmo { get; private set; }
+        public string SelectedAmmoLabel { get; private set; }
         public string AmmoQuantity { get; private set; }
         public float PortReloadProgress { get; private set; }
         public float StarboardReloadProgress { get; private set; }
@@ -96,14 +103,21 @@ namespace Sea.Client
                     NormalizeHeading(source.HeadingDegrees),
                     source.Speed),
                 HullText = Pair(source.Hull, source.MaxHull),
-                ExperienceText = Pair(source.Experience, source.NextLevelExperience),
-                LevelText = $"LEVEL {source.Level}",
-                GoldText = source.Gold.ToString("N0", DisplayCulture),
+                MapRankText = source.MapRank.ToString(DisplayCulture),
+                GoldText = source.Gold.ToString("N0", DisplayCulture) + " ¤",
+                ShipText = ShipLabel(source),
+                VolleyText = string.Format(
+                    DisplayCulture,
+                    "DMG {0:N0}  •  MAG {1:N0}  •  {2:0.0}s",
+                    source.VolleyDamage,
+                    source.MagazineSize,
+                    source.ReloadMilliseconds / 1000f),
+                CombatPowerText = string.Format(
+                    DisplayCulture,
+                    "{0:0.#} / {1:0.#} CP",
+                    source.CombatPowerUsed,
+                    source.CombatPowerBudget),
                 HullProgress = Ratio(source.Hull, source.MaxHull),
-                ExperienceProgress = LevelRatio(
-                    source.Experience,
-                    source.CurrentLevelExperience,
-                    source.NextLevelExperience),
                 HasTarget = !string.IsNullOrWhiteSpace(source.TargetName),
                 TargetName = source.TargetName,
                 TargetHullProgress = Ratio(source.TargetHull, source.TargetMaxHull),
@@ -115,6 +129,9 @@ namespace Sea.Client
                 TargetRangeText = string.Format(DisplayCulture, "{0:0.0} NM", source.TargetRange),
                 SelectedWeakPoint = source.SelectedWeakPoint.ToUpperInvariant(),
                 SelectedAmmo = source.SelectedAmmo.ToUpperInvariant(),
+                SelectedAmmoLabel = (string.IsNullOrWhiteSpace(source.SelectedAmmoName)
+                    ? source.SelectedAmmo
+                    : source.SelectedAmmoName).ToUpperInvariant(),
                 AmmoQuantity = source.AmmoQuantity.ToString("N0", DisplayCulture),
                 PortReloadProgress = 1f - Mathf.Clamp01(source.PortReloadRemainingSeconds / reloadDuration),
                 StarboardReloadProgress = 1f - Mathf.Clamp01(source.StarboardReloadRemainingSeconds / reloadDuration),
@@ -133,11 +150,25 @@ namespace Sea.Client
             };
         }
 
+        private static string ShipLabel(SeaHudSnapshot source)
+        {
+            if (string.IsNullOrWhiteSpace(source.HullName))
+            {
+                return "—";
+            }
+
+            return string.IsNullOrWhiteSpace(source.CannonName)
+                ? source.HullName.ToUpperInvariant()
+                : string.Format(
+                    DisplayCulture,
+                    "{0}  •  {1} T{2}",
+                    source.HullName.ToUpperInvariant(),
+                    source.CannonName.ToUpperInvariant(),
+                    source.CannonTier);
+        }
+
         private static float Ratio(ulong value, ulong maximum) =>
             maximum == 0 ? 0f : Mathf.Clamp01((float)value / maximum);
-
-        private static float LevelRatio(ulong value, ulong current, ulong next) =>
-            next <= current ? 1f : Mathf.Clamp01((float)(value - Math.Min(value, current)) / (next - current));
 
         private static string Pair(ulong value, ulong maximum) =>
             string.Format(DisplayCulture, "{0:N0} / {1:N0}", value, maximum);

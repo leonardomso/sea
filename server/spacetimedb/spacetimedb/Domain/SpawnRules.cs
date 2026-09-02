@@ -34,9 +34,11 @@ public static class SpawnRules
 
     public static bool TryFindSafePosition(
         ulong seed,
-        IReadOnlyCollection<SpawnBlocker> blockers,
+        IReadOnlyList<SpawnBlocker> blockers,
         out SpawnPoint point)
     {
+        ArgumentNullException.ThrowIfNull(blockers);
+
         var random = seed == 0 ? 0x9E3779B97F4A7C15UL : seed;
         var minimum = WorldRules.MapMin + EdgeMargin;
         var span = WorldRules.MapMax - WorldRules.MapMin - EdgeMargin * 2f;
@@ -44,7 +46,7 @@ public static class SpawnRules
         {
             var x = minimum + NextUnit(ref random) * span;
             var y = minimum + NextUnit(ref random) * span;
-            if (blockers.All(blocker => !Overlaps(x, y, blocker)))
+            if (IsClear(x, y, blockers))
             {
                 point = new SpawnPoint(x, y);
                 return true;
@@ -53,6 +55,19 @@ public static class SpawnRules
 
         point = default;
         return false;
+    }
+
+    private static bool IsClear(float x, float y, IReadOnlyList<SpawnBlocker> blockers)
+    {
+        for (var index = 0; index < blockers.Count; index++)
+        {
+            if (Overlaps(x, y, blockers[index]))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public static bool Overlaps(float x, float y, SpawnBlocker blocker)

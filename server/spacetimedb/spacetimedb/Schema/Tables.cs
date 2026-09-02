@@ -121,10 +121,15 @@ public static partial class Module
     {
         [PrimaryKey]
         public Identity Owner;
-        public uint Level;
-        public ulong Experience;
+        public byte MapRank;
         public uint Gold;
     }
+
+#pragma warning disable STDB_UNSTABLE
+    [SpacetimeDB.ClientVisibilityFilter]
+    public static readonly Filter PlayerProgressionOwnerFilter = new Filter.Sql(
+        "SELECT * FROM player_progression WHERE player_progression.owner = :sender");
+#pragma warning restore STDB_UNSTABLE
 
     [SpacetimeDB.Table(Accessor = "NpcAi", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByDecisionDueShard", Columns = new[] { nameof(IsActive), nameof(DecisionShard), nameof(NextDecisionTick) })]
@@ -132,7 +137,6 @@ public static partial class Module
     {
         [PrimaryKey]
         public ulong ShipEntityId;
-        public string ArchetypeId;
         public bool IsActive;
         public byte DecisionShard;
         public ulong NextDecisionTick;
@@ -383,59 +387,6 @@ public static partial class Module
         public int ChunkX;
         public int ChunkY;
         public bool IsActive;
-    }
-
-    [SpacetimeDB.Table(Accessor = "AmmoDefinition", Public = true)]
-    public partial struct AmmoDefinition
-    {
-        [PrimaryKey]
-        public string AmmoId;
-        [Unique]
-        public byte AmmoCode;
-        public uint HullDamage;
-        public uint SailDamage;
-        public uint CannonDamage;
-        public uint CrewDamage;
-        public float RangeMultiplier;
-        public string AppliedStatus;
-        public byte AppliedStatusCode;
-    }
-
-    [SpacetimeDB.Table(Accessor = "AbilityDefinition", Public = true)]
-    public partial struct AbilityDefinition
-    {
-        [PrimaryKey]
-        public string AbilityId;
-        [Unique]
-        public byte AbilityCode;
-        public uint CooldownTicks;
-        public uint DurationTicks;
-    }
-
-    [SpacetimeDB.Table(Accessor = "NpcDefinition", Public = true)]
-    public partial struct NpcDefinition
-    {
-        [PrimaryKey]
-        public string NpcId;
-        [Unique]
-        public byte ArchetypeCode;
-        public float AggroRange;
-        public float DesiredRange;
-        public float MaximumSpeed;
-        public uint Hull;
-        public uint CannonDamage;
-        public byte PreferredAmmoCode;
-        public byte PreferredWeakPointCode;
-        public uint GoldReward;
-        public ulong ExperienceReward;
-    }
-
-    [SpacetimeDB.Table(Accessor = "LevelDefinition", Public = true)]
-    public partial struct LevelDefinition
-    {
-        [PrimaryKey]
-        public uint Level;
-        public ulong RequiredExperience;
     }
 
 }

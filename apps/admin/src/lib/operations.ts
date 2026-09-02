@@ -1,41 +1,19 @@
 import { createServerFn } from "@tanstack/react-start";
 
 const databaseName = "sea-local";
-const tableColumns = {
-	player_ownership: ["owner", "ship_entity_id", "is_connected"],
-	ship: [
-		"entity_id",
-		"archetype_id",
-		"faction",
-		"position_x",
-		"position_y",
-		"hull",
-		"max_hull",
-		"sails",
-		"cannons",
-		"is_engaged",
-		"is_active",
-	],
-	npc_ai: ["ship_entity_id", "archetype_id", "is_active", "next_decision_tick"],
-	player_progression: ["owner", "level", "experience", "gold"],
-	world_object: [
-		"entity_id",
-		"kind",
-		"position_x",
-		"position_y",
-		"is_active",
-		"blocks_movement",
-	],
-	combat_event: [
-		"event_id",
-		"owner_entity_id",
-		"event_type",
-		"details",
-		"tick",
-	],
-} as const;
+const dashboardTables = [
+	"player_ownership",
+	"ship",
+	"npc_ai",
+	"player_progression",
+	"world_object",
+	"combat_event",
+] as const;
 
-type SqlResult = { rows?: unknown[] };
+type SqlResult = {
+	schema?: { elements?: { name?: { some?: string } }[] };
+	rows?: unknown[];
+};
 type DashboardRow = Record<string, unknown>;
 
 export type OperationsSnapshot = {
@@ -50,7 +28,7 @@ function spacetimeUrl() {
 
 async function fetchSql() {
 	const results: SqlResult[] = [];
-	for (const table of Object.keys(tableColumns)) {
+	for (const table of dashboardTables) {
 		const response = await fetch(
 			`${spacetimeUrl()}/v1/database/${databaseName}/sql`,
 			{
@@ -69,14 +47,19 @@ async function fetchSql() {
 	return results;
 }
 
-function rowsForResult(
-	result: SqlResult | undefined,
-	columns: readonly string[],
-) {
+// SpacetimeDB returns positional rows plus the column schema for the statement.
+// Decoding from that schema keeps the dashboard correct as the module evolves.
+function decode(result: SqlResult | undefined): DashboardRow[] {
+	const columns = result?.schema?.elements?.map(
+		(element) => element.name?.some,
+	);
 	return (result?.rows ?? []).map((row): DashboardRow => {
 		if (Array.isArray(row))
 			return Object.fromEntries(
-				columns.map((column, index) => [column, row[index]]),
+				(columns ?? []).map((column, index) => [
+					column ?? `column_${index}`,
+					row[index],
+				]),
 			);
 		if (row !== null && typeof row === "object") return row as DashboardRow;
 		return { value: row };
@@ -87,14 +70,8 @@ export const getOperationsSnapshot = createServerFn({ method: "GET" }).handler(
 	async (): Promise<OperationsSnapshot> => {
 		try {
 			const results = await fetchSql();
-			const tableNames = Object.keys(tableColumns) as Array<
-				keyof typeof tableColumns
-			>;
 			const tables = Object.fromEntries(
-				tableNames.map((table, index) => [
-					table,
-					rowsForResult(results[index], tableColumns[table]),
-				]),
+				dashboardTables.map((table, index) => [table, decode(results[index])]),
 			);
 			return {
 				generatedAt: new Date().toISOString(),

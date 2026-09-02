@@ -69,7 +69,7 @@ for _ in {1..180}; do
   if rg -q "Sea client ready\." "$runtime_log" 2>/dev/null \
     && rg -q "Sea runtime observed progressive sailing\." "$runtime_log" 2>/dev/null \
     && rg -q "Sea runtime observed authoritative manual broadside combat\." "$runtime_log" 2>/dev/null \
-    && rg -q "Sea runtime observed NPC sinking, atomic loot, XP, and NPC respawn\." "$runtime_log" 2>/dev/null \
+    && rg -q "Sea runtime observed NPC sinking, atomic loot, gold, and NPC respawn\." "$runtime_log" 2>/dev/null \
     && rg -q "Sea runtime observed tactical ability, storm damage, and progressive repair\." "$runtime_log" 2>/dev/null; then
     validated=true
     break
@@ -93,7 +93,7 @@ rg -q "Cached identity rejected; retrying anonymously\." "$runtime_log"
 rg -q "Sea client ready\." "$runtime_log"
 rg -q "Sea runtime observed progressive sailing\." "$runtime_log"
 rg -q "Sea runtime observed authoritative manual broadside combat\." "$runtime_log"
-rg -q "Sea runtime observed NPC sinking, atomic loot, XP, and NPC respawn\." "$runtime_log"
+rg -q "Sea runtime observed NPC sinking, atomic loot, gold, and NPC respawn\." "$runtime_log"
 rg -q "Sea runtime observed tactical ability, storm damage, and progressive repair\." "$runtime_log"
 node - "$runtime_evidence" <<'NODE'
 const fs = require("node:fs");
@@ -114,4 +114,4 @@ if rg -q "No runtime-compatible shader|ArgumentNullException: Value cannot be nu
   tail -n 120 "$runtime_log" >&2
   exit 1
 fi
-echo "Unity runtime demonstrated sailing, combat, NPC sinking, loot, XP, respawn, hazards, abilities, and repair."
+echo "Unity runtime demonstrated sailing, combat, NPC sinking, loot, gold, respawn, hazards, abilities, and repair."

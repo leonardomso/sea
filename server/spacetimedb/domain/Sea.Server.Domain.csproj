@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <Compile Include="../spacetimedb/Domain/*.cs" Link="Domain/%(Filename)%(Extension)" />
+    <Compile Include="../spacetimedb/Generated/ContentCatalog.g.cs" Link="Generated/ContentCatalog.g.cs" />
     <Compile Include="../spacetimedb/CombatRules.cs" Link="CombatRules.cs" />
     <Compile Include="../spacetimedb/TacticalRules.cs" Link="TacticalRules.cs" />
   </ItemGroup>

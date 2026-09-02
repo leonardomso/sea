@@ -87,7 +87,7 @@ public static partial class Module
 
     private static void SeedPlayerInventory(ReducerContext ctx, ulong shipEntityId)
     {
-        foreach (var ammunition in ContentCatalog.CreateDefault().Ammunition)
+        foreach (var ammunition in Catalog.Content.Ammunition)
         {
             ctx.Db.Inventory.Insert(new Inventory
             {
@@ -107,7 +107,7 @@ public static partial class Module
 
     private static void SeedNpcInventory(ReducerContext ctx, ulong shipEntityId)
     {
-        foreach (var ammunition in ContentCatalog.CreateDefault().Ammunition)
+        foreach (var ammunition in Catalog.Content.Ammunition)
         {
             ctx.Db.Inventory.Insert(new Inventory
             {

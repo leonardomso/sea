@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using UnityEngine;
@@ -8,7 +7,6 @@ namespace Sea.Client
 {
     public sealed partial class SeaConnectionController
     {
-        private readonly Dictionary<uint, ulong> levelThresholds = new();
         private ulong worldTickAnchor;
         private uint worldTickRate = 10;
         private double worldTickAnchorTime;
@@ -40,9 +38,6 @@ namespace Sea.Client
 
         public uint WorldTickRate => worldTickRate;
 
-        public bool TryGetLevelThreshold(uint level, out ulong experience) =>
-            levelThresholds.TryGetValue(level, out experience);
-
         private void RegisterClientStateCallbacks(DbConnection connection)
         {
             connection.Db.WorldObject.OnInsert += HandleWorldObjectInserted;
@@ -54,9 +49,6 @@ namespace Sea.Client
             connection.Db.ShipMovement.OnInsert += HandleShipMovementInserted;
             connection.Db.ShipMovement.OnUpdate += HandleShipMovementUpdated;
             connection.Db.ShipMovement.OnDelete += HandleShipMovementDeleted;
-            connection.Db.LevelDefinition.OnInsert += HandleLevelDefinitionInserted;
-            connection.Db.LevelDefinition.OnUpdate += HandleLevelDefinitionUpdated;
-            connection.Db.LevelDefinition.OnDelete += HandleLevelDefinitionDeleted;
             connection.Db.PlayerProgression.OnInsert += HandleHudRowInserted;
             connection.Db.PlayerProgression.OnUpdate += HandleHudRowUpdated;
             connection.Db.EncounterReward.OnInsert += HandleHudRowInserted;
@@ -100,26 +92,6 @@ namespace Sea.Client
             EventContext _context,
             PlayerClock _oldClock,
             PlayerClock clock) => SynchronizeWorldClock(clock);
-
-        private void HandleLevelDefinitionInserted(EventContext _context, LevelDefinition definition) =>
-            StoreLevelDefinition(definition);
-
-        private void HandleLevelDefinitionUpdated(
-            EventContext _context,
-            LevelDefinition _oldDefinition,
-            LevelDefinition definition) => StoreLevelDefinition(definition);
-
-        private void HandleLevelDefinitionDeleted(EventContext _context, LevelDefinition definition)
-        {
-            levelThresholds.Remove(definition.Level);
-            NotifyHudStateChanged();
-        }
-
-        private void StoreLevelDefinition(LevelDefinition definition)
-        {
-            levelThresholds[definition.Level] = definition.RequiredExperience;
-            NotifyHudStateChanged();
-        }
 
         private void HandleHudRowInserted<TRow>(EventContext _context, TRow _row) =>
             NotifyHudStateChanged();
@@ -193,7 +165,6 @@ namespace Sea.Client
 
         private void NotifyPresentationReset()
         {
-            levelThresholds.Clear();
             worldTickAnchor = 0;
             worldTickRate = 10;
             worldTickAnchorTime = 0d;

@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using SpacetimeDB.Types;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -30,6 +28,13 @@ namespace Sea.Client
         private Camera chartCamera;
         private readonly Label[] topCoordinateLabels = new Label[9];
         private readonly Label[] leftCoordinateLabels = new Label[7];
+
+        // Apply() touches ~26 named elements per rebuild; memoising the query results
+        // keeps the HUD off the visual-tree walk once the document is built.
+        private readonly Dictionary<string, Label> labelCache = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, ProgressBar> progressCache = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, Button> buttonCache = new(StringComparer.Ordinal);
+
         public void Configure(StyleSheet hudStyleSheet)
         {
             styleSheet = hudStyleSheet;
@@ -142,6 +147,11 @@ namespace Sea.Client
             }
 
             hudRoot.userData = this;
+            labelCache.Clear();
+            progressCache.Clear();
+            buttonCache.Clear();
+            ammoLabelsApplied = false;
+            abilityLabelsApplied = false;
             root.pickingMode = PickingMode.Ignore;
             hudRoot.pickingMode = PickingMode.Ignore;
             connectionBeacon = root.Q("connection-beacon");
@@ -190,153 +200,18 @@ namespace Sea.Client
             hudDirty.Mark();
         }
 
-        private SeaHudSnapshot CaptureSnapshot()
-        {
-            var snapshot = new SeaHudSnapshot
-            {
-                IsReady = connection?.IsSubscribed == true,
-                ConnectionStatus = connection?.Status ?? "CONTROLLER MISSING",
-                LastAction = game?.LastAction ?? "Waiting for chart link.",
-            };
-
-            if (game == null || !game.TryGetLocalShip(out var ship))
-            {
-                return snapshot;
-            }
-
-            snapshot.Coordinate = SeaChartCoordinates.LabelAt(ship.PositionX, ship.PositionY);
-            snapshot.HeadingDegrees = ship.HeadingDegrees;
-            snapshot.Speed = ship.Speed;
-            snapshot.Hull = ship.Hull;
-            snapshot.MaxHull = ship.MaxHull;
-            snapshot.SelectedAmmo = game.SelectedAmmoId;
-            snapshot.SelectedWeakPoint = game.SelectedWeakPoint;
-
-            var progression = connection.Connection.Db.PlayerProgression.Owner.Find(connection.LocalIdentity);
-            if (progression != null)
-            {
-                snapshot.Level = progression.Level;
-                snapshot.Experience = progression.Experience;
-                snapshot.Gold = progression.Gold;
-                if (connection.TryGetLevelThreshold(progression.Level, out var currentThreshold))
-                {
-                    snapshot.CurrentLevelExperience = currentThreshold;
-                }
-
-                if (connection.TryGetLevelThreshold(progression.Level + 1, out var nextThreshold))
-                {
-                    snapshot.NextLevelExperience = nextThreshold;
-                }
-
-                if (snapshot.NextLevelExperience == 0)
-                {
-                    snapshot.NextLevelExperience = Math.Max(snapshot.Experience, snapshot.CurrentLevelExperience);
-                }
-            }
-
-            snapshot.AmmoQuantity = connection.Connection.Db.Inventory.ByShip
-                .Filter(ship.EntityId)
-                .FirstOrDefault(item => item.ItemId == game.SelectedAmmoId)?.Quantity ?? 0;
-
-            var world = connection.Connection.Db.WorldState.Id.Find(1);
-            if (world != null)
-            {
-                var tickRate = connection.WorldTickRate;
-                var worldTick = connection.CurrentWorldTick;
-                snapshot.ReloadDurationSeconds = (float)ship.CannonCooldownTicks / tickRate;
-                snapshot.PortReloadRemainingSeconds = RemainingSeconds(ship.NextPortFireTick, worldTick, tickRate);
-                snapshot.StarboardReloadRemainingSeconds = RemainingSeconds(ship.NextStarboardFireTick, worldTick, tickRate);
-            }
-
-            var targetId = ship.TargetEntityId != 0 ? ship.TargetEntityId : game.SelectedTargetId;
-            var target = targetId == 0 ? null : connection.Connection.Db.Ship.EntityId.Find(targetId);
-            if (target != null && target.IsAlive)
-            {
-                snapshot.TargetName = $"{ArchetypeName(target.ArchetypeCode)}  {target.EntityId}";
-                snapshot.TargetHull = target.Hull;
-                snapshot.TargetMaxHull = target.MaxHull;
-                snapshot.TargetSails = target.Sails;
-                snapshot.TargetMaxSails = target.MaxSails;
-                snapshot.TargetCannons = target.Cannons;
-                snapshot.TargetMaxCannons = target.MaxCannons;
-                var range = Vector2.Distance(
-                    new Vector2(ship.PositionX, ship.PositionY),
-                    new Vector2(target.PositionX, target.PositionY));
-                snapshot.TargetRange = range;
-            }
-
-            var statuses = new List<string>();
-            foreach (var status in connection.Connection.Db.ShipStatus.ByShip.Filter(ship.EntityId))
-            {
-                if (status.IsActive)
-                {
-                    statuses.Add(status.Stacks > 1
-                        ? $"{status.StatusType.ToUpperInvariant()} ×{status.Stacks}"
-                        : status.StatusType.ToUpperInvariant());
-                }
-            }
-
-            snapshot.StatusText = statuses.Count == 0 ? "CLEAR" : string.Join("  •  ", statuses);
-            if (world != null)
-            {
-                var channel = connection.Connection.Db.ShipChannel.ShipEntityId.Find(ship.EntityId);
-                if (channel != null && channel.IsActive)
-                {
-                    snapshot.ProgressText = channel.ChannelType == "repair"
-                        ? "REPAIRING"
-                        : $"BOARDING  •  TARGET {channel.TargetEntityId}";
-                    snapshot.Progress = SeaTacticalPresentationRules.ChannelProgress(
-                        channel.StartedAtTick,
-                        channel.CompletesAtTick,
-                        connection.CurrentWorldTick);
-                }
-
-                foreach (var cooldown in connection.Connection.Db.Cooldown.ByShip.Filter(ship.EntityId))
-                {
-                    var seconds = RemainingSeconds(
-                        cooldown.ReadyAtTick,
-                        connection.CurrentWorldTick,
-                        connection.WorldTickRate);
-                    switch (cooldown.CooldownType)
-                    {
-                        case "full_sail":
-                            snapshot.FullSailCooldownSeconds = seconds;
-                            break;
-                        case "brace":
-                            snapshot.BraceCooldownSeconds = seconds;
-                            break;
-                        case "emergency_pump":
-                            snapshot.PumpCooldownSeconds = seconds;
-                            break;
-                        case "smoke_screen":
-                            snapshot.SmokeCooldownSeconds = seconds;
-                            break;
-                    }
-                }
-            }
-
-            return snapshot;
-        }
-
-        private static string ArchetypeName(byte code) => code switch
-        {
-            1 => "PATROL",
-            2 => "RAIDER",
-            3 => "GUNSHIP",
-            _ => "SHIP",
-        };
-
         private void Apply(SeaHudViewModel model)
         {
             SetText("connection-status", model.ConnectionStatus.ToUpperInvariant());
             SetText("navigation-readout", model.NavigationText);
-            SetText("level-label", model.LevelText);
-            SetText("gold-label", model.GoldText + " ¤");
+            SetText("map-rank-label", model.MapRankText);
+            SetText("gold-label", model.GoldText);
+            SetText("ship-loadout", model.ShipText);
+            SetText("volley-text", model.VolleyText);
+            SetText("combat-power-label", model.CombatPowerText);
             SetText("hull-text", model.HullText);
-            SetText("experience-text", model.ExperienceText);
             SetText("last-action", model.LastAction);
             SetProgress("player-hull", model.HullProgress);
-            SetProgress("player-experience", model.ExperienceProgress);
             connectionBeacon?.EnableInClassList("ready", model.IsReady);
 
             targetFrame?.EnableInClassList("hidden", !model.HasTarget);
@@ -358,7 +233,7 @@ namespace Sea.Client
             SetText("starboard-reload-text", model.StarboardReloadText);
             portBroadside?.EnableInClassList("ready", model.PortReady);
             starboardBroadside?.EnableInClassList("ready", model.StarboardReady);
-            SetText("ammo-count", $"{model.SelectedAmmo} • {model.AmmoQuantity}");
+            SetText("ammo-count", $"{model.SelectedAmmoLabel} • {model.AmmoQuantity}");
             SelectButton("aim-hull", model.SelectedWeakPoint == "HULL");
             SelectButton("aim-sails", model.SelectedWeakPoint == "SAILS");
             SelectButton("aim-cannons", model.SelectedWeakPoint == "CANNONS");
@@ -377,7 +252,7 @@ namespace Sea.Client
 
         private void SetAbilityCooldown(string name, string binding, float seconds)
         {
-            var button = root?.Q<Button>(name);
+            var button = ButtonFor(name);
             if (button == null)
             {
                 return;
@@ -463,7 +338,7 @@ namespace Sea.Client
 
         private void HookButton(string name, Action callback)
         {
-            var button = root.Q<Button>(name);
+            var button = ButtonFor(name);
             if (button != null)
             {
                 button.clicked += callback;
@@ -472,8 +347,8 @@ namespace Sea.Client
 
         private void SetText(string name, string value)
         {
-            var label = root.Q<Label>(name);
-            if (label != null && label.text != value)
+            var label = LabelFor(name);
+            if (label != null && !string.Equals(label.text, value, StringComparison.Ordinal))
             {
                 label.text = value;
             }
@@ -481,7 +356,7 @@ namespace Sea.Client
 
         private void SetProgress(string name, float value)
         {
-            var progress = root.Q<ProgressBar>(name);
+            var progress = ProgressFor(name);
             if (progress != null && !Mathf.Approximately(progress.value, value))
             {
                 progress.value = value;
@@ -490,8 +365,26 @@ namespace Sea.Client
 
         private void SelectButton(string name, bool selected)
         {
-            root.Q<Button>(name)?.EnableInClassList("selected", selected);
+            ButtonFor(name)?.EnableInClassList("selected", selected);
         }
 
+        private Label LabelFor(string name) => Cached(labelCache, name);
+
+        private ProgressBar ProgressFor(string name) => Cached(progressCache, name);
+
+        private Button ButtonFor(string name) => Cached(buttonCache, name);
+
+        private TElement Cached<TElement>(Dictionary<string, TElement> cache, string name)
+            where TElement : VisualElement
+        {
+            if (cache.TryGetValue(name, out var element))
+            {
+                return element;
+            }
+
+            element = root?.Q<TElement>(name);
+            cache[name] = element;
+            return element;
+        }
     }
 }

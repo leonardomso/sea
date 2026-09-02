@@ -3,7 +3,24 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    private static SpawnPoint FindSafeSpawn(ReducerContext ctx, ulong seed)
+    private static SpawnPoint FindSafeSpawn(ReducerContext ctx, ulong seed) =>
+        FindSafeSpawn(SpawnBlockers(ctx), seed);
+
+    /// <summary>
+    /// Spawns many ships at once (world seeding) by scanning the blocking world objects once and
+    /// reusing the list, instead of rebuilding it per ship.
+    /// </summary>
+    private static SpawnPoint FindSafeSpawn(IReadOnlyList<SpawnBlocker> blockers, ulong seed)
+    {
+        if (!SpawnRules.TryFindSafePosition(seed, blockers, out var point))
+        {
+            throw new InvalidOperationException("No safe player spawn is available.");
+        }
+
+        return point;
+    }
+
+    private static List<SpawnBlocker> SpawnBlockers(ReducerContext ctx)
     {
         var blockers = new List<SpawnBlocker>();
         foreach (var worldObject in UnsafeSpawnWorldObjects(ctx))
@@ -17,12 +34,7 @@ public static partial class Module
             }
         }
 
-        if (!SpawnRules.TryFindSafePosition(seed, blockers, out var point))
-        {
-            throw new InvalidOperationException("No safe player spawn is available.");
-        }
-
-        return point;
+        return blockers;
     }
 
     private static SpawnPoint FindSafeRespawn(ReducerContext ctx, ulong seed)

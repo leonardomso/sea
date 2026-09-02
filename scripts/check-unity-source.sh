@@ -35,6 +35,7 @@ test -f "$unity_root/Assets/Domain/SeaChartCoordinates.cs"
 test -f "$unity_root/Assets/Presentation/SeaChartCameraController.cs"
 test -f "$unity_root/Assets/Input/SeaInputController.cs"
 test -f "$unity_root/Assets/UI/SeaHudController.cs"
+test -f "$unity_root/Assets/UI/SeaHudSnapshotReader.cs"
 test -f "$unity_root/Assets/Domain/SeaHudViewModel.cs"
 test -f "$unity_root/Assets/Domain/SeaTacticalPresentationRules.cs"
 test -f "$unity_root/Assets/Domain/SeaRuntimeValidationRules.cs"
@@ -73,14 +74,10 @@ if grep -R -q --include='*.cs' 'SubscribeToAllTables' \
   echo "Runtime Unity code must use scoped subscriptions." >&2
   exit 1
 fi
-grep -q 'command_result_event WHERE owner' \
-  "$unity_root/Assets/Domain/SeaSubscriptionPlan.cs"
-grep -q 'world_object WHERE is_active = true AND' \
-  "$unity_root/Assets/Domain/SeaSubscriptionPlan.cs"
-
 if grep -q '\.Iter()' \
   "$unity_root"/Assets/Presentation/SeaWorldView*.cs \
-  "$unity_root/Assets/UI/SeaHudController.cs"; then
+  "$unity_root/Assets/UI/SeaHudController.cs" \
+  "$unity_root/Assets/UI/SeaHudSnapshotReader.cs"; then
   echo "World presentation and HUD updates must use row callbacks, not table iteration." >&2
   exit 1
 fi

@@ -86,6 +86,21 @@ public enum WorldObjectCode : byte
     Storm = 4,
 }
 
+public enum TerrainCode : byte
+{
+    Water = 0,
+    Shallow = 1,
+    Land = 2,
+}
+
+public enum AmmoEffectCode : byte
+{
+    None = 0,
+    Slow = 1,
+    Burn = 2,
+    SlowReload = 3,
+}
+
 public static class HotPathCodes
 {
     public const byte FullSailMovementMask = 1 << 0;
@@ -183,6 +198,25 @@ public static class HotPathCodes
             _ => (WorldObjectCode)byte.MaxValue,
         };
         return (byte)code != byte.MaxValue;
+    }
+
+    public static bool TryParseTerrain(char symbol, out TerrainCode terrain)
+    {
+        switch (symbol)
+        {
+            case '.':
+                terrain = TerrainCode.Water;
+                return true;
+            case '~':
+                terrain = TerrainCode.Shallow;
+                return true;
+            case '#':
+                terrain = TerrainCode.Land;
+                return true;
+            default:
+                terrain = TerrainCode.Water;
+                return false;
+        }
     }
 
     public static StatusCode TryStatus(string? id) => id switch

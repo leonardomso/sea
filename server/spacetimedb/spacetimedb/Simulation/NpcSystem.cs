@@ -36,7 +36,7 @@ public static partial class Module
             return;
         }
 
-        var definition = ctx.Db.NpcDefinition.NpcId.Find(ai.ArchetypeId) ??
+        var definition = Catalog.NpcByArchetypeCode[ship.ArchetypeCode] ??
             throw new InvalidOperationException("NPC content definition is missing.");
         var target = ship.TargetEntityId == 0
             ? default(Ship?)
@@ -65,7 +65,7 @@ public static partial class Module
         ReducerContext ctx,
         NpcAi ai,
         Ship ship,
-        NpcDefinition definition,
+        NpcContent definition,
         Ship? target,
         Ship? candidate,
         bool targetAvailable,
@@ -95,8 +95,8 @@ public static partial class Module
             : float.PositiveInfinity,
             CandidateTargetId = candidate?.EntityId ?? 0,
             DesiredRange = definition.DesiredRange,
-            PreferredAmmunition = (AmmunitionCode)definition.PreferredAmmoCode,
-            PreferredWeakPoint = (WeakPointCode)definition.PreferredWeakPointCode,
+            PreferredAmmunition = definition.PreferredAmmunition,
+            PreferredWeakPoint = definition.PreferredWeakPoint,
             SelectedAmmunition = (AmmunitionCode)ship.SelectedAmmoCode,
             PortReady = tick >= ship.NextPortFireTick,
             StarboardReady = tick >= ship.NextStarboardFireTick,

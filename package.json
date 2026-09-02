@@ -53,8 +53,10 @@
     "quality:test-foundation": "./scripts/check-test-foundation.sh",
     "quality:server-simulation": "./scripts/check-server-simulation.sh",
     "quality:scripts": "node --test scripts/lib/*.test.mjs",
-    "ci:fast": "pnpm infra:config && pnpm quality:pins && pnpm admin:check && pnpm --filter @sea/contracts run check && pnpm quality:csharp-size && pnpm quality:unity-architecture && pnpm quality:test-foundation && pnpm quality:server-simulation && pnpm unity:source-check && pnpm admin:build",
-    "check": "pnpm infra:config && pnpm quality:pins && pnpm admin:check && pnpm --filter @sea/contracts run check && pnpm quality:csharp-size && pnpm quality:unity-architecture && pnpm quality:test-foundation && pnpm quality:server-simulation && pnpm quality:scripts && pnpm quality:dotnet-format",
+    "content:generate": "node scripts/generate-content.mjs",
+    "quality:content": "./scripts/check-generated-content.sh",
+    "ci:fast": "pnpm infra:config && pnpm quality:pins && pnpm admin:check && pnpm --filter @sea/contracts run check && pnpm quality:csharp-size && pnpm quality:unity-architecture && pnpm quality:test-foundation && pnpm quality:server-simulation && pnpm unity:source-check && pnpm admin:build && pnpm quality:scripts && pnpm quality:content",
+    "check": "pnpm infra:config && pnpm quality:pins && pnpm admin:check && pnpm --filter @sea/contracts run check && pnpm quality:csharp-size && pnpm quality:unity-architecture && pnpm quality:test-foundation && pnpm quality:server-simulation && pnpm quality:scripts && pnpm quality:dotnet-format && pnpm quality:content",
     "verify": "pnpm check && pnpm server:build && pnpm quality:bindings && pnpm server:test && pnpm server:test:integration && pnpm tools:build && pnpm admin:build && pnpm admin:test:health && pnpm runtime:test:identity && pnpm runtime:test:world && pnpm runtime:test:idle && pnpm unity:verify",
     "verify:full": "pnpm verify"
   },

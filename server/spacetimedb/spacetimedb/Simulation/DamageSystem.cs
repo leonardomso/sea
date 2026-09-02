@@ -96,15 +96,20 @@ public static partial class Module
             crewBefore - defender.Crew);
         SynchronizeDisabledSails(ctx, defender, tick);
         var sunk = hullBefore > 0 && defender.Hull == 0;
-        RecordCombatProgress(ctx, sourceEntityId, defender, applied);
+        var attackerIsPlayer = sourceEntityId != 0 &&
+            defender.FactionCode == (byte)FactionCode.Npc &&
+            ctx.Db.PlayerOwnership.ShipEntityId.Find(sourceEntityId) is not null;
+        if (attackerIsPlayer)
+        {
+            RecordContribution(ctx, defender.EncounterId, sourceEntityId, applied.Total, boarding: 0);
+        }
+
         if (sunk)
         {
             SettleNpcEncounter(ctx, defender, tick);
             SinkShip(ctx, ships, sourceEntityId, ref defender, tick);
         }
-        else if (sourceEntityId != 0 &&
-            defender.FactionCode == (byte)FactionCode.Npc &&
-            ctx.Db.PlayerOwnership.ShipEntityId.Find(sourceEntityId) is not null)
+        else if (attackerIsPlayer)
         {
             defender.TargetEntityId = sourceEntityId;
             defender.IsEngaged = true;
@@ -141,13 +146,13 @@ public static partial class Module
         ref Ship defender,
         ulong tick)
     {
-        if (ctx.Db.AmmoDefinition.AmmoId.Find(volley.AmmoId) is not AmmoDefinition ammo ||
-            ammo.AppliedStatusCode == (byte)StatusCode.None)
+        if (Catalog.AmmunitionByCode[volley.AmmoCode] is not AmmunitionContent ammo ||
+            ammo.AppliedStatusCode == StatusCode.None)
         {
             return;
         }
 
-        var statusCode = (StatusCode)ammo.AppliedStatusCode;
+        var statusCode = ammo.AppliedStatusCode;
         var chance = statusCode == StatusCode.Flooding ? 35u : 100u;
         if (!TacticalRules.ShouldApplyStatus(volley.VolleyId ^ defender.EntityId, chance))
         {

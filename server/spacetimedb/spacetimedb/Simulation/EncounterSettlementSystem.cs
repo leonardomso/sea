@@ -103,7 +103,7 @@ public static partial class Module
             return;
         }
 
-        AwardProgression(ctx, grant.EntityId, grant.Experience, grant.Gold);
+        AwardGold(ctx, ownership.Owner, grant.Gold);
         ctx.Db.EncounterReward.Insert(new EncounterReward
         {
             EncounterId = encounterId,
@@ -126,5 +126,50 @@ public static partial class Module
             grant.EntityId,
             "shared_reward",
             $"encounter_id={encounterId},gold={grant.Gold},experience={grant.Experience}");
+    }
+
+    private static void RecordContribution(
+        ReducerContext ctx,
+        ulong encounterId,
+        ulong contributorEntityId,
+        ulong damage,
+        ulong boarding)
+    {
+        if (encounterId == 0 || (damage == 0 && boarding == 0))
+        {
+            return;
+        }
+
+        foreach (var existing in ctx.Db.CombatContribution.ByEncounterContributor.Filter(
+                     (encounterId, contributorEntityId)))
+        {
+            var updated = existing;
+            updated.Damage = ProgressionRules.AddSaturating(updated.Damage, damage);
+            updated.Boarding = ProgressionRules.AddSaturating(updated.Boarding, boarding);
+            ctx.Db.CombatContribution.ContributionId.Update(updated);
+            return;
+        }
+
+        ctx.Db.CombatContribution.Insert(new CombatContribution
+        {
+            EncounterId = encounterId,
+            ContributorEntityId = contributorEntityId,
+            Damage = damage,
+            Boarding = boarding,
+            Support = 0,
+        });
+    }
+
+    private static void AwardGold(ReducerContext ctx, Identity owner, uint gold)
+    {
+        if (gold == 0)
+        {
+            return;
+        }
+
+        var progression = ctx.Db.PlayerProgression.Owner.Find(owner) ??
+            throw new InvalidOperationException("Player progression is missing.");
+        progression.Gold = ProgressionRules.AddGoldSaturating(progression.Gold, gold);
+        ctx.Db.PlayerProgression.Owner.Update(progression);
     }
 }

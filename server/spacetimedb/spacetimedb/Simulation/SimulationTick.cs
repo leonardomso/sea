@@ -268,35 +268,7 @@ public static partial class Module
         };
     }
 
-    private static Ship FindPlayerShip(ReducerContext ctx, Identity owner)
-    {
-        var ownership = ctx.Db.PlayerOwnership.Owner.Find(owner) ??
-            throw new InvalidOperationException("Player has not been loaded.");
-        return FindShip(ctx, ownership.ShipEntityId);
-    }
-
     private static Ship FindShip(ReducerContext ctx, ulong entityId) =>
         ctx.Db.Ship.EntityId.Find(entityId) ??
         throw new InvalidOperationException("The requested ship does not exist.");
-
-    private static PlayerProgression FindProgression(ReducerContext ctx, Identity owner) =>
-        ctx.Db.PlayerProgression.Owner.Find(owner) ??
-        throw new InvalidOperationException("Player progression is missing.");
-
-    private static void EnsureProgression(ReducerContext ctx, Identity owner)
-    {
-        if (ctx.Db.PlayerProgression.Owner.Find(owner) is not null)
-        {
-            return;
-        }
-
-        ctx.Db.PlayerProgression.Insert(new PlayerProgression
-        {
-            Owner = owner,
-            Level = 1,
-            Experience = 0,
-            Gold = 0,
-        });
-    }
-
 }

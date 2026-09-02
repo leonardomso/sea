@@ -17,7 +17,7 @@ public static partial class Module
             Tick = 0,
             TickRateHz = WorldRules.TickRateHz,
             NextEntityId = 1000,
-            ContentVersion = 4,
+            ContentVersion = 5,
         });
         ctx.Db.SimulationClock.Insert(new SimulationClock
         {
@@ -84,7 +84,9 @@ public static partial class Module
         if (ctx.Db.PlayerOwnership.Owner.Find(ctx.Sender) is PlayerOwnership ownership)
         {
             SetLoadedConnectionState(ctx, ref ownership, true);
-            EnsureProgression(ctx, ctx.Sender);
+            EnsurePlayerProgression(ctx, ctx.Sender);
+            EnsurePlayerAccount(ctx, ctx.Sender);
+            EnsureHull(ctx, ctx.Sender);
             EnsureCommandState(ctx, ctx.Sender, ownership.ShipEntityId);
             SynchronizePlayerClock(ctx, ctx.Sender);
             return;
@@ -102,13 +104,9 @@ public static partial class Module
             IsConnected = true,
         });
         AdjustConnectedPlayerCount(ctx, 1);
-        ctx.Db.PlayerProgression.Insert(new PlayerProgression
-        {
-            Owner = ctx.Sender,
-            Level = 1,
-            Experience = 0,
-            Gold = 0,
-        });
+        EnsurePlayerProgression(ctx, ctx.Sender);
+        EnsurePlayerAccount(ctx, ctx.Sender);
+        EnsureHull(ctx, ctx.Sender);
         EnsureCommandState(ctx, ctx.Sender, entityId);
         SeedPlayerInventory(ctx, entityId);
         AppendEvent(ctx, entityId, "player_loaded", $"entity_id={entityId}");
@@ -135,4 +133,61 @@ public static partial class Module
         }
     }
 
+    private static void EnsurePlayerProgression(ReducerContext ctx, Identity owner)
+    {
+        if (ctx.Db.PlayerProgression.Owner.Find(owner) is null)
+        {
+            ctx.Db.PlayerProgression.Insert(new PlayerProgression
+            {
+                Owner = owner,
+                MapRank = 1,
+                Gold = 0,
+            });
+        }
+    }
+
+    private static void EnsurePlayerAccount(ReducerContext ctx, Identity owner)
+    {
+        if (ctx.Db.PlayerAccount.Owner.Find(owner) is null)
+        {
+            ctx.Db.PlayerAccount.Insert(new PlayerAccount
+            {
+                Owner = owner,
+                AccountId = "",
+            });
+        }
+    }
+
+    /// <summary>
+    /// Ensures the player owns a starter hull and that every owned hull's <see cref="ShipStats"/> row
+    /// reflects it. Login seeding lives here, next to <see cref="EnsurePlayerProgression"/> and
+    /// <see cref="EnsurePlayerAccount"/>, not in the tick pipeline.
+    /// </summary>
+    private static void EnsureHull(ReducerContext ctx, Identity owner)
+    {
+        // 1a seeds exactly one hull; this loop already has the shape 1c's dock needs once a player
+        // can own several.
+        var owned = false;
+        foreach (var existing in ctx.Db.Hull.ByOwner.Filter(owner))
+        {
+            RecomputeShipStats(ctx, existing);
+            owned = true;
+        }
+
+        if (owned)
+        {
+            return;
+        }
+
+        var hull = ctx.Db.Hull.Insert(new Hull
+        {
+            HullId = 0,
+            Owner = owner,
+            HullDefId = Catalog.StarterHull.Id,
+            Name = Catalog.StarterHull.Name,
+            CannonDefId = Catalog.StarterCannon.Id,
+            CannonCount = Catalog.StarterHull.CannonSlots,
+        });
+        RecomputeShipStats(ctx, hull);
+    }
 }

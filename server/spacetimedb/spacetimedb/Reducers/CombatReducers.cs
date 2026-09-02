@@ -14,9 +14,9 @@ public static partial class Module
             throw new InvalidOperationException("Simulation clock is missing.");
         var target = ctx.Db.Ship.EntityId.Find(source.TargetEntityId) ??
             throw new InvalidOperationException("Accepted broadside has no target.");
-        var ammunition = ctx.Db.AmmoDefinition.AmmoCode.Find(source.SelectedAmmoCode) ??
+        var ammunition = Catalog.AmmunitionByCode[source.SelectedAmmoCode] ??
             throw new InvalidOperationException("Selected ammunition definition is missing.");
-        var inventory = FindInventory(ctx, source.EntityId, ammunition.AmmoId) ??
+        var inventory = FindInventory(ctx, source.EntityId, ammunition.Id) ??
             throw new InvalidOperationException("Accepted broadside has no ammunition.");
         var damage = BroadsideDamage(ctx, source, ammunition, weakPoint);
         var distance = CombatRules.Distance(
@@ -42,8 +42,8 @@ public static partial class Module
             SideCode = (byte)(side == BroadsideSide.Port
                 ? BroadsideCode.Port
                 : BroadsideCode.Starboard),
-            AmmoId = ammunition.AmmoId,
-            AmmoCode = ammunition.AmmoCode,
+            AmmoId = ammunition.Id,
+            AmmoCode = (byte)ammunition.Code,
             WeakPoint = command.WeakPoint.ToLowerInvariant(),
             WeakPointCode = (byte)weakPoint,
             OriginX = source.PositionX,
@@ -62,28 +62,17 @@ public static partial class Module
             ctx,
             source.EntityId,
             "broadside_fired",
-            $"target={target.EntityId},side={command.Side},ammo={ammunition.AmmoId},impact_tick={impactAtTick}");
+            $"target={target.EntityId},side={command.Side},ammo={ammunition.Id},impact_tick={impactAtTick}");
     }
 
     private static CombatDamage BroadsideDamage(
         ReducerContext ctx,
         Ship source,
-        AmmoDefinition ammunition,
+        AmmunitionContent ammunition,
         WeakPoint weakPoint)
     {
         var damage = CombatRules.DamageProfile(
-            new AmmunitionContent
-            {
-                Id = ammunition.AmmoId,
-                Code = (AmmunitionCode)ammunition.AmmoCode,
-                HullDamage = ammunition.HullDamage,
-                SailDamage = ammunition.SailDamage,
-                CannonDamage = ammunition.CannonDamage,
-                CrewDamage = ammunition.CrewDamage,
-                RangeMultiplier = ammunition.RangeMultiplier,
-                AppliedStatus = ammunition.AppliedStatus,
-                AppliedStatusCode = (StatusCode)ammunition.AppliedStatusCode,
-            },
+            ammunition,
             weakPoint,
             source.CannonDamage,
             source.Cannons,
@@ -115,9 +104,14 @@ public static partial class Module
         ref Ship ship,
         ActivateAbilityCommand command)
     {
-        var ability = ctx.Db.AbilityDefinition.AbilityId.Find(command.AbilityId) ??
+        var ability = HotPathCodes.TryParseAbility(command.AbilityId, out var abilityCode)
+            ? Catalog.AbilityByCode[(byte)abilityCode]
+            : null;
+        if (ability is null)
+        {
             throw new InvalidOperationException("Accepted ability definition is missing.");
-        var abilityCode = (AbilityCode)ability.AbilityCode;
+        }
+
         var world = ctx.Db.SimulationClock.Id.Find(1) ??
             throw new InvalidOperationException("Simulation clock is missing.");
         if (abilityCode == AbilityCode.EmergencyPump)

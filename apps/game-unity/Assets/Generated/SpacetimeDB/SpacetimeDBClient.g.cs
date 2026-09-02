@@ -27,8 +27,9 @@ namespace SpacetimeDB.Types
     {
         public RemoteTables(DbConnection conn)
         {
-            AddTable(AbilityDefinition = new(conn));
-            AddTable(AmmoDefinition = new(conn));
+            AddTable(AbilityDef = new(conn));
+            AddTable(AmmoDef = new(conn));
+            AddTable(CannonDef = new(conn));
             AddTable(CombatEvent = new(conn));
             AddTable(CommandResultEvent = new(conn));
             AddTable(Cooldown = new(conn));
@@ -36,21 +37,26 @@ namespace SpacetimeDB.Types
             AddTable(EncounterReward = new(conn));
             AddTable(EncounterRewardEvent = new(conn));
             AddTable(EnvironmentState = new(conn));
+            AddTable(Hull = new(conn));
+            AddTable(HullDef = new(conn));
             AddTable(Inventory = new(conn));
-            AddTable(LevelDefinition = new(conn));
             AddTable(Loot = new(conn));
+            AddTable(MapDef = new(conn));
             AddTable(NpcAi = new(conn));
-            AddTable(NpcDefinition = new(conn));
+            AddTable(NpcDef = new(conn));
             AddTable(PlayerClock = new(conn));
             AddTable(PlayerCommandState = new(conn));
             AddTable(PlayerOwnership = new(conn));
             AddTable(PlayerProgression = new(conn));
             AddTable(RespawnWork = new(conn));
+            AddTable(Sector = new(conn));
             AddTable(Ship = new(conn));
             AddTable(ShipChannel = new(conn));
             AddTable(ShipMovement = new(conn));
+            AddTable(ShipStats = new(conn));
             AddTable(ShipStatus = new(conn));
             AddTable(SimulationTelemetry = new(conn));
+            AddTable(StatCaps = new(conn));
             AddTable(Volley = new(conn));
             AddTable(WorldObject = new(conn));
             AddTable(WorldState = new(conn));
@@ -550,8 +556,9 @@ namespace SpacetimeDB.Types
 
         internal static string[] AllTablesSqlQueries() => new string[]
         {
-            new QueryBuilder().From.AbilityDefinition().ToSql(),
-            new QueryBuilder().From.AmmoDefinition().ToSql(),
+            new QueryBuilder().From.AbilityDef().ToSql(),
+            new QueryBuilder().From.AmmoDef().ToSql(),
+            new QueryBuilder().From.CannonDef().ToSql(),
             new QueryBuilder().From.CombatEvent().ToSql(),
             new QueryBuilder().From.CommandResultEvent().ToSql(),
             new QueryBuilder().From.Cooldown().ToSql(),
@@ -559,21 +566,26 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.EncounterReward().ToSql(),
             new QueryBuilder().From.EncounterRewardEvent().ToSql(),
             new QueryBuilder().From.EnvironmentState().ToSql(),
+            new QueryBuilder().From.Hull().ToSql(),
+            new QueryBuilder().From.HullDef().ToSql(),
             new QueryBuilder().From.Inventory().ToSql(),
-            new QueryBuilder().From.LevelDefinition().ToSql(),
             new QueryBuilder().From.Loot().ToSql(),
+            new QueryBuilder().From.MapDef().ToSql(),
             new QueryBuilder().From.NpcAi().ToSql(),
-            new QueryBuilder().From.NpcDefinition().ToSql(),
+            new QueryBuilder().From.NpcDef().ToSql(),
             new QueryBuilder().From.PlayerClock().ToSql(),
             new QueryBuilder().From.PlayerCommandState().ToSql(),
             new QueryBuilder().From.PlayerOwnership().ToSql(),
             new QueryBuilder().From.PlayerProgression().ToSql(),
             new QueryBuilder().From.RespawnWork().ToSql(),
+            new QueryBuilder().From.Sector().ToSql(),
             new QueryBuilder().From.Ship().ToSql(),
             new QueryBuilder().From.ShipChannel().ToSql(),
             new QueryBuilder().From.ShipMovement().ToSql(),
+            new QueryBuilder().From.ShipStats().ToSql(),
             new QueryBuilder().From.ShipStatus().ToSql(),
             new QueryBuilder().From.SimulationTelemetry().ToSql(),
+            new QueryBuilder().From.StatCaps().ToSql(),
             new QueryBuilder().From.Volley().ToSql(),
             new QueryBuilder().From.WorldObject().ToSql(),
             new QueryBuilder().From.WorldState().ToSql(),
@@ -583,8 +595,9 @@ namespace SpacetimeDB.Types
 
     public sealed class From
     {
-        public global::SpacetimeDB.Table<AbilityDefinition, AbilityDefinitionCols, AbilityDefinitionIxCols> AbilityDefinition() => new("ability_definition", new AbilityDefinitionCols("ability_definition"), new AbilityDefinitionIxCols("ability_definition"));
-        public global::SpacetimeDB.Table<AmmoDefinition, AmmoDefinitionCols, AmmoDefinitionIxCols> AmmoDefinition() => new("ammo_definition", new AmmoDefinitionCols("ammo_definition"), new AmmoDefinitionIxCols("ammo_definition"));
+        public global::SpacetimeDB.Table<AbilityDef, AbilityDefCols, AbilityDefIxCols> AbilityDef() => new("ability_def", new AbilityDefCols("ability_def"), new AbilityDefIxCols("ability_def"));
+        public global::SpacetimeDB.Table<AmmoDef, AmmoDefCols, AmmoDefIxCols> AmmoDef() => new("ammo_def", new AmmoDefCols("ammo_def"), new AmmoDefIxCols("ammo_def"));
+        public global::SpacetimeDB.Table<CannonDef, CannonDefCols, CannonDefIxCols> CannonDef() => new("cannon_def", new CannonDefCols("cannon_def"), new CannonDefIxCols("cannon_def"));
         public global::SpacetimeDB.Table<CombatEvent, CombatEventCols, CombatEventIxCols> CombatEvent() => new("combat_event", new CombatEventCols("combat_event"), new CombatEventIxCols("combat_event"));
         public global::SpacetimeDB.Table<CommandResultEvent, CommandResultEventCols, CommandResultEventIxCols> CommandResultEvent() => new("command_result_event", new CommandResultEventCols("command_result_event"), new CommandResultEventIxCols("command_result_event"));
         public global::SpacetimeDB.Table<Cooldown, CooldownCols, CooldownIxCols> Cooldown() => new("cooldown", new CooldownCols("cooldown"), new CooldownIxCols("cooldown"));
@@ -592,21 +605,26 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<EncounterReward, EncounterRewardCols, EncounterRewardIxCols> EncounterReward() => new("encounter_reward", new EncounterRewardCols("encounter_reward"), new EncounterRewardIxCols("encounter_reward"));
         public global::SpacetimeDB.Table<EncounterRewardEvent, EncounterRewardEventCols, EncounterRewardEventIxCols> EncounterRewardEvent() => new("encounter_reward_event", new EncounterRewardEventCols("encounter_reward_event"), new EncounterRewardEventIxCols("encounter_reward_event"));
         public global::SpacetimeDB.Table<EnvironmentState, EnvironmentStateCols, EnvironmentStateIxCols> EnvironmentState() => new("environment_state", new EnvironmentStateCols("environment_state"), new EnvironmentStateIxCols("environment_state"));
+        public global::SpacetimeDB.Table<Hull, HullCols, HullIxCols> Hull() => new("hull", new HullCols("hull"), new HullIxCols("hull"));
+        public global::SpacetimeDB.Table<HullDef, HullDefCols, HullDefIxCols> HullDef() => new("hull_def", new HullDefCols("hull_def"), new HullDefIxCols("hull_def"));
         public global::SpacetimeDB.Table<Inventory, InventoryCols, InventoryIxCols> Inventory() => new("inventory", new InventoryCols("inventory"), new InventoryIxCols("inventory"));
-        public global::SpacetimeDB.Table<LevelDefinition, LevelDefinitionCols, LevelDefinitionIxCols> LevelDefinition() => new("level_definition", new LevelDefinitionCols("level_definition"), new LevelDefinitionIxCols("level_definition"));
         public global::SpacetimeDB.Table<Loot, LootCols, LootIxCols> Loot() => new("loot", new LootCols("loot"), new LootIxCols("loot"));
+        public global::SpacetimeDB.Table<MapDef, MapDefCols, MapDefIxCols> MapDef() => new("map_def", new MapDefCols("map_def"), new MapDefIxCols("map_def"));
         public global::SpacetimeDB.Table<NpcAi, NpcAiCols, NpcAiIxCols> NpcAi() => new("npc_ai", new NpcAiCols("npc_ai"), new NpcAiIxCols("npc_ai"));
-        public global::SpacetimeDB.Table<NpcDefinition, NpcDefinitionCols, NpcDefinitionIxCols> NpcDefinition() => new("npc_definition", new NpcDefinitionCols("npc_definition"), new NpcDefinitionIxCols("npc_definition"));
+        public global::SpacetimeDB.Table<NpcDef, NpcDefCols, NpcDefIxCols> NpcDef() => new("npc_def", new NpcDefCols("npc_def"), new NpcDefIxCols("npc_def"));
         public global::SpacetimeDB.Table<PlayerClock, PlayerClockCols, PlayerClockIxCols> PlayerClock() => new("player_clock", new PlayerClockCols("player_clock"), new PlayerClockIxCols("player_clock"));
         public global::SpacetimeDB.Table<PlayerCommandState, PlayerCommandStateCols, PlayerCommandStateIxCols> PlayerCommandState() => new("player_command_state", new PlayerCommandStateCols("player_command_state"), new PlayerCommandStateIxCols("player_command_state"));
         public global::SpacetimeDB.Table<PlayerOwnership, PlayerOwnershipCols, PlayerOwnershipIxCols> PlayerOwnership() => new("player_ownership", new PlayerOwnershipCols("player_ownership"), new PlayerOwnershipIxCols("player_ownership"));
         public global::SpacetimeDB.Table<PlayerProgression, PlayerProgressionCols, PlayerProgressionIxCols> PlayerProgression() => new("player_progression", new PlayerProgressionCols("player_progression"), new PlayerProgressionIxCols("player_progression"));
         public global::SpacetimeDB.Table<RespawnWork, RespawnWorkCols, RespawnWorkIxCols> RespawnWork() => new("respawn_work", new RespawnWorkCols("respawn_work"), new RespawnWorkIxCols("respawn_work"));
+        public global::SpacetimeDB.Table<Sector, SectorCols, SectorIxCols> Sector() => new("sector", new SectorCols("sector"), new SectorIxCols("sector"));
         public global::SpacetimeDB.Table<Ship, ShipCols, ShipIxCols> Ship() => new("ship", new ShipCols("ship"), new ShipIxCols("ship"));
         public global::SpacetimeDB.Table<ShipChannel, ShipChannelCols, ShipChannelIxCols> ShipChannel() => new("ship_channel", new ShipChannelCols("ship_channel"), new ShipChannelIxCols("ship_channel"));
         public global::SpacetimeDB.Table<ShipMovement, ShipMovementCols, ShipMovementIxCols> ShipMovement() => new("ship_movement", new ShipMovementCols("ship_movement"), new ShipMovementIxCols("ship_movement"));
+        public global::SpacetimeDB.Table<ShipStats, ShipStatsCols, ShipStatsIxCols> ShipStats() => new("ship_stats", new ShipStatsCols("ship_stats"), new ShipStatsIxCols("ship_stats"));
         public global::SpacetimeDB.Table<ShipStatus, ShipStatusCols, ShipStatusIxCols> ShipStatus() => new("ship_status", new ShipStatusCols("ship_status"), new ShipStatusIxCols("ship_status"));
         public global::SpacetimeDB.Table<SimulationTelemetry, SimulationTelemetryCols, SimulationTelemetryIxCols> SimulationTelemetry() => new("simulation_telemetry", new SimulationTelemetryCols("simulation_telemetry"), new SimulationTelemetryIxCols("simulation_telemetry"));
+        public global::SpacetimeDB.Table<StatCaps, StatCapsCols, StatCapsIxCols> StatCaps() => new("stat_caps", new StatCapsCols("stat_caps"), new StatCapsIxCols("stat_caps"));
         public global::SpacetimeDB.Table<Volley, VolleyCols, VolleyIxCols> Volley() => new("volley", new VolleyCols("volley"), new VolleyIxCols("volley"));
         public global::SpacetimeDB.Table<WorldObject, WorldObjectCols, WorldObjectIxCols> WorldObject() => new("world_object", new WorldObjectCols("world_object"), new WorldObjectIxCols("world_object"));
         public global::SpacetimeDB.Table<WorldState, WorldStateCols, WorldStateIxCols> WorldState() => new("world_state", new WorldStateCols("world_state"), new WorldStateIxCols("world_state"));
@@ -693,7 +711,6 @@ namespace SpacetimeDB.Types
             {
                 Reducer.IssueShipCommand args => Reducers.InvokeIssueShipCommand(eventContext, args),
                 Reducer.LoadPlayer args => Reducers.InvokeLoadPlayer(eventContext, args),
-                Reducer.UpgradeCannon args => Reducers.InvokeUpgradeCannon(eventContext, args),
                 _ => throw new ArgumentOutOfRangeException("Reducer", $"Unknown reducer {reducer}")
             };
         }

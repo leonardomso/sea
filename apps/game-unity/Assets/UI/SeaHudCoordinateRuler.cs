@@ -45,8 +45,5 @@ namespace Sea.Client
             point = default;
             return false;
         }
-
-        private static float RemainingSeconds(ulong readyTick, ulong currentTick, uint tickRate) =>
-            readyTick <= currentTick ? 0f : (float)(readyTick - currentTick) / tickRate;
     }
 }

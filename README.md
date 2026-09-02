@@ -14,7 +14,9 @@ The scalable PvE vertical slice (previous plan, Phases 0 through 17) is
 complete. It includes click-to-sail navigation with island and reef avoidance,
 broadside combat, repairs, boarding, statuses, wind, currents, storms, twelve
 roaming NPCs, loot, respawn, shared rewards, four-client shared-world support,
-and a macOS and WebGL Unity client using the owned Apricum ship asset.
+and a macOS and WebGL Unity client using the owned Apricum ship asset. The
+camera follows the ship; WASD or middle-mouse drag pans it and it eases back
+after a few seconds.
 
 The game is now built to the design in `docs/SEA_1_KNOWLEDGE.md` through
 `docs/SEA_4_TECHNICAL.md`. Milestone 1 of [PLAN.md](./PLAN.md) replaces the

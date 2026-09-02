@@ -56,6 +56,10 @@ difference is resolved.
 - Handwritten production and test C# files must stay at or below 500 lines.
 - Treat generated C# and TypeScript bindings as generated files. Never edit
   them by hand; regenerate and commit both sides with schema changes.
+- Game content lives in `server/spacetimedb/spacetimedb/Content/Data/*.json`.
+  `server/spacetimedb/spacetimedb/Generated/ContentCatalog.g.cs` is generated
+  from it by `pnpm content:generate`; never edit it by hand, and run
+  `pnpm quality:content` before committing content changes.
 - Preserve deterministic behavior. Fixed seeds and command logs must replay to
   the same state hash.
 

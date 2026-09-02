@@ -11,8 +11,8 @@ function Home() {
 	const snapshot = Route.useLoaderData();
 	const players = snapshot.tables.player_ownership ?? [];
 	const allShips = snapshot.tables.ship ?? [];
-	const ships = allShips.filter((ship) => ship.faction === "player");
-	const enemies = allShips.filter((ship) => ship.faction === "npc");
+	const ships = allShips.filter((ship) => ship.faction_code === 1);
+	const enemies = allShips.filter((ship) => ship.faction_code === 2);
 	const events = snapshot.tables.combat_event ?? [];
 
 	return (
@@ -97,6 +97,7 @@ function Home() {
 						rows={ships}
 						columns={[
 							"entity_id",
+							"faction_code",
 							"position_x",
 							"position_y",
 							"hull",
@@ -109,7 +110,7 @@ function Home() {
 						rows={enemies}
 						columns={[
 							"entity_id",
-							"archetype_id",
+							"archetype_code",
 							"hull",
 							"max_hull",
 							"is_active",

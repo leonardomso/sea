@@ -1,0 +1,58 @@
+{
+  "npcs": [
+    {
+      "id": "patrol",
+      "code": "Patrol",
+      "name": "Harbor Patrol",
+      "tier": 1,
+      "mapId": 1,
+      "family": "common",
+      "behavior": "patrol",
+      "aggroRange": 0,
+      "desiredRange": 45,
+      "maximumSpeed": 10,
+      "hull": 100,
+      "cannonDamage": 18,
+      "preferredAmmunition": "Round",
+      "preferredWeakPoint": "Hull",
+      "goldReward": 80,
+      "experienceReward": 100
+    },
+    {
+      "id": "raider",
+      "code": "Raider",
+      "name": "Reef Raider",
+      "tier": 1,
+      "mapId": 1,
+      "family": "common",
+      "behavior": "aggressive",
+      "aggroRange": 65,
+      "desiredRange": 18,
+      "maximumSpeed": 14,
+      "hull": 90,
+      "cannonDamage": 20,
+      "preferredAmmunition": "Chain",
+      "preferredWeakPoint": "Sails",
+      "goldReward": 100,
+      "experienceReward": 125
+    },
+    {
+      "id": "gunship",
+      "code": "Gunship",
+      "name": "Coastal Gunship",
+      "tier": 1,
+      "mapId": 1,
+      "family": "veteran",
+      "behavior": "aggressive",
+      "aggroRange": 75,
+      "desiredRange": 48,
+      "maximumSpeed": 9,
+      "hull": 130,
+      "cannonDamage": 28,
+      "preferredAmmunition": "Incendiary",
+      "preferredWeakPoint": "Hull",
+      "goldReward": 140,
+      "experienceReward": 175
+    }
+  ]
+}

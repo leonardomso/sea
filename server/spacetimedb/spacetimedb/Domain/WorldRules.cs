@@ -15,11 +15,6 @@ public static class WorldRules
     public const uint EnemyCannonCooldownTicks = 40;
     public const uint EnemyGoldReward = 100;
     public const float CannonRange = 60f;
-    public const uint InitialProgressionLevel = 1;
-    public const uint InitialCannonUpgradeLevel = 0;
-    public const uint CannonUpgradeBaseCost = 100;
-    public const uint CannonUpgradeCostStep = 100;
-    public const uint CannonDamagePerUpgrade = 5;
     public const float PlayerShipSpeed = 12f;
     public const float PlayerShipTurnRateDegrees = 360f;
 
@@ -112,10 +107,4 @@ public static class WorldRules
     }
 
     public static uint ApplyDamage(uint health, uint damage) => damage >= health ? 0 : health - damage;
-
-    public static uint CannonUpgradeCost(uint upgradeLevel) =>
-        checked(CannonUpgradeBaseCost + upgradeLevel * CannonUpgradeCostStep);
-
-    public static uint CannonDamageAfterUpgrade(uint damage, uint upgradeLevel) =>
-        checked(damage + CannonDamagePerUpgrade * upgradeLevel);
 }

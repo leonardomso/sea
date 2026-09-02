@@ -323,6 +323,43 @@ public sealed class SailingRulesTests
     }
 
     [Fact]
+    public void Safe_spawn_skips_a_blocker_covering_the_first_candidate()
+    {
+        Assert.True(SpawnRules.TryFindSafePosition(7, [], out var firstCandidate));
+        var blockers = new[] { new SpawnBlocker(firstCandidate.X, firstCandidate.Y, 1f) };
+
+        Assert.True(SpawnRules.TryFindSafePosition(7, blockers, out var point));
+        Assert.False(SpawnRules.Overlaps(point.X, point.Y, blockers[0]));
+        Assert.True(WorldRules.IsInsideMap(point.X, point.Y));
+        Assert.NotEqual((firstCandidate.X, firstCandidate.Y), (point.X, point.Y));
+    }
+
+    [Fact]
+    public void Safe_spawn_gives_up_when_every_attempt_is_blocked()
+    {
+        // One blocker wider than the map leaves no candidate free for any of the attempts.
+        var blockers = new[] { new SpawnBlocker(0f, 0f, 400f) };
+
+        Assert.False(SpawnRules.TryFindSafePosition(7, blockers, out var point));
+        Assert.Equal(0f, point.X);
+        Assert.Equal(0f, point.Y);
+    }
+
+    [Fact]
+    public void Safe_spawn_without_blockers_takes_the_first_candidate()
+    {
+        Assert.True(SpawnRules.TryFindSafePosition(7, [], out var point));
+        Assert.True(WorldRules.IsInsideMap(point.X, point.Y));
+    }
+
+    [Fact]
+    public void Safe_spawn_rejects_a_null_blocker_list()
+    {
+        Assert.Throws<ArgumentNullException>(
+            () => SpawnRules.TryFindSafePosition(7, null!, out _));
+    }
+
+    [Fact]
     public void Wind_changes_deterministically_by_epoch()
     {
         var first = EnvironmentRules.WindForEpoch(8675309, 4);

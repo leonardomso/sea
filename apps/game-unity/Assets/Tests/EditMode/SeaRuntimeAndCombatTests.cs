@@ -253,9 +253,17 @@ namespace Sea.Tests
                 Speed = 12.5f,
                 Hull = 750,
                 MaxHull = 1000,
-                Experience = 1250,
-                CurrentLevelExperience = 1000,
-                NextLevelExperience = 2000,
+                MapRank = 4,
+                Gold = 1234,
+                HullName = "Sloop",
+                CannonName = "Iron Six-Pounder",
+                CannonTier = 2,
+                VolleyDamage = 42,
+                ReloadMilliseconds = 3500,
+                MagazineSize = 6,
+                CombatPowerUsed = 12f,
+                CombatPowerBudget = 45f,
+                SelectedAmmoName = "Chain Shot",
                 TargetName = "RAIDER 7",
                 TargetHull = 300,
                 TargetMaxHull = 600,
@@ -269,7 +277,12 @@ namespace Sea.Tests
             });
 
             Assert.That(model.HullProgress, Is.EqualTo(0.75f));
-            Assert.That(model.ExperienceProgress, Is.EqualTo(0.25f));
+            Assert.That(model.MapRankText, Is.EqualTo("4"));
+            Assert.That(model.GoldText, Is.EqualTo("1,234 ¤"));
+            Assert.That(model.ShipText, Is.EqualTo("SLOOP  •  IRON SIX-POUNDER T2"));
+            Assert.That(model.VolleyText, Is.EqualTo("DMG 42  •  MAG 6  •  3.5s"));
+            Assert.That(model.CombatPowerText, Does.Contain("12 / 45"));
+            Assert.That(model.SelectedAmmoLabel, Is.EqualTo("CHAIN SHOT"));
             Assert.That(model.HullText, Is.EqualTo("750 / 1,000"));
             Assert.That(model.NavigationText, Is.EqualTo("AX 59  •  275°  •  12.5 KN"));
             Assert.That(model.HasTarget, Is.True);
@@ -291,7 +304,8 @@ namespace Sea.Tests
             {
                 "connection-status", "navigation-readout", "gold-label", "diamond-label",
                 "top-coordinate-ruler", "left-coordinate-ruler",
-                "player-hull", "player-experience",
+                "map-rank-label", "ship-loadout", "volley-text", "combat-power-label",
+                "player-hull",
                 "mini-map-frame",
                 "target-frame", "target-hull", "target-sails", "target-cannons",
                 "port-broadside", "starboard-broadside", "weak-point-rail", "ammo-rail",
@@ -300,6 +314,7 @@ namespace Sea.Tests
             };
 
             Assert.That(requiredElements.All(name => root.Q(name) != null), Is.True);
+            Assert.That(root.Q("player-experience"), Is.Null);
             Assert.That(root.Q<Button>("aim-hull").text, Is.EqualTo("1"));
             Assert.That(root.Q<Button>("ability-full-sail").text, Is.EqualTo("Z"));
             Assert.That(root.Q<Button>("port-broadside"), Is.Not.Null);

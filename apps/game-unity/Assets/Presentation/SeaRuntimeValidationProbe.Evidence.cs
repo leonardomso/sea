@@ -48,6 +48,7 @@ namespace Sea.Client
         private void OnDestroy()
         {
             Application.logMessageReceived -= ObserveValidationLog;
+            ReleaseProgressionLootWatch();
         }
 
         private void MarkRuntimeMilestone(SeaRuntimeMilestone milestone)

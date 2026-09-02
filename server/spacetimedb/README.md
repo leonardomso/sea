@@ -20,7 +20,9 @@ must not create movement or AI work.
 - `spacetimedb`: schema, reducers, command policy and execution, simulation
   systems, deterministic content, events, and rewards.
 - `tests`: pure unit, property, command-matrix, and replay tests.
-- `seed/world.json`: human-readable source for the deterministic starter map.
+- `spacetimedb/Content/Data/*.json`: the embedded content (maps, sectors,
+  hulls, cannons, ammo, abilities, NPCs, stat caps); `pnpm content:generate`
+  turns it into `Generated/ContentCatalog.g.cs`.
 
 Pure domain files are linked into tests and benchmarks without depending on
 SpacetimeDB runtime types.

@@ -5,221 +5,63 @@ public static partial class Module
 {
     private static void SeedContent(ReducerContext ctx)
     {
-        var content = ContentCatalog.CreateDefault();
+        var content = Catalog.Content;
         var errors = ContentCatalog.Validate(content);
         if (errors.Count != 0)
         {
             throw new InvalidOperationException(string.Join(" ", errors));
         }
 
+        foreach (var map in content.Maps)
+        {
+            SeedMap(ctx, map);
+        }
+
+        foreach (var hull in content.Hulls)
+        {
+            ctx.Db.HullDef.Insert(HullDef.From(hull));
+        }
+
+        foreach (var cannon in content.Cannons)
+        {
+            ctx.Db.CannonDef.Insert(CannonDef.From(cannon));
+        }
+
         foreach (var ammunition in content.Ammunition)
         {
-            ctx.Db.AmmoDefinition.Insert(new AmmoDefinition
-            {
-                AmmoId = ammunition.Id,
-                AmmoCode = (byte)ammunition.Code,
-                HullDamage = ammunition.HullDamage,
-                SailDamage = ammunition.SailDamage,
-                CannonDamage = ammunition.CannonDamage,
-                CrewDamage = ammunition.CrewDamage,
-                RangeMultiplier = ammunition.RangeMultiplier,
-                AppliedStatus = ammunition.AppliedStatus,
-                AppliedStatusCode = (byte)ammunition.AppliedStatusCode,
-            });
+            ctx.Db.AmmoDef.Insert(AmmoDef.From(ammunition));
         }
 
         foreach (var ability in content.Abilities)
         {
-            ctx.Db.AbilityDefinition.Insert(new AbilityDefinition
-            {
-                AbilityId = ability.Id,
-                AbilityCode = (byte)ability.Code,
-                CooldownTicks = ability.CooldownTicks,
-                DurationTicks = ability.DurationTicks,
-            });
+            ctx.Db.AbilityDef.Insert(AbilityDef.From(ability));
         }
 
         foreach (var npc in content.Npcs)
         {
-            ctx.Db.NpcDefinition.Insert(new NpcDefinition
-            {
-                NpcId = npc.Id,
-                ArchetypeCode = (byte)npc.Code,
-                AggroRange = npc.AggroRange,
-                DesiredRange = npc.DesiredRange,
-                MaximumSpeed = npc.MaximumSpeed,
-                Hull = npc.Hull,
-                CannonDamage = npc.CannonDamage,
-                PreferredAmmoCode = (byte)npc.PreferredAmmunition,
-                PreferredWeakPointCode = (byte)npc.PreferredWeakPoint,
-                GoldReward = npc.GoldReward,
-                ExperienceReward = npc.ExperienceReward,
-            });
+            ctx.Db.NpcDef.Insert(NpcDef.From(npc));
         }
 
-        ctx.Db.LevelDefinition.Insert(new LevelDefinition { Level = 1, RequiredExperience = 0 });
-        ctx.Db.LevelDefinition.Insert(new LevelDefinition { Level = 2, RequiredExperience = 500 });
-        ctx.Db.LevelDefinition.Insert(new LevelDefinition { Level = 3, RequiredExperience = 1_500 });
+        ctx.Db.StatCaps.Insert(StatCaps.From(content.StatCaps));
     }
 
-    private static void SeedWorld(ReducerContext ctx)
+    private static void SeedMap(ReducerContext ctx, MapContent map)
     {
-        InsertWorldObject(ctx, 1, "harbor", 0f, 0f, 8f, false);
-        InsertWorldObject(ctx, 2, "island", 35f, 20f, 12f, true);
-        InsertWorldObject(ctx, 3, "reef", -30f, -25f, 10f, true);
-        InsertWorldObject(ctx, 4, "island", -46f, 43f, 16f, true);
-        InsertWorldObject(ctx, 5, "island", 61f, -48f, 15f, true);
-        InsertWorldObject(ctx, 6, "island", -63f, -58f, 11f, true);
-        InsertWorldObject(ctx, 7, "island", 4f, 70f, 9f, true);
-        InsertWorldObject(ctx, 8, "reef", 24f, -61f, 8f, true);
-        InsertWorldObject(ctx, 9, "reef", 68f, 58f, 9f, true);
-        InsertWorldObject(ctx, 11, "shoal", -4f, -42f, 15f, false, intensity: 0.7f);
-        InsertWorldObject(ctx, 12, "shoal", 48f, 45f, 12f, false, intensity: 0.8f);
-        InsertWorldObject(
-            ctx,
-            13,
-            "storm",
-            -72f,
-            3f,
-            14f,
-            false,
-            directionDegrees: 72f,
-            movementSpeed: 1.5f,
-            intensity: 1f);
+        ctx.Db.MapDef.Insert(MapDef.From(map));
 
-        var content = ContentCatalog.CreateDefault();
-        var entityId = 10ul;
-        foreach (var definition in content.Npcs)
+        for (var y = 0; y < map.Height; y++)
         {
-            for (var index = 0; index < 4; index++)
+            for (var x = 0; x < map.Width; x++)
             {
-                SeedNpc(ctx, entityId, definition, index);
-                entityId++;
-            }
-        }
-    }
-
-    private static void SeedNpc(
-        ReducerContext ctx,
-        ulong entityId,
-        NpcContent definition,
-        int archetypeIndex)
-    {
-        var spawn = FindSafeSpawn(
-            ctx,
-            entityId ^ unchecked((ulong)(archetypeIndex + 1) * 0x9E3779B97F4A7C15UL));
-        var ship = CreateShip(entityId, definition.Id, "npc", spawn.X, spawn.Y);
-        ship.MaximumSpeed = definition.MaximumSpeed;
-        ship.Hull = definition.Hull;
-        ship.MaxHull = definition.Hull;
-        ship.CannonDamage = definition.CannonDamage;
-        ship.CannonCooldownTicks = WorldRules.EnemyCannonCooldownTicks;
-        ship.SelectedAmmoCode = (byte)definition.PreferredAmmunition;
-        ship.SelectedWeakPointCode = (byte)definition.PreferredWeakPoint;
-        ship.EncounterId = entityId;
-        ctx.Db.Ship.Insert(ship);
-        InsertShipMovement(ctx, ship);
-        OpenNpcEncounter(ctx, ship, definition.GoldReward, definition.ExperienceReward, tick: 0);
-        ctx.Db.NpcAi.Insert(new NpcAi
-        {
-            ShipEntityId = entityId,
-            ArchetypeId = definition.Id,
-            IsActive = true,
-            DecisionShard = SimulationWorkRules.NpcShard(entityId),
-            NextDecisionTick = (ulong)archetypeIndex,
-            HomeSeed = entityId * 17,
-        });
-        SeedNpcInventory(ctx, entityId);
-    }
-
-    private static void SeedEnvironment(ReducerContext ctx)
-    {
-        const ulong seed = 0x5EA2026;
-        var wind = EnvironmentRules.WindForEpoch(seed, 0);
-        ctx.Db.EnvironmentState.Insert(new EnvironmentState
-        {
-            Id = 1,
-            Seed = seed,
-            WindEpoch = 0,
-            WindDirectionDegrees = wind.DirectionDegrees,
-            WindStrength = wind.Strength,
-            NextWindChangeTick = EnvironmentRules.WindEpochTicks,
-        });
-        var zones = new[]
-        {
-            InsertCurrentZone(ctx, 1, -55f, 35f, 28f, 70f, 1.25f),
-            InsertCurrentZone(ctx, 2, 55f, -45f, 24f, 235f, 1f),
-        };
-        ctx.Db.CurrentFieldState.Insert(BuildCurrentFieldState(zones));
-    }
-
-    private static CurrentZone InsertCurrentZone(
-        ReducerContext ctx,
-        ulong zoneId,
-        float x,
-        float y,
-        float radius,
-        float directionDegrees,
-        float strength)
-    {
-        var zone = new CurrentZone
-        {
-            ZoneId = zoneId,
-            PositionX = x,
-            PositionY = y,
-            Radius = radius,
-            DirectionDegrees = directionDegrees,
-            Strength = strength,
-            ChunkX = SpatialRules.ChunkCoordinate(x),
-            ChunkY = SpatialRules.ChunkCoordinate(y),
-            IsActive = true,
-        };
-        ctx.Db.CurrentZone.Insert(zone);
-        return zone;
-    }
-
-    private static CurrentFieldState BuildCurrentFieldState(
-        IReadOnlyList<CurrentZone> source)
-    {
-        if (source.Count > 64)
-        {
-            throw new InvalidOperationException("A current field supports at most 64 zones.");
-        }
-
-        var masks = Enumerable.Repeat(
-                0UL,
-                SpatialRules.ChunkCountPerAxis * SpatialRules.ChunkCountPerAxis)
-            .ToList();
-        var zones = new List<CurrentFieldZone>(source.Count);
-        for (var index = 0; index < source.Count; index++)
-        {
-            var zone = source[index];
-            var velocity = EnvironmentRules.DirectionalVelocity(
-                zone.DirectionDegrees,
-                zone.Strength);
-            zones.Add(new CurrentFieldZone
-            {
-                PositionX = zone.PositionX,
-                PositionY = zone.PositionY,
-                Radius = zone.Radius,
-                VelocityX = velocity.X,
-                VelocityY = velocity.Y,
-            });
-            var bounds = SpatialRules.BoundsAround(
-                zone.PositionX,
-                zone.PositionY,
-                zone.Radius);
-            for (var chunkX = bounds.MinX; chunkX <= bounds.MaxX; chunkX++)
-            {
-                for (var chunkY = bounds.MinY; chunkY <= bounds.MaxY; chunkY++)
+                ctx.Db.Sector.Insert(new Sector
                 {
-                    var cell = chunkY * SpatialRules.ChunkCountPerAxis + chunkX;
-                    masks[cell] |= 1UL << index;
-                }
+                    SectorId = SectorRules.SectorId(map.MapId, x, y),
+                    MapId = map.MapId,
+                    X = (byte)x,
+                    Y = (byte)y,
+                    TerrainCode = (byte)SectorRules.TerrainAt(map, x, y),
+                });
             }
         }
-
-        return new CurrentFieldState { Id = 1, Zones = zones, CellMasks = masks };
     }
-
 }

@@ -54,8 +54,8 @@ public static partial class Module
         CommandSnapshot snapshot,
         SetAmmoCommand command)
     {
-        var known = !string.IsNullOrWhiteSpace(command.AmmoId) &&
-            ctx.Db.AmmoDefinition.AmmoId.Find(command.AmmoId) is not null;
+        var known = HotPathCodes.TryParseAmmunition(command.AmmoId, out var code) &&
+            Catalog.AmmunitionByCode[(byte)code] is not null;
         return snapshot with
         {
             AmmoKnown = known,
@@ -88,12 +88,12 @@ public static partial class Module
 
         var world = ctx.Db.SimulationClock.Id.Find(1) ??
             throw new InvalidOperationException("Simulation clock is missing.");
-        var ammunition = ctx.Db.AmmoDefinition.AmmoCode.Find(source.SelectedAmmoCode) ??
+        var ammunition = Catalog.AmmunitionByCode[source.SelectedAmmoCode] ??
             throw new InvalidOperationException("Selected ammunition definition is missing.");
         var target = source.TargetEntityId == 0
             ? default(Ship?)
             : ctx.Db.Ship.EntityId.Find(source.TargetEntityId);
-        var inventory = FindInventory(ctx, source.EntityId, ammunition.AmmoId);
+        var inventory = FindInventory(ctx, source.EntityId, ammunition.Id);
         var readyAtTick = side == BroadsideSide.Port
             ? source.NextPortFireTick
             : source.NextStarboardFireTick;
@@ -132,9 +132,7 @@ public static partial class Module
         var world = ctx.Db.SimulationClock.Id.Find(1) ??
             throw new InvalidOperationException("Simulation clock is missing.");
         var knownCode = HotPathCodes.TryParseAbility(command.AbilityId, out var abilityCode);
-        var ability = !knownCode
-            ? default(AbilityDefinition?)
-            : ctx.Db.AbilityDefinition.AbilityId.Find(command.AbilityId);
+        var ability = knownCode ? Catalog.AbilityByCode[(byte)abilityCode] : null;
         var cooldown = FindCooldown(
             ctx,
             ship.EntityId,

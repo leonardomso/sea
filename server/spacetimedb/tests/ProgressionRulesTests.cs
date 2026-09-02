@@ -6,65 +6,30 @@ namespace Sea.Server.Tests;
 public sealed class ProgressionRulesTests
 {
     [Theory]
-    [InlineData(0ul, 1u)]
-    [InlineData(499ul, 1u)]
-    [InlineData(500ul, 2u)]
-    [InlineData(1_500ul, 3u)]
-    [InlineData(50_000ul, 3u)]
-    public void Experience_uses_data_driven_level_boundaries(ulong experience, uint expected)
+    [InlineData(0u, 100u, 100u)]
+    [InlineData(uint.MaxValue - 5, 10u, uint.MaxValue)]
+    [InlineData(uint.MaxValue, 1u, uint.MaxValue)]
+    [InlineData(uint.MaxValue - 10, 10u, uint.MaxValue)]
+    [InlineData(uint.MaxValue, 0u, uint.MaxValue)]
+    public void Gold_addition_saturates(uint current, uint amount, uint expected)
     {
-        var thresholds = new[]
-        {
-            new LevelThreshold(1, 0),
-            new LevelThreshold(2, 500),
-            new LevelThreshold(3, 1_500),
-        };
-
-        Assert.Equal(expected, ProgressionRules.LevelFor(experience, thresholds));
+        Assert.Equal(expected, ProgressionRules.AddGoldSaturating(current, amount));
     }
 
     [Fact]
-    public void Grant_uses_the_same_level_rule_as_production()
+    public void Contribution_addition_saturates()
     {
-        var thresholds = new[]
-        {
-            new LevelThreshold(1, 0),
-            new LevelThreshold(2, 500),
-            new LevelThreshold(3, 1_500),
-        };
-
-        var result = ProgressionRules.ApplyGrant(
-            new ProgressionState(Experience: 490, Gold: 90, Level: 1),
-            new ProgressionGrant(Experience: 1_020, Gold: 25),
-            thresholds);
-
-        Assert.Equal(new ProgressionState(1_510, 115, 3), result);
+        Assert.Equal(30ul, ProgressionRules.AddSaturating(10, 20));
+        Assert.Equal(ulong.MaxValue, ProgressionRules.AddSaturating(ulong.MaxValue - 1, 5));
+        Assert.Equal(ulong.MaxValue, ProgressionRules.AddSaturating(ulong.MaxValue - 5, 5));
+        Assert.Equal(10ul, ProgressionRules.AddSaturating(10, 0));
     }
 
     [Fact]
-    public void Grant_saturates_experience_and_gold()
+    public void Boarding_contribution_is_a_fixed_constant()
     {
-        var result = ProgressionRules.ApplyGrant(
-            new ProgressionState(ulong.MaxValue - 2, uint.MaxValue - 1, 1),
-            new ProgressionGrant(10, 10),
-            [new LevelThreshold(1, 0)]);
-
-        Assert.Equal(ulong.MaxValue, result.Experience);
-        Assert.Equal(uint.MaxValue, result.Gold);
-        Assert.Equal(1u, result.Level);
-    }
-
-    [Fact]
-    public void Level_selection_uses_the_highest_eligible_level_regardless_of_row_order()
-    {
-        var thresholds = new[]
-        {
-            new LevelThreshold(10, 1_000),
-            new LevelThreshold(2, 2_000),
-            new LevelThreshold(7, 500),
-        };
-
-        Assert.Equal(10u, ProgressionRules.LevelFor(2_500, thresholds));
+        // Balance guard pinning the tuned value, not a behavior test.
+        Assert.Equal(25ul, ProgressionRules.BoardingContribution);
     }
 
     [Fact]

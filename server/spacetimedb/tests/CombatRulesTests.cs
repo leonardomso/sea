@@ -5,6 +5,15 @@ namespace Sea.Server.Tests;
 
 public sealed class CombatRulesTests
 {
+    [Fact]
+    public void Combat_damage_total_widens_without_overflow()
+    {
+        var damage = new CombatDamage(uint.MaxValue, uint.MaxValue, uint.MaxValue, uint.MaxValue);
+
+        Assert.Equal(4UL * uint.MaxValue, damage.Total);
+        Assert.Equal(0ul, default(CombatDamage).Total);
+    }
+
     [Theory]
     [InlineData(BroadsideSide.Port, -140f, true)]
     [InlineData(BroadsideSide.Port, -40f, true)]

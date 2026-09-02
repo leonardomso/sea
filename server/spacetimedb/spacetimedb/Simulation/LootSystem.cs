@@ -71,13 +71,13 @@ public static partial class Module
 
         ctx.Db.Loot.LootId.Delete(loot.LootId);
         ChangeActiveLootCount(ctx, -1);
-        AwardProgression(
-            ctx,
-            claimant,
-            experience: loot.Quantity / 4,
-            gold: string.Equals(loot.LootType, "gold", StringComparison.Ordinal)
-                ? loot.Quantity
-                : 0);
+        if (string.Equals(loot.LootType, "gold", StringComparison.Ordinal))
+        {
+            var ownership = ctx.Db.PlayerOwnership.ShipEntityId.Find(claimant) ??
+                throw new InvalidOperationException("Loot claimant ownership is missing.");
+            AwardGold(ctx, ownership.Owner, loot.Quantity);
+        }
+
         AppendEvent(
             ctx,
             claimant,
@@ -87,11 +87,8 @@ public static partial class Module
 
     private static void SpawnNpcLoot(ReducerContext ctx, Ship npc, ulong tick)
     {
-        if (ctx.Db.NpcDefinition.ArchetypeCode.Find(npc.ArchetypeCode) is not
-            NpcDefinition definition)
-        {
+        var definition = Catalog.NpcByArchetypeCode[npc.ArchetypeCode] ??
             throw new InvalidOperationException("Sunk NPC definition is missing.");
-        }
 
         ctx.Db.Loot.Insert(new Loot
         {

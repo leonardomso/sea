@@ -103,25 +103,26 @@
         <ui:VisualElement class="bottom-deck">
             <ui:VisualElement class="player-ledger chart-surface">
                 <ui:VisualElement class="ledger-heading">
-                    <ui:Label name="level-label" text="LEVEL 1" class="eyebrow" />
-                    <ui:Label text="CAPTAIN" class="micro-label" />
+                    <ui:Label text="MAP RANK" class="micro-label" />
+                    <ui:Label name="map-rank-label" text="1" class="instrument-value" />
+                    <ui:Label name="ship-loadout" text="—" class="data-label bronze-text" />
                 </ui:VisualElement>
                 <ui:VisualElement class="meter-heading">
                     <ui:Label text="HULL INTEGRITY" class="micro-label" />
                     <ui:Label name="hull-text" text="—" class="instrument-value" />
                 </ui:VisualElement>
                 <ui:ProgressBar name="player-hull" low-value="0" high-value="1" class="player-meter hull-bar" />
-                <ui:VisualElement class="meter-heading">
-                    <ui:Label text="EXPERIENCE" class="micro-label" />
-                    <ui:Label name="experience-text" text="—" class="instrument-value" />
+                <ui:VisualElement class="ledger-heading">
+                    <ui:Label text="COMBAT POWER" class="micro-label" />
+                    <ui:Label name="combat-power-label" text="—" class="instrument-value" />
                 </ui:VisualElement>
-                <ui:ProgressBar name="player-experience" low-value="0" high-value="1" class="player-meter xp-bar" />
                 <ui:Label name="last-action" text="Click water to set course." class="captain-log" />
             </ui:VisualElement>
 
             <ui:VisualElement class="gunnery-deck chart-surface">
                 <ui:VisualElement class="rail-heading">
                     <ui:Label text="GUNNERY DECK" class="eyebrow" />
+                    <ui:Label name="volley-text" text="—" class="micro-label" />
                     <ui:Label name="ammo-count" text="ROUND • 0" class="data-label bronze-text" />
                 </ui:VisualElement>
                 <ui:VisualElement name="weak-point-rail" class="command-rail">

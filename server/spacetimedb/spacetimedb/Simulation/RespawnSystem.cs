@@ -102,11 +102,8 @@ public static partial class Module
         if (!player && ctx.Db.NpcAi.ShipEntityId.Find(ship.EntityId) is NpcAi ai)
         {
             ship.EncounterId = AllocateEntityId(ctx);
-            if (ctx.Db.NpcDefinition.ArchetypeCode.Find(ship.ArchetypeCode) is not
-                NpcDefinition definition)
-            {
+            var definition = Catalog.NpcByArchetypeCode[ship.ArchetypeCode] ??
                 throw new InvalidOperationException("Respawning NPC definition is missing.");
-            }
 
             OpenNpcEncounter(
                 ctx,

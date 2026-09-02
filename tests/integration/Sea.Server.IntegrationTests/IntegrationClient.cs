@@ -139,7 +139,6 @@ internal sealed class IntegrationClient : IDisposable
             .Subscribe([
                 "SELECT * FROM ship WHERE faction_code = 2",
                 "SELECT * FROM npc_ai",
-                "SELECT * FROM npc_definition",
             ]));
         PumpUntil(connection, () => npcWorldSubscribed || failure is not null);
         ThrowIfFailed();

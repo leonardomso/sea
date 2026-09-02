@@ -1,0 +1,13 @@
+{
+  "cannons": [
+    {
+      "id": "cannon_t1",
+      "name": "Iron Cannon",
+      "tier": 1,
+      "damage": 20,
+      "reloadSeconds": 3.0,
+      "rangeSquares": 8,
+      "costGold": 500
+    }
+  ]
+}

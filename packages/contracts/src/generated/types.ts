@@ -10,22 +10,30 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export const AbilityDefinition = __t.object("AbilityDefinition", {
+export const AbilityDef = __t.object("AbilityDef", {
   abilityId: __t.string(),
   abilityCode: __t.u8(),
   cooldownTicks: __t.u32(),
   durationTicks: __t.u32(),
 });
-export type AbilityDefinition = __Infer<typeof AbilityDefinition>;
+export type AbilityDef = __Infer<typeof AbilityDef>;
 
 export const ActivateAbilityCommand = __t.object("ActivateAbilityCommand", {
   abilityId: __t.string(),
 });
 export type ActivateAbilityCommand = __Infer<typeof ActivateAbilityCommand>;
 
-export const AmmoDefinition = __t.object("AmmoDefinition", {
+export const AmmoDef = __t.object("AmmoDef", {
   ammoId: __t.string(),
   ammoCode: __t.u8(),
+  name: __t.string(),
+  damageMultiplier: __t.f32(),
+  reloadMultiplier: __t.f32(),
+  goldPerVolley: __t.u32(),
+  effectCode: __t.u8(),
+  effectMagnitude: __t.f32(),
+  effectDurationSeconds: __t.f32(),
+  rangeLimitSquares: __t.u8(),
   hullDamage: __t.u32(),
   sailDamage: __t.u32(),
   cannonDamage: __t.u32(),
@@ -34,10 +42,21 @@ export const AmmoDefinition = __t.object("AmmoDefinition", {
   appliedStatus: __t.string(),
   appliedStatusCode: __t.u8(),
 });
-export type AmmoDefinition = __Infer<typeof AmmoDefinition>;
+export type AmmoDef = __Infer<typeof AmmoDef>;
 
 export const CancelChannelCommand = __t.object("CancelChannelCommand", {});
 export type CancelChannelCommand = __Infer<typeof CancelChannelCommand>;
+
+export const CannonDef = __t.object("CannonDef", {
+  cannonDefId: __t.string(),
+  name: __t.string(),
+  tier: __t.u8(),
+  damage: __t.u32(),
+  reloadSeconds: __t.f32(),
+  rangeSquares: __t.u8(),
+  costGold: __t.u32(),
+});
+export type CannonDef = __Infer<typeof CannonDef>;
 
 export const ChannelTimer = __t.object("ChannelTimer", {
   scheduledId: __t.u64(),
@@ -191,6 +210,33 @@ export const HazardTimer = __t.object("HazardTimer", {
 });
 export type HazardTimer = __Infer<typeof HazardTimer>;
 
+export const Hull = __t.object("Hull", {
+  hullId: __t.u64(),
+  owner: __t.identity(),
+  hullDefId: __t.string(),
+  name: __t.string(),
+  cannonDefId: __t.string(),
+  cannonCount: __t.u8(),
+});
+export type Hull = __Infer<typeof Hull>;
+
+export const HullDef = __t.object("HullDef", {
+  hullDefId: __t.string(),
+  name: __t.string(),
+  tier: __t.u8(),
+  hitPoints: __t.u32(),
+  armorFront: __t.f32(),
+  armorSides: __t.f32(),
+  armorBack: __t.f32(),
+  cannonSlots: __t.u8(),
+  speedSquaresPerSecond: __t.f32(),
+  turnDegreesPerSecond: __t.f32(),
+  magazine: __t.u8(),
+  costGold: __t.u32(),
+  mapRankRequired: __t.u8(),
+});
+export type HullDef = __Infer<typeof HullDef>;
+
 export const Inventory = __t.object("Inventory", {
   inventoryId: __t.u64(),
   shipEntityId: __t.u64(),
@@ -198,12 +244,6 @@ export const Inventory = __t.object("Inventory", {
   quantity: __t.u32(),
 });
 export type Inventory = __Infer<typeof Inventory>;
-
-export const LevelDefinition = __t.object("LevelDefinition", {
-  level: __t.u32(),
-  requiredExperience: __t.u64(),
-});
-export type LevelDefinition = __Infer<typeof LevelDefinition>;
 
 export const Loot = __t.object("Loot", {
   lootId: __t.u64(),
@@ -224,6 +264,23 @@ export const LootExpiryTimer = __t.object("LootExpiryTimer", {
   scheduledAt: __t.scheduleAt(),
 });
 export type LootExpiryTimer = __Infer<typeof LootExpiryTimer>;
+
+export const MapDef = __t.object("MapDef", {
+  mapId: __t.u8(),
+  code: __t.string(),
+  name: __t.string(),
+  biome: __t.string(),
+  mapRank: __t.u8(),
+  width: __t.u8(),
+  height: __t.u8(),
+  pvpMode: __t.string(),
+  materialId: __t.string(),
+  portName: __t.string(),
+  portX: __t.f32(),
+  portY: __t.f32(),
+  portRadius: __t.f32(),
+});
+export type MapDef = __Infer<typeof MapDef>;
 
 export const MovementShardState = __t.object("MovementShardState", {
   shardId: __t.u8(),
@@ -280,7 +337,6 @@ export type NavigationFieldState = __Infer<typeof NavigationFieldState>;
 
 export const NpcAi = __t.object("NpcAi", {
   shipEntityId: __t.u64(),
-  archetypeId: __t.string(),
   isActive: __t.bool(),
   decisionShard: __t.u8(),
   nextDecisionTick: __t.u64(),
@@ -288,9 +344,14 @@ export const NpcAi = __t.object("NpcAi", {
 });
 export type NpcAi = __Infer<typeof NpcAi>;
 
-export const NpcDefinition = __t.object("NpcDefinition", {
+export const NpcDef = __t.object("NpcDef", {
   npcId: __t.string(),
   archetypeCode: __t.u8(),
+  name: __t.string(),
+  tier: __t.u8(),
+  mapId: __t.u8(),
+  family: __t.string(),
+  behavior: __t.string(),
   aggroRange: __t.f32(),
   desiredRange: __t.f32(),
   maximumSpeed: __t.f32(),
@@ -301,7 +362,7 @@ export const NpcDefinition = __t.object("NpcDefinition", {
   goldReward: __t.u32(),
   experienceReward: __t.u64(),
 });
-export type NpcDefinition = __Infer<typeof NpcDefinition>;
+export type NpcDef = __Infer<typeof NpcDef>;
 
 export const NpcTimer = __t.object("NpcTimer", {
   scheduledId: __t.u64(),
@@ -309,6 +370,12 @@ export const NpcTimer = __t.object("NpcTimer", {
   shardId: __t.u8(),
 });
 export type NpcTimer = __Infer<typeof NpcTimer>;
+
+export const PlayerAccount = __t.object("PlayerAccount", {
+  owner: __t.identity(),
+  accountId: __t.string(),
+});
+export type PlayerAccount = __Infer<typeof PlayerAccount>;
 
 export const PlayerClock = __t.object("PlayerClock", {
   owner: __t.identity(),
@@ -335,8 +402,7 @@ export type PlayerOwnership = __Infer<typeof PlayerOwnership>;
 
 export const PlayerProgression = __t.object("PlayerProgression", {
   owner: __t.identity(),
-  level: __t.u32(),
-  experience: __t.u64(),
+  mapRank: __t.u8(),
   gold: __t.u32(),
 });
 export type PlayerProgression = __Infer<typeof PlayerProgression>;
@@ -353,6 +419,15 @@ export const RespawnWork = __t.object("RespawnWork", {
   respawnAtTick: __t.u64(),
 });
 export type RespawnWork = __Infer<typeof RespawnWork>;
+
+export const Sector = __t.object("Sector", {
+  sectorId: __t.u64(),
+  mapId: __t.u8(),
+  x: __t.u8(),
+  y: __t.u8(),
+  terrainCode: __t.u8(),
+});
+export type Sector = __Infer<typeof Sector>;
 
 export const SelectTargetCommand = __t.object("SelectTargetCommand", {
   entityId: __t.u64(),
@@ -518,6 +593,27 @@ export const ShipMovement = __t.object("ShipMovement", {
 });
 export type ShipMovement = __Infer<typeof ShipMovement>;
 
+export const ShipStats = __t.object("ShipStats", {
+  hullId: __t.u64(),
+  owner: __t.identity(),
+  volleyDamage: __t.u32(),
+  reloadMilliseconds: __t.u32(),
+  magazine: __t.u8(),
+  maxHitPoints: __t.u32(),
+  armorFront: __t.f32(),
+  armorSides: __t.f32(),
+  armorBack: __t.f32(),
+  speedSquaresPerSecond: __t.f32(),
+  turnDegreesPerSecond: __t.f32(),
+  rangeSquares: __t.u8(),
+  repairAmount: __t.f32(),
+  repairChannelMilliseconds: __t.u32(),
+  combatPowerUsed: __t.f32(),
+  combatPowerInactive: __t.f32(),
+  fightScore: __t.f32(),
+});
+export type ShipStats = __Infer<typeof ShipStats>;
+
 export const ShipStatus = __t.object("ShipStatus", {
   statusId: __t.u64(),
   shipEntityId: __t.u64(),
@@ -576,6 +672,46 @@ export type StartBoardingCommand = __Infer<typeof StartBoardingCommand>;
 
 export const StartRepairCommand = __t.object("StartRepairCommand", {});
 export type StartRepairCommand = __Infer<typeof StartRepairCommand>;
+
+export const StatCaps = __t.object("StatCaps", {
+  id: __t.u8(),
+  damageBonusCap: __t.f32(),
+  reloadBonusCap: __t.f32(),
+  magazineBonusCap: __t.u8(),
+  hitPointBonusCap: __t.f32(),
+  armorPointsCap: __t.f32(),
+  armorAbsoluteMax: __t.f32(),
+  speedBonusCap: __t.f32(),
+  turnBonusCap: __t.f32(),
+  rangeBonusCapSquares: __t.u8(),
+  repairAmountBonusCap: __t.f32(),
+  repairChannelBonusCap: __t.f32(),
+  cannonSlotBonusCap: __t.u8(),
+  combatPowerBudget: __t.f32(),
+  combatPowerArmorWeight: __t.f32(),
+  reloadFloorSeconds: __t.f32(),
+  fireMinIntervalSeconds: __t.f32(),
+  magazineRefillIdleSeconds: __t.f32(),
+  burnPerSecond: __t.f32(),
+  burnDurationSeconds: __t.f32(),
+  burnHealMultiplier: __t.f32(),
+  repairBaseAmount: __t.f32(),
+  repairChannelSeconds: __t.f32(),
+  repairCooldownSeconds: __t.f32(),
+  repairFatigue: __t.f32(),
+  repairFatigueWindowSeconds: __t.f32(),
+  repairCancelThreshold: __t.f32(),
+  kitHealAmount: __t.f32(),
+  kitCooldownSeconds: __t.f32(),
+  respawnSeconds: __t.f32(),
+  spawnShieldSeconds: __t.f32(),
+  npcHitPointMultipliers: __t.array(__t.f32()),
+  npcDpsMultipliers: __t.array(__t.f32()),
+  npcArmorByTier: __t.array(__t.f32()),
+  goldBase: __t.u32(),
+  goldGrowth: __t.f32(),
+});
+export type StatCaps = __Infer<typeof StatCaps>;
 
 export const StatusTimer = __t.object("StatusTimer", {
   scheduledId: __t.u64(),

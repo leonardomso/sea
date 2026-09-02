@@ -93,8 +93,9 @@ Sub-phases:
 - Add `Hull`, `ShipStats`, and `RecomputeStats`. Add then cap, per-stat caps,
   Combat Power budget. With one hull and one cannon every stat equals base,
   which is the point: the pipeline is real before gear exists.
-- `PlayerProgression` gains `MapRank` and `AccountId`. `Level` and `Experience` go.
-  `LevelDefinition` goes.
+- `PlayerProgression` gains `MapRank`; a private `PlayerAccount` row holds
+  `AccountId` so it never reaches other clients. `Level` and `Experience` go
+  (done in 1a; encounter XP pools are removed in 1b). `LevelDefinition` goes.
 - Tests: property tests that add-then-cap never exceeds a cap; Math section
   12.1, 12.2, 12.4, and 12.5 as unit tests over the content tables; content
   validation tests for every JSON file; replay hash unchanged for a
@@ -158,10 +159,13 @@ Sub-phases:
 
 - Default bindings from Mechanics section 1.1: left click sails or selects, Q
   and Space fire, holding fires when ready, Tab nearest enemy, Esc clears, R
-  repair, 1 to 4 ammo, WASD manual steering, Shift full speed. E, F, Z X C V,
+  repair, 1 to 4 ammo. WASD and middle-mouse drag pan the camera; there is no
+  manual steering and no full-speed key. E, F, Z X C V,
   P stay bound and show "not available yet". Rebinding stays.
-- Camera follows the ship. Middle mouse drag pans, wheel zooms, Space
-  recenter goes because Space fires.
+- Camera follows the ship. WASD or middle mouse drag pans; the camera eases
+  back onto the ship after about three seconds without pan input and recenters
+  on respawn or map change. Wheel zooms. Space recenter goes because Space
+  fires.
 - HUD from Mechanics section 1.2: HP bar, magazine dots, reload bar, repair
   cooldown, wind arrow, target frame with name and HP, cast-off bar, respawn
   countdown. Broadside bars, aim rail, and ability rail go. Ruler shows
@@ -230,10 +234,12 @@ Approved 2026-09-02. Milestone 1 assumes all of them.
 
 1. This roadmap replaces the previous plan. Its Phase 18 gates are folded
    into sub-phase 1f. Its Phase 19 is dropped.
-2. Identity stays anonymous and local until Milestone 5. `AccountId` is added
-   in sub-phase 1a so Better Auth attaches later without a schema reset.
-3. WASD is manual steering and the camera follows the ship. Chart pan is
-   middle mouse drag. Space fires, so the recenter binding goes.
+2. Identity stays anonymous and local until Milestone 5. A private
+   `PlayerAccount` table with `AccountId` is added in sub-phase 1a so Better
+   Auth attaches later without a schema reset.
+3. Click-to-sail is the only ship control. WASD and middle mouse drag pan the
+   chart; the camera eases back onto the ship after about three seconds. Space
+   fires, so the recenter binding goes.
 4. Ship to ship collision waits for `Ram` in Milestone 3. Ships pass through
    each other until then.
 5. Content is embedded JSON validated by `Init` and by unit tests.

@@ -15,8 +15,6 @@ namespace SpacetimeDB.Types
     {
         [DataMember(Name = "ship_entity_id")]
         public ulong ShipEntityId;
-        [DataMember(Name = "archetype_id")]
-        public string ArchetypeId;
         [DataMember(Name = "is_active")]
         public bool IsActive;
         [DataMember(Name = "decision_shard")]
@@ -28,7 +26,6 @@ namespace SpacetimeDB.Types
 
         public NpcAi(
             ulong ShipEntityId,
-            string ArchetypeId,
             bool IsActive,
             byte DecisionShard,
             ulong NextDecisionTick,
@@ -36,7 +33,6 @@ namespace SpacetimeDB.Types
         )
         {
             this.ShipEntityId = ShipEntityId;
-            this.ArchetypeId = ArchetypeId;
             this.IsActive = IsActive;
             this.DecisionShard = DecisionShard;
             this.NextDecisionTick = NextDecisionTick;
@@ -45,7 +41,6 @@ namespace SpacetimeDB.Types
 
         public NpcAi()
         {
-            this.ArchetypeId = "";
         }
     }
 }

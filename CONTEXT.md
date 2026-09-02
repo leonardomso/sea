@@ -18,10 +18,10 @@ A contributor is eligible when its score is at least 5 percent of the encounter'
 
 An NPC definition supplies one gold pool and one experience pool. At encounter closure, 30 percent of each pool is divided equally among eligible contributors and 70 percent is divided in proportion to contribution. Integer remainders go by contribution rank, then ship entity ID. Settlement always conserves the configured pools and can be replayed without paying twice.
 
-Damage and successful boarding still grant their immediate activity XP. The NPC's configured kill XP and gold are paid only by encounter settlement. Sail-over salvage is a separate small pickup bonus and does not duplicate the encounter gold pool.
+Damage and successful boarding still grant their immediate activity XP. The NPC's configured kill XP and gold are paid only by encounter settlement. Sail-over salvage is a separate small pickup bonus and does not duplicate the encounter gold pool. Experience pools are still computed and written to reward rows; they are not stored on the player and are removed in sub-phase 1b.
 
 Persisted reward rows are reconnect-safe history. Owner-filtered reward events provide immediate HUD feedback.
 
 ## Progression grant
 
-Every progression source uses the same pure grant rule. Experience and gold saturate at their storage limits, and level is recalculated from version-controlled level definitions. Database systems do not implement their own level loops.
+Every progression source uses the same pure grant rule. Gold saturates at its storage limit. There are no character levels; a player's `MapRank` (1 to 10) gates which map they may sail and is raised by map progression, not by XP.

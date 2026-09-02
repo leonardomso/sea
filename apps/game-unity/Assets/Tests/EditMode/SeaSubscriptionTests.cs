@@ -1,7 +1,14 @@
 #if UNITY_EDITOR
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Sea.Client;
+using SpacetimeDB.Types;
 
 namespace Sea.Tests
 {
@@ -134,6 +141,77 @@ namespace Sea.Tests
             Assert.That(interest.TryTakeDue(0.14d, out _), Is.False);
             Assert.That(interest.TryTakeDue(0.15d, out var retried), Is.True);
             Assert.That(retried, Is.EqualTo(requested));
+        }
+
+        // The generator is the only source of table names, so the plan is checked against
+        // the bindings rather than against a hand-maintained list of query strings.
+        [Test]
+        public void Every_subscribed_table_exists_in_the_generated_bindings()
+        {
+            var generated = GeneratedTableNames();
+            Assert.That(generated, Does.Contain("world_state"));
+
+            var subscribed = SubscribedTableNames();
+            Assert.That(subscribed, Is.Not.Empty);
+            Assert.That(subscribed, Does.Contain("command_result_event"));
+            Assert.That(subscribed, Does.Contain("world_object"));
+
+            var missing = subscribed.Where(name => !generated.Contains(name)).ToArray();
+            Assert.That(
+                missing,
+                Is.Empty,
+                "Subscription plan queries tables the generated bindings do not define: "
+                    + string.Join(", ", missing));
+        }
+
+        private static SortedSet<string> SubscribedTableNames()
+        {
+            var queries = new List<string>();
+            queries.AddRange(SeaSubscriptionPlan.Initial("0xabc123"));
+            queries.AddRange(SeaSubscriptionPlan.Player(42));
+            queries.AddRange(SeaSubscriptionPlan.Focus(localShipEntityId: 7, targetEntityId: 42));
+            queries.AddRange(SeaSubscriptionPlan.Spatial(chunkX: 4, chunkY: 2, radius: 1));
+
+            var names = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (Match match in Regex.Matches(string.Join("\n", queries), @"FROM\s+([a-z_][a-z0-9_]*)"))
+            {
+                names.Add(match.Groups[1].Value);
+            }
+
+            return names;
+        }
+
+        private static SortedSet<string> GeneratedTableNames()
+        {
+            var names = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (var field in typeof(RemoteTables).GetFields(
+                BindingFlags.Public | BindingFlags.Instance))
+            {
+                var typeName = field.FieldType.Name;
+                if (typeName.EndsWith("Handle", StringComparison.Ordinal))
+                {
+                    names.Add(SnakeCase(typeName.Substring(0, typeName.Length - "Handle".Length)));
+                }
+            }
+
+            return names;
+        }
+
+        private static string SnakeCase(string pascalCase)
+        {
+            var builder = new StringBuilder(pascalCase.Length + 4);
+            for (var index = 0; index < pascalCase.Length; index++)
+            {
+                var character = pascalCase[index];
+                if (char.IsUpper(character) && index > 0)
+                {
+                    builder.Append('_');
+                }
+
+                builder.Append(char.ToLower(character, CultureInfo.InvariantCulture));
+            }
+
+            return builder.ToString();
         }
 
         [Test]
