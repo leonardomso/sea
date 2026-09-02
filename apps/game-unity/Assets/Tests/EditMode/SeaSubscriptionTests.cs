@@ -91,6 +91,17 @@ namespace Sea.Tests
         }
 
         [Test]
+        public void Spatial_subscription_radius_covers_the_default_chart_view()
+        {
+            const float widescreenAspect = 16f / 9f;
+            var viewHalfWidth = SeaChartCameraRules.DefaultZoom * widescreenAspect;
+            var guaranteedHalfWidth =
+                SeaSubscriptionPlan.SpatialRadius * SeaSubscriptionPlan.ChunkSize;
+
+            Assert.That(guaranteedHalfWidth, Is.GreaterThanOrEqualTo(viewHalfWidth));
+        }
+
+        [Test]
         public void Only_the_latest_subscription_generation_can_apply()
         {
             var generations = new SeaSubscriptionGeneration();

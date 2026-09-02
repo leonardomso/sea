@@ -38,6 +38,7 @@ namespace Sea.Client
 
     public static class SeaChartCameraRules
     {
+        public const float DefaultZoom = 45f;
         public const float MinimumZoom = 20f;
         public const float MaximumZoom = 80f;
 
@@ -118,7 +119,7 @@ namespace Sea.Client
 
             if (panInput.sqrMagnitude > 0f)
             {
-                var zoomScale = chartCamera.orthographicSize / 45f;
+                var zoomScale = chartCamera.orthographicSize / SeaChartCameraRules.DefaultZoom;
                 chartCamera.transform.position += SeaChartCameraRules.PanDelta(
                     panInput.x,
                     panInput.y,

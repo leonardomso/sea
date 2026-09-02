@@ -89,7 +89,7 @@ namespace Sea.Client
                     generation,
                     chunk,
                     error))
-                .Subscribe(SeaSubscriptionPlan.Spatial(chunk.X, chunk.Y, radius: 1).ToArray());
+                .Subscribe(SeaSubscriptionPlan.Spatial(chunk.X, chunk.Y, SeaSubscriptionPlan.SpatialRadius).ToArray());
             pendingSpatialSubscription = next;
         }
 

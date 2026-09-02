@@ -6,6 +6,12 @@ namespace Sea.Client
 {
     public static class SeaSubscriptionPlan
     {
+        // Mirrors the server SpatialRules.ChunkSize until the world contract module owns it.
+        public const float ChunkSize = 25f;
+
+        // 9x9 chunks (225 units) keep the default 160x90 chart view inside the window.
+        public const int SpatialRadius = 4;
+
         public static IReadOnlyList<string> Initial(string ownerSqlLiteral)
         {
             if (string.IsNullOrWhiteSpace(ownerSqlLiteral))
