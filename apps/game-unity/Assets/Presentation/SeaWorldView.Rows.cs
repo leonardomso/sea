@@ -200,8 +200,7 @@ namespace Sea.Client
                 var relevant = ship.EntityId == playerEntityId ||
                     ship.EntityId == localShip?.TargetEntityId ||
                     relevantEndpointIds.Contains(ship.EntityId);
-                var level = SeaPresentationRules.LevelFor(distance, relevant);
-                if (level == SeaPresentationLevel.Hidden)
+                if (!SeaPresentationRules.IsVisible(distance, relevant))
                 {
                     continue;
                 }
@@ -209,8 +208,7 @@ namespace Sea.Client
                 visibilityCandidates.Add(new SeaVisibilityCandidate(
                     ship.EntityId,
                     distance,
-                    relevant ? 0 : 1,
-                    level));
+                    relevant ? 0 : 1));
             }
 
             visibilityCandidates.Sort(SeaVisibilityCandidateComparer.Instance);
@@ -274,7 +272,6 @@ namespace Sea.Client
                         ? latestMovement.Speed
                         : ship.Speed,
                     ship.MaximumSpeed,
-                    candidate.Level,
                     ship.FactionCode,
                     ship.ArchetypeCode);
             }
@@ -336,19 +333,16 @@ namespace Sea.Client
             public SeaVisibilityCandidate(
                 ulong entityId,
                 float distance,
-                int priority,
-                SeaPresentationLevel level)
+                int priority)
             {
                 EntityId = entityId;
                 Distance = distance;
                 Priority = priority;
-                Level = level;
             }
 
             public ulong EntityId { get; }
             public float Distance { get; }
             public int Priority { get; }
-            public SeaPresentationLevel Level { get; }
         }
 
         private sealed class SeaVisibilityCandidateComparer : IComparer<SeaVisibilityCandidate>

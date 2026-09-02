@@ -73,19 +73,8 @@ namespace Sea.Client
             Destroy(health.GetComponent<Collider>());
             health.transform.localPosition = new Vector3(0f, modelTop.y + 0.6f, 0f);
 
-            var medium = SeaShipVisualFactory.CreateMediumLod(
-                "Medium Ship LOD",
-                ShipFootprint,
-                material);
-            medium.transform.SetParent(ship.transform, false);
-            var silhouette = SeaShipVisualFactory.CreateDistantLod(
-                "Distant Ship LOD",
-                ShipFootprint,
-                silhouetteMaterial);
-            silhouette.transform.SetParent(ship.transform, false);
-
             var presentation = ship.AddComponent<SeaShipPresentation>();
-            presentation.Configure(visual, medium, feedback, health.transform, silhouette);
+            presentation.Configure(visual, feedback, health.transform);
             return ship;
         }
 

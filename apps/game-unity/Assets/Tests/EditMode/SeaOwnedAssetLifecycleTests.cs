@@ -48,31 +48,21 @@ namespace Sea.Tests
         }
 
         [Test]
-        public void Owned_ship_model_and_procedural_lods_share_scale_and_forward_axis()
+        public void Owned_ship_model_is_scaled_to_the_requested_footprint()
         {
             var catalog = SeaOwnedAssetEditorLifecycle.EnsureCatalog();
             var modelPath = AssetDatabase.GUIDToAssetPath(
                 catalog.Require(SeaOwnedAssetSlots.PlayerShip).AssetGuid);
             var model = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
-            var near = SeaShipVisualFactory.Create(
+            var ship = SeaShipVisualFactory.Create(
                 model,
-                "Near LOD",
+                "Apricum",
                 targetFootprint: 10f,
                 modelYawOffsetDegrees: 270f);
-            var medium = SeaShipVisualFactory.CreateMediumLod("Medium LOD", 10f);
-            var distant = SeaShipVisualFactory.CreateDistantLod("Distant LOD", 10f);
 
-            AssertFootprint(near, 10f);
-            AssertFootprint(medium, 10f);
-            AssertFootprint(distant, 10f);
-            Assert.That(Vector3.Dot(near.transform.forward, medium.transform.forward),
-                Is.GreaterThan(0.999f));
-            Assert.That(Vector3.Dot(near.transform.forward, distant.transform.forward),
-                Is.GreaterThan(0.999f));
+            AssertFootprint(ship, 10f);
 
-            Object.DestroyImmediate(near);
-            Object.DestroyImmediate(medium);
-            Object.DestroyImmediate(distant);
+            Object.DestroyImmediate(ship);
         }
 
         [Test]

@@ -18,115 +18,115 @@ MonoBehaviour:
     fallback: 0
     reference:
       m_AssetGUID: 054a4a3c81be348078b868e0f7b9c1ce
-      m_SubObjectName:
-      m_SubObjectType:
-      m_SubObjectGUID:
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
       m_EditorAssetChanged: 0
   - slotId: ship.patrol
     required: 1
     fallback: 0
     reference:
       m_AssetGUID: 054a4a3c81be348078b868e0f7b9c1ce
-      m_SubObjectName:
-      m_SubObjectType:
-      m_SubObjectGUID:
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
       m_EditorAssetChanged: 0
   - slotId: ship.raider
     required: 1
     fallback: 0
     reference:
       m_AssetGUID: 054a4a3c81be348078b868e0f7b9c1ce
-      m_SubObjectName:
-      m_SubObjectType:
-      m_SubObjectGUID:
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
       m_EditorAssetChanged: 0
   - slotId: ship.gunship
     required: 1
     fallback: 0
     reference:
       m_AssetGUID: 054a4a3c81be348078b868e0f7b9c1ce
-      m_SubObjectName:
-      m_SubObjectType:
-      m_SubObjectGUID:
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
       m_EditorAssetChanged: 0
   - slotId: ship.material
     required: 1
     fallback: 0
     reference:
       m_AssetGUID: 3557a9baba3ac4e5d8846cd54f3c3398
-      m_SubObjectName:
-      m_SubObjectType:
-      m_SubObjectGUID:
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
       m_EditorAssetChanged: 0
   - slotId: world.island
     required: 0
     fallback: 1
     reference:
-      m_AssetGUID:
-      m_SubObjectName:
-      m_SubObjectType:
-      m_SubObjectGUID:
+      m_AssetGUID: 
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
       m_EditorAssetChanged: 0
   - slotId: world.reef
     required: 0
     fallback: 1
     reference:
-      m_AssetGUID:
-      m_SubObjectName:
-      m_SubObjectType:
-      m_SubObjectGUID:
+      m_AssetGUID: 
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
       m_EditorAssetChanged: 0
   - slotId: world.harbor
     required: 0
     fallback: 1
     reference:
-      m_AssetGUID:
-      m_SubObjectName:
-      m_SubObjectType:
-      m_SubObjectGUID:
+      m_AssetGUID: 
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
       m_EditorAssetChanged: 0
   - slotId: world.loot
     required: 0
     fallback: 1
     reference:
-      m_AssetGUID:
-      m_SubObjectName:
-      m_SubObjectType:
-      m_SubObjectGUID:
+      m_AssetGUID: 
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
       m_EditorAssetChanged: 0
   - slotId: combat.projectile
     required: 0
     fallback: 2
     reference:
-      m_AssetGUID:
-      m_SubObjectName:
-      m_SubObjectType:
-      m_SubObjectGUID:
+      m_AssetGUID: 
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
       m_EditorAssetChanged: 0
   - slotId: combat.impact
     required: 0
     fallback: 2
     reference:
-      m_AssetGUID:
-      m_SubObjectName:
-      m_SubObjectType:
-      m_SubObjectGUID:
+      m_AssetGUID: 
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
       m_EditorAssetChanged: 0
   - slotId: ui.icon
     required: 0
     fallback: 3
     reference:
-      m_AssetGUID:
-      m_SubObjectName:
-      m_SubObjectType:
-      m_SubObjectGUID:
+      m_AssetGUID: 
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
       m_EditorAssetChanged: 0
   - slotId: audio.effect
     required: 0
     fallback: 4
     reference:
-      m_AssetGUID:
-      m_SubObjectName:
-      m_SubObjectType:
-      m_SubObjectGUID:
+      m_AssetGUID: 
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
       m_EditorAssetChanged: 0

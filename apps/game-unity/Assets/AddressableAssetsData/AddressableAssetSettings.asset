@@ -15,7 +15,7 @@ MonoBehaviour:
   m_DefaultGroup: d07b5b395df294e51b9c6b85d6b4e3c8
   m_currentHash:
     serializedVersion: 2
-    Hash: 3b5cab7d5d00bc8334493c0366f8e1f1
+    Hash: 00000000000000000000000000000000
   m_DisableWriteTypeTree: 0
   m_OptimizeCatalogSize: 0
   m_BuildRemoteCatalog: 0
@@ -53,15 +53,15 @@ MonoBehaviour:
   mStripUnityVersion: 0
   m_DisableVisibleSubAssetRepresentations: 0
   m_BuiltInBundleNaming: 0
-  mBuiltInBundleCustomNaming:
+  mBuiltInBundleCustomNaming: 
   m_MonoScriptBundleNaming: 0
   m_CheckForContentUpdateRestrictionsOption: 0
-  m_MonoScriptBundleCustomNaming:
+  m_MonoScriptBundleCustomNaming: 
   m_RemoteCatalogBuildPath:
-    m_Id:
+    m_Id: 
   m_RemoteCatalogLoadPath:
-    m_Id:
-  m_ContentStateBuildPathProfileVariableName:
+    m_Id: 
+  m_ContentStateBuildPathProfileVariableName: 
   m_CustomContentStateBuildPath: Build/AddressablesContentState
   m_ContentStateBuildPath: Build/AddressablesContentState
   m_BuildAddressablesWithPlayerBuild: 2
@@ -74,7 +74,7 @@ MonoBehaviour:
     m_BundleBuildPath: Temp/com.unity.addressables/AssetBundles
   m_ProfileSettings:
     m_Profiles:
-    - m_InheritedParent:
+    - m_InheritedParent: 
       m_Id: c305be47c139142a6b6e2f2473e4ed7b
       m_ProfileName: Default
       m_Values:
@@ -114,8 +114,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: ef8e635bae502432f89fa444efd76c22, type: 2}
   m_InitializationObjects: []
   m_CertificateHandlerType:
-    m_AssemblyName:
-    m_ClassName:
+    m_AssemblyName: 
+    m_ClassName: 
   m_ActivePlayerDataBuilderIndex: 3
   m_DataBuilders:
   - {fileID: 11400000, guid: 74bdc1947990f4d6dabaf91fb933eb84, type: 2}

@@ -114,11 +114,11 @@ namespace Sea.Tests
         public void Targeted_and_volley_endpoint_ships_remain_visible_at_distance()
         {
             Assert.That(
-                SeaPresentationRules.LevelFor(distance: 160f, isRelevantEndpoint: true),
-                Is.EqualTo(SeaPresentationLevel.Distant));
+                SeaPresentationRules.IsVisible(distance: 160f, isRelevantEndpoint: true),
+                Is.True);
             Assert.That(
-                SeaPresentationRules.LevelFor(distance: 160f, isRelevantEndpoint: false),
-                Is.EqualTo(SeaPresentationLevel.Hidden));
+                SeaPresentationRules.IsVisible(distance: 160f, isRelevantEndpoint: false),
+                Is.False);
         }
 
         [Test]

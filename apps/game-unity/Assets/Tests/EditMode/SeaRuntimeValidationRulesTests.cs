@@ -109,8 +109,8 @@ namespace Sea.Tests
                     250,
                     center);
                 Assert.That(
-                    SeaPresentationRules.LevelFor(position.magnitude, false),
-                    Is.Not.EqualTo(SeaPresentationLevel.Hidden),
+                    SeaPresentationRules.IsVisible(position.magnitude, false),
+                    Is.True,
                     $"Synthetic ship {index} was outside the presentation radius.");
             }
         }

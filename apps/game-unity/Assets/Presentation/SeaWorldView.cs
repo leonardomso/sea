@@ -58,7 +58,6 @@ namespace Sea.Client
         private Material shoalMaterial;
         private Material stormMaterial;
         private Material healthMaterial;
-        private Material silhouetteMaterial;
         private Material targetMaterial;
         private SeaCombatPresenter combatPresenter;
         private ulong playerEntityId;
@@ -173,7 +172,6 @@ namespace Sea.Client
             stormMaterial = SeaMaterialFactory.CreateTransparent(
                 new Color(0.10f, 0.14f, 0.18f, 0.82f));
             healthMaterial = SeaMaterialFactory.Create(Color.white);
-            silhouetteMaterial = SeaMaterialFactory.Create(Color.white);
             targetMaterial = SeaMaterialFactory.Create(new Color(1f, 0.85f, 0.25f, 1f));
             combatPresenter = new SeaCombatPresenter(cannonballMaterial, combatEffectMaterial);
         }

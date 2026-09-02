@@ -9,19 +9,9 @@ namespace Sea.Client
         WebGL = 2,
     }
 
-    public enum SeaPresentationLevel : byte
-    {
-        Hidden = 0,
-        Distant = 1,
-        Medium = 2,
-        Near = 3,
-    }
-
     public static class SeaPresentationRules
     {
-        public const float NearDistance = 38f;
-        public const float MediumDistance = 76f;
-        public const float DistantDistance = 120f;
+        public const float VisibleDistance = 120f;
 
         public static int VisibleShipLimit(SeaPresentationPlatform platform) => platform switch
         {
@@ -36,26 +26,7 @@ namespace Sea.Client
             _ => SeaPresentationPlatform.Other,
         };
 
-        public static SeaPresentationLevel LevelFor(float distance, bool isRelevantEndpoint)
-        {
-            if (isRelevantEndpoint && distance > DistantDistance)
-            {
-                return SeaPresentationLevel.Distant;
-            }
-
-            if (distance <= NearDistance)
-            {
-                return SeaPresentationLevel.Near;
-            }
-
-            if (distance <= MediumDistance)
-            {
-                return SeaPresentationLevel.Medium;
-            }
-
-            return distance <= DistantDistance
-                ? SeaPresentationLevel.Distant
-                : SeaPresentationLevel.Hidden;
-        }
+        public static bool IsVisible(float distance, bool isRelevantEndpoint) =>
+            isRelevantEndpoint || distance <= VisibleDistance;
     }
 }
