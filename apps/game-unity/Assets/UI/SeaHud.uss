@@ -108,8 +108,8 @@
 .header-tools {
     position: absolute;
     left: 50%;
-    margin-left: -105px;
-    width: 210px;
+    margin-left: -125px;
+    width: 250px;
     height: 36px;
     flex-direction: row;
     align-items: center;
@@ -134,6 +134,11 @@
 .header-tool:hover {
     border-color: var(--bronze-bright);
     color: var(--sailcloth);
+}
+
+.header-tool.selected {
+    border-color: var(--sea-glass);
+    color: var(--sea-glass);
 }
 
 .header-status {

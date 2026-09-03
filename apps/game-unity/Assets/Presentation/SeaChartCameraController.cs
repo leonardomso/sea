@@ -179,10 +179,6 @@ namespace Sea.Client
             {
                 follow.Interrupt();
             }
-            else
-            {
-                follow.Advance(deltaTime);
-            }
 
             if (follow.IsFollowing && hasPlayer)
             {

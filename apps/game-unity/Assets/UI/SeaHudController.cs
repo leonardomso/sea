@@ -26,6 +26,8 @@ namespace Sea.Client
         private TextField coordinateInput;
         private Label coordinateError;
         private Camera chartCamera;
+        private SeaChartCameraController chartCameraController;
+        private bool recenterOffered;
         private readonly Label[] topCoordinateLabels = new Label[9];
         private readonly Label[] leftCoordinateLabels = new Label[7];
 
@@ -83,6 +85,19 @@ namespace Sea.Client
                 {
                     UpdateCoordinateRulers();
                 }
+            }
+
+            OfferRecenter();
+        }
+
+        // The recenter tool lights up only while the camera has been pushed off the ship.
+        private void OfferRecenter()
+        {
+            var offer = chartCameraController != null && !chartCameraController.IsFollowingPlayer;
+            if (offer != recenterOffered)
+            {
+                recenterOffered = offer;
+                SelectButton("recenter-button", offer);
             }
         }
 
@@ -188,6 +203,7 @@ namespace Sea.Client
             coordinateInput = root.Q<TextField>("coordinate-input");
             coordinateError = root.Q<Label>("coordinate-error");
             chartCamera = Camera.main;
+            chartCameraController = GetComponent<SeaChartCameraController>();
             for (var index = 0; index < topCoordinateLabels.Length; index++)
             {
                 topCoordinateLabels[index] = root.Q<Label>($"top-coordinate-{index}");
@@ -198,6 +214,7 @@ namespace Sea.Client
                 leftCoordinateLabels[index] = root.Q<Label>($"left-coordinate-{index}");
             }
 
+            HookButton("recenter-button", () => chartCameraController?.Recenter());
             HookButton("navigator-button", OpenCoordinateNavigator);
             HookButton("menu-button", () => input?.SetMenuOpen(true));
             HookButton("menu-close", () => input?.SetMenuOpen(false));

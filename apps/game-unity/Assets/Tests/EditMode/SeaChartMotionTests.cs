@@ -92,23 +92,19 @@ namespace Sea.Tests.EditMode
         }
 
         [Test]
-        public void Chart_follow_eases_back_after_three_idle_seconds()
+        public void Chart_follow_stays_detached_until_the_player_asks_for_the_ship()
         {
             var follow = new SeaChartFollowState();
             Assert.That(follow.IsFollowing, Is.True);
 
             follow.Interrupt();
-            follow.Advance(2.9f);
             Assert.That(follow.IsFollowing, Is.False);
-            follow.Advance(0.1f);
-            Assert.That(follow.IsFollowing, Is.True);
+            follow.Interrupt();
+            Assert.That(follow.IsFollowing, Is.False, "Repeated input never re-attaches on its own.");
 
-            follow.Interrupt();
-            follow.Advance(1f);
-            follow.Interrupt();
-            follow.Advance(2.5f);
-            Assert.That(follow.IsFollowing, Is.False, "Fresh input restarts the idle timer.");
-            follow.Advance(0.5f);
+            follow.Resume();
+            Assert.That(follow.IsFollowing, Is.True);
+            follow.Resume();
             Assert.That(follow.IsFollowing, Is.True);
         }
 

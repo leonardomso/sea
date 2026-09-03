@@ -182,16 +182,66 @@ namespace Sea.Tests
         public void Chart_camera_follows_until_manual_pan_and_recenter_restores_follow()
         {
             var cameraObject = new GameObject("Chart Camera");
-            cameraObject.AddComponent<Camera>();
+            var chartCamera = cameraObject.AddComponent<Camera>();
             var controller = cameraObject.AddComponent<SeaChartCameraController>();
+            controller.Configure(chartCamera);
 
             Assert.That(controller.IsFollowingPlayer, Is.True);
             controller.SetPanInput(Vector2.right);
             Assert.That(controller.IsFollowingPlayer, Is.False);
             controller.SetPanInput(Vector2.zero);
-            Assert.That(controller.IsFollowingPlayer, Is.False);
+            Assert.That(controller.IsFollowingPlayer, Is.False, "Releasing WASD leaves the camera where it was pushed.");
             controller.Recenter();
             Assert.That(controller.IsFollowingPlayer, Is.True);
+
+            controller.BeginDrag(Vector2.zero);
+            controller.EndDrag();
+            Assert.That(controller.IsFollowingPlayer, Is.False, "A middle-mouse drag detaches the camera too.");
+            controller.Recenter();
+            Assert.That(controller.IsFollowingPlayer, Is.True);
+
+            controller.ShowChartPosition(new Vector3(20f, 0f, 20f));
+            Assert.That(controller.IsFollowingPlayer, Is.False, "Jumping the chart somewhere detaches it as well.");
+            controller.Recenter();
+            Assert.That(controller.IsFollowingPlayer, Is.True);
+            Object.DestroyImmediate(cameraObject);
+        }
+
+        [Test]
+        public void Chart_zoom_and_drag_keep_the_camera_attached_or_detached_as_the_player_left_it()
+        {
+            var cameraObject = new GameObject("Zooming Chart Camera");
+            var chartCamera = cameraObject.AddComponent<Camera>();
+            chartCamera.orthographic = true;
+            chartCamera.orthographicSize = 45f;
+            cameraObject.transform.position = new Vector3(0f, 70f, -50f);
+            cameraObject.transform.rotation = Quaternion.Euler(55f, 0f, 0f);
+            var controller = cameraObject.AddComponent<SeaChartCameraController>();
+            controller.Configure(chartCamera);
+
+            controller.Zoom(1f);
+            Assert.That(chartCamera.orthographicSize, Is.LessThan(45f), "Scrolling forward zooms in.");
+            Assert.That(controller.IsFollowingPlayer, Is.True, "Zooming never detaches the camera from the ship.");
+            controller.Zoom(-100f);
+            Assert.That(
+                chartCamera.orthographicSize,
+                Is.EqualTo(SeaChartCameraRules.MaximumZoomFor(chartCamera.aspect)).Within(0.001f),
+                "Zooming out stops where the map edge would show.");
+
+            // Zoomed all the way out the footprint spans the map, so zoom back in to leave room to drag.
+            chartCamera.orthographicSize = SeaChartCameraRules.MinimumZoom;
+            controller.BeginDrag(new Vector2(100f, 100f));
+            var before = cameraObject.transform.position.x;
+            controller.DragTo(new Vector2(150f, 100f));
+            Assert.That(cameraObject.transform.position.x, Is.LessThan(before), "Dragging right slides the chart left.");
+            controller.EndDrag();
+            var released = cameraObject.transform.position.x;
+            controller.DragTo(new Vector2(300f, 100f));
+            Assert.That(
+                cameraObject.transform.position.x,
+                Is.EqualTo(released),
+                "Pointer motion after the drag ended does not move the chart.");
+            Assert.That(controller.IsFollowingPlayer, Is.False);
             Object.DestroyImmediate(cameraObject);
         }
 

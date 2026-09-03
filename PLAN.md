@@ -162,10 +162,9 @@ Sub-phases:
   repair, 1 to 4 ammo. WASD and middle-mouse drag pan the camera; there is no
   manual steering and no full-speed key. E, F, Z X C V,
   P stay bound and show "not available yet". Rebinding stays.
-- Camera follows the ship. WASD or middle mouse drag pans; the camera eases
-  back onto the ship after about three seconds without pan input and recenters
-  on respawn or map change. Wheel zooms. Space recenter goes because Space
-  fires.
+- Camera follows the ship. WASD or middle mouse drag pans and the camera stays
+  where it was pushed so the player can scout ahead; Space or the HUD recenter
+  button re-attaches it to the ship. Wheel zooms.
 - HUD from Mechanics section 1.2: HP bar, magazine dots, reload bar, repair
   cooldown, wind arrow, target frame with name and HP, cast-off bar, respawn
   countdown. Broadside bars, aim rail, and ability rail go. Ruler shows
@@ -238,8 +237,8 @@ Approved 2026-09-02. Milestone 1 assumes all of them.
    `PlayerAccount` table with `AccountId` is added in sub-phase 1a so Better
    Auth attaches later without a schema reset.
 3. Click-to-sail is the only ship control. WASD and middle mouse drag pan the
-   chart; the camera eases back onto the ship after about three seconds. Space
-   fires, so the recenter binding goes.
+   chart and the camera stays where it was pushed; Space or the HUD recenter
+   button brings it back onto the ship. Q and E fire.
 4. Ship to ship collision waits for `Ram` in Milestone 3. Ships pass through
    each other until then.
 5. Content is embedded JSON validated by `Init` and by unit tests.

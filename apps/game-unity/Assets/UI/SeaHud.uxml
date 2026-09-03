@@ -13,6 +13,7 @@
             </ui:VisualElement>
 
             <ui:VisualElement class="header-tools">
+                <ui:Button name="recenter-button" text="◎" tooltip="Center on ship (Space)" class="header-tool" />
                 <ui:Button name="navigator-button" text="N" tooltip="Coordinate navigator" class="header-tool" />
                 <ui:Button text="□" tooltip="Quests" class="header-tool" />
                 <ui:Button text="□" tooltip="Inventory" class="header-tool" />
