@@ -6,6 +6,8 @@ namespace Sea.Server.IntegrationTests;
 
 public sealed class SharedRewardIntegrationTests
 {
+    private const byte NoTargetRejection = 11;
+    private const byte TargetSunkRejection = 12;
     private const byte ReloadingRejection = 13;
     private const byte FiringTooFastRejection = 14;
     private const byte OutOfRangeRejection = 15;
@@ -27,12 +29,17 @@ public sealed class SharedRewardIntegrationTests
 
         var centerX = clients.Average(client => client.OwnedShip().PositionX);
         var centerY = clients.Average(client => client.OwnedShip().PositionY);
-        var targetId = first.ClosestNpcTo(3, centerX, centerY).EntityId;
+        var targetId = first.ClosestUntouchedNpcTo(3, centerX, centerY).EntityId;
         MoveIntoRange(clients, targetId);
 
         foreach (var client in clients)
         {
-            Assert.True(client.SelectTarget(targetId).Accepted);
+            var selection = client.SelectTarget(targetId);
+            Assert.True(
+                selection.Accepted,
+                $"Target selection rejected with {selection.RejectionCode}; the target is " +
+                $"hull {client.Npc(targetId).Hull}/{client.Npc(targetId).MaxHull}, " +
+                $"alive {client.Npc(targetId).IsAlive}.");
             FireWhenLegal(client, clients, targetId);
         }
 
@@ -40,10 +47,7 @@ public sealed class SharedRewardIntegrationTests
         var disconnectedShipId = fourth.OwnedShip().EntityId;
         fourth.Dispose();
         clients = [first, second, third];
-        if (first.Npc(targetId).IsAlive)
-        {
-            FireWhenLegal(first, clients, targetId);
-        }
+        FinishOff(first, clients, targetId);
         PumpUntil(clients, () => !first.Npc(targetId).IsAlive);
         using var reconnectedFourth = IntegrationClient.Connect(disconnectedToken);
         reconnectedFourth.LoadPlayer();
@@ -137,6 +141,42 @@ public sealed class SharedRewardIntegrationTests
         return false;
     }
 
+    /// <summary>
+    /// Keeps the last shooter firing until the target is gone. The fat <c>ship</c> row the test
+    /// reads only republishes on a chunk change or a stop, so "still alive" can be a stale
+    /// answer; the module's own rejection is the authority on a target that has already sunk.
+    /// </summary>
+    private static void FinishOff(
+        IntegrationClient client,
+        IReadOnlyCollection<IntegrationClient> clients,
+        ulong targetId)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        while (client.Npc(targetId).IsAlive)
+        {
+            var fire = client.Fire();
+            if (fire.RejectionCode is NoTargetRejection or TargetSunkRejection)
+            {
+                return;
+            }
+
+            if (!fire.Accepted)
+            {
+                Assert.True(
+                    fire.RejectionCode is ReloadingRejection or FiringTooFastRejection
+                        or OutOfRangeRejection,
+                    $"Unexpected fire rejection {fire.RejectionCode}.");
+                if (fire.RejectionCode == OutOfRangeRejection)
+                {
+                    Approach(client, client.Npc(targetId));
+                }
+            }
+
+            PumpFor(clients, TimeSpan.FromMilliseconds(150));
+            ThrowIfTimedOut(stopwatch);
+        }
+    }
+
     private static void FireWhenLegal(
         IntegrationClient client,
         IReadOnlyCollection<IntegrationClient> clients,
@@ -162,7 +202,11 @@ public sealed class SharedRewardIntegrationTests
             // rejection that is not the reload is the target sitting too far away.
             Assert.True(
                 fire.RejectionCode == OutOfRangeRejection,
-                $"Unexpected fire rejection {fire.RejectionCode}.");
+                $"Unexpected fire rejection {fire.RejectionCode}; shooter hull " +
+                $"{client.OwnedShip().Hull}/{client.OwnedShip().MaxHull} mode " +
+                $"{client.OwnedShip().ModeCode} target {client.OwnedShip().TargetEntityId}; " +
+                $"target hull {client.Npc(targetId).Hull}/{client.Npc(targetId).MaxHull} " +
+                $"alive {client.Npc(targetId).IsAlive}.");
             Approach(client, client.Npc(targetId));
             PumpFor(clients, TimeSpan.FromMilliseconds(150));
             ThrowIfTimedOut(stopwatch);

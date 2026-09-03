@@ -253,6 +253,22 @@ internal sealed class IntegrationClient : IDisposable
         .First();
 
     /// <summary>
+    /// The nearest hostile of an archetype that nothing has shot at yet. A test that counts
+    /// volleys has to start from a full hull, or a target another test left half sunk ends the
+    /// encounter before every participant has fired.
+    /// </summary>
+    public Ship ClosestUntouchedNpcTo(byte archetypeCode, float x, float y) =>
+        connection.Db.Ship.Iter()
+            .Where(ship =>
+                ship.FactionCode == 2 &&
+                ship.ArchetypeCode == archetypeCode &&
+                ship.IsActive &&
+                ship.IsAlive &&
+                ship.Hull == ship.MaxHull)
+            .OrderBy(ship => DistanceSquared(ship.PositionX, ship.PositionY, x, y))
+            .First();
+
+    /// <summary>
     /// The nearest hostile still afloat, whatever it is. A test that has to keep shooting past
     /// the moment its first target sinks needs a target it can pick up without caring which
     /// archetype answers.

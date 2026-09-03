@@ -11,8 +11,8 @@
       "aggroRangeSquares": 0,
       "desiredRangeSquares": 3.6,
       "maximumSpeedSquares": 2.0,
-      "hull": 100,
-      "cannonDamage": 18,
+      "hull": 360,
+      "cannonDamage": 45,
       "preferredAmmunition": "Round",
       "goldReward": 80,
       "experienceReward": 100
@@ -28,8 +28,8 @@
       "aggroRangeSquares": 4.0,
       "desiredRangeSquares": 1.8,
       "maximumSpeedSquares": 2.6,
-      "hull": 90,
-      "cannonDamage": 20,
+      "hull": 440,
+      "cannonDamage": 65,
       "preferredAmmunition": "Chain",
       "goldReward": 100,
       "experienceReward": 125
@@ -45,8 +45,8 @@
       "aggroRangeSquares": 4.0,
       "desiredRangeSquares": 6.0,
       "maximumSpeedSquares": 1.8,
-      "hull": 130,
-      "cannonDamage": 28,
+      "hull": 600,
+      "cannonDamage": 95,
       "preferredAmmunition": "Incendiary",
       "goldReward": 140,
       "experienceReward": 175
