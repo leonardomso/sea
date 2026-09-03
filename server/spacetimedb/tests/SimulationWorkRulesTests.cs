@@ -56,21 +56,6 @@ public sealed class SimulationWorkRulesTests
     }
 
     [Fact]
-    public void MovementShardsMapEvenlyOntoHazardShards()
-    {
-        for (byte hazardShard = 0;
-             hazardShard < SimulationWorkRules.HazardShardCount;
-             hazardShard++)
-        {
-            Assert.Equal(
-                SimulationWorkRules.MovementShardCount /
-                    SimulationWorkRules.HazardShardCount,
-                Enumerable.Range(0, SimulationWorkRules.MovementShardCount)
-                    .Count(shard => SimulationWorkRules.HazardShard((byte)shard) == hazardShard));
-        }
-    }
-
-    [Fact]
     public void DispatcherRunsOneWorldTickPerIntervalWhilePlayersAreConnected()
     {
         Assert.Equal(

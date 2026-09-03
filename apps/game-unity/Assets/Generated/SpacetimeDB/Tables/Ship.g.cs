@@ -26,15 +26,6 @@ namespace SpacetimeDB.Types
 
             public readonly EntityIdUniqueIndex EntityId;
 
-            public sealed class ByEnvironmentExposureHazardShardIndex : BTreeIndexBase<(byte EnvironmentExposureCode, byte HazardShard)>
-            {
-                protected override (byte EnvironmentExposureCode, byte HazardShard) GetKey(Ship row) => (row.EnvironmentExposureCode, row.HazardShard);
-
-                public ByEnvironmentExposureHazardShardIndex(ShipHandle table) : base(table) { }
-            }
-
-            public readonly ByEnvironmentExposureHazardShardIndex ByEnvironmentExposureHazardShard;
-
             public sealed class ByEnvironmentExposureIndex : BTreeIndexBase<byte>
             {
                 protected override byte GetKey(Ship row) => row.EnvironmentExposureCode;
@@ -101,7 +92,6 @@ namespace SpacetimeDB.Types
             internal ShipHandle(DbConnection conn) : base(conn)
             {
                 EntityId = new(this);
-                ByEnvironmentExposureHazardShard = new(this);
                 ByEnvironmentExposure = new(this);
                 ByActiveChunk = new(this);
                 ByActiveChunkShard = new(this);
@@ -139,7 +129,6 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Ship, bool> IsStopping { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsMoving { get; }
         public global::SpacetimeDB.Col<Ship, byte> MovementShard { get; }
-        public global::SpacetimeDB.Col<Ship, byte> HazardShard { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsActive { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsAlive { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsEngaged { get; }
@@ -191,7 +180,6 @@ namespace SpacetimeDB.Types
             IsStopping = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_stopping");
             IsMoving = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_moving");
             MovementShard = new global::SpacetimeDB.Col<Ship, byte>(tableName, "movement_shard");
-            HazardShard = new global::SpacetimeDB.Col<Ship, byte>(tableName, "hazard_shard");
             IsActive = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_active");
             IsAlive = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_alive");
             IsEngaged = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_engaged");
@@ -228,7 +216,6 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.IxCol<Ship, ulong> EntityId { get; }
         public global::SpacetimeDB.IxCol<Ship, bool> IsMoving { get; }
         public global::SpacetimeDB.IxCol<Ship, byte> MovementShard { get; }
-        public global::SpacetimeDB.IxCol<Ship, byte> HazardShard { get; }
         public global::SpacetimeDB.IxCol<Ship, bool> IsActive { get; }
         public global::SpacetimeDB.IxCol<Ship, byte> EnvironmentExposureCode { get; }
         public global::SpacetimeDB.IxCol<Ship, int> ChunkX { get; }
@@ -240,7 +227,6 @@ namespace SpacetimeDB.Types
             EntityId = new global::SpacetimeDB.IxCol<Ship, ulong>(tableName, "entity_id");
             IsMoving = new global::SpacetimeDB.IxCol<Ship, bool>(tableName, "is_moving");
             MovementShard = new global::SpacetimeDB.IxCol<Ship, byte>(tableName, "movement_shard");
-            HazardShard = new global::SpacetimeDB.IxCol<Ship, byte>(tableName, "hazard_shard");
             IsActive = new global::SpacetimeDB.IxCol<Ship, bool>(tableName, "is_active");
             EnvironmentExposureCode = new global::SpacetimeDB.IxCol<Ship, byte>(tableName, "environment_exposure_code");
             ChunkX = new global::SpacetimeDB.IxCol<Ship, int>(tableName, "chunk_x");

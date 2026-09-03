@@ -49,13 +49,6 @@ public static partial class Module
             tick,
             hasActiveLoot);
 
-        // Ships that stopped were published while compacting; the rest publish here so
-        // every client sees the tick's kinematics in the same transaction they were made.
-        foreach (var ship in shard.Ships)
-        {
-            WriteMovementSnapshot(ctx, ship, tick);
-        }
-
         shard.LastSimulatedTick = tick;
         ctx.Db.MovementShardState.ShardId.Update(shard);
         return processed;
@@ -76,6 +69,8 @@ public static partial class Module
         for (var readIndex = 0; readIndex < ships.Count; readIndex++)
         {
             var ship = ships[readIndex];
+            var chunkX = ship.ChunkX;
+            var chunkY = ship.ChunkY;
             for (var tick = firstTick; tick <= lastTick; tick++)
             {
                 processed++;
@@ -94,13 +89,16 @@ public static partial class Module
 
             }
 
+            // Every ship publishes in the transaction that moved it, so clients see the
+            // tick's kinematics together; ships that stopped drop out of the shard.
+            PublishMovement(
+                ctx,
+                ship,
+                lastTick,
+                ship.ChunkX != chunkX || ship.ChunkY != chunkY);
             if (ship.IsMoving)
             {
                 ships[writeIndex++] = ship;
-            }
-            if (!ship.IsMoving)
-            {
-                WriteMovementSnapshot(ctx, ship, lastTick);
             }
         }
 

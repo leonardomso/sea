@@ -10,9 +10,6 @@ public static partial class Module
     [SpacetimeDB.Index.BTree(Accessor = "ByActiveChunk", Columns = new[] { nameof(IsActive), nameof(ChunkX), nameof(ChunkY) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByActiveChunkShard", Columns = new[] { nameof(IsActive), nameof(ChunkX), nameof(ChunkY), nameof(MovementShard) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByEnvironmentExposure", Columns = new[] { nameof(EnvironmentExposureCode) })]
-    [SpacetimeDB.Index.BTree(
-        Accessor = "ByEnvironmentExposureHazardShard",
-        Columns = new[] { nameof(EnvironmentExposureCode), nameof(HazardShard) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByTarget", Columns = new[] { nameof(TargetEntityId) })]
     public partial struct Ship
     {
@@ -37,7 +34,6 @@ public static partial class Module
         public bool IsStopping;
         public bool IsMoving;
         public byte MovementShard;
-        public byte HazardShard;
         public bool IsActive;
         public bool IsAlive;
         public bool IsEngaged;
@@ -73,15 +69,13 @@ public static partial class Module
         Accessor = "ByActiveChunk",
         Columns = new[] { nameof(IsActive), nameof(ChunkX), nameof(ChunkY) })]
     [SpacetimeDB.Index.BTree(
-        Accessor = "ByActiveChunkHazardShard",
-        Columns = new[]
-        {
-            nameof(IsActive), nameof(ChunkX), nameof(ChunkY), nameof(HazardShard),
-        })]
+        Accessor = "ByActiveFaction",
+        Columns = new[] { nameof(IsActive), nameof(FactionCode) })]
     public partial struct ShipMovement
     {
         [PrimaryKey]
         public ulong EntityId;
+        public byte FactionCode;
         public float PositionX;
         public float PositionY;
         public float HeadingDegrees;
@@ -90,7 +84,6 @@ public static partial class Module
         public bool IsActive;
         public bool IsAlive;
         public byte MovementShard;
-        public byte HazardShard;
         public int ChunkX;
         public int ChunkY;
         public ulong SnapshotTick;

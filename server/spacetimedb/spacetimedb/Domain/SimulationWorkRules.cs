@@ -5,7 +5,6 @@ public static class SimulationWorkRules
     public const bool ShipsBlockMovement = false;
     public const ulong PeriodicEffectIntervalTicks = 5;
     public const byte MovementShardCount = 8;
-    public const byte HazardShardCount = 8;
     public const byte NpcShardCount = 4;
     public const byte CurrentRefreshBucketCount = 16;
     public const byte LootPickupBucketCount = 10;
@@ -13,6 +12,10 @@ public static class SimulationWorkRules
     public const ulong HazardIntervalTicks = 5;
     public const ushort IdleDispatchIntervalMilliseconds = 1_000;
     public const ulong TelemetrySampleIntervalTicks = 100;
+
+    // Flip on to log a "PROF <phase>" line after every dispatch phase; feed the module
+    // logs to scripts/profile-dispatch.mjs for per-phase timings.
+    public static bool ProfileDispatchPhases => false;
 
     public static bool ShouldSampleTelemetry(ulong tick) =>
         tick > 0 && tick % TelemetrySampleIntervalTicks == 0;
@@ -30,9 +33,6 @@ public static class SimulationWorkRules
 
     public static byte MovementShard(ulong shipEntityId) =>
         (byte)(shipEntityId % MovementShardCount);
-
-    public static byte HazardShard(byte movementShard) =>
-        (byte)(movementShard % HazardShardCount);
 
     public static byte NpcShard(ulong shipEntityId) =>
         (byte)(shipEntityId % NpcShardCount);

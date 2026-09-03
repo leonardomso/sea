@@ -17,20 +17,16 @@ public static partial class Module
         QueueMovementUpdate(ctx, ship, replaceKinematics: false);
     }
 
-    private static void WriteMovementSnapshot(
+    // Tracked ships are always active and alive, so the published row is rebuilt from
+    // the kinematics instead of being read back first. The fat Ship row only follows
+    // on a chunk change or a stop; clients read live kinematics from ShipMovement.
+    private static void PublishMovement(
         ReducerContext ctx,
         ShipKinematics tracked,
-        ulong tick)
+        ulong tick,
+        bool changedChunk)
     {
-        if (ctx.Db.ShipMovement.EntityId.Find(tracked.EntityId) is not ShipMovement movement)
-        {
-            return;
-        }
-
-        var changedChunk = movement.ChunkX != tracked.ChunkX || movement.ChunkY != tracked.ChunkY;
-        CopyKinematics(tracked, ref movement);
-        movement.SnapshotTick = tick;
-        ctx.Db.ShipMovement.EntityId.Update(movement);
+        ctx.Db.ShipMovement.EntityId.Update(ToShipMovement(tracked, tick));
         if (!changedChunk && tracked.IsMoving)
         {
             return;
@@ -71,8 +67,26 @@ public static partial class Module
         return movement;
     }
 
+    private static ShipMovement ToShipMovement(ShipKinematics tracked, ulong tick) => new()
+    {
+        EntityId = tracked.EntityId,
+        FactionCode = tracked.FactionCode,
+        PositionX = tracked.PositionX,
+        PositionY = tracked.PositionY,
+        HeadingDegrees = tracked.HeadingDegrees,
+        Speed = tracked.Speed,
+        IsMoving = tracked.IsMoving,
+        IsActive = true,
+        IsAlive = true,
+        MovementShard = SimulationWorkRules.MovementShard(tracked.EntityId),
+        ChunkX = tracked.ChunkX,
+        ChunkY = tracked.ChunkY,
+        SnapshotTick = tick,
+    };
+
     private static void CopyKinematics(Ship source, ref ShipMovement target)
     {
+        target.FactionCode = source.FactionCode;
         target.PositionX = source.PositionX;
         target.PositionY = source.PositionY;
         target.HeadingDegrees = source.HeadingDegrees;
@@ -81,20 +95,6 @@ public static partial class Module
         target.IsActive = source.IsActive;
         target.IsAlive = source.IsAlive;
         target.MovementShard = source.MovementShard;
-        target.HazardShard = source.HazardShard;
-        target.ChunkX = source.ChunkX;
-        target.ChunkY = source.ChunkY;
-    }
-
-    private static void CopyKinematics(ShipKinematics source, ref ShipMovement target)
-    {
-        target.PositionX = source.PositionX;
-        target.PositionY = source.PositionY;
-        target.HeadingDegrees = source.HeadingDegrees;
-        target.Speed = source.Speed;
-        target.IsMoving = source.IsMoving;
-        target.MovementShard = SimulationWorkRules.MovementShard(source.EntityId);
-        target.HazardShard = SimulationWorkRules.HazardShard(target.MovementShard);
         target.ChunkX = source.ChunkX;
         target.ChunkY = source.ChunkY;
     }
@@ -210,6 +210,7 @@ public static partial class Module
         return new ShipKinematics
         {
             EntityId = ship.EntityId,
+            FactionCode = ship.FactionCode,
             PositionX = ship.PositionX,
             PositionY = ship.PositionY,
             DestinationX = ship.DestinationX,
@@ -269,7 +270,6 @@ public static partial class Module
         target.IsActive = source.IsActive;
         target.IsAlive = source.IsAlive;
         target.MovementShard = source.MovementShard;
-        target.HazardShard = source.HazardShard;
         target.ChunkX = source.ChunkX;
         target.ChunkY = source.ChunkY;
     }

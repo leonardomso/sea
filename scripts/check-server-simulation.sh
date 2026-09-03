@@ -16,7 +16,7 @@ for required in \
   'Accessor = "ByRespawnDue"' \
   'Accessor = "ByEnvironmentExposure"' \
   'Accessor = "ByActiveChunkShard"' \
-  'Accessor = "ByEnvironmentExposureHazardShard"' \
+  'Accessor = "ByActiveFaction"' \
   'Accessor = "ByMovingShard"' \
   'Accessor = "ByShipCooldown"'; do
   if ! grep -q "$required" "$schema"; then

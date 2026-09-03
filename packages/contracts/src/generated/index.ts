@@ -412,10 +412,6 @@ const tablesSchema = __schema({
       { accessor: 'EntityId', name: 'ship_entity_id_idx_btree', algorithm: 'btree', columns: [
         'entityId',
       ] },
-      { accessor: 'ByEnvironmentExposureHazardShard', name: 'ship_environment_exposure_code_hazard_shard_idx_btree', algorithm: 'btree', columns: [
-        'environmentExposureCode',
-        'hazardShard',
-      ] },
       { accessor: 'ByEnvironmentExposure', name: 'ship_environment_exposure_code_idx_btree', algorithm: 'btree', columns: [
         'environmentExposureCode',
       ] },
@@ -472,16 +468,14 @@ const tablesSchema = __schema({
       { accessor: 'EntityId', name: 'ship_movement_entity_id_idx_btree', algorithm: 'btree', columns: [
         'entityId',
       ] },
-      { accessor: 'ByActiveChunkHazardShard', name: 'ship_movement_is_active_chunk_x_chunk_y_hazard_shard_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
-        'chunkX',
-        'chunkY',
-        'hazardShard',
-      ] },
       { accessor: 'ByActiveChunk', name: 'ship_movement_is_active_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
         'isActive',
         'chunkX',
         'chunkY',
+      ] },
+      { accessor: 'ByActiveFaction', name: 'ship_movement_is_active_faction_code_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+        'factionCode',
       ] },
     ],
     constraints: [

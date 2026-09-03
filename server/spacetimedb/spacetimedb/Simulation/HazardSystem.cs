@@ -9,22 +9,18 @@ public static partial class Module
         ulong tick)
     {
         MoveStorms(ctx, tick);
-        for (byte shardId = 0; shardId < SimulationWorkRules.HazardShardCount; shardId++)
-        {
-            ApplyEnvironmentalHazardKind(ctx, ships, tick, WorldObjectCode.Storm, shardId);
-            ApplyEnvironmentalHazardKind(ctx, ships, tick, WorldObjectCode.Shoal, shardId);
-        }
+        ApplyEnvironmentalHazardKind(ctx, ships, tick, WorldObjectCode.Storm);
+        ApplyEnvironmentalHazardKind(ctx, ships, tick, WorldObjectCode.Shoal);
     }
 
     private static void ApplyEnvironmentalHazardKind(
         ReducerContext ctx,
         ShipTickBuffer ships,
         ulong tick,
-        WorldObjectCode kind,
-        byte shardId)
+        WorldObjectCode kind)
     {
-        var exposedShips = FindExposedShips(ctx, ships, kind, shardId);
-        ClearMissingExposures(ctx, ships, kind, shardId, exposedShips);
+        var exposedShips = FindExposedShips(ctx, ships, kind);
+        ClearMissingExposures(ctx, ships, kind, exposedShips);
         foreach (var shipEntityId in exposedShips)
         {
             if (!ships.TryGet(ctx, shipEntityId, out var ship) || !ship.IsAlive)
@@ -69,11 +65,12 @@ public static partial class Module
         }
     }
 
+    // Only ships currently flagged as exposed are indexed here, so leaving a hazard
+    // costs one small scan rather than a pass over every ship.
     private static void ClearMissingExposures(
         ReducerContext ctx,
         ShipTickBuffer ships,
         WorldObjectCode kind,
-        byte shardId,
         HashSet<ulong> exposedShips)
     {
         for (byte exposureCode = 1; exposureCode <= 3; exposureCode++)
@@ -83,9 +80,7 @@ public static partial class Module
                 continue;
             }
 
-            foreach (var indexedShip in ctx.Db.Ship
-                         .ByEnvironmentExposureHazardShard.Filter(
-                             (exposureCode, shardId)))
+            foreach (var indexedShip in ctx.Db.Ship.ByEnvironmentExposure.Filter(exposureCode))
             {
                 if (exposedShips.Contains(indexedShip.EntityId))
                 {
@@ -104,11 +99,12 @@ public static partial class Module
         }
     }
 
+    // Exposure is decided from the thin published kinematics; a ship staged earlier
+    // this tick (a respawn, for instance) is judged at its staged position instead.
     private static HashSet<ulong> FindExposedShips(
         ReducerContext ctx,
         ShipTickBuffer ships,
-        WorldObjectCode kind,
-        byte shardId)
+        WorldObjectCode kind)
     {
         var exposedShips = new HashSet<ulong>();
         foreach (var hazard in ctx.Db.WorldObject.ByActiveKind.Filter((true, (byte)kind)))
@@ -117,27 +113,24 @@ public static partial class Module
                 hazard.PositionX,
                 hazard.PositionY,
                 hazard.Radius);
-            foreach (var indexedShip in ActiveShipsInHazardShard(ctx, bounds, shardId))
+            foreach (var movement in ActiveMovementIn(ctx, bounds))
             {
-                var ship = ships.TryGetStaged(indexedShip.EntityId, out var staged)
-                    ? staged
-                    : indexedShip;
-
-                if (!ship.IsAlive || !WorldRules.IsInRange(
-                        ship.PositionX,
-                        ship.PositionY,
+                var (positionX, positionY, isAlive) =
+                    ships.TryGetStaged(movement.EntityId, out var staged)
+                        ? (staged.PositionX, staged.PositionY, staged.IsAlive)
+                        : (movement.PositionX, movement.PositionY, movement.IsAlive);
+                if (isAlive && WorldRules.IsInRange(
+                        positionX,
+                        positionY,
                         hazard.PositionX,
                         hazard.PositionY,
                         hazard.Radius))
                 {
-                    continue;
+                    exposedShips.Add(movement.EntityId);
                 }
-
-                exposedShips.Add(ship.EntityId);
             }
         }
 
         return exposedShips;
     }
-
 }

@@ -56,24 +56,20 @@ public static partial class Module
         }
     }
 
-    private static IEnumerable<Ship> ActiveShipsInHazardShard(
+    // The thin published kinematics row: the live position of every active ship
+    // without deserialising the full Ship record.
+    private static IEnumerable<ShipMovement> ActiveMovementIn(
         ReducerContext ctx,
-        ChunkBounds bounds,
-        byte hazardShard)
+        ChunkBounds bounds)
     {
         for (var chunkX = bounds.MinX; chunkX <= bounds.MaxX; chunkX++)
         {
             for (var chunkY = bounds.MinY; chunkY <= bounds.MaxY; chunkY++)
             {
-                foreach (var movement in ctx.Db.ShipMovement
-                             .ByActiveChunkHazardShard.Filter(
-                                 (true, chunkX, chunkY, hazardShard)))
+                foreach (var movement in ctx.Db.ShipMovement.ByActiveChunk.Filter(
+                             (true, chunkX, chunkY)))
                 {
-                    if (ctx.Db.Ship.EntityId.Find(movement.EntityId) is Ship ship)
-                    {
-                        CopyKinematics(movement, ref ship);
-                        yield return ship;
-                    }
+                    yield return movement;
                 }
             }
         }

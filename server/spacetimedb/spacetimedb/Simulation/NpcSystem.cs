@@ -158,29 +158,34 @@ public static partial class Module
         ulong tick,
         NpcWorldContext world)
     {
+        // Players are few, so walking their thin published rows beats scanning every
+        // ship in the surrounding chunks; the fat Ship row is only read for a player
+        // that is actually in range.
         Ship? nearest = null;
         var nearestDistance = float.PositiveInfinity;
-        var bounds = SpatialRules.BoundsAround(source.PositionX, source.PositionY, range);
-        foreach (var candidate in ActiveShipsIn(ctx, bounds))
+        foreach (var movement in ctx.Db.ShipMovement.ByActiveFaction.Filter(
+                     (true, (byte)FactionCode.Player)))
         {
-            if (!world.IsAttackablePlayer(candidate, tick))
-            {
-                continue;
-            }
-
-            if (!NpcRules.HasAutomaticAggroCapacity(CountNpcAttackers(ctx, candidate.EntityId)))
-            {
-                continue;
-            }
-
             var distance = CombatRules.Distance(
                 source.PositionX,
                 source.PositionY,
-                candidate.PositionX,
-                candidate.PositionY);
-            if (distance > range || distance > nearestDistance ||
+                movement.PositionX,
+                movement.PositionY);
+            if (!movement.IsAlive || distance > range || distance > nearestDistance ||
                 distance == nearestDistance && nearest is Ship current &&
-                candidate.EntityId > current.EntityId)
+                movement.EntityId > current.EntityId)
+            {
+                continue;
+            }
+
+            if (!NpcRules.HasAutomaticAggroCapacity(CountNpcAttackers(ctx, movement.EntityId)) ||
+                ctx.Db.Ship.EntityId.Find(movement.EntityId) is not Ship candidate)
+            {
+                continue;
+            }
+
+            CopyKinematics(movement, ref candidate);
+            if (!world.IsAttackablePlayer(candidate, tick))
             {
                 continue;
             }

@@ -13,29 +13,48 @@ public static partial class Module
             return;
         }
 
+        Profile("start");
         clock.Tick++;
         ctx.Db.SimulationClock.Id.Update(clock);
         var tick = clock.Tick;
         UpdateWind(ctx, tick);
+        Profile("wind");
 
         var ships = new ShipTickBuffer();
         ProcessStatuses(ctx, ships, tick);
+        Profile("statuses");
         ProcessChannels(ctx, ships, tick);
+        Profile("channels");
         ResolveVolleys(ctx, ships, tick);
+        Profile("volleys");
         ProcessRespawns(ctx, ships, tick);
+        Profile("respawns");
         if (SimulationWorkRules.ShouldApplyHazards(tick))
         {
             ApplyEnvironmentalHazards(ctx, ships, tick);
         }
 
+        Profile("hazards");
         ships.Flush(ctx);
+        Profile("flush");
         ProcessLootExpiry(ctx, tick);
+        Profile("loot");
 
         // Decisions run before movement so a course issued this tick sails this tick.
         RecordNpcTelemetry(ctx, tick, ProcessNpcDecisions(ctx, tick));
+        Profile("npc");
         RecordMovementTelemetry(
             ctx,
             tick,
             AdvanceMovingShips(ctx, tick, clock.ActiveLootCount > 0));
+        Profile("movement");
+    }
+
+    private static void Profile(string phase)
+    {
+        if (SimulationWorkRules.ProfileDispatchPhases)
+        {
+            Log.Info($"PROF {phase}");
+        }
     }
 }

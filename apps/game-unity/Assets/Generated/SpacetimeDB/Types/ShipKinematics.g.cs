@@ -15,6 +15,8 @@ namespace SpacetimeDB.Types
     {
         [DataMember(Name = "entity_id")]
         public ulong EntityId;
+        [DataMember(Name = "faction_code")]
+        public byte FactionCode;
         [DataMember(Name = "position_x")]
         public float PositionX;
         [DataMember(Name = "position_y")]
@@ -62,6 +64,7 @@ namespace SpacetimeDB.Types
 
         public ShipKinematics(
             ulong EntityId,
+            byte FactionCode,
             float PositionX,
             float PositionY,
             float DestinationX,
@@ -87,6 +90,7 @@ namespace SpacetimeDB.Types
         )
         {
             this.EntityId = EntityId;
+            this.FactionCode = FactionCode;
             this.PositionX = PositionX;
             this.PositionY = PositionY;
             this.DestinationX = DestinationX;

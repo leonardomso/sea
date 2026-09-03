@@ -15,6 +15,8 @@ namespace SpacetimeDB.Types
     {
         [DataMember(Name = "entity_id")]
         public ulong EntityId;
+        [DataMember(Name = "faction_code")]
+        public byte FactionCode;
         [DataMember(Name = "position_x")]
         public float PositionX;
         [DataMember(Name = "position_y")]
@@ -31,8 +33,6 @@ namespace SpacetimeDB.Types
         public bool IsAlive;
         [DataMember(Name = "movement_shard")]
         public byte MovementShard;
-        [DataMember(Name = "hazard_shard")]
-        public byte HazardShard;
         [DataMember(Name = "chunk_x")]
         public int ChunkX;
         [DataMember(Name = "chunk_y")]
@@ -42,6 +42,7 @@ namespace SpacetimeDB.Types
 
         public ShipMovement(
             ulong EntityId,
+            byte FactionCode,
             float PositionX,
             float PositionY,
             float HeadingDegrees,
@@ -50,13 +51,13 @@ namespace SpacetimeDB.Types
             bool IsActive,
             bool IsAlive,
             byte MovementShard,
-            byte HazardShard,
             int ChunkX,
             int ChunkY,
             ulong SnapshotTick
         )
         {
             this.EntityId = EntityId;
+            this.FactionCode = FactionCode;
             this.PositionX = PositionX;
             this.PositionY = PositionY;
             this.HeadingDegrees = HeadingDegrees;
@@ -65,7 +66,6 @@ namespace SpacetimeDB.Types
             this.IsActive = IsActive;
             this.IsAlive = IsAlive;
             this.MovementShard = MovementShard;
-            this.HazardShard = HazardShard;
             this.ChunkX = ChunkX;
             this.ChunkY = ChunkY;
             this.SnapshotTick = SnapshotTick;

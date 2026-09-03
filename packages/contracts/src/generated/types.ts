@@ -404,7 +404,6 @@ export const Ship = __t.object("Ship", {
   isStopping: __t.bool(),
   isMoving: __t.bool(),
   movementShard: __t.u8(),
-  hazardShard: __t.u8(),
   isActive: __t.bool(),
   isAlive: __t.bool(),
   isEngaged: __t.bool(),
@@ -489,6 +488,7 @@ export type ShipCommand = __Infer<typeof ShipCommand>;
 
 export const ShipKinematics = __t.object("ShipKinematics", {
   entityId: __t.u64(),
+  factionCode: __t.u8(),
   positionX: __t.f32(),
   positionY: __t.f32(),
   destinationX: __t.f32(),
@@ -516,6 +516,7 @@ export type ShipKinematics = __Infer<typeof ShipKinematics>;
 
 export const ShipMovement = __t.object("ShipMovement", {
   entityId: __t.u64(),
+  factionCode: __t.u8(),
   positionX: __t.f32(),
   positionY: __t.f32(),
   headingDegrees: __t.f32(),
@@ -524,7 +525,6 @@ export const ShipMovement = __t.object("ShipMovement", {
   isActive: __t.bool(),
   isAlive: __t.bool(),
   movementShard: __t.u8(),
-  hazardShard: __t.u8(),
   chunkX: __t.i32(),
   chunkY: __t.i32(),
   snapshotTick: __t.u64(),

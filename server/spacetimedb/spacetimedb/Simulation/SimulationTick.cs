@@ -121,8 +121,6 @@ public static partial class Module
             IsStopping = false,
             IsMoving = false,
             MovementShard = SimulationWorkRules.MovementShard(entityId),
-            HazardShard = SimulationWorkRules.HazardShard(
-                SimulationWorkRules.MovementShard(entityId)),
             IsActive = true,
             IsAlive = true,
             IsEngaged = false,

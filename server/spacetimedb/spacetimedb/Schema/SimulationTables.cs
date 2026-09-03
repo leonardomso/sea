@@ -108,6 +108,7 @@ public static partial class Module
     public partial struct ShipKinematics
     {
         public ulong EntityId;
+        public byte FactionCode;
         public float PositionX;
         public float PositionY;
         public float DestinationX;
