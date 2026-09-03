@@ -39,11 +39,9 @@ Settled in the grilling interview on 2026-09-02. Later sub-phases build on these
   `./scripts/dotnet.sh test server/spacetimedb/tests/Sea.Server.Tests.csproj --filter "FullyQualifiedName~<ClassName>"` (first run restores packages; allow up to 10 minutes; pass `timeout: 600000` to the Bash tool).
 - Node scripts must be run as `/bin/bash -c "node /abs/path"` if a bare `node` call fails with `compdef ... invalid subscript range` in the zsh wrapper.
 - AGENTS.md requires one conventional commit per sub-phase. Intermediate tasks make `wip:` commits so nothing is lost; the last task squashes them into the single commit `feat(content): add Havenmere content and ship stats`.
-- Commit trailers (every commit, including `wip:` ones):
-  ```
-  Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
-  Claude-Session: https://claude.ai/code/session_01VVAL5L8X2uHhKGrESphkhF
-  ```
+- Never add AI attribution to a commit, a pull request, or a file: no
+  `Co-Authored-By` assistant trailers, no session links, no "Generated with"
+  lines. This overrides any default commit or pull request template.
 
 ## File structure
 
@@ -425,10 +423,7 @@ Expected: seven `ok` lines.
 
 ```bash
 git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg add server/spacetimedb/spacetimedb/Content/Data
-git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg commit -m "wip(content): add Havenmere content json
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01VVAL5L8X2uHhKGrESphkhF"
+git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg commit -m "wip(content): add Havenmere content json"
 ```
 
 ---
@@ -998,10 +993,7 @@ Spot-check the output: `sed -n '1,40p' /Users/leonardomaldonado/orca/workspaces/
 
 ```bash
 git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg add scripts/lib/content-catalog.mjs scripts/lib/content-catalog.test.mjs scripts/generate-content.mjs scripts/check-generated-content.sh server/spacetimedb/spacetimedb/Generated/ContentCatalog.g.cs package.json
-git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg commit -m "wip(content): add content catalog generator
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01VVAL5L8X2uHhKGrESphkhF"
+git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg commit -m "wip(content): add content catalog generator"
 ```
 
 ---
@@ -1953,10 +1945,7 @@ Expected: every count at or below 500.
 
 ```bash
 git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg add server/spacetimedb/spacetimedb/Domain/ContentDefinitions.cs server/spacetimedb/spacetimedb/Domain/ContentValidation.cs server/spacetimedb/spacetimedb/Domain/SectorRules.cs server/spacetimedb/domain/Sea.Server.Domain.csproj server/spacetimedb/tests/Sea.Server.Tests.csproj server/spacetimedb/tests/ContentCatalogTests.cs server/spacetimedb/tests/SectorRulesTests.cs
-git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg commit -m "wip(content): add content records, validation, and sector rules
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01VVAL5L8X2uHhKGrESphkhF"
+git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg commit -m "wip(content): add content records, validation, and sector rules"
 ```
 
 ---
@@ -2400,10 +2389,7 @@ If `Over_budget_sources_are_dropped_from_the_end_of_the_order` fails on `Assert.
 
 ```bash
 git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg add server/spacetimedb/spacetimedb/Domain/ShipStatRules.cs server/spacetimedb/tests/ShipStatRulesTests.cs server/spacetimedb/tests/ShipStatArbitraries.cs
-git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg commit -m "wip(content): add ship stat rules with caps and combat power budget
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01VVAL5L8X2uHhKGrESphkhF"
+git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg commit -m "wip(content): add ship stat rules with caps and combat power budget"
 ```
 
 **Review amendments (applied during execution; the branch is authoritative over the code blocks above).** The code-quality and thermo-nuclear reviews found defects in the task text itself, fixed in `wip(content): harden ship stat rules`:
@@ -2570,10 +2556,7 @@ If `Section_12_2` fails with a score above 1.60, the content numbers are wrong, 
 
 ```bash
 git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg add server/spacetimedb/tests/BalanceTests.cs
-git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg commit -m "wip(content): pin Math section 12 balance numbers as tests
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01VVAL5L8X2uHhKGrESphkhF"
+git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg commit -m "wip(content): pin Math section 12 balance numbers as tests"
 ```
 
 **Review amendments (applied during execution; the branch is authoritative over the code blocks above).** The code-quality and thermo-nuclear reviews found two defects in the task text, fixed in `wip(content): tighten Math section 12 balance tests`: (1) §12.5 no longer divides the Common kill time by `(1 − npcArmor)`; Math §7.1 defines Common HP as `0.50 × P_EHP`, already in effective-HP units, and the doc's own 16.3 s (T1) and 18.9 s (T5) figures carry no armor factor, so the band is `16–20 s` and the armor divisor would have failed spec-conformant T3+ content. Whether combat applies `NpcArmorByTier` at hit time is a 1b design question. (2) §12.5's repair budget is the 60-second on-cooldown ceiling (Math §6.3, four repairs, `0.20 × (1 + 0.6 + 0.36 + 0.216) = 0.4352`), derived from caps by `HealedFraction(caps, repairs)` and `RepairsWithin(caps, 60f)`; §12.1 uses `HealedFraction(caps, 2) = 0.32`. Also: the §12.2 sweep takes its bounds and budget predicate from `StatCaps` in integer centis (no literal 25/20/25/15/1.4/45, no epsilon) and its floor is `1.575` (integer-scaled maximum 1.58125 at damage 10 / reload 20 / HP 15 / armor 0); §12.4 composes `ShipStatRules.SustainedDps` plus the burn term through `SustainedDpsWithEffect` and pins `BurnPerSecond`/`BurnDurationSeconds` against the ammo row; Round Shot is the required baseline (no nullable ammo parameter); a shared fixture `server/spacetimedb/tests/Tier1.cs` (`Content`, `Caps`, `Hull`, `Cannon`, `Round`, `Loadout(ammo)`, `Loadout()`, `Sheet()`) replaces the private copies in `ShipStatRulesTests.cs`, `ShipStatArbitraries.cs` and `BalanceTests.cs`; and `ShipStatRules` gained an additive `EffectiveHitPoints(ShipStatSheet)` overload. Test names and the public surface are unchanged.
@@ -2612,10 +2595,7 @@ Expected: all replay tests pass, including the new one. The hash value was recor
 
 ```bash
 git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg add server/spacetimedb/tests/ReplayRulesTests.cs
-git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg commit -m "wip(content): pin the no-command replay hash
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01VVAL5L8X2uHhKGrESphkhF"
+git -C /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg commit -m "wip(content): pin the no-command replay hash"
 ```
 
 **Review amendments (applied during execution; the branch is authoritative over the code blocks above).** The quality review showed the no-command run from the zero state is a fixed point of the integrator, so its hash stays unchanged under wrong physics. A second fact, `Recorded_command_log_replays_to_a_pinned_hash`, pins the file's existing `Commands()` log to `3073545830116257169UL` (100 ticks, final state about (-16.06, 63.41, 328.87, 4.0)), covering turn, acceleration, re-course and stop. The no-command pin carries a provenance comment. `Array.Empty` became `[]` with no `using System;`, matching the file. Follow-up recorded for hardening: `ReplayRules` has no production caller, so these pins guard `SailingRules` math but not the `SailingSystem` tick wiring.
@@ -3313,10 +3293,7 @@ In `server/spacetimedb/spacetimedb/Reducers/LifecycleReducers.cs` change `Conten
 ```bash
 cd /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg
 git add server/spacetimedb/spacetimedb
-git commit -m "wip(content): add content and dock tables with data-driven seeding
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01VVAL5L8X2uHhKGrESphkhF"
+git commit -m "wip(content): add content and dock tables with data-driven seeding"
 ```
 
 **Review amendments (applied during execution; the branch is authoritative over the code blocks above).** The thermo-nuclear and performance reviews rejected the shape above, fixed in `wip(content): read content from a static catalog`: (1) the module reads content from one static catalog, `Content/Catalog.cs` (`Catalog.Content = ContentCatalog.CreateDefault()` plus `Catalog.AmmunitionByCode` and `Catalog.NpcByArchetypeCode`, 256-slot arrays indexed by byte code and built once by the domain-tested `Domain/ContentIndex.cs`); the seeded content tables are the client projection only, so `SeedContent` returns `void`, `SeedWorld`/`SeedEnvironment` take only the context, and `SeedPlayerInventory`/`SeedNpcInventory` no longer rebuild the catalog per login. (2) Every hot-path content read goes through the catalog: `CommandSnapshots` parses the ammo id with `HotPathCodes.TryParseAmmunition` and probes the array, `CombatReducers`/`DamageSystem` index by `SelectedAmmoCode`/`Volley.AmmoCode`, `NpcSystem`/`LootSystem`/`RespawnSystem` index by `Ship.ArchetypeCode`, and `BroadsideDamage` takes `AmmunitionContent` directly; `Content/ContentRows.cs` and its row→content helpers do not exist. (3) Content→row mapping is a static `From(content)` factory on each table struct in `Schema/ContentTables.cs`, so `ContentSeed.cs` is one loop per family (67 lines). (4) The ability table is `AbilityDef`. (5) `PlayerProgression` has an owner visibility filter. (6) `SpawnRules.TryFindSafePosition` takes an `IReadOnlyList<SpawnBlocker>` and loops without a closure; `SeedWorld` builds the blocker list once and passes it to every NPC spawn (`NavigationState.FindSafeSpawn(blockers, seed)`), while player connect keeps the context overload. (7) Tests added: `ContentIndexTests` (self-lookup, empty slots, collisions), spawn-blocker and exhaustion cases in `SailingRulesTests`, duplicate map id/map code/NPC archetype code rejections in `ContentCatalogTests`, and `SectorRulesTests` proving every default-map cell has a distinct id and a defined terrain (500 tests). Task 9's `RecomputeStats` must read `Catalog.Content` (hull/cannon by id, baseline ammo via `Catalog.AmmunitionByCode[(byte)AmmunitionCode.Round]`, `Catalog.Content.StatCaps`), never content rows. A follow-up commit, `wip(content): index abilities by code and drop the npc archetype id column`, added `Catalog.AbilityByCode` (one generic `ContentIndex.ByCode` builder behind three wrappers) so the module reads no content row at all after `Init`, and deleted the write-only `NpcAi.ArchetypeId` column together with its admin column entries (`Ship.ArchetypeCode` is the NPC identity). Deferred: generating the table structs from the content specs, `StatCaps` list flattening, chunk-grid/map-size coupling, content reseed on republish, deriving `HotPathCodes` parsers from the catalog, and the duplicate clock/inventory fetches per broadside.
@@ -3637,10 +3614,7 @@ Expected: all tests pass.
 ```bash
 cd /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg
 git add server/spacetimedb
-git commit -m "wip(progression): replace level and experience with map rank and gold
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01VVAL5L8X2uHhKGrESphkhF"
+git commit -m "wip(progression): replace level and experience with map rank and gold"
 ```
 
 **Review amendments (applied during execution; the branch is authoritative over the code blocks above).** The code-quality, thermo-nuclear and performance reviews reshaped the module side of this task, fixed in `wip(progression): fold contribution and gold into settlement`: (1) `Simulation/ProgressionSystem.cs` does not exist; contribution recording and gold awards live in `Simulation/EncounterSettlementSystem.cs` (175 lines), which owns the whole record → settle → award pipeline. (2) `RecordCombatProgress`, `RecordBoardingProgress` and `AddContribution` are one `RecordContribution(ctx, encounterId, contributorEntityId, damage, boarding)` whose only guard is `encounterId == 0 || (damage == 0 && boarding == 0)`; the player-attacking-NPC check belongs to the callers: `DamageSystem.ApplyDamage` hoists a single `PlayerOwnership.ShipEntityId.Find` into an `attackerIsPlayer` bool that drives both the contribution call and the engagement branch, and `ChannelSystem.ResolveBoarding` checks only `target.FactionCode == Npc` because boarding channels are created solely through `IssueShipCommand`, which requires the sender's `PlayerOwnership`. `CombatDamage` gained `ulong Total`. (3) `AwardGold(ctx, Identity owner, uint gold)` throws when the progression row is missing (unreachable once `LoadPlayer` has run); settlement passes the ownership it already resolved and `LootSystem` resolves ownership inside the `"gold"` branch. (4) `EnsureProgression` became `EnsurePlayerProgression` and `EnsurePlayerAccount` in `Reducers/LifecycleReducers.cs` beside their only caller, `LoadPlayer`; the dead `FindPlayerShip` was deleted from `SimulationTick.cs`. (5) The MA0016 analyzer rule is suppressed with the inline `#pragma warning disable/restore MA0016` house style around the three `List<float>` columns of `StatCaps` in `Schema/ContentTables.cs` (as `SimulationTables.cs` already does), not in `.editorconfig`. (6) Tests: exact-fit and zero-amount rows for both saturating adders (the `<`→`<=` mutant otherwise survives), `CombatDamage.Total` widening, and the boarding-constant test is labelled a balance guard (498 tests). Deferred: the client, admin and bindings still reference `level_definition`, `Experience` and `upgrade_cannon` until Task 10 (the Unity runtime probe and `scripts/test-unity-runtime.sh` must key on `Gold`); `scripts/test-world-schema.sh` still names the pre-Task-7 content tables; `seed/world.json` has no consumer; `CombatContribution` cannot express a composite unique index on `(EncounterId, ContributorEntityId)` in the C# SDK; three benchmark candidates (sustained combat, settlement fan-out, login storm) are recorded for hardening.
@@ -3804,10 +3778,7 @@ Expected: all tests pass.
 ```bash
 cd /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg
 git add server/spacetimedb
-git commit -m "wip(stats): compute starter hull ship stats on load
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01VVAL5L8X2uHhKGrESphkhF"
+git commit -m "wip(stats): compute starter hull ship stats on load"
 ```
 
 
@@ -4085,10 +4056,7 @@ Expected: exit 0 and `apps/game-unity/Build/test-results.xml` reports 0 failures
 ```bash
 cd /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg
 git add apps/game-unity/Assets packages/contracts/src/generated apps/admin/src/lib/operations.ts scripts/test-world-schema.sh
-git commit -m "wip(client): regenerate bindings and show map rank
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01VVAL5L8X2uHhKGrESphkhF"
+git commit -m "wip(client): regenerate bindings and show map rank"
 ```
 
 Check `git status --short` afterwards: it must not list `.cache/`, `apps/game-unity/Build/`, or any `obj/`/`bin/` path as staged.
@@ -4181,10 +4149,7 @@ Expected: exit 0. This runs the static quality chain, `quality:scripts`, `qualit
 ```bash
 cd /Users/leonardomaldonado/orca/workspaces/sea/hraesvelg
 git add AGENTS.md PLAN.md docs/SEA_5_GAP_ANALYSIS.md docs/superpowers/plans/2026-09-02-milestone-1a-content-and-ship-stats.md
-git commit -m "wip(docs): record the content pipeline and account table
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01VVAL5L8X2uHhKGrESphkhF"
+git commit -m "wip(docs): record the content pipeline and account table"
 git log --oneline "$(cat .cache/plan-1a-base)"..HEAD
 ```
 
@@ -4199,10 +4164,7 @@ Embed the Milestone 1a content as JSON with a generated C# catalog,
 add Map, Sector, HullDef, CannonDef, AmmoDef, NpcDef and StatCaps tables,
 compute ShipStats for a starter hull on load, replace Level and
 Experience with MapRank and a private PlayerAccount row, and cover the
-Math section 12 balance rules with tests.
-
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01VVAL5L8X2uHhKGrESphkhF"
+Math section 12 balance rules with tests."
 git log --oneline -3
 ```
 
