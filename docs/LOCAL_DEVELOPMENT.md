@@ -80,6 +80,9 @@ Commit the schema and both generated binding sets together.
 
 - `pnpm ci:fast`: static checks, admin/type builds, and repository invariants.
 - `pnpm server:test`: fast pure domain and command tests in pinned .NET.
+- `pnpm server:test:mutation Domain/ShipStatRules.cs`: Stryker on one domain file at a
+  time (whole-domain runs exhaust memory); the file must reach a 90% mutation score with
+  no surviving or uncovered mutant. Survivors are printed with their line and replacement.
 - `pnpm verify`: normal phase gate, including the real module, local services,
   Unity tests, runtime scenarios, and macOS/WebGL builds.
 - `pnpm verify:full`: Phase 18 and final load, soak, mutation, and performance

@@ -1,50 +1,31 @@
+#!/usr/bin/env node
+// Gates one per-file Stryker run: the file must reach the minimum mutation score and leave no
+// surviving or uncovered mutant. Survivors are printed with their location and replacement so
+// the next test to write is obvious.
 import fs from "node:fs";
 import path from "node:path";
+import { mutationGateFailures, summarizeMutationReport } from "./lib/stryker-report.mjs";
 
-const [reportPath, coveragePath, qualityPath] = process.argv.slice(2);
-if (!reportPath || !coveragePath || !qualityPath) {
-  throw new Error("Usage: check-stryker-report.mjs <report.json> <coverage.txt> <quality.json>");
+const [reportPath, label, summaryPath] = process.argv.slice(2);
+if (!reportPath || !label || !summaryPath) {
+  console.error("usage: check-stryker-report.mjs <mutation-report.json> <label> <summary.json>");
+  process.exit(2);
 }
 
-const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
-const statuses = new Map();
-for (const file of Object.values(report.files ?? {})) {
-  for (const mutant of file.mutants ?? []) {
-    statuses.set(mutant.status, (statuses.get(mutant.status) ?? 0) + 1);
-  }
-}
+const minimumScorePercent = 90;
+const summary = summarizeMutationReport(JSON.parse(fs.readFileSync(reportPath, "utf8")));
+fs.mkdirSync(path.dirname(summaryPath), { recursive: true });
+fs.writeFileSync(
+  summaryPath,
+  `${JSON.stringify({ label, minimumScorePercent, scorePercent: summary.scorePercent, counts: summary.counts }, null, 2)}\n`,
+);
 
-const killed = statuses.get("Killed") ?? 0;
-const survived = statuses.get("Survived") ?? 0;
-const noCoverage = statuses.get("NoCoverage") ?? 0;
-const timeout = statuses.get("Timeout") ?? 0;
-const measured = killed + survived + noCoverage + timeout;
-const mutationScore = measured === 0 ? 0 : killed * 100 / measured;
-const coverage = fs.readFileSync(coveragePath, "utf8");
-const lineCoverage = percentage(coverage, /^  Line coverage: ([0-9.]+)%/m);
-const branchCoverage = percentage(coverage, /^  Branch coverage: ([0-9.]+)%/m);
-const criticalSurvivors = survived + noCoverage + timeout;
-const quality = {
-  lineCoveragePercent: lineCoverage,
-  branchCoveragePercent: branchCoverage,
-  mutationScorePercent: mutationScore,
-  criticalSurvivingMutations: criticalSurvivors,
-};
-fs.mkdirSync(path.dirname(qualityPath), { recursive: true });
-fs.writeFileSync(qualityPath, `${JSON.stringify(quality, null, 2)}\n`);
-
-if (mutationScore < 90 || criticalSurvivors !== 0) {
-  console.error(JSON.stringify({ ...quality, statuses: Object.fromEntries(statuses) }, null, 2));
+const failures = mutationGateFailures(summary, minimumScorePercent);
+if (failures.length > 0) {
+  console.error(`${label}: mutation gate failed.\n${failures.map((failure) => `  ${failure}`).join("\n")}`);
   process.exit(1);
 }
 
 console.log(
-  `Command policy mutation score ${mutationScore.toFixed(2)}%; ` +
-  `${killed} mutants killed and no critical mutant survived.`
+  `${label}: mutation score ${summary.scorePercent.toFixed(2)}% (${summary.counts.Killed} killed, ${summary.counts.Timeout} timed out, ${summary.measured} measured).`,
 );
-
-function percentage(text, pattern) {
-  const match = text.match(pattern);
-  if (!match) throw new Error(`Missing coverage value for ${pattern}.`);
-  return Number(match[1]);
-}
