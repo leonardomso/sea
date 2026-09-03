@@ -12,6 +12,7 @@ namespace Sea.Client
     public static class SeaPresentationRules
     {
         public const float VisibleDistance = 120f;
+        public const float VisionRadius = 44f;
 
         public static int VisibleShipLimit(SeaPresentationPlatform platform) => platform switch
         {
@@ -28,5 +29,7 @@ namespace Sea.Client
 
         public static bool IsVisible(float distance, bool isRelevantEndpoint) =>
             isRelevantEndpoint || distance <= VisibleDistance;
+
+        public static bool IsInVision(float distance) => distance <= VisionRadius;
     }
 }

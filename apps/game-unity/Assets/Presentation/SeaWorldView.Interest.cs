@@ -107,6 +107,7 @@ namespace Sea.Client
             shipRows.Clear();
             movementRows.Clear();
             targets.Clear();
+            snapshotClock = null;
             volleyRows.Clear();
             relevantEndpointIds.Clear();
             localShip = null;

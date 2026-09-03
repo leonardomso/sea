@@ -135,6 +135,15 @@ namespace Sea.Client
                 return;
             }
 
+            // The aim persists on the server; the frame only shows while the target is in vision.
+            var range = Vector2.Distance(
+                new Vector2(ship.PositionX, ship.PositionY),
+                new Vector2(target.PositionX, target.PositionY));
+            if (!SeaPresentationRules.IsInVision(range))
+            {
+                return;
+            }
+
             snapshot.TargetName = string.Format(
                 CultureInfo.InvariantCulture,
                 "{0}  {1}",
@@ -146,9 +155,7 @@ namespace Sea.Client
             snapshot.TargetMaxSails = target.MaxSails;
             snapshot.TargetCannons = target.Cannons;
             snapshot.TargetMaxCannons = target.MaxCannons;
-            snapshot.TargetRange = Vector2.Distance(
-                new Vector2(ship.PositionX, ship.PositionY),
-                new Vector2(target.PositionX, target.PositionY));
+            snapshot.TargetRange = range;
         }
 
         private void ReadStatuses(RemoteTables db, Ship ship, SeaHudSnapshot snapshot)

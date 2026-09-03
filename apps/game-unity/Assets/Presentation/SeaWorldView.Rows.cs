@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using SpacetimeDB.Types;
 using Unity.Jobs;
@@ -14,11 +15,7 @@ namespace Sea.Client
         private void HandleShipChanged(Ship ship)
         {
             shipRows.Upsert(ship.EntityId, ship);
-            PushMovementSample(
-                ship.EntityId,
-                ship.PositionX,
-                ship.PositionY,
-                ship.HeadingDegrees);
+            SeedMovementSample(ship);
             if (ship.EntityId == connection.LocalShipEntityId)
             {
                 localShip = ship;
@@ -31,30 +28,42 @@ namespace Sea.Client
         private void HandleShipMovementChanged(ShipMovement movement)
         {
             movementRows.Upsert(movement.EntityId, movement);
-            PushMovementSample(
-                movement.EntityId,
-                movement.PositionX,
-                movement.PositionY,
-                movement.HeadingDegrees);
+            PushMovementSample(movement);
             visibilityDirty = true;
         }
 
-        private void PushMovementSample(
-            ulong entityId,
-            float positionX,
-            float positionY,
-            float headingDegrees)
+        // A ship row places a ship before its first movement snapshot arrives; the snapshot
+        // stream owns the timeline from then on.
+        private void SeedMovementSample(Ship ship)
         {
-            if (!targets.TryGetValue(entityId, out var interpolation))
+            if (targets.ContainsKey(ship.EntityId))
             {
-                interpolation = new SeaInterpolationBuffer();
-                targets.Add(entityId, interpolation);
+                return;
             }
 
-            interpolation.Push(
-                ToWorld(positionX, positionY, ShipRootHeight),
-                headingDegrees,
-                Time.realtimeSinceStartupAsDouble);
+            var timeline = new SeaMotionTimeline();
+            var tick = snapshotClock?.IsRunning == true
+                ? (ulong)Math.Max(0d, snapshotClock.ServerTick(Time.realtimeSinceStartupAsDouble))
+                : 0UL;
+            timeline.Push(tick, ToWorld(ship.PositionX, ship.PositionY, ShipRootHeight), ship.HeadingDegrees);
+            targets.Add(ship.EntityId, timeline);
+        }
+
+        private void PushMovementSample(ShipMovement movement)
+        {
+            if (!targets.TryGetValue(movement.EntityId, out var timeline))
+            {
+                timeline = new SeaMotionTimeline();
+                targets.Add(movement.EntityId, timeline);
+            }
+
+            snapshotClock ??= new SeaSnapshotClock(
+                connection.WorldTickRate > 0 ? connection.WorldTickRate : SeaSnapshotClock.DefaultTickRate);
+            snapshotClock.Observe(movement.SnapshotTick, Time.realtimeSinceStartupAsDouble);
+            timeline.Push(
+                movement.SnapshotTick,
+                ToWorld(movement.PositionX, movement.PositionY, ShipRootHeight),
+                movement.HeadingDegrees);
         }
 
         private void HandleWorldObjectChanged(WorldObject entity)
@@ -284,14 +293,17 @@ namespace Sea.Client
                 return;
             }
 
-            fogMaterial.SetVector(
-                "_PlayerPosition",
-                movementRows.TryGetValue(localShip.EntityId, out var movement)
-                    ? new Vector4(movement.PositionX, movement.PositionY, 0f, 0f)
-                    : new Vector4(localShip.PositionX, localShip.PositionY, 0f, 0f));
+            // The fog follows the rendered ship so vision reveals the chart as smoothly as the
+            // ship sails rather than in server snapshot steps.
+            var playerPosition = PlayerChartPosition();
+            fogMaterial.SetVector("_PlayerPosition", new Vector4(playerPosition.x, playerPosition.z, 0f, 0f));
             UpdateTargetRing(localShip);
             UpdateCourseIndicator(localShip);
         }
+
+        private Vector3 PlayerChartPosition() => playerObject != null
+            ? playerObject.transform.position
+            : MovementPosition(localShip);
 
         private static string ShipName(Ship ship) => ship.FactionCode == 1
             ? $"Player Ship {ship.EntityId}"

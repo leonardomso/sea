@@ -198,7 +198,7 @@
     top: 74px;
     right: 12px;
     width: 220px;
-    height: 154px;
+    height: 220px;
     border-left-width: 2px;
     border-right-width: 2px;
     border-top-width: 2px;

@@ -50,53 +50,6 @@ namespace Sea.Tests
         }
 
         [Test]
-        public void Ship_motion_advances_and_turns_over_multiple_frames()
-        {
-            var ship = new GameObject("Moving Ship");
-
-            SeaShipMotion.Step(
-                ship.transform,
-                new Vector3(0f, 0f, 10f),
-                targetHeadingDegrees: 0f,
-                deltaTime: 0.1f,
-                movementSpeed: 5f,
-                turnSpeedDegrees: 90f);
-
-            Assert.That(ship.transform.position.z, Is.EqualTo(0.5f).Within(0.001f));
-            Assert.That(Quaternion.Angle(Quaternion.identity, ship.transform.rotation),
-                Is.EqualTo(0f).Within(0.1f));
-            Object.DestroyImmediate(ship);
-        }
-
-        [Test]
-        public void Ship_motion_does_not_slide_sideways_while_turning()
-        {
-            var ship = new GameObject("Turning Ship");
-            var initialPosition = ship.transform.position;
-            const float authoritativeHeading = 5.5f;
-            var headingRadians = authoritativeHeading * Mathf.Deg2Rad;
-            var authoritativePosition = new Vector3(
-                Mathf.Sin(headingRadians),
-                0f,
-                Mathf.Cos(headingRadians));
-
-            SeaShipMotion.Step(
-                ship.transform,
-                authoritativePosition,
-                targetHeadingDegrees: authoritativeHeading,
-                deltaTime: 0.1f,
-                movementSpeed: 5f,
-                turnSpeedDegrees: 90f);
-
-            var movementDirection = (ship.transform.position - initialPosition).normalized;
-            var headingAlignment = Vector3.Dot(movementDirection, ship.transform.forward);
-
-            Assert.That(headingAlignment, Is.GreaterThanOrEqualTo(0.9f),
-                "The ship translated sideways instead of sailing along its heading.");
-            Object.DestroyImmediate(ship);
-        }
-
-        [Test]
         public void Chart_clicks_outside_the_projected_map_are_clamped_to_valid_water()
         {
             var clamped = SeaChartCoordinates.ClampToMap(new Vector2(-180f, 245f));
@@ -159,7 +112,7 @@ namespace Sea.Tests
 
             Assert.That(miniMap, Is.Not.Null);
             Assert.That(miniMap.orthographic, Is.True);
-            Assert.That(miniMap.orthographicSize, Is.EqualTo(108f).Within(0.1f));
+            Assert.That(miniMap.orthographicSize, Is.EqualTo(100f).Within(0.1f));
             Assert.That(miniMap.rect.width, Is.EqualTo(0.17f).Within(0.001f));
             Assert.That((miniMap.cullingMask & (1 << 8)), Is.Zero,
                 "Fog of war belongs to the main chart, not the strategic minimap.");
@@ -174,7 +127,7 @@ namespace Sea.Tests
 
             Assert.That(waterShader, Is.Not.Null);
             Assert.That(Shader.Find("Sea/Chart Fog"), Is.Not.Null);
-            Assert.That(SeaWorldView.VisionRadius, Is.EqualTo(44f));
+            Assert.That(SeaPresentationRules.VisionRadius, Is.EqualTo(44f));
         }
 
         [Test]
@@ -253,7 +206,7 @@ namespace Sea.Tests
             cameraObject.transform.rotation = Quaternion.Euler(55f, 0f, 0f);
             var controller = cameraObject.AddComponent<SeaChartCameraController>();
             controller.Configure(chartCamera);
-            var destination = new Vector3(-46f, 0f, 43f);
+            var destination = new Vector3(-30f, 0f, 40f);
 
             controller.ShowChartPosition(destination);
 

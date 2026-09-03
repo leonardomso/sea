@@ -157,7 +157,11 @@ namespace Sea.Client
                 return;
             }
 
-            Bind("Point", context => pointerPosition = context.ReadValue<Vector2>());
+            Bind("Point", context =>
+            {
+                pointerPosition = context.ReadValue<Vector2>();
+                chartCamera?.DragTo(pointerPosition);
+            });
             Bind("SetCourse", _ =>
             {
                 if (chartCamera?.TryShowMiniMapPosition(pointerPosition) == true)
@@ -171,6 +175,8 @@ namespace Sea.Client
             Bind("StopCourse", _ => game?.StopCourse());
             Bind("PanChart", context => chartCamera?.SetPanInput(context.ReadValue<Vector2>()));
             Bind("PanChart", _ => chartCamera?.SetPanInput(Vector2.zero), canceled: true);
+            Bind("DragChart", _ => chartCamera?.BeginDrag(pointerPosition));
+            Bind("DragChart", _ => chartCamera?.EndDrag(), canceled: true);
             Bind("ZoomChart", context => chartCamera?.Zoom(context.ReadValue<Vector2>().y));
             Bind("RecenterChart", _ => chartCamera?.Recenter());
             Bind("OpenNavigator", _ => hud?.OpenCoordinateNavigator());

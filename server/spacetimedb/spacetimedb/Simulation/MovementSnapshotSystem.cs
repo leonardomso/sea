@@ -9,8 +9,7 @@ public static partial class Module
         MovementSnapshotDispatchTimer timer)
     {
         if (ctx.Db.MovementSnapshotDispatchState.Id.Find(1) is not
-                MovementSnapshotDispatchState state ||
-            ctx.Db.SimulationClock.Id.Find(1) is not SimulationClock clock)
+                MovementSnapshotDispatchState state)
         {
             return;
         }
@@ -18,11 +17,13 @@ public static partial class Module
         var shardId = SimulationWorkRules.MovementSnapshotShard(state.Cursor);
         var partition = SimulationWorkRules.MovementSnapshotPartition(state.Cursor);
         var shard = FindMovementShard(ctx, shardId);
+        // Stamp snapshots with the tick that produced the kinematics, not the wall-clock
+        // tick of this dispatch, so clients can interpolate on the simulation timeline.
         for (var index = partition;
              index < shard.Ships.Count;
              index += SimulationWorkRules.MovementSnapshotPartitionCount)
         {
-            WriteMovementSnapshot(ctx, shard.Ships[index], clock.Tick);
+            WriteMovementSnapshot(ctx, shard.Ships[index], shard.LastSimulatedTick);
         }
 
         state.Cursor = SimulationWorkRules.NextMovementSnapshotCursor(state.Cursor);

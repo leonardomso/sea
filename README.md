@@ -15,8 +15,8 @@ complete. It includes click-to-sail navigation with island and reef avoidance,
 broadside combat, repairs, boarding, statuses, wind, currents, storms, twelve
 roaming NPCs, loot, respawn, shared rewards, four-client shared-world support,
 and a macOS and WebGL Unity client using the owned Apricum ship asset. The
-camera follows the ship and WASD pans it; middle-mouse drag and the timed
-ease-back arrive with Milestone 1e.
+camera follows the ship; WASD and middle-mouse drag pan the chart inside the
+map, and the camera eases back to the ship after three idle seconds.
 
 The game is now built to the design in `docs/SEA_1_KNOWLEDGE.md` through
 `docs/SEA_4_TECHNICAL.md`. Milestone 1 of [PLAN.md](./PLAN.md) replaces the

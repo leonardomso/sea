@@ -86,6 +86,28 @@ namespace Sea.Client
             }
         }
 
+        // The minimap camera renders inside the HUD frame, whatever the panel scale is.
+        private void FitMiniMapCamera()
+        {
+            var miniMapCamera = GetComponent<SeaChartCameraController>()?.MiniMapCamera;
+            if (miniMapCamera == null || root?.panel == null)
+            {
+                return;
+            }
+
+            var bound = miniMapFrame.worldBound;
+            var style = miniMapFrame.resolvedStyle;
+            var inner = new Rect(
+                bound.x + style.borderLeftWidth,
+                bound.y + style.borderTopWidth,
+                bound.width - style.borderLeftWidth - style.borderRightWidth,
+                bound.height - style.borderTopWidth - style.borderBottomWidth);
+            miniMapCamera.pixelRect = SeaMiniMapRules.ScreenPixelRect(
+                inner,
+                root.panel.visualTree.worldBound.height,
+                Screen.height);
+        }
+
         public bool IsPointerOverInterface(Vector2 screenPosition)
         {
             if (root?.panel == null)
@@ -161,6 +183,7 @@ namespace Sea.Client
             coordinateNavigator = root.Q("coordinate-navigator");
             chartMenu = root.Q("chart-menu");
             miniMapFrame = root.Q("mini-map-frame");
+            miniMapFrame.RegisterCallback<GeometryChangedEvent>(_ => FitMiniMapCamera());
             rebindList = root.Q<ScrollView>("rebind-list");
             coordinateInput = root.Q<TextField>("coordinate-input");
             coordinateError = root.Q<Label>("coordinate-error");

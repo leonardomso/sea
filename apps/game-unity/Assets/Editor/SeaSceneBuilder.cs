@@ -70,7 +70,9 @@ namespace Sea.Editor
             var miniMapObject = new GameObject("Mini Map Camera");
             var miniMapCamera = miniMapObject.AddComponent<Camera>();
             miniMapCamera.orthographic = true;
-            miniMapCamera.orthographicSize = 108f;
+            // The minimap shows exactly the map; the HUD keeps its viewport square.
+            miniMapCamera.orthographicSize =
+                (SeaChartCoordinates.MapMaximum - SeaChartCoordinates.MapMinimum) / 2f;
             miniMapCamera.transform.position = new Vector3(0f, 180f, 0f);
             miniMapCamera.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             miniMapCamera.clearFlags = CameraClearFlags.SolidColor;

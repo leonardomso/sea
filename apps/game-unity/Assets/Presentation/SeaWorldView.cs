@@ -18,14 +18,15 @@ namespace Sea.Client
 
         [SerializeField] private SeaConnectionController connection;
         [SerializeField] private Shader fogShader;
-        [SerializeField] private float presentationMovementSpeed = 18f;
-        [SerializeField] private float turnSpeedDegrees = 720f;
         [SerializeField] private float modelYawOffset = 270f;
 
         private const float ShipFootprint = 10f;
         private const int MaximumTrackedShipRows = 6000;
         private const int MainChartFogLayer = 8;
-        public const float VisionRadius = 44f;
+        private static readonly Vector3 MapPlaneScale = new(
+            (SeaChartCoordinates.MapMaximum - SeaChartCoordinates.MapMinimum) / 10f,
+            1f,
+            (SeaChartCoordinates.MapMaximum - SeaChartCoordinates.MapMinimum) / 10f);
         public const float WaterSurfaceHeight = -0.35f;
         public const float ShipRootHeight = -0.43f;
 
@@ -33,7 +34,8 @@ namespace Sea.Client
         private readonly Dictionary<ulong, GameObject> mapGeometry = new();
         private readonly SeaRowRegistry<ulong, Ship> shipRows = new();
         private readonly SeaRowRegistry<ulong, Volley> volleyRows = new();
-        private readonly Dictionary<ulong, SeaInterpolationBuffer> targets = new();
+        private readonly Dictionary<ulong, SeaMotionTimeline> targets = new();
+        private SeaSnapshotClock snapshotClock;
         private readonly Dictionary<ulong, SeaShipFeedback> shipFeedback = new();
         private readonly List<SeaVisibilityCandidate> visibilityCandidates = new(256);
         private readonly HashSet<ulong> desiredPresentations = new();
@@ -70,7 +72,6 @@ namespace Sea.Client
 
         public Shader FogShader => fogShader;
         public float ModelYawOffset => modelYawOffset;
-        public float PresentationTurnSpeed => turnSpeedDegrees;
 
         public bool TryGetPlayerPresentationPosition(out Vector3 position)
         {
@@ -161,7 +162,7 @@ namespace Sea.Client
             }
 
             fogMaterial = new Material(fogShader) { name = "Player Vision Fog" };
-            fogMaterial.SetFloat("_VisionRadius", VisionRadius);
+            fogMaterial.SetFloat("_VisionRadius", SeaPresentationRules.VisionRadius);
             fogMaterial.SetFloat("_FadeWidth", 12f);
             fogMaterial.SetColor("_FogColor", new Color(0.015f, 0.05f, 0.065f, 0.96f));
             cannonballMaterial = SeaMaterialFactory.Create(new Color(0.04f, 0.035f, 0.03f, 1f));
@@ -181,7 +182,7 @@ namespace Sea.Client
             var water = GameObject.CreatePrimitive(PrimitiveType.Plane);
             water.name = "Water Surface";
             water.transform.position = new Vector3(0f, WaterSurfaceHeight, 0f);
-            water.transform.localScale = new Vector3(26f, 1f, 26f);
+            water.transform.localScale = MapPlaneScale;
             water.GetComponent<Renderer>().sharedMaterial = waterMaterial;
             Destroy(water.GetComponent<Collider>());
             CreateCourseIndicator();
@@ -193,7 +194,7 @@ namespace Sea.Client
             fog.name = "Player Vision Fog";
             fog.layer = MainChartFogLayer;
             fog.transform.position = new Vector3(0f, 8f, 0f);
-            fog.transform.localScale = new Vector3(26f, 1f, 26f);
+            fog.transform.localScale = MapPlaneScale;
             var renderer = fog.GetComponent<Renderer>();
             renderer.sharedMaterial = fogMaterial;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -241,21 +242,21 @@ namespace Sea.Client
 
         private void UpdateEntityTransforms()
         {
+            if (snapshotClock == null)
+            {
+                return;
+            }
+
+            var renderTick = snapshotClock.RenderTick(Time.realtimeSinceStartupAsDouble);
             foreach (var target in targets)
             {
-                if (entities.TryGetValue(target.Key, out var entityObject) &&
-                    shipRows.TryGetValue(target.Key, out var ship))
+                if (target.Value.HasSamples &&
+                    entities.TryGetValue(target.Key, out var entityObject))
                 {
-                    var sample = target.Value.Sample(
-                        Time.realtimeSinceStartupAsDouble,
-                        interpolationDelay: 0.1d);
-                    SeaShipMotion.Step(
-                        entityObject.transform,
+                    var sample = target.Value.Sample(renderTick);
+                    entityObject.transform.SetPositionAndRotation(
                         sample.Position,
-                        sample.HeadingDegrees,
-                        Time.deltaTime,
-                        Mathf.Max(presentationMovementSpeed, ship.Speed * 1.5f),
-                        turnSpeedDegrees);
+                        Quaternion.Euler(0f, sample.HeadingDegrees, 0f));
                 }
             }
         }
@@ -332,7 +333,11 @@ namespace Sea.Client
 
         private void UpdateTargetRing(Ship ship)
         {
-            if (ship.TargetEntityId == 0 || !entities.TryGetValue(ship.TargetEntityId, out var selectedObject))
+            if (ship.TargetEntityId == 0 ||
+                !entities.TryGetValue(ship.TargetEntityId, out var selectedObject) ||
+                !SeaPresentationRules.IsInVision(Vector3.Distance(
+                    PlayerChartPosition(),
+                    selectedObject.transform.position)))
             {
                 if (targetRing != null)
                 {
