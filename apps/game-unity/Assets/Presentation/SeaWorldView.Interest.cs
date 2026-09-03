@@ -118,6 +118,11 @@ namespace Sea.Client
                 targetRing.SetActive(false);
             }
 
+            if (ownShipRing != null)
+            {
+                ownShipRing.SetActive(false);
+            }
+
             if (courseLine != null)
             {
                 courseLine.gameObject.SetActive(false);

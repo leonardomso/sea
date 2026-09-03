@@ -66,11 +66,8 @@ namespace Sea.Client
             var modelBounds = SeaShipVisualFactory.CalculateRendererBounds(ship);
             var modelTop = ship.transform.InverseTransformPoint(
                 new Vector3(modelBounds.center.x, modelBounds.max.y, modelBounds.center.z));
-            var health = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            health.name = "Health";
+            var health = SeaPrimitive.Create(PrimitiveType.Cube, "Health", healthMaterial);
             health.transform.SetParent(ship.transform, false);
-            health.GetComponent<Renderer>().sharedMaterial = healthMaterial;
-            Destroy(health.GetComponent<Collider>());
             health.transform.localPosition = new Vector3(0f, modelTop.y + 0.6f, 0f);
 
             var presentation = ship.AddComponent<SeaShipPresentation>();

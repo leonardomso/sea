@@ -114,16 +114,13 @@ namespace Sea.Client
             var root = new GameObject("Pooled Cannon Volley");
             for (var index = 0; index < 5; index++)
             {
-                var cannonball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                cannonball.name = $"Cannonball {index + 1}";
+                var cannonball = SeaPrimitive.Create(PrimitiveType.Sphere, $"Cannonball {index + 1}", material);
                 cannonball.transform.SetParent(root.transform, false);
                 cannonball.transform.localPosition = new Vector3(
                     (index - 2) * 0.18f,
                     (index % 2) * 0.10f,
                     -index * 0.16f);
                 cannonball.transform.localScale = Vector3.one * 0.24f;
-                cannonball.GetComponent<Renderer>().sharedMaterial = material;
-                DestroyObject(cannonball.GetComponent<Collider>());
 
                 var trail = cannonball.AddComponent<TrailRenderer>();
                 trail.sharedMaterial = material;
@@ -172,23 +169,6 @@ namespace Sea.Client
             var cache = effect.AddComponent<SeaCombatVisualCache>();
             cache.Capture();
             return effect;
-        }
-
-        private static void DestroyObject(UnityEngine.Object value)
-        {
-            if (value == null)
-            {
-                return;
-            }
-
-            if (Application.isPlaying)
-            {
-                UnityEngine.Object.Destroy(value);
-            }
-            else
-            {
-                UnityEngine.Object.DestroyImmediate(value);
-            }
         }
     }
 

@@ -131,14 +131,11 @@ namespace Sea.Client
 
         private void CreateWaterlineShadow(Material material)
         {
-            var shadow = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            shadow.name = "Waterline Contact";
+            var shadow = SeaPrimitive.Create(PrimitiveType.Cylinder, "Waterline Contact", material);
             shadow.transform.SetParent(transform, false);
             var localWaterHeight = SeaWorldView.WaterSurfaceHeight - SeaWorldView.ShipRootHeight;
             shadow.transform.localPosition = new Vector3(0f, localWaterHeight + 0.008f, 0f);
             shadow.transform.localScale = new Vector3(3.2f, 0.008f, 7.8f);
-            shadow.GetComponent<Renderer>().sharedMaterial = material;
-            Destroy(shadow.GetComponent<Collider>());
         }
     }
 }

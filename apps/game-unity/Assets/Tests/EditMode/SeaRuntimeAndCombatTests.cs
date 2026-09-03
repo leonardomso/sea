@@ -96,6 +96,32 @@ namespace Sea.Tests
         }
 
         [Test]
+        public void Primitives_share_unity_meshes_without_colliders()
+        {
+            foreach (var type in new[]
+            {
+                PrimitiveType.Sphere,
+                PrimitiveType.Cube,
+                PrimitiveType.Cylinder,
+                PrimitiveType.Plane,
+                PrimitiveType.Quad,
+                PrimitiveType.Capsule,
+            })
+            {
+                var primitive = SeaPrimitive.Create(type, type.ToString(), null);
+                var reference = GameObject.CreatePrimitive(type);
+
+                Assert.That(
+                    primitive.GetComponent<MeshFilter>().sharedMesh,
+                    Is.SameAs(reference.GetComponent<MeshFilter>().sharedMesh),
+                    type.ToString());
+                Assert.That(primitive.GetComponent<Collider>(), Is.Null);
+                Object.DestroyImmediate(primitive);
+                Object.DestroyImmediate(reference);
+            }
+        }
+
+        [Test]
         public void Shoals_and_storms_have_distinct_chart_geometry()
         {
             var shallows = SeaMaterialFactory.CreateTransparent(new Color(0.2f, 0.8f, 0.7f, 0.35f));

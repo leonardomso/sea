@@ -46,6 +46,7 @@ namespace Sea.Client
         private GameObject playerObject;
         private SeaShipFeedback playerFeedback;
         private GameObject targetRing;
+        private GameObject ownShipRing;
         private Material waterMaterial;
         private Material sandMaterial;
         private Material rockMaterial;
@@ -61,6 +62,7 @@ namespace Sea.Client
         private Material stormMaterial;
         private Material healthMaterial;
         private Material targetMaterial;
+        private Material ownShipMaterial;
         private SeaCombatPresenter combatPresenter;
         private ulong playerEntityId;
         private ulong worldTick;
@@ -174,32 +176,27 @@ namespace Sea.Client
                 new Color(0.10f, 0.14f, 0.18f, 0.82f));
             healthMaterial = SeaMaterialFactory.Create(Color.white);
             targetMaterial = SeaMaterialFactory.Create(new Color(1f, 0.85f, 0.25f, 1f));
+            ownShipMaterial = SeaMaterialFactory.Create(new Color(0.2f, 0.9f, 0.35f, 1f));
             combatPresenter = new SeaCombatPresenter(cannonballMaterial, combatEffectMaterial);
         }
 
         private void CreateWater()
         {
-            var water = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            water.name = "Water Surface";
+            var water = SeaPrimitive.Create(PrimitiveType.Plane, "Water Surface", waterMaterial);
             water.transform.position = new Vector3(0f, WaterSurfaceHeight, 0f);
             water.transform.localScale = MapPlaneScale;
-            water.GetComponent<Renderer>().sharedMaterial = waterMaterial;
-            Destroy(water.GetComponent<Collider>());
             CreateCourseIndicator();
         }
 
         private void CreateFog()
         {
-            var fog = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            fog.name = "Player Vision Fog";
+            var fog = SeaPrimitive.Create(PrimitiveType.Plane, "Player Vision Fog", fogMaterial);
             fog.layer = MainChartFogLayer;
             fog.transform.position = new Vector3(0f, 8f, 0f);
             fog.transform.localScale = MapPlaneScale;
             var renderer = fog.GetComponent<Renderer>();
-            renderer.sharedMaterial = fogMaterial;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
-            Destroy(fog.GetComponent<Collider>());
         }
 
         private void SyncCombatPresentation()
@@ -347,20 +344,41 @@ namespace Sea.Client
                 return;
             }
 
-            if (targetRing == null)
+            targetRing ??= CreateRing("Selected Target Ring", 4.5f, targetMaterial);
+            PlaceRing(targetRing, selectedObject);
+        }
+
+        // The green disc marks the player's own ship so it reads at a glance among NPCs.
+        private void UpdateOwnShipRing()
+        {
+            if (playerObject == null)
             {
-                targetRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                targetRing.name = "Selected Target Ring";
-                targetRing.transform.localScale = new Vector3(4.5f, 0.04f, 4.5f);
-                targetRing.GetComponent<Renderer>().sharedMaterial = targetMaterial;
-                Destroy(targetRing.GetComponent<Collider>());
+                if (ownShipRing != null)
+                {
+                    ownShipRing.SetActive(false);
+                }
+
+                return;
             }
 
-            targetRing.SetActive(selectedObject.activeSelf);
-            targetRing.transform.position = new Vector3(
-                selectedObject.transform.position.x,
+            ownShipRing ??= CreateRing("Own Ship Ring", 5.5f, ownShipMaterial);
+            PlaceRing(ownShipRing, playerObject);
+        }
+
+        private GameObject CreateRing(string name, float diameter, Material material)
+        {
+            var ring = SeaPrimitive.Create(PrimitiveType.Cylinder, name, material);
+            ring.transform.localScale = new Vector3(diameter, 0.04f, diameter);
+            return ring;
+        }
+
+        private static void PlaceRing(GameObject ring, GameObject ship)
+        {
+            ring.SetActive(ship.activeSelf);
+            ring.transform.position = new Vector3(
+                ship.transform.position.x,
                 WaterSurfaceHeight + 0.025f,
-                selectedObject.transform.position.z);
+                ship.transform.position.z);
         }
 
     }
