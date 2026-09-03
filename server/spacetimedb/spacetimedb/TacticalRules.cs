@@ -197,7 +197,7 @@ public static class TacticalRules
 
     public static uint PeriodicStatusDamage(string statusType, uint stacks, ulong currentTick)
     {
-        if (stacks == 0 || currentTick % WorldRules.TickRateHz != 0)
+        if (currentTick % WorldRules.TickRateHz != 0)
         {
             return 0;
         }
@@ -212,11 +212,6 @@ public static class TacticalRules
 
     public static uint PeriodicStatusDamage(StatusCode status, uint stacks)
     {
-        if (stacks == 0)
-        {
-            return 0;
-        }
-
         return status switch
         {
             StatusCode.Burning => checked(stacks * 2),
@@ -319,25 +314,26 @@ public static class TacticalRules
         return new HazardPosition(WrapMapCoordinate(nextX), WrapMapCoordinate(nextY));
     }
 
+    /// <summary>
+    /// Rolls a percentage chance from a deterministic seed with the splitmix64 finalizer,
+    /// so the same volley always resolves the same way. A chance of 0 never applies and
+    /// a chance of 100 or more always does, because the roll is a residue in [0, 100).
+    /// </summary>
     public static bool ShouldApplyStatus(ulong deterministicSeed, uint chancePercent)
     {
-        if (chancePercent == 0)
-        {
-            return false;
-        }
-
-        if (chancePercent >= 100)
-        {
-            return true;
-        }
-
-        var mixed = deterministicSeed;
-        mixed ^= mixed >> 30;
+        var mixed = XorShift(deterministicSeed, 30);
         mixed *= 0xbf58476d1ce4e5b9UL;
-        mixed ^= mixed >> 27;
+        mixed = XorShift(mixed, 27);
         mixed *= 0x94d049bb133111ebUL;
-        mixed ^= mixed >> 31;
+        mixed = XorShift(mixed, 31);
         return mixed % 100 < chancePercent;
+    }
+
+    private static ulong XorShift(ulong value, int shift)
+    {
+        // Stryker disable once Bitwise : `>>>` and `>>` are the same shift on an unsigned operand.
+        var shifted = value >> shift;
+        return value ^ shifted;
     }
 
     private static float WrapMapCoordinate(float value)

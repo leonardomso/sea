@@ -328,4 +328,118 @@ public sealed class TacticalRulesTests
         Assert.Equal(97f, below.X, 4);
         Assert.Equal(50f, multiple.X, 4);
     }
+
+    [Fact]
+    public void StatusApplication_AppliesAgainOnceImmunityEnds()
+    {
+        var existing = new TacticalStatusState(
+            IsActive: false,
+            Stacks: 3,
+            ExpiresAtTick: 20,
+            ImmunityUntilTick: 35);
+
+        var result = TacticalRules.ApplyStatus(
+            existing,
+            currentTick: 35,
+            durationTicks: 40,
+            maximumStacks: 3);
+
+        Assert.True(result.Applied);
+        Assert.True(result.State.IsActive);
+        Assert.Equal(1u, result.State.Stacks);
+        Assert.Equal(75ul, result.State.ExpiresAtTick);
+        Assert.Equal(35ul, result.State.ImmunityUntilTick);
+    }
+
+    [Fact]
+    public void StatusApplication_NeverStacksPastTheMaximum()
+    {
+        var existing = new TacticalStatusState(true, 3, 30, 0);
+
+        var result = TacticalRules.ApplyStatus(existing, 10, 40, 3);
+
+        Assert.True(result.Applied);
+        Assert.Equal(3u, result.State.Stacks);
+    }
+
+    [Fact]
+    public void StatusTimestampsBeyondTheTickRangeAreRejected()
+    {
+        var inactive = new TacticalStatusState(false, 0, 0, 0);
+        var expired = new TacticalStatusState(true, 1, 0, 0);
+
+        Assert.Throws<OverflowException>(() => TacticalRules.ApplyStatus(inactive, ulong.MaxValue, 1, 1));
+        Assert.Throws<OverflowException>(() => TacticalRules.ExpireStatus(expired, ulong.MaxValue, 1));
+    }
+
+    [Fact]
+    public void FullSail_BoostsSpeedAndAccelerationInClearWeather()
+    {
+        var movement = TacticalRules.MovementModifiers(
+            fullSail: true,
+            slowedStacks: 0,
+            sailsDisabled: false,
+            sailIntegrity: 1f,
+            inShoal: false,
+            inStorm: false,
+            repairing: false);
+
+        Assert.Equal(1.35f, movement.MaximumSpeed, 5);
+        Assert.Equal(1.35f, movement.Acceleration, 5);
+        Assert.Equal(1f, movement.TurnRate, 5);
+        Assert.Equal(1f, movement.WeaponEffectiveness, 5);
+    }
+
+    [Fact]
+    public void ReloadBeyondTheTickRangeIsRejected()
+    {
+        Assert.Throws<OverflowException>(() => TacticalRules.AdjustedReloadTicks(uint.MaxValue, 1, 100));
+    }
+
+    [Fact]
+    public void BurningDamageBeyondTheHullRangeIsRejected()
+    {
+        Assert.Throws<OverflowException>(() => TacticalRules.PeriodicStatusDamage("burning", uint.MaxValue, 20));
+        Assert.Throws<OverflowException>(() => TacticalRules.PeriodicStatusDamage(StatusCode.Burning, uint.MaxValue));
+    }
+
+    [Fact]
+    public void RepairBeyondTheHullRangeIsRejected()
+    {
+        Assert.Throws<OverflowException>(() => TacticalRules.ProgressiveRestore(uint.MaxValue, uint.MaxValue, 1, 50, 50));
+    }
+
+    [Fact]
+    public void StormMovementScalesWithSpeedAndElapsedTime()
+    {
+        var moved = TacticalRules.MoveStorm(0f, 0f, directionDegrees: 30f, speed: 2f, deltaSeconds: 0.5f);
+
+        Assert.Equal(0.5f, moved.X, 4);
+        Assert.Equal(0.8660f, moved.Y, 3);
+    }
+
+    [Theory]
+    [InlineData(99f, 0f, WorldRules.MapMax)]
+    [InlineData(-99f, 180f, WorldRules.MapMin)]
+    public void StormRestingOnTheChartEdgeStaysThere(float y, float directionDegrees, float expectedY)
+    {
+        var moved = TacticalRules.MoveStorm(0f, y, directionDegrees, speed: 1f, deltaSeconds: 1f);
+
+        Assert.Equal(expectedY, moved.Y, 4);
+    }
+
+    [Theory]
+    [InlineData(1UL, 89u)]
+    [InlineData(2UL, 30u)]
+    [InlineData(3UL, 56u)]
+    [InlineData(4UL, 52u)]
+    [InlineData(7UL, 4u)]
+    [InlineData(90UL, 50u)]
+    [InlineData(0x9E3779B97F4A7C15UL, 35u)]
+    [InlineData(ulong.MaxValue, 67u)]
+    public void StatusProc_RollsTheSplitMixResidue(ulong seed, uint residue)
+    {
+        Assert.False(TacticalRules.ShouldApplyStatus(seed, residue));
+        Assert.True(TacticalRules.ShouldApplyStatus(seed, residue + 1));
+    }
 }
