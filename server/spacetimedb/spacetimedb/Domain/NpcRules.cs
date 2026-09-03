@@ -73,6 +73,18 @@ public static class NpcRules
     // chased across the whole chart.
     public const float LeashRadius = 60f;
 
+    // Hostile ships make their home far enough out that no roam leg reaches the
+    // harbor's safe waters.
+    public const float HostileHomeClearance = RoamRadius + WorldRules.HarborSafeRadius;
+
+    // Spawn shields and harbor waters keep fresh players out of NPC gunsights; a
+    // protected target is dropped and no NPC picks it up again until it sails out.
+    public static bool IsProtectedFromNpcs(
+        ulong invulnerableUntilTick,
+        ulong tick,
+        float distanceFromHarbor) =>
+        invulnerableUntilTick > tick || distanceFromHarbor <= WorldRules.HarborSafeRadius;
+
     public static bool HasAutomaticAggroCapacity(int currentAttackers) =>
         currentAttackers < MaximumAutomaticAttackersPerPlayer;
 

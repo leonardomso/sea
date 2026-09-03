@@ -408,4 +408,29 @@ public sealed class NpcRulesTests
         DecisionSeed = 99,
         DecisionTick = 500,
     };
+
+
+    [Theory]
+    [InlineData(100UL, 50UL, 80f, true)]
+    [InlineData(50UL, 50UL, 80f, false)]
+    [InlineData(0UL, 50UL, 30f, true)]
+    [InlineData(0UL, 50UL, 30.5f, false)]
+    public void Shielded_or_harbored_players_are_never_npc_targets(
+        ulong invulnerableUntilTick,
+        ulong tick,
+        float distanceFromHarbor,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            NpcRules.IsProtectedFromNpcs(invulnerableUntilTick, tick, distanceFromHarbor));
+    }
+
+    [Fact]
+    public void Hostile_homes_sit_beyond_a_full_roam_leg_from_the_harbor_waters()
+    {
+        Assert.Equal(
+            NpcRules.RoamRadius + WorldRules.HarborSafeRadius,
+            NpcRules.HostileHomeClearance);
+    }
 }

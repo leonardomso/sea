@@ -81,6 +81,7 @@ public static partial class Module
         var entityId = AllocateEntityId(ctx);
         var spawn = FindSafeSpawn(ctx, IdentitySeed(ctx.Sender));
         var ship = CreateShip(entityId, "player_sloop", "player", spawn.X, spawn.Y);
+        ship.InvulnerableUntilTick = RespawnRules.PlayerProtectionUntil(CurrentSimulationTick(ctx));
         ctx.Db.Ship.Insert(ship);
         InsertShipMovement(ctx, ship);
         ctx.Db.PlayerOwnership.Insert(new PlayerOwnership

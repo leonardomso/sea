@@ -75,7 +75,7 @@ public sealed class ProgressionRulesTests
     }
 
     [Theory]
-    [InlineData(true, 50u, 50ul)]
+    [InlineData(true, 50u, 100ul)]
     [InlineData(false, 100u, 0ul)]
     public void Respawn_contract_restores_expected_hull_and_protection(
         bool player,
@@ -89,5 +89,15 @@ public sealed class ProgressionRulesTests
 
         Assert.Equal(expectedHull, state.Hull);
         Assert.Equal(1_000ul + protectionTicks, state.InvulnerableUntilTick);
+    }
+
+
+    [Fact]
+    public void Fresh_spawns_carry_the_same_ten_second_shield_as_respawns()
+    {
+        Assert.Equal(10 * WorldRules.TickRateHz, RespawnRules.PlayerProtectionTicks);
+        Assert.Equal(
+            RespawnRules.Restore(player: true, maximumHull: 100, currentTick: 40).InvulnerableUntilTick,
+            RespawnRules.PlayerProtectionUntil(40));
     }
 }

@@ -414,4 +414,52 @@ public sealed class SailingRulesTests
 
         Assert.False(NavigationRules.IsDestinationBlocked(point.X, point.Y, blockers));
     }
+
+
+    [Theory]
+    [InlineData(1UL)]
+    [InlineData(42UL)]
+    [InlineData(0UL)]
+    public void Berths_are_sampled_inside_the_anchor_waters_and_clear_of_blockers(ulong seed)
+    {
+        var quay = new SpawnBlocker(0f, 0f, 8f);
+        var shoal = new SpawnBlocker(-4f, -42f, 15f);
+        SpawnBlocker[] blockers = [quay, shoal];
+
+        Assert.True(SpawnRules.TryFindSafePositionNear(seed, 0f, 0f, 30f, blockers, out var berth));
+        Assert.True(SpawnRules.TryFindSafePositionNear(seed, 0f, 0f, 30f, blockers, out var replay));
+
+        Assert.Equal(berth, replay);
+        Assert.InRange(CombatRules.Distance(0f, 0f, berth.X, berth.Y), 0f, 30f);
+        Assert.All(blockers, blocker => Assert.False(SpawnRules.Overlaps(berth.X, berth.Y, blocker)));
+    }
+
+    [Fact]
+    public void Berths_never_leave_the_chart_even_from_an_edge_anchor()
+    {
+        Assert.True(SpawnRules.TryFindSafePositionNear(
+            9,
+            WorldRules.MapMax,
+            WorldRules.MapMax,
+            30f,
+            [],
+            out var berth));
+
+        Assert.InRange(berth.X, WorldRules.MapMin + SpawnRules.EdgeMargin, WorldRules.MapMax - SpawnRules.EdgeMargin);
+        Assert.InRange(berth.Y, WorldRules.MapMin + SpawnRules.EdgeMargin, WorldRules.MapMax - SpawnRules.EdgeMargin);
+    }
+
+    [Fact]
+    public void Berths_fail_cleanly_when_the_anchor_waters_are_fully_blocked()
+    {
+        Assert.False(SpawnRules.TryFindSafePositionNear(
+            9,
+            0f,
+            0f,
+            10f,
+            [new SpawnBlocker(0f, 0f, 10f)],
+            out _));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => SpawnRules.TryFindSafePositionNear(9, 0f, 0f, 0f, [], out _));
+    }
 }

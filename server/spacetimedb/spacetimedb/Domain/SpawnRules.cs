@@ -57,6 +57,42 @@ public static class SpawnRules
         return false;
     }
 
+    /// <summary>
+    /// Samples a clear point inside the disc around an anchor (a harbor berth, an NPC's
+    /// home waters) instead of anywhere on the chart.
+    /// </summary>
+    public static bool TryFindSafePositionNear(
+        ulong seed,
+        float anchorX,
+        float anchorY,
+        float radius,
+        IReadOnlyList<SpawnBlocker> blockers,
+        out SpawnPoint point)
+    {
+        ArgumentNullException.ThrowIfNull(blockers);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(radius);
+
+        var random = seed == 0 ? 0x9E3779B97F4A7C15UL : seed;
+        var minimum = WorldRules.MapMin + EdgeMargin;
+        var maximum = WorldRules.MapMax - EdgeMargin;
+        for (var attempt = 0; attempt < MaximumAttempts; attempt++)
+        {
+            var angle = NextUnit(ref random) * MathF.PI * 2f;
+            var distance = MathF.Sqrt(NextUnit(ref random)) * radius;
+            var x = anchorX + MathF.Cos(angle) * distance;
+            var y = anchorY + MathF.Sin(angle) * distance;
+            if (x >= minimum && x <= maximum && y >= minimum && y <= maximum &&
+                IsClear(x, y, blockers))
+            {
+                point = new SpawnPoint(x, y);
+                return true;
+            }
+        }
+
+        point = default;
+        return false;
+    }
+
     private static bool IsClear(float x, float y, IReadOnlyList<SpawnBlocker> blockers)
     {
         for (var index = 0; index < blockers.Count; index++)

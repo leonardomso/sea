@@ -54,6 +54,7 @@ public static partial class Module
 
             var spawn = FindSafeRespawn(
                 ctx,
+                ship,
                 ship.EntityId ^ work.RespawnAtTick ^ ship.EncounterId);
             RestoreShipForRespawn(ctx, ref ship, spawn, tick);
             ships.Stage(ship);

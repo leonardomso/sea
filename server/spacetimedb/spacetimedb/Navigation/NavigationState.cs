@@ -4,7 +4,67 @@ using SpacetimeDB;
 public static partial class Module
 {
     private static SpawnPoint FindSafeSpawn(ReducerContext ctx, ulong seed) =>
-        FindSafeSpawn(SpawnBlockers(ctx), seed);
+        FindHarborBerth(ctx, SpawnBlockers(ctx), seed);
+
+    private static SpawnPoint FindHarborBerth(
+        ReducerContext ctx,
+        List<SpawnBlocker> blockers,
+        ulong seed)
+    {
+        if (FindHarbor(ctx) is not WorldObject harbor)
+        {
+            return FindSafeSpawn(blockers, seed);
+        }
+
+        // The quay itself is kept clear so ships berth in the water around it.
+        blockers.Add(new SpawnBlocker(harbor.PositionX, harbor.PositionY, harbor.Radius));
+        if (!SpawnRules.TryFindSafePositionNear(
+                seed,
+                harbor.PositionX,
+                harbor.PositionY,
+                WorldRules.HarborSafeRadius,
+                blockers,
+                out var point))
+        {
+            throw new InvalidOperationException("No safe harbor berth is available.");
+        }
+
+        return point;
+    }
+
+    private static WorldObject? FindHarbor(ReducerContext ctx)
+    {
+        foreach (var harbor in ctx.Db.WorldObject.ByActiveKind.Filter(
+                     (true, (byte)WorldObjectCode.Harbor)))
+        {
+            return harbor;
+        }
+
+        return null;
+    }
+
+    private static SpawnPoint FindSafeRespawn(ReducerContext ctx, Ship ship, ulong seed)
+    {
+        var blockers = SpawnBlockers(ctx);
+        if (ship.FactionCode == (byte)FactionCode.Player)
+        {
+            return FindHarborBerth(ctx, blockers, seed);
+        }
+
+        if (ctx.Db.NpcAi.ShipEntityId.Find(ship.EntityId) is NpcAi ai &&
+            SpawnRules.TryFindSafePositionNear(
+                seed,
+                ai.HomeX,
+                ai.HomeY,
+                NpcRules.RoamRadius,
+                blockers,
+                out var home))
+        {
+            return home;
+        }
+
+        return FindSafeSpawn(blockers, seed);
+    }
 
     /// <summary>
     /// Spawns many ships at once (world seeding) by scanning the blocking world objects once and
@@ -20,50 +80,19 @@ public static partial class Module
         return point;
     }
 
+    // Land, reefs and hazards alike are kept clear of every spawn and respawn.
     private static List<SpawnBlocker> SpawnBlockers(ReducerContext ctx)
     {
         var blockers = new List<SpawnBlocker>();
         foreach (var worldObject in UnsafeSpawnWorldObjects(ctx))
         {
-            if (worldObject.IsActive && worldObject.BlocksMovement)
-            {
-                blockers.Add(new SpawnBlocker(
-                    worldObject.PositionX,
-                    worldObject.PositionY,
-                    worldObject.Radius));
-            }
+            blockers.Add(new SpawnBlocker(
+                worldObject.PositionX,
+                worldObject.PositionY,
+                worldObject.Radius));
         }
 
         return blockers;
-    }
-
-    private static SpawnPoint FindSafeRespawn(ReducerContext ctx, ulong seed)
-    {
-        var blockers = new List<SpawnBlocker>();
-        foreach (var kind in new[]
-                 {
-                     WorldObjectCode.Island,
-                     WorldObjectCode.Reef,
-                     WorldObjectCode.Storm,
-                     WorldObjectCode.Shoal,
-                 })
-        {
-            foreach (var worldObject in ctx.Db.WorldObject.ByActiveKind.Filter(
-                         (true, (byte)kind)))
-            {
-                blockers.Add(new SpawnBlocker(
-                    worldObject.PositionX,
-                    worldObject.PositionY,
-                    worldObject.Radius));
-            }
-        }
-
-        if (!SpawnRules.TryFindSafePosition(seed, blockers, out var point))
-        {
-            throw new InvalidOperationException("No safe respawn position is available.");
-        }
-
-        return point;
     }
 
     private static List<NavigationBlocker> NavigationBlockers(ReducerContext ctx)

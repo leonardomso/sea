@@ -24,15 +24,37 @@ public static partial class Module
 
         // The blocking world objects are all inserted above, so one scan covers every spawn below.
         var blockers = SpawnBlockers(ctx);
+        var hostileBlockers = HostileHomeBlockers(ctx, blockers);
         var entityId = 10ul;
         foreach (var definition in content.Npcs)
         {
             for (var index = 0; index < 4; index++)
             {
-                SeedNpc(ctx, blockers, entityId, definition, index);
+                SeedNpc(
+                    ctx,
+                    definition.AggroRange > 0f ? hostileBlockers : blockers,
+                    entityId,
+                    definition,
+                    index);
                 entityId++;
             }
         }
+    }
+
+    private static List<SpawnBlocker> HostileHomeBlockers(
+        ReducerContext ctx,
+        List<SpawnBlocker> blockers)
+    {
+        var hostileBlockers = new List<SpawnBlocker>(blockers);
+        if (FindHarbor(ctx) is WorldObject harbor)
+        {
+            hostileBlockers.Add(new SpawnBlocker(
+                harbor.PositionX,
+                harbor.PositionY,
+                NpcRules.HostileHomeClearance - SpawnRules.Separation));
+        }
+
+        return hostileBlockers;
     }
 
     private static void SeedNpc(

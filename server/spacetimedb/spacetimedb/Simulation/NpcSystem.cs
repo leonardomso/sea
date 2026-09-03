@@ -9,8 +9,9 @@ public static partial class Module
     {
         var processed = 0u;
         var dormant = 0u;
-        // Every decision this tick steers around the same islands; read them once.
-        List<NavigationBlocker>? blockers = null;
+        // Every decision this tick steers around the same islands and respects the
+        // same harbor waters; read both once.
+        NpcWorldContext? world = null;
         for (byte shardId = 0; shardId < SimulationWorkRules.NpcShardCount; shardId++)
         {
             foreach (var ai in ctx.Db.NpcAi.ByDecisionDueShard.Filter(
@@ -22,19 +23,38 @@ public static partial class Module
                     dormant++;
                 }
 
-                blockers ??= NavigationBlockers(ctx);
-                ProcessNpcDecision(ctx, ai, tick, blockers);
+                world ??= new NpcWorldContext(NavigationBlockers(ctx), FindHarbor(ctx));
+                ProcessNpcDecision(ctx, ai, tick, world.Value);
             }
         }
 
         return (processed, dormant);
     }
 
+    private readonly record struct NpcWorldContext(
+        IReadOnlyCollection<NavigationBlocker> Blockers,
+        WorldObject? Harbor)
+    {
+        public bool IsAttackablePlayer(Ship ship, ulong tick) =>
+            ship.IsActive && ship.IsAlive &&
+            ship.FactionCode == (byte)FactionCode.Player &&
+            !NpcRules.IsProtectedFromNpcs(
+                ship.InvulnerableUntilTick,
+                tick,
+                Harbor is WorldObject harbor
+                    ? CombatRules.Distance(
+                        ship.PositionX,
+                        ship.PositionY,
+                        harbor.PositionX,
+                        harbor.PositionY)
+                    : float.PositiveInfinity);
+    }
+
     private static void ProcessNpcDecision(
         ReducerContext ctx,
         NpcAi ai,
         ulong tick,
-        IReadOnlyCollection<NavigationBlocker> blockers)
+        NpcWorldContext world)
     {
         ai.NextDecisionTick = tick + NpcRules.DecisionIntervalTicks;
         if (ctx.Db.Ship.EntityId.Find(ai.ShipEntityId) is not Ship ship ||
@@ -51,14 +71,12 @@ public static partial class Module
         var definition = Catalog.NpcByArchetypeCode[ship.ArchetypeCode] ??
             throw new InvalidOperationException("NPC content definition is missing.");
         var target = FindHydratedShip(ctx, ship.TargetEntityId);
-        var targetAvailable = target is Ship selected &&
-            selected.IsActive && selected.IsAlive &&
-            selected.FactionCode == (byte)FactionCode.Player;
+        var targetAvailable = target is Ship selected && world.IsAttackablePlayer(selected, tick);
         var candidate = NpcRules.ShouldSearchForTarget(
                 targetAvailable,
                 definition.AggroRange,
                 CombatRules.Distance(ship.PositionX, ship.PositionY, ai.HomeX, ai.HomeY))
-            ? FindNearestPlayer(ctx, ship, definition.AggroRange)
+            ? FindNearestPlayer(ctx, ship, definition.AggroRange, tick, world)
             : default(Ship?);
         ExecuteNpcDecision(ctx, ship, NpcRules.Decide(BuildNpcSnapshot(
             ctx,
@@ -69,7 +87,7 @@ public static partial class Module
             candidate,
             targetAvailable,
             tick,
-            blockers)));
+            world.Blockers)));
         ctx.Db.NpcAi.ShipEntityId.Update(ai);
     }
 
@@ -133,14 +151,19 @@ public static partial class Module
             Blockers = blockers,
         };
 
-    private static Ship? FindNearestPlayer(ReducerContext ctx, Ship source, float range)
+    private static Ship? FindNearestPlayer(
+        ReducerContext ctx,
+        Ship source,
+        float range,
+        ulong tick,
+        NpcWorldContext world)
     {
         Ship? nearest = null;
         var nearestDistance = float.PositiveInfinity;
         var bounds = SpatialRules.BoundsAround(source.PositionX, source.PositionY, range);
         foreach (var candidate in ActiveShipsIn(ctx, bounds))
         {
-            if (candidate.FactionCode != (byte)FactionCode.Player || !candidate.IsAlive)
+            if (!world.IsAttackablePlayer(candidate, tick))
             {
                 continue;
             }

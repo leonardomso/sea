@@ -48,10 +48,14 @@ public static class RespawnRules
 {
     public const ulong PlayerDelayTicks = 50;
     public const ulong NpcDelayTicks = 300;
-    public const ulong PlayerProtectionTicks = 50;
+    public const ulong PlayerProtectionTicks = 10 * WorldRules.TickRateHz;
+
+    // The spawn shield covers a player's first spawn as well as every respawn.
+    public static ulong PlayerProtectionUntil(ulong currentTick) =>
+        currentTick + PlayerProtectionTicks;
 
     public static RespawnState Restore(bool player, uint maximumHull, ulong currentTick) =>
         new(
             player ? Math.Max(1u, maximumHull / 2) : maximumHull,
-            player ? currentTick + PlayerProtectionTicks : currentTick);
+            player ? PlayerProtectionUntil(currentTick) : currentTick);
 }
