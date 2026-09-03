@@ -81,6 +81,15 @@ Every roadmap sub-phase receives one conventional commit. Before committing,
 review the diff for unrelated changes, secrets, debug code, generated drift,
 and unlicensed assets. Do not rewrite or discard user changes.
 
+Commit messages follow the Conventional Commits guideline:
+`type(scope): imperative summary` under 72 characters, with `feat`, `fix`,
+`refactor`, `perf`, `test`, `docs`, `chore`, `build`, or `ci` as the type and
+the area touched as the scope (`content`, `combat`, `world`, `client`,
+`server`, `domain`, `infra`, `tooling`, ...). The body explains why, wrapped
+at 72 columns. Never add AI attribution of any kind to a commit, pull request,
+or file: no "Generated with", no `Co-Authored-By` for an assistant, no session
+links, no tool badges. The same applies to pull request titles and bodies.
+
 ## Local state and assets
 
 `pnpm server:reset` intentionally clears the disposable local SpacetimeDB
