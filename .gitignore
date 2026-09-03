@@ -59,3 +59,4 @@ apps/game-unity/Assets/AddressableAssetsData/link.xml*
 !.vscode/extensions.json
 !.vscode/settings.json
 .DS_Store
+.playwright-mcp/

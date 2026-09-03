@@ -9,8 +9,10 @@ namespace Sea.Client
         // Mirrors the server SpatialRules.ChunkSize until the world contract module owns it.
         public const float ChunkSize = 25f;
 
-        // 9x9 chunks (225 units) keep the default 160x90 chart view inside the window.
-        public const int SpatialRadius = 4;
+        // 5x5 chunks guarantee 50 units of coverage around the local ship wherever it sits
+        // inside its chunk, which covers the 44 unit fog vision radius. Everything beyond
+        // the fog is hidden anyway, so a wider window only streams rows nobody can see.
+        public const int SpatialRadius = 2;
 
         public static IReadOnlyList<string> Initial(string ownerSqlLiteral)
         {

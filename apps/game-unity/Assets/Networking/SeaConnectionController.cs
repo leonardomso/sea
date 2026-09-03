@@ -111,6 +111,10 @@ namespace Sea.Client
                 .WithUri(serverUrl)
                 .WithDatabaseName(databaseName)
                 .WithConfirmedReads(false);
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // The SDK's Brotli decoder needs a native library the browser build lacks.
+            builder.WithCompression(Compression.None);
+#endif
 
             var token = authTokens.Token;
             attemptedWithToken = !string.IsNullOrWhiteSpace(token);

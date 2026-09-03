@@ -65,9 +65,11 @@ namespace Sea.Client
 
             var tickRate = connection.WorldTickRate;
 
-            // The ship_stats row is the dock-authored truth; the ship row and its tick
-            // budget only stand in until that row replicates.
-            snapshot.MaxHull = stats?.MaxHitPoints ?? ship.MaxHull;
+            // Damage is still resolved against the ship row's hull budget, so the bar
+            // pairs Hull with that row's MaxHull; mixing in ship_stats reads "50 / 1,600".
+            snapshot.MaxHull = ship.MaxHull;
+            // The ship_stats row is the dock-authored reload; the tick budget only
+            // stands in until that row replicates.
             snapshot.ReloadDurationSeconds = stats != null
                 ? stats.ReloadMilliseconds / 1000f
                 : (float)ship.CannonCooldownTicks / tickRate;

@@ -91,14 +91,14 @@ namespace Sea.Tests
         }
 
         [Test]
-        public void Spatial_subscription_radius_covers_the_default_chart_view()
+        public void Spatial_subscription_radius_covers_the_fog_vision_radius()
         {
-            const float widescreenAspect = 16f / 9f;
-            var viewHalfWidth = SeaChartCameraRules.DefaultZoom * widescreenAspect;
             var guaranteedHalfWidth =
                 SeaSubscriptionPlan.SpatialRadius * SeaSubscriptionPlan.ChunkSize;
 
-            Assert.That(guaranteedHalfWidth, Is.GreaterThanOrEqualTo(viewHalfWidth));
+            Assert.That(
+                guaranteedHalfWidth,
+                Is.GreaterThanOrEqualTo(SeaPresentationRules.VisionRadius));
         }
 
         [Test]
