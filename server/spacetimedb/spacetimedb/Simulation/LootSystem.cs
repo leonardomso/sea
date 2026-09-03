@@ -5,53 +5,53 @@ public static partial class Module
 {
     private static void ProcessLootClaimsForMovingShip(
         ReducerContext ctx,
-        ShipKinematics kinematics,
+        ShipKinematics mover,
         ulong tick)
     {
-        if (ctx.Db.Ship.EntityId.Find(kinematics.EntityId) is not Ship ship)
-        {
-            return;
-        }
-
-        CopyKinematics(kinematics, ref ship);
-        ProcessLootClaimsForMovingShip(ctx, ship, tick);
-    }
-
-    private static void ProcessLootClaimsForMovingShip(
-        ReducerContext ctx,
-        Ship movingShip,
-        ulong tick)
-    {
-        if (!movingShip.IsActive || !movingShip.IsAlive ||
-            movingShip.FactionCode != (byte)FactionCode.Player)
+        if (mover.FactionCode != (byte)FactionCode.Player)
         {
             return;
         }
 
         var bounds = SpatialRules.BoundsAround(
-            movingShip.PositionX,
-            movingShip.PositionY,
+            mover.PositionX,
+            mover.PositionY,
             LootRules.PickupRadius);
         foreach (var loot in ActiveLootIn(ctx, bounds))
         {
-            TryClaimLoot(ctx, loot, movingShip, tick);
+            TryClaimLoot(ctx, loot, mover, tick);
         }
     }
 
-    private static void TryClaimLoot(ReducerContext ctx, Loot loot, Ship movingShip, ulong tick)
+    // The mover sails inside this tick, so its own position comes from the shard it is
+    // being integrated in; every rival is read from the thin ShipMovement row, which
+    // republishes every tick, rather than the fat Ship row, which only follows on a
+    // chunk change and would hand the loot to whoever happens to look closest in a
+    // position they left minutes ago.
+    private static void TryClaimLoot(
+        ReducerContext ctx,
+        Loot loot,
+        ShipKinematics mover,
+        ulong tick)
     {
-        var selection = new LootClaimSelection(0, float.PositiveInfinity);
+        var selection = LootRules.Consider(
+            new LootClaimSelection(0, float.PositiveInfinity),
+            new LootCandidate(
+                mover.EntityId,
+                CombatRules.Distance(
+                    loot.PositionX,
+                    loot.PositionY,
+                    mover.PositionX,
+                    mover.PositionY)));
         var bounds = SpatialRules.BoundsAround(
             loot.PositionX,
             loot.PositionY,
             LootRules.PickupRadius);
-        foreach (var ship in ActiveShipsIn(ctx, bounds))
+        foreach (var movement in ActiveMovementIn(ctx, bounds))
         {
-            var candidateShip = ship.EntityId == movingShip.EntityId
-                ? movingShip
-                : ship;
-            if (candidateShip.FactionCode != (byte)FactionCode.Player ||
-                !candidateShip.IsAlive)
+            if (movement.EntityId == mover.EntityId ||
+                movement.FactionCode != (byte)FactionCode.Player ||
+                !movement.IsAlive)
             {
                 continue;
             }
@@ -59,12 +59,12 @@ public static partial class Module
             selection = LootRules.Consider(
                 selection,
                 new LootCandidate(
-                    candidateShip.EntityId,
+                    movement.EntityId,
                     CombatRules.Distance(
-                    loot.PositionX,
-                    loot.PositionY,
-                    candidateShip.PositionX,
-                    candidateShip.PositionY)));
+                        loot.PositionX,
+                        loot.PositionY,
+                        movement.PositionX,
+                        movement.PositionY)));
         }
 
         var claimant = selection.EntityId;

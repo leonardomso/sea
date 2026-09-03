@@ -48,6 +48,11 @@ if grep -R -n --include='*.cs' 'Loot.ByActive.Filter(true)' "$simulation"; then
   exit 1
 fi
 
+if grep -n 'ActiveShipsIn' "$simulation/LootSystem.cs"; then
+  echo "Loot claims must rank rivals by published kinematics, not stale Ship rows." >&2
+  exit 1
+fi
+
 if grep -R -n --include='*.cs' 'ExpireTransientRows' "$simulation"; then
   echo "Persisted transient event cleanup must be removed." >&2
   exit 1
