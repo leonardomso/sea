@@ -57,11 +57,19 @@ grep -q '^  activeInputHandler: 1$' "$unity_root/ProjectSettings/ProjectSettings
 grep -q '^using System.Collections;$' "$project_root/packages/spacetimedb-unity/src/SpacetimeDBClient.cs"
 grep -q 'DbConnection\.Builder' "$unity_root/Assets/Networking/SeaConnectionController.cs"
 grep -q 'Reducers\.IssueShipCommand' "$unity_root/Assets/Networking/SeaConnectionController.cs"
-grep -q 'new ShipCommand\.SetCourse' "$unity_root/Assets/Presentation/SeaGameController.cs"
-grep -q 'new ShipCommand\.FireBroadside' "$unity_root/Assets/Presentation/SeaGameController.cs"
-grep -q 'new ShipCommand\.ActivateAbility' "$unity_root/Assets/Presentation/SeaGameController.cs"
-grep -q 'new ShipCommand\.StartRepair' "$unity_root/Assets/Presentation/SeaGameController.cs"
-grep -q 'new ShipCommand\.StartBoarding' "$unity_root/Assets/Presentation/SeaGameController.cs"
+# Every ShipCommand variant the module publishes must be issued by runtime client code. The
+# variant list comes from the generated bindings, so a new or renamed command fails here.
+ship_commands="$(sed -n 's/^ *[A-Za-z]*Command \([A-Za-z]*\),\{0,1\}$/\1/p' "$unity_root/Assets/Generated/SpacetimeDB/Types/ShipCommand.g.cs")"
+if [ -z "$ship_commands" ]; then
+  echo "No ShipCommand variants found in the generated bindings." >&2
+  exit 1
+fi
+for command in $ship_commands; do
+  if ! grep -R -q --include='*.cs' --exclude-dir=Generated --exclude-dir=Tests "new ShipCommand\.$command" "$unity_root/Assets"; then
+    echo "Runtime Unity code never issues ShipCommand.$command." >&2
+    exit 1
+  fi
+done
 if grep -R -q --include='*.cs' -E 'Reducers\.(SetCourse|StopCourse|SelectTarget|ClearTarget|SetAmmo|FireBroadside|ActivateAbility|StartRepair|StartBoarding|CancelRepair|CancelBoarding|MoveTo)' \
   "$unity_root/Assets/Networking" "$unity_root/Assets/Presentation"; then
   echo "Runtime Unity code must use IssueShipCommand for gameplay." >&2

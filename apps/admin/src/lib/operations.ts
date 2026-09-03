@@ -1,15 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { dashboardTables } from "./dashboard-panels";
 
 const databaseName = "sea-local";
-const dashboardTables = [
-	"player_ownership",
-	"ship",
-	"npc_ai",
-	"player_progression",
-	"world_object",
-	"combat_event",
-] as const;
-
 type SqlResult = {
 	schema?: { elements?: { name?: { some?: string } }[] };
 	rows?: unknown[];

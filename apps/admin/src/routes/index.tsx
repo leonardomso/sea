@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { dashboardPanels } from "../lib/dashboard-panels";
 import { getOperationsSnapshot } from "../lib/operations";
 
 export const Route = createFileRoute("/")({
@@ -89,38 +90,25 @@ function Home() {
 					<DataPanel
 						title="Connected players"
 						rows={players}
-						columns={["owner", "ship_entity_id", "is_connected"]}
+						columns={dashboardPanels.players.columns}
 						empty="No players connected"
 					/>
 					<DataPanel
 						title="Player ships"
 						rows={ships}
-						columns={[
-							"entity_id",
-							"faction_code",
-							"position_x",
-							"position_y",
-							"hull",
-							"is_engaged",
-						]}
+						columns={dashboardPanels.playerShips.columns}
 						empty="No player ships"
 					/>
 					<DataPanel
 						title="Enemy ships"
 						rows={enemies}
-						columns={[
-							"entity_id",
-							"archetype_code",
-							"hull",
-							"max_hull",
-							"is_active",
-						]}
+						columns={dashboardPanels.enemyShips.columns}
 						empty="No enemy ships"
 					/>
 					<DataPanel
 						title="Recent events"
 						rows={events.slice(-8).reverse()}
-						columns={["owner_entity_id", "event_type", "details", "tick"]}
+						columns={dashboardPanels.events.columns}
 						empty="No events recorded"
 					/>
 				</section>
