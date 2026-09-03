@@ -38,11 +38,11 @@ public readonly record struct NpcSnapshot
     /// <summary>Whether the magazine and the one-second floor both allow a shot this decision.</summary>
     public bool CanFire { get; init; }
     public ulong DecisionSeed { get; init; }
-    public ulong DecisionTick { get; init; }
-    public float HomeX { get; init; }
-    public float HomeY { get; init; }
     public IReadOnlyCollection<NavigationBlocker>? Blockers { get; init; }
 }
+
+/// <summary>A patrol loop: the ring an idle ship sails, centred anywhere on the chart.</summary>
+public readonly record struct PatrolRoute(float CenterX, float CenterY, float Radius);
 
 public readonly record struct NpcDecision(
     NpcActionKind Action,
@@ -59,24 +59,34 @@ public static class NpcRules
     private const float RepairHullRatio = 0.3f;
     private const float TurnCourseDistance = 8f;
 
-    // Idle ships patrol the waters around their spawn instead of criss-crossing the chart,
-    // and each leg is long enough to read as a sail rather than a twitch.
-    public const float RoamRadius = 40f;
+    // Every idle ship sails a patrol route: a wide loop across the chart, fixed for the life of
+    // the ship by its seed. The old model kept each hull inside a forty-unit bubble around its
+    // spawn, which meant the sea was full of ships that never went anywhere and a player could
+    // sail the whole map without meeting one under way.
+    public const float MinimumRouteRadius = 30f;
+    public const float MaximumRouteRadius = 75f;
     public const float MinimumRoamLeg = 12f;
     private const int RoamCandidates = 4;
 
-    // Each new leg swings the ship's bearing from home on by this step, so a patrol
-    // sails a loop around its home waters rather than darting between random points.
+    // How far off its ring a leg may sit and still count as on route - blockers and the chart
+    // edge push a destination around, and re-plotting for every nudge would stall the ship.
+    public const float RouteTolerance = 15f;
+
+    // Each new leg swings the ship's bearing around its route by this step, so a patrol
+    // sails its loop rather than darting between random points.
     public const float CircuitStepDegrees = 60f;
 
-    // A ship dragged this far from home lets its target go and roams back; it only
-    // hunts again once it is inside its home waters, so a fleeing player is not
-    // chased across the whole chart.
-    public const float LeashRadius = 60f;
+    // A target that opens this much water has broken contact: it is past the longest gun and
+    // past any aggro range on the map, so the ship gives it up and returns to its route rather
+    // than trailing a fleeing player forever.
+    public const float DisengageRange = 90f;
 
-    // Hostile ships make their home far enough out that no roam leg reaches the
-    // harbor's safe waters.
-    public const float HostileHomeClearance = RoamRadius + WorldRules.HarborSafeRadius;
+    // Respawns scatter this far around a ship's home, and hostile homes are seeded this far
+    // clear of the harbor so nothing spawns on top of the players' waters.
+    public const float HomeAnchorRadius = 40f;
+    public const float HostileHomeClearance = HomeAnchorRadius + WorldRules.HarborSafeRadius;
+
+    private const float MapHalfSpan = (WorldRules.MapMax - WorldRules.MapMin) / 2f;
 
     // Spawn shields and harbor waters keep fresh players out of NPC gunsights; a
     // protected target is dropped and no NPC picks it up again until it sails out.
@@ -89,11 +99,10 @@ public static class NpcRules
     public static bool HasAutomaticAggroCapacity(int currentAttackers) =>
         currentAttackers < MaximumAutomaticAttackersPerPlayer;
 
-    public static bool ShouldSearchForTarget(
-        bool targetAvailable,
-        float aggroRange,
-        float distanceFromHome) =>
-        !targetAvailable && aggroRange > 0f && distanceFromHome <= RoamRadius;
+    // A ship on patrol hunts wherever its route takes it. Aggro range is the only gate; a
+    // second gate on the distance from home is what kept hostiles loitering at their spawn.
+    public static bool ShouldSearchForTarget(bool targetAvailable, float aggroRange) =>
+        !targetAvailable && aggroRange > 0f;
 
     public static bool ShouldAttemptRepair(uint hull, uint maximumHull) =>
         maximumHull > 0 && (float)hull / maximumHull <= RepairHullRatio;
@@ -117,7 +126,9 @@ public static class NpcRules
             return new NpcDecision(NpcActionKind.StartRepair);
         }
 
-        if (snapshot.TargetEntityId != 0 && DistanceFromHome(snapshot) > LeashRadius)
+        if (snapshot.TargetEntityId != 0 &&
+            snapshot.TargetAvailable &&
+            snapshot.DistanceToTarget > DisengageRange)
         {
             return new NpcDecision(NpcActionKind.ClearTarget);
         }
@@ -127,15 +138,17 @@ public static class NpcRules
             : DecideEngagement(snapshot, loadout);
     }
 
-    private static float DistanceFromHome(NpcSnapshot snapshot) =>
-        CombatRules.Distance(snapshot.X, snapshot.Y, snapshot.HomeX, snapshot.HomeY);
-
     private static bool IsNearCourseEnd(NpcSnapshot snapshot) =>
         CombatRules.Distance(snapshot.X, snapshot.Y, snapshot.CourseX, snapshot.CourseY) <=
         TurnCourseDistance;
 
-    private static bool IsInHomeWaters(NpcSnapshot snapshot, float x, float y) =>
-        CombatRules.Distance(snapshot.HomeX, snapshot.HomeY, x, y) <= RoamRadius;
+    private static bool IsOnPatrolRoute(NpcSnapshot snapshot, float x, float y)
+    {
+        var route = RouteFor(snapshot.DecisionSeed);
+        return MathF.Abs(
+            CombatRules.Distance(route.CenterX, route.CenterY, x, y) - route.Radius) <=
+            RouteTolerance;
+    }
 
     private static IReadOnlyCollection<NavigationBlocker> Blockers(NpcSnapshot snapshot) =>
         snapshot.Blockers ?? [];
@@ -153,12 +166,12 @@ public static class NpcRules
                 Ammunition: loadout.Ammunition);
         }
 
-        // A leg still under way is kept unless it was plotted while chasing something
-        // out past the leash; that one is replaced by a leg back into home waters.
-        // The next leg is plotted just before the current one ends so the ship
-        // swings straight into it instead of stopping, waiting, and setting off.
+        // A leg still under way is kept unless it was plotted while chasing something off the
+        // route; that one is replaced by a leg back onto it. The next leg is plotted just
+        // before the current one ends so the ship swings straight into it instead of
+        // stopping, waiting, and setting off.
         if (snapshot.HasCourse &&
-            IsInHomeWaters(snapshot, snapshot.CourseX, snapshot.CourseY) &&
+            IsOnPatrolRoute(snapshot, snapshot.CourseX, snapshot.CourseY) &&
             !IsNearCourseEnd(snapshot))
         {
             return new NpcDecision(NpcActionKind.Hold);
@@ -204,22 +217,40 @@ public static class NpcRules
             : new NpcDecision(NpcActionKind.Hold);
     }
 
+    /// <summary>
+    /// The loop a ship patrols for its whole life. Derived from the decision seed alone, never
+    /// from the tick: a route that changed between decisions would not be a route.
+    /// </summary>
+    public static PatrolRoute RouteFor(ulong seed)
+    {
+        var state = seed ^ 0xD1B54A32D192ED03UL;
+        var radius = MinimumRouteRadius +
+            NextUnit(ref state) * (MaximumRouteRadius - MinimumRouteRadius);
+
+        // The centre is held back far enough that the whole ring stays on the chart; a ring
+        // clipped by the edge would flatten into a ship sliding along the border.
+        var reach = MathF.Max(0f, MapHalfSpan - SpawnRules.EdgeMargin - radius);
+        return new PatrolRoute(
+            (NextUnit(ref state) * 2f - 1f) * reach,
+            (NextUnit(ref state) * 2f - 1f) * reach,
+            radius);
+    }
+
     public static SpawnPoint RoamDestination(NpcSnapshot snapshot)
     {
-        var state = snapshot.DecisionSeed ^ unchecked(snapshot.DecisionTick * 0x9E3779B97F4A7C15UL);
+        var route = RouteFor(snapshot.DecisionSeed);
         var blockers = Blockers(snapshot);
-        // The loop's radius wanders between legs so the circuit never looks drawn with
-        // a compass, and each ship keeps one turning direction for its whole patrol.
-        var radius = MinimumRoamLeg + NextUnit(ref state) * (RoamRadius - MinimumRoamLeg);
+        // Each ship keeps one turning direction for its whole patrol, so the loop reads as a
+        // circuit rather than a ship changing its mind at every waypoint.
         var direction = (snapshot.DecisionSeed & 1) == 0 ? 1f : -1f;
-        var bearing = CircuitBearing(snapshot, ref state);
-        var destination = new SpawnPoint(Clamp(snapshot.HomeX), Clamp(snapshot.HomeY));
+        var bearing = CircuitBearing(snapshot, route);
+        var destination = new SpawnPoint(Clamp(route.CenterX), Clamp(route.CenterY));
         for (var candidate = 1; candidate <= RoamCandidates; candidate++)
         {
             var angle = bearing + direction * candidate * CircuitStepDegrees * MathF.PI / 180f;
             destination = new SpawnPoint(
-                Clamp(snapshot.HomeX + MathF.Cos(angle) * radius),
-                Clamp(snapshot.HomeY + MathF.Sin(angle) * radius));
+                Clamp(route.CenterX + MathF.Cos(angle) * route.Radius),
+                Clamp(route.CenterY + MathF.Sin(angle) * route.Radius));
             if (CombatRules.Distance(snapshot.X, snapshot.Y, destination.X, destination.Y) >= MinimumRoamLeg &&
                 !NavigationRules.IsDestinationBlocked(destination.X, destination.Y, blockers))
             {
@@ -230,14 +261,15 @@ public static class NpcRules
         return ClearPoint(destination.X, destination.Y, blockers);
     }
 
-    // The loop continues from wherever the ship is on it; a ship sitting on its home
-    // point starts at a seeded bearing.
-    private static float CircuitBearing(NpcSnapshot snapshot, ref ulong state)
+    // The loop continues from wherever the ship happens to be on it, so a ship that has just
+    // broken off a chase rejoins its route at the nearest point rather than sailing back to
+    // where it left. A ship sitting exactly on the centre starts the loop due east.
+    private static float CircuitBearing(NpcSnapshot snapshot, PatrolRoute route)
     {
-        var deltaX = snapshot.X - snapshot.HomeX;
-        var deltaY = snapshot.Y - snapshot.HomeY;
+        var deltaX = snapshot.X - route.CenterX;
+        var deltaY = snapshot.Y - route.CenterY;
         return deltaX * deltaX + deltaY * deltaY < 1f
-            ? NextUnit(ref state) * MathF.PI * 2f
+            ? 0f
             : MathF.Atan2(deltaY, deltaX);
     }
 

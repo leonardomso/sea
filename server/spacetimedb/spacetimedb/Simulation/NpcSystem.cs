@@ -47,10 +47,7 @@ public static partial class Module
         var target = FindHydratedShip(ctx, ship.TargetEntityId);
         var targetAvailable = target is Ship selected && world.IsAttackablePlayer(ctx, selected);
         var aggroRange = SectorRules.UnitsFromSquares(definition.AggroRangeSquares);
-        var candidate = NpcRules.ShouldSearchForTarget(
-                targetAvailable,
-                aggroRange,
-                CombatRules.Distance(ship.PositionX, ship.PositionY, ai.HomeX, ai.HomeY))
+        var candidate = NpcRules.ShouldSearchForTarget(targetAvailable, aggroRange)
             ? FindNearestPlayer(ctx, world, ship, aggroRange)
             : default(Ship?);
         ExecuteNpcDecision(ctx, world, ship, NpcRules.Decide(BuildNpcSnapshot(
@@ -119,9 +116,6 @@ public static partial class Module
             CanFire = ship.ReadyVolleys > 0 &&
             (!ship.HasFired || tick >= ship.LastShotTick + CombatRules.FireIntervalTicks),
             DecisionSeed = ai.HomeSeed,
-            DecisionTick = tick,
-            HomeX = ai.HomeX,
-            HomeY = ai.HomeY,
             Blockers = blockers,
         };
 

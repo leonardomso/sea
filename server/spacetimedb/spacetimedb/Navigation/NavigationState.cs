@@ -56,7 +56,7 @@ public static partial class Module
                 seed,
                 ai.HomeX,
                 ai.HomeY,
-                NpcRules.RoamRadius,
+                NpcRules.HomeAnchorRadius,
                 blockers,
                 out var home))
         {

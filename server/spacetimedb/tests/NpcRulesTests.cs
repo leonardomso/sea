@@ -162,7 +162,7 @@ public sealed partial class NpcRulesTests
         float aggroRange,
         bool expected)
     {
-        Assert.Equal(expected, NpcRules.ShouldSearchForTarget(targetAvailable, aggroRange, 0f));
+        Assert.Equal(expected, NpcRules.ShouldSearchForTarget(targetAvailable, aggroRange));
     }
 
     [Fact]
@@ -221,39 +221,34 @@ public sealed partial class NpcRulesTests
     }
 
     [Fact]
-    public void Ship_dragged_past_the_leash_lets_its_target_go()
+    public void Target_that_opens_the_disengage_range_is_let_go()
     {
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Raider) with
+        var chasing = Snapshot(ShipArchetypeCode.Raider) with
         {
-            X = NpcRules.LeashRadius + 1f,
             TargetEntityId = 42,
             TargetAvailable = true,
-            DistanceToTarget = 10f,
-            TargetX = NpcRules.LeashRadius + 11f,
-        });
+            DistanceToTarget = NpcRules.DisengageRange + 1f,
+            TargetX = NpcRules.DisengageRange + 1f,
+        };
 
-        Assert.Equal(NpcActionKind.ClearTarget, decision.Action);
+        Assert.Equal(NpcActionKind.ClearTarget, NpcRules.Decide(chasing).Action);
+        Assert.NotEqual(
+            NpcActionKind.ClearTarget,
+            NpcRules.Decide(chasing with
+            {
+                DistanceToTarget = NpcRules.DisengageRange,
+                TargetX = NpcRules.DisengageRange,
+            }).Action);
     }
 
     [Fact]
-    public void Ship_outside_home_waters_sails_home_instead_of_hunting()
+    public void A_ship_hunts_wherever_its_patrol_route_has_taken_it()
     {
-        var snapshot = Snapshot(ShipArchetypeCode.Raider) with
-        {
-            X = NpcRules.LeashRadius + 1f,
-            HasCourse = true,
-            CourseX = NpcRules.LeashRadius + 20f,
-        };
-
-        var decision = NpcRules.Decide(snapshot);
-
-        Assert.False(NpcRules.ShouldSearchForTarget(false, 40f, NpcRules.RoamRadius + 1f));
-        Assert.True(NpcRules.ShouldSearchForTarget(false, 40f, NpcRules.RoamRadius));
-        Assert.Equal(NpcActionKind.SetCourse, decision.Action);
-        Assert.InRange(
-            CombatRules.Distance(snapshot.HomeX, snapshot.HomeY, decision.DestinationX, decision.DestinationY),
-            0f,
-            NpcRules.RoamRadius);
+        // The old rule only let a ship look for a target inside a bubble around its spawn,
+        // which made every hostile far from home harmless scenery.
+        Assert.True(NpcRules.ShouldSearchForTarget(false, 40f));
+        Assert.False(NpcRules.ShouldSearchForTarget(true, 40f));
+        Assert.False(NpcRules.ShouldSearchForTarget(false, 0f));
     }
 
     private static NpcSnapshot Snapshot(ShipArchetypeCode archetype) => new()
@@ -275,7 +270,6 @@ public sealed partial class NpcRulesTests
         },
         CanFire = true,
         DecisionSeed = 99,
-        DecisionTick = 500,
     };
 
     [Theory]
