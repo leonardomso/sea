@@ -88,7 +88,6 @@ public static partial class ContentCatalog
         if (values.Count != TierCount)
         {
             errors.Add($"{subject}: {field} must have {TierCount} entries.");
-            return;
         }
 
         for (var tier = 0; tier < values.Count; tier++)
@@ -102,7 +101,6 @@ public static partial class ContentCatalog
         if (hulls.Count == 0)
         {
             errors.Add("At least one hull is required.");
-            return;
         }
 
         var ids = new IdSet("hull");
@@ -128,7 +126,6 @@ public static partial class ContentCatalog
         if (cannons.Count == 0)
         {
             errors.Add("At least one cannon is required.");
-            return;
         }
 
         var ids = new IdSet("cannon");
@@ -153,7 +150,6 @@ public static partial class ContentCatalog
         if (ammunition.Count == 0)
         {
             errors.Add("At least one ammunition is required.");
-            return;
         }
 
         var ids = new IdSet("ammunition");
@@ -200,7 +196,6 @@ public static partial class ContentCatalog
         if (abilities.Count == 0)
         {
             errors.Add("At least one ability is required.");
-            return;
         }
 
         var ids = new IdSet("ability");
@@ -232,7 +227,6 @@ public static partial class ContentCatalog
         if (npcs.Count == 0)
         {
             errors.Add("At least one npc is required.");
-            return;
         }
 
         var ids = new IdSet("npc");
