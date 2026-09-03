@@ -36,6 +36,10 @@ difference is resolved.
   tooling used by milestone gates.
 - `scripts`: canonical local commands. Extend these instead of documenting
   one-off shell procedures.
+- `.claude/skills`: SpacetimeDB reference skills (tables, indexes, reducers,
+  subscriptions, SQL, migrations, clients). Consult the `spacetimedb-tables`,
+  `spacetimedb-sql`, and `spacetimedb-clients` performance references before
+  changing schema, subscriptions, or hot reducer paths.
 
 ## Implementation rules
 
