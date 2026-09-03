@@ -135,6 +135,10 @@ public static class NpcRules
     private static float DistanceFromHome(NpcSnapshot snapshot) =>
         CombatRules.Distance(snapshot.X, snapshot.Y, snapshot.HomeX, snapshot.HomeY);
 
+    private static bool IsNearCourseEnd(NpcSnapshot snapshot) =>
+        CombatRules.Distance(snapshot.X, snapshot.Y, snapshot.CourseX, snapshot.CourseY) <=
+        TurnCourseDistance;
+
     private static bool IsInHomeWaters(NpcSnapshot snapshot, float x, float y) =>
         CombatRules.Distance(snapshot.HomeX, snapshot.HomeY, x, y) <= RoamRadius;
 
@@ -157,7 +161,11 @@ public static class NpcRules
 
         // A leg still under way is kept unless it was plotted while chasing something
         // out past the leash; that one is replaced by a leg back into home waters.
-        if (snapshot.HasCourse && IsInHomeWaters(snapshot, snapshot.CourseX, snapshot.CourseY))
+        // The next leg is plotted just before the current one ends so the ship
+        // swings straight into it instead of stopping, waiting, and setting off.
+        if (snapshot.HasCourse &&
+            IsInHomeWaters(snapshot, snapshot.CourseX, snapshot.CourseY) &&
+            !IsNearCourseEnd(snapshot))
         {
             return new NpcDecision(NpcActionKind.Hold);
         }
