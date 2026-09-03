@@ -144,6 +144,9 @@ public static class ShipStatRules
     /// <summary>Combat Power is carried in centis (hundredths of a point) for the same reason.</summary>
     private const long PowerScale = 100;
 
+    /// <summary>Kits up to this size sort on the stack: one source per kind leaves room to spare.</summary>
+    private const int StackSources = 8;
+
     /// <summary>
     /// Sums every source (each floored at zero first), clamps the total to the caps, then drops sources
     /// from the end of the HullVariant, Plates, Sails, Crew, Skills, Buffs order until the Combat Power
@@ -155,12 +158,18 @@ public static class ShipStatRules
         ArgumentNullException.ThrowIfNull(sources);
         ArgumentNullException.ThrowIfNull(caps);
 
-        var ordered = Ordered(sources);
-        var prefix = Prefix(ordered);
+        // A normal kit sorts on the stack; only an oversized source list reaches the heap.
+        var count = sources.Count;
+        // Stryker disable once Equality : a kit on either side of the threshold yields the same sheet.
+        var onStack = count <= StackSources;
+        Span<BonusSource> ordered = onStack ? stackalloc BonusSource[count] : new BonusSource[count];
+        Span<StatBonuses> prefix = onStack ? stackalloc StatBonuses[count + 1] : new StatBonuses[count + 1];
+        SortIntoDropOrder(sources, ordered);
+        Accumulate(ordered, prefix);
 
         // Start with every source and drop from the tail until the budget is met, computing each prefix once.
         var budget = Centis(caps.CombatPowerBudget);
-        var active = ordered.Length;
+        var active = count;
         var bonuses = Cap(prefix[active], caps);
         var wanted = CombatPowerCentis(bonuses, loadout.Hull, caps);
         var used = wanted;
@@ -219,24 +228,38 @@ public static class ShipStatRules
         float RepairAmount,
         uint RepairChannelMilliseconds);
 
-    /// <summary>Sorted by drop order (Task 4 amendment) with every source floored at zero first.</summary>
-    private static StatBonuses[] Ordered(IReadOnlyList<BonusSource> sources) =>
-        sources
-            .OrderBy(source => (byte)source.Kind)
-            .ThenBy(source => source.SourceId)
-            .Select(source => NonNegative(source.Bonuses))
-            .ToArray();
-
-    /// <summary>prefix[n] is the sum of the first n sources, so dropping a tail is a single index step.</summary>
-    private static StatBonuses[] Prefix(StatBonuses[] ordered)
+    /// <summary>
+    /// Stable insertion sort into drop order (Task 4 amendment): by kind, then by source id, with ties
+    /// keeping their declared order. A kit is a handful of sources, so this beats a general sort and allocates nothing.
+    /// </summary>
+    private static void SortIntoDropOrder(IReadOnlyList<BonusSource> sources, Span<BonusSource> ordered)
     {
-        var prefix = new StatBonuses[ordered.Length + 1];
+        for (var index = 0; index < sources.Count; index++)
+        {
+            var source = sources[index];
+            var slot = index;
+            while (slot > 0 && Precedes(source, ordered[slot - 1]))
+            {
+                ordered[slot] = ordered[slot - 1];
+                slot--;
+            }
+
+            ordered[slot] = source;
+        }
+    }
+
+    private static bool Precedes(BonusSource source, BonusSource other) =>
+        source.Kind < other.Kind || (source.Kind == other.Kind && source.SourceId < other.SourceId);
+
+    /// <summary>
+    /// prefix[n] is the sum of the first n sources (each floored at zero first), so dropping a tail is a single index step.
+    /// </summary>
+    private static void Accumulate(ReadOnlySpan<BonusSource> ordered, Span<StatBonuses> prefix)
+    {
         for (var index = 0; index < ordered.Length; index++)
         {
-            prefix[index + 1] = prefix[index].Add(ordered[index]);
+            prefix[index + 1] = prefix[index].Add(NonNegative(ordered[index].Bonuses));
         }
-
-        return prefix;
     }
 
     private static DerivedStats Derive(ShipLoadout loadout, StatBonuses bonuses, StatCapsContent caps)

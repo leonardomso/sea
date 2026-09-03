@@ -45,6 +45,7 @@
     "server:test:coverage": "./scripts/test-server-coverage.sh",
     "server:test:mutation": "./scripts/test-server-mutation.sh",
     "tools:build": "./scripts/dotnet.sh build tests/performance/Sea.Server.Benchmarks/Sea.Server.Benchmarks.csproj && ./scripts/dotnet10.sh build tests/load/Sea.LoadTests/Sea.LoadTests.csproj",
+    "perf:domain": "./scripts/dotnet.sh run -c Release --project tests/performance/Sea.Server.Benchmarks/Sea.Server.Benchmarks.csproj -- --filter '*' --inProcess --job short",
     "quality:csharp-size": "./scripts/check-csharp-size.sh",
     "quality:bindings": "./scripts/check-generated-bindings.sh",
     "quality:dotnet-format": "./scripts/check-dotnet-format.sh",

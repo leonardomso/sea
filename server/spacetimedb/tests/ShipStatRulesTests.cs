@@ -112,6 +112,35 @@ public sealed class ShipStatRulesTests
     }
 
     [Fact]
+    public void Sources_that_tie_on_kind_and_id_keep_their_declared_order()
+    {
+        var caps = Caps with { DamageBonusCap = 0.5f, ReloadBonusCap = 0.5f, CombatPowerBudget = 25f };
+        var declaredFirst = Source(BonusSourceKind.Plates, 1, StatBonuses.None with { Damage = 0.2f });
+        var declaredSecond = Source(BonusSourceKind.Plates, 1, StatBonuses.None with { Reload = 0.1f });
+
+        var sheet = ShipStatRules.Compute(Tier1.Loadout(), new[] { declaredFirst, declaredSecond }, caps);
+
+        Assert.Equal(20f, sheet.CombatPowerUsed, 3);
+        Assert.Equal(10f, sheet.CombatPowerInactive, 3);
+        Assert.Equal(Tier1.Sheet().VolleyDamage * 120 / 100, sheet.VolleyDamage);
+        Assert.Equal(Tier1.Sheet().ReloadMilliseconds, sheet.ReloadMilliseconds);
+    }
+
+    [Fact]
+    public void An_oversized_kit_is_computed_like_a_small_one()
+    {
+        var caps = Caps with { DamageBonusCap = 1f, CombatPowerBudget = 1_000f };
+        var sources = Enumerable.Range(1, 9)
+            .Select(id => Source(BonusSourceKind.Buffs, (ulong)id, StatBonuses.None with { Damage = 0.05f }))
+            .ToArray();
+
+        var sheet = ShipStatRules.Compute(Tier1.Loadout(), sources, caps);
+
+        Assert.Equal(45f, sheet.CombatPowerUsed, 3);
+        Assert.Equal(Tier1.Sheet().VolleyDamage * 145 / 100, sheet.VolleyDamage);
+    }
+
+    [Fact]
     public void Inactive_power_is_the_capped_remainder()
     {
         var sources = new[]
