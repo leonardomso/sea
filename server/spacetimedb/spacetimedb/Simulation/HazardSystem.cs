@@ -40,22 +40,9 @@ public static partial class Module
                     ships,
                     sourceEntityId: 0,
                     ref affected,
-                    new CombatDamage(2, 0, 0, 0),
+                    2,
                     tick,
                     "storm");
-            }
-
-            if (kind == WorldObjectCode.Shoal && TacticalRules.ShouldApplyStatus(
-                    ship.EntityId ^ tick,
-                    chancePercent: 35))
-            {
-                ApplyStatus(
-                    ctx,
-                    ship.EntityId,
-                    StatusCode.Flooding,
-                    tick,
-                    TacticalRules.StatusDurationTicks,
-                    maximumStacks: 3);
             }
 
             if (!affected.Equals(ship))

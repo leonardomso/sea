@@ -81,20 +81,7 @@ const AMMO_FIELDS = [
   field("effectMagnitude", "float"),
   field("effectDurationSeconds", "float"),
   field("rangeLimitSquares", "byte"),
-  field("hullDamage", "uint"),
-  field("sailDamage", "uint"),
-  field("cannonDamage", "uint"),
-  field("crewDamage", "uint"),
   field("rangeMultiplier", "float"),
-  field("appliedStatus", "string"),
-  field("appliedStatusCode", "enum", { enumType: "StatusCode" }),
-];
-
-const ABILITY_FIELDS = [
-  field("id", "string"),
-  field("code", "enum", { enumType: "AbilityCode" }),
-  field("cooldownTicks", "uint"),
-  field("durationTicks", "uint"),
 ];
 
 const NPC_FIELDS = [
@@ -111,7 +98,6 @@ const NPC_FIELDS = [
   field("hull", "uint"),
   field("cannonDamage", "uint"),
   field("preferredAmmunition", "enum", { enumType: "AmmunitionCode" }),
-  field("preferredWeakPoint", "enum", { enumType: "WeakPointCode" }),
   field("goldReward", "uint"),
   field("experienceReward", "ulong"),
 ];
@@ -160,7 +146,6 @@ export const CONTENT_FAMILIES = [
   { file: "hulls.json", key: "hulls", cs: "Hulls", type: "HullContent", fields: HULL_FIELDS, idKey: "id" },
   { file: "cannons.json", key: "cannons", cs: "Cannons", type: "CannonContent", fields: CANNON_FIELDS, idKey: "id" },
   { file: "ammo.json", key: "ammunition", cs: "Ammunition", type: "AmmunitionContent", fields: AMMO_FIELDS, idKey: "id" },
-  { file: "abilities.json", key: "abilities", cs: "Abilities", type: "AbilityContent", fields: ABILITY_FIELDS, idKey: "id" },
   { file: "npcs.json", key: "npcs", cs: "Npcs", type: "NpcContent", fields: NPC_FIELDS, idKey: "id" },
   { file: "stat_caps.json", key: "statCaps", cs: "StatCaps", type: "StatCapsContent", fields: STAT_CAPS_FIELDS, single: true },
 ];

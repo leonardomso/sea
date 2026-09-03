@@ -220,12 +220,17 @@ namespace Sea.Client
             if (!active.TryGetValue(volley.VolleyId, out var presentation))
             {
                 var visual = volleyPool.Acquire();
+                var muzzle = SeaVolleyPresentationRules.LocalMuzzleOffset(
+                    source != null ? source.eulerAngles.y : 0f,
+                    new Vector2(volley.OriginX, volley.OriginY),
+                    new Vector2(volley.TargetX, volley.TargetY),
+                    2.6f);
                 var origin = source != null
-                    ? source.TransformPoint(SeaVolleyPresentationRules.LocalSideOffset(volley.Side, 2.6f) + Vector3.up * 0.7f)
+                    ? source.TransformPoint(muzzle + Vector3.up * 0.7f)
                     : new Vector3(volley.OriginX, SeaWorldView.WaterSurfaceHeight + 0.8f, volley.OriginY);
                 presentation = new ActiveVolley(visual, origin, target, frame);
                 active.Add(volley.VolleyId, presentation);
-                sourceFeedback?.PlayBroadside(volley.Side);
+                sourceFeedback?.PlayVolley(muzzle.x / 2.6f);
                 PlayEffect(origin, cannonClip, new Color(0.28f, 0.24f, 0.20f, 1f));
             }
 
@@ -234,7 +239,7 @@ namespace Sea.Client
                 : presentation.LastPosition;
             var progress = SeaVolleyPresentationRules.Progress(
                 volley.FiredAtTick,
-                volley.ImpactAtTick,
+                volley.ExpiresAtTick,
                 currentTick);
             var position = Vector3.Lerp(presentation.Origin, destination, progress);
             position.y += Mathf.Sin(progress * Mathf.PI) * 1.7f;

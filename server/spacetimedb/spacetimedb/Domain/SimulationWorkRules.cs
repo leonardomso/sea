@@ -90,24 +90,6 @@ public static class SimulationWorkRules
             : currentTick + delta;
     }
 
-    public static ulong StatusInterval(StatusCode code) => code switch
-    {
-        StatusCode.Burning or StatusCode.Flooding => WorldRules.TickRateHz,
-        StatusCode.EmergencyPump => PeriodicEffectIntervalTicks,
-        _ => ulong.MaxValue,
-    };
-
-    public static ulong NextStatusProcessTick(
-        StatusCode code,
-        ulong currentTick,
-        ulong expiresAtTick)
-    {
-        var interval = StatusInterval(code);
-        return interval == ulong.MaxValue
-            ? expiresAtTick
-            : Math.Min(expiresAtTick, NextPeriodicTick(currentTick, interval));
-    }
-
     private static bool IsStaggeredWorkDue(
         ulong shipEntityId,
         ulong tick,

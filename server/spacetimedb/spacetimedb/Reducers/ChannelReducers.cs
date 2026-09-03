@@ -20,35 +20,9 @@ public static partial class Module
             CompletesAtTick = world.Tick + TacticalRules.RepairDurationTicks,
             NextProcessTick = world.Tick + 1,
             InitialHull = ship.Hull,
-            InitialSails = ship.Sails,
-            InitialCannons = ship.Cannons,
-            InitialCrew = ship.Crew,
             IsActive = true,
         });
         AppendEvent(ctx, world.Tick, ship.EntityId, "repair_started", "");
-    }
-
-    private static void ApplyStartBoarding(ReducerContext ctx, TickWorld world, ref Ship source)
-    {
-        var target = ctx.Db.Ship.EntityId.Find(source.TargetEntityId) ??
-            throw new InvalidOperationException("Accepted boarding has no target.");
-
-        ctx.Db.ShipChannel.Insert(new ShipChannel
-        {
-            ShipEntityId = source.EntityId,
-            ChannelType = "boarding",
-            ChannelTypeCode = (byte)ChannelCode.Boarding,
-            TargetEntityId = target.EntityId,
-            StartedAtTick = world.Tick,
-            CompletesAtTick = world.Tick + TacticalRules.BoardingDurationTicks,
-            NextProcessTick = world.Tick + 1,
-            InitialHull = source.Hull,
-            InitialSails = source.Sails,
-            InitialCannons = source.Cannons,
-            InitialCrew = source.Crew,
-            IsActive = true,
-        });
-        AppendEvent(ctx, world.Tick, source.EntityId, "boarding_started", $"target={target.EntityId}");
     }
 
     private static void ApplyCancelChannel(ReducerContext ctx, TickWorld world, Ship ship)

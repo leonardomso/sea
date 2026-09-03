@@ -16,55 +16,36 @@ namespace Sea.Tests
                 Is.LessThan(SeaRuntimeValidationRules.CombatObservationRange));
         }
 
-        [TestCase(0f, -10f, 0f, "port")]
-        [TestCase(0f, 10f, 0f, "starboard")]
-        [TestCase(90f, 0f, 10f, "port")]
-        [TestCase(90f, 0f, -10f, "starboard")]
-        public void Combat_probe_selects_the_broadside_that_can_fire_now(
-            float headingDegrees,
-            float targetX,
-            float targetY,
-            string expectedSide)
-        {
-            var decision = SeaRuntimeValidationRules.PlanBroadside(
-                Vector2.zero,
-                headingDegrees,
-                new Vector2(targetX, targetY));
-
-            Assert.That(decision.CanFire, Is.True);
-            Assert.That(decision.Side, Is.EqualTo(expectedSide));
-        }
-
-        [TestCase(0f, 0f, 10f, 90f)]
-        [TestCase(0f, 0f, -10f, -90f)]
-        [TestCase(180f, 0f, 10f, 90f)]
-        public void Combat_probe_turns_by_the_shortest_route_when_neither_side_can_fire(
+        [TestCase(0f, 0f, 10f, 0f)]
+        [TestCase(0f, 10f, 0f, 90f)]
+        [TestCase(90f, -10f, 0f, -90f)]
+        [TestCase(180f, 0f, -10f, 180f)]
+        public void Combat_probe_steers_at_the_target_because_every_gun_bears(
             float headingDegrees,
             float targetX,
             float targetY,
             float expectedHeading)
         {
-            var decision = SeaRuntimeValidationRules.PlanBroadside(
+            var decision = SeaRuntimeValidationRules.PlanFire(
                 Vector2.zero,
                 headingDegrees,
                 new Vector2(targetX, targetY));
 
-            Assert.That(decision.CanFire, Is.False);
+            Assert.That(decision.CanFire, Is.True);
             Assert.That(
                 Mathf.DeltaAngle(expectedHeading, decision.DesiredHeadingDegrees),
                 Is.EqualTo(0f).Within(0.001f));
         }
 
         [Test]
-        public void Combat_probe_uses_a_safe_arc_inside_the_authoritative_boundary()
+        public void Combat_probe_will_not_fire_on_a_target_sitting_on_its_own_hull()
         {
-            var inside = SeaRuntimeValidationRules.PlanBroadside(
-                Vector2.zero,
-                0f,
-                new Vector2(-1f, 1f));
+            // No bearing exists, so there is no heading to hold and nothing to shoot at; the
+            // probe keeps the heading it already had rather than snapping to zero.
+            var decision = SeaRuntimeValidationRules.PlanFire(Vector2.zero, 37f, Vector2.zero);
 
-            Assert.That(inside.CanFire, Is.False,
-                "A 45-degree offset must not race the server's 50-degree boundary.");
+            Assert.That(decision.CanFire, Is.False);
+            Assert.That(decision.DesiredHeadingDegrees, Is.EqualTo(37f));
         }
 
         [TestCase(0, 100, true)]

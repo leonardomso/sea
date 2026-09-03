@@ -38,51 +38,6 @@ public sealed class ContentIndexTests
     }
 
     [Fact]
-    public void Every_ability_is_indexed_by_its_own_code()
-    {
-        var index = ContentIndex.AbilityByCode(Catalog);
-
-        Assert.Equal(ContentIndex.CodeSlots, index.Length);
-        foreach (var ability in Catalog.Abilities)
-        {
-            Assert.Same(ability, index[(byte)ability.Code]);
-        }
-    }
-
-    [Fact]
-    public void Ability_codes_no_catalog_entry_claims_stay_empty()
-    {
-        var index = ContentIndex.AbilityByCode(Catalog);
-        var claimed = new HashSet<byte>();
-        foreach (var ability in Catalog.Abilities)
-        {
-            claimed.Add((byte)ability.Code);
-        }
-
-        for (var code = 0; code < index.Length; code++)
-        {
-            Assert.Equal(claimed.Contains((byte)code), index[code] is not null);
-        }
-
-        // AbilityCode.None is the parse failure sentinel and must never resolve to content.
-        Assert.Null(index[(byte)AbilityCode.None]);
-    }
-
-    [Fact]
-    public void Two_abilities_sharing_a_code_are_rejected()
-    {
-        var first = Catalog.Abilities[0];
-        var collided = Catalog with { Abilities = [first, first with { Id = "ability_copy" }] };
-
-        var error = Assert.Throws<InvalidOperationException>(
-            () => ContentIndex.AbilityByCode(collided));
-        Assert.Equal(
-            $"Ability code '{first.Code}' is claimed by both '{first.Id}' and 'ability_copy'.",
-            error.Message,
-            StringComparer.Ordinal);
-    }
-
-    [Fact]
     public void Every_npc_is_indexed_by_its_own_archetype_code()
     {
         var index = ContentIndex.NpcByArchetypeCode(Catalog);
@@ -152,7 +107,6 @@ public sealed class ContentIndexTests
     public void Null_content_is_rejected()
     {
         Assert.Throws<ArgumentNullException>(() => ContentIndex.AmmunitionByCode(null!));
-        Assert.Throws<ArgumentNullException>(() => ContentIndex.AbilityByCode(null!));
         Assert.Throws<ArgumentNullException>(() => ContentIndex.NpcByArchetypeCode(null!));
     }
 

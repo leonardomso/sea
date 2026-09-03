@@ -6,9 +6,9 @@ namespace Sea.Server.IntegrationTests;
 
 public sealed class SharedRewardIntegrationTests
 {
-    private const byte ReloadingRejection = 16;
-    private const byte OutOfRangeRejection = 17;
-    private const byte OutsideArcRejection = 18;
+    private const byte ReloadingRejection = 13;
+    private const byte FiringTooFastRejection = 14;
+    private const byte OutOfRangeRejection = 15;
     private static readonly TimeSpan ScenarioTimeout = TimeSpan.FromSeconds(90);
 
     [Fact]
@@ -145,28 +145,25 @@ public sealed class SharedRewardIntegrationTests
         var stopwatch = Stopwatch.StartNew();
         while (client.Npc(targetId).IsAlive)
         {
-            var source = client.OwnedShip();
-            var target = client.Npc(targetId);
-            var fire = client.FireBroadside(BroadsideFor(source, target));
+            var fire = client.Fire();
             if (fire.Accepted)
             {
                 return;
             }
 
-            if (fire.RejectionCode == ReloadingRejection)
+            if (fire.RejectionCode is ReloadingRejection or FiringTooFastRejection)
             {
                 PumpFor(clients, TimeSpan.FromMilliseconds(100));
                 ThrowIfTimedOut(stopwatch);
                 continue;
             }
 
+            // Range is the only geometry left: the magazine bears in every direction, so a
+            // rejection that is not the reload is the target sitting too far away.
             Assert.True(
-                fire.RejectionCode is OutOfRangeRejection or OutsideArcRejection,
-                $"Unexpected broadside rejection {fire.RejectionCode}.");
-            TurnOrApproachBroadside(
-                client,
-                target,
-                fire.RejectionCode == OutOfRangeRejection);
+                fire.RejectionCode == OutOfRangeRejection,
+                $"Unexpected fire rejection {fire.RejectionCode}.");
+            Approach(client, client.Npc(targetId));
             PumpFor(clients, TimeSpan.FromMilliseconds(150));
             ThrowIfTimedOut(stopwatch);
         }
@@ -174,43 +171,14 @@ public sealed class SharedRewardIntegrationTests
         throw new InvalidOperationException("Target sank before every participant fired.");
     }
 
-    private static void TurnOrApproachBroadside(
-        IntegrationClient client,
-        Ship target,
-        bool approach)
+    private static void Approach(IntegrationClient client, Ship target)
     {
         var source = client.OwnedShip();
-        var bearing = Bearing(source, target);
-        var heading = approach ? bearing : bearing + 90f;
-        var distance = approach ? MathF.Max(8f, Distance(source, target) - 20f) : 8f;
-        var radians = heading * MathF.PI / 180f;
-        var course = client.SetCourse(
-            source.PositionX + MathF.Sin(radians) * distance,
-            source.PositionY + MathF.Cos(radians) * distance);
-        if (approach)
-        {
-            Assert.True(course.Accepted);
-            return;
-        }
-
-        if (course.Accepted)
-        {
-            return;
-        }
-
-        heading = bearing - 90f;
-        radians = heading * MathF.PI / 180f;
+        var radians = Bearing(source, target) * MathF.PI / 180f;
+        var distance = MathF.Max(8f, Distance(source, target) - 20f);
         Assert.True(client.SetCourse(
-            source.PositionX + MathF.Sin(radians) * 8f,
-            source.PositionY + MathF.Cos(radians) * 8f).Accepted);
-    }
-
-    private static string BroadsideFor(Ship source, Ship target)
-    {
-        var bearing = Bearing(source, target);
-        var portError = MathF.Abs(SignedAngle(bearing - (source.HeadingDegrees - 90f)));
-        var starboardError = MathF.Abs(SignedAngle(bearing - (source.HeadingDegrees + 90f)));
-        return portError <= starboardError ? "port" : "starboard";
+            source.PositionX + MathF.Sin(radians) * distance,
+            source.PositionY + MathF.Cos(radians) * distance).Accepted);
     }
 
     private static float Bearing(Ship source, Ship target) =>
@@ -222,12 +190,6 @@ public sealed class SharedRewardIntegrationTests
         var deltaX = target.PositionX - source.PositionX;
         var deltaY = target.PositionY - source.PositionY;
         return MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
-    }
-
-    private static float SignedAngle(float degrees)
-    {
-        var value = (degrees + 180f) % 360f;
-        return (value < 0f ? value + 360f : value) - 180f;
     }
 
     private static void PumpUntil(

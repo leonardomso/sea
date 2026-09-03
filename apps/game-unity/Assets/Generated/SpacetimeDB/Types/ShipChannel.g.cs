@@ -29,12 +29,6 @@ namespace SpacetimeDB.Types
         public ulong NextProcessTick;
         [DataMember(Name = "initial_hull")]
         public uint InitialHull;
-        [DataMember(Name = "initial_sails")]
-        public uint InitialSails;
-        [DataMember(Name = "initial_cannons")]
-        public uint InitialCannons;
-        [DataMember(Name = "initial_crew")]
-        public uint InitialCrew;
         [DataMember(Name = "is_active")]
         public bool IsActive;
 
@@ -47,9 +41,6 @@ namespace SpacetimeDB.Types
             ulong CompletesAtTick,
             ulong NextProcessTick,
             uint InitialHull,
-            uint InitialSails,
-            uint InitialCannons,
-            uint InitialCrew,
             bool IsActive
         )
         {
@@ -61,9 +52,6 @@ namespace SpacetimeDB.Types
             this.CompletesAtTick = CompletesAtTick;
             this.NextProcessTick = NextProcessTick;
             this.InitialHull = InitialHull;
-            this.InitialSails = InitialSails;
-            this.InitialCannons = InitialCannons;
-            this.InitialCrew = InitialCrew;
             this.IsActive = IsActive;
         }
 

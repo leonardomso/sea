@@ -33,20 +33,8 @@ namespace SpacetimeDB.Types
         public float EffectDurationSeconds;
         [DataMember(Name = "range_limit_squares")]
         public byte RangeLimitSquares;
-        [DataMember(Name = "hull_damage")]
-        public uint HullDamage;
-        [DataMember(Name = "sail_damage")]
-        public uint SailDamage;
-        [DataMember(Name = "cannon_damage")]
-        public uint CannonDamage;
-        [DataMember(Name = "crew_damage")]
-        public uint CrewDamage;
         [DataMember(Name = "range_multiplier")]
         public float RangeMultiplier;
-        [DataMember(Name = "applied_status")]
-        public string AppliedStatus;
-        [DataMember(Name = "applied_status_code")]
-        public byte AppliedStatusCode;
 
         public AmmoDef(
             string AmmoId,
@@ -59,13 +47,7 @@ namespace SpacetimeDB.Types
             float EffectMagnitude,
             float EffectDurationSeconds,
             byte RangeLimitSquares,
-            uint HullDamage,
-            uint SailDamage,
-            uint CannonDamage,
-            uint CrewDamage,
-            float RangeMultiplier,
-            string AppliedStatus,
-            byte AppliedStatusCode
+            float RangeMultiplier
         )
         {
             this.AmmoId = AmmoId;
@@ -78,20 +60,13 @@ namespace SpacetimeDB.Types
             this.EffectMagnitude = EffectMagnitude;
             this.EffectDurationSeconds = EffectDurationSeconds;
             this.RangeLimitSquares = RangeLimitSquares;
-            this.HullDamage = HullDamage;
-            this.SailDamage = SailDamage;
-            this.CannonDamage = CannonDamage;
-            this.CrewDamage = CrewDamage;
             this.RangeMultiplier = RangeMultiplier;
-            this.AppliedStatus = AppliedStatus;
-            this.AppliedStatusCode = AppliedStatusCode;
         }
 
         public AmmoDef()
         {
             this.AmmoId = "";
             this.Name = "";
-            this.AppliedStatus = "";
         }
     }
 }

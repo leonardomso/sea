@@ -76,7 +76,7 @@ if grep -R -q --include='*.cs' -E 'Reducers\.(SetCourse|StopCourse|SelectTarget|
   exit 1
 fi
 grep -q 'FindActionMap("Gameplay"' "$unity_root/Assets/Input/SeaInputController.cs"
-grep -q 'name="port-broadside"' "$unity_root/Assets/UI/SeaHud.uxml"
+grep -q 'name="fire-control"' "$unity_root/Assets/UI/SeaHud.uxml"
 
 if grep -R -q --include='*.cs' 'SubscribeToAllTables' \
   "$unity_root/Assets/Networking" "$unity_root/Assets/Presentation"; then

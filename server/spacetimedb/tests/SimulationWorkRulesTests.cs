@@ -202,46 +202,6 @@ public sealed class SimulationWorkRulesTests
         Assert.Equal(expected, actual);
     }
 
-    [Theory]
-    [InlineData("hull", WeakPointCode.Hull)]
-    [InlineData("sails", WeakPointCode.Sails)]
-    [InlineData("cannons", WeakPointCode.Cannons)]
-    public void Weak_point_ids_are_resolved_before_the_hot_path(
-        string id,
-        WeakPointCode expected)
-    {
-        Assert.True(HotPathCodes.TryParseWeakPoint(id, out var actual));
-        Assert.Equal(expected, actual);
-    }
-
-    [Theory]
-    [InlineData(StatusCode.Burning, 10ul)]
-    [InlineData(StatusCode.Flooding, 10ul)]
-    [InlineData(StatusCode.EmergencyPump, 5ul)]
-    [InlineData(StatusCode.Brace, ulong.MaxValue)]
-    [InlineData(StatusCode.DisabledSails, ulong.MaxValue)]
-    public void Status_work_is_scheduled_only_when_it_has_periodic_effects(
-        StatusCode status,
-        ulong expectedInterval)
-    {
-        Assert.Equal(expectedInterval, SimulationWorkRules.StatusInterval(status));
-    }
-
-    [Theory]
-    [InlineData(StatusCode.Burning, 40ul, 100ul, 50ul)]
-    [InlineData(StatusCode.EmergencyPump, 40ul, 43ul, 43ul)]
-    [InlineData(StatusCode.Brace, 40ul, 80ul, 80ul)]
-    public void Status_work_uses_the_next_period_or_expiry_whichever_comes_first(
-        StatusCode status,
-        ulong currentTick,
-        ulong expiresAtTick,
-        ulong expected)
-    {
-        Assert.Equal(
-            expected,
-            SimulationWorkRules.NextStatusProcessTick(status, currentTick, expiresAtTick));
-    }
-
     [Fact]
     public void Rescheduled_work_cannot_execute_twice_on_the_same_tick()
     {
@@ -252,12 +212,13 @@ public sealed class SimulationWorkRulesTests
     }
 
     [Theory]
-    [InlineData(StatusCode.FullSail, HotPathCodes.FullSailMovementMask)]
-    [InlineData(StatusCode.Slowed, HotPathCodes.SlowedMovementMask)]
-    [InlineData(StatusCode.Burning, 0)]
-    public void Only_movement_statuses_are_cached_on_the_ship(StatusCode status, byte expected)
+    [InlineData(EffectCode.Slowed, HotPathCodes.SlowedMovementMask)]
+    [InlineData(EffectCode.Burning, 0)]
+    [InlineData(EffectCode.ReloadSlowed, 0)]
+    [InlineData(EffectCode.None, 0)]
+    public void Only_movement_effects_are_cached_on_the_ship(EffectCode effect, byte expected)
     {
-        Assert.Equal(expected, HotPathCodes.MovementMask(status));
+        Assert.Equal(expected, HotPathCodes.MovementMask(effect));
     }
 
     [Fact]

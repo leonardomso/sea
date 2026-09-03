@@ -20,15 +20,6 @@ public static partial class Module
             return false;
         }
 
-        if (channel.ChannelTypeCode == (byte)ChannelCode.Boarding)
-        {
-            SetCooldown(
-                ctx,
-                shipEntityId,
-                CooldownCode.Boarding,
-                tick + TacticalRules.BoardingCooldownTicks);
-        }
-
         ctx.Db.ShipChannel.ShipEntityId.Delete(shipEntityId);
         AppendEvent(
             ctx,
@@ -37,21 +28,6 @@ public static partial class Module
             $"{channel.ChannelType}_interrupted",
             $"cause={cause}");
         return true;
-    }
-
-    private static void InterruptBoarding(
-        ReducerContext ctx,
-        ulong shipEntityId,
-        ulong tick,
-        string eventType)
-    {
-        SetCooldown(
-            ctx,
-            shipEntityId,
-            CooldownCode.Boarding,
-            tick + TacticalRules.BoardingCooldownTicks);
-        ctx.Db.ShipChannel.ShipEntityId.Delete(shipEntityId);
-        AppendEvent(ctx, tick, shipEntityId, eventType, "");
     }
 
     private static Cooldown? FindCooldown(

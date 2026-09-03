@@ -27,13 +27,13 @@ namespace SpacetimeDB.Types
     {
         public RemoteTables(DbConnection conn)
         {
-            AddTable(AbilityDef = new(conn));
             AddTable(AmmoDef = new(conn));
             AddTable(CannonDef = new(conn));
             AddTable(CombatEvent = new(conn));
             AddTable(CommandResultEvent = new(conn));
             AddTable(Cooldown = new(conn));
             AddTable(CurrentZone = new(conn));
+            AddTable(Effect = new(conn));
             AddTable(EncounterReward = new(conn));
             AddTable(EncounterRewardEvent = new(conn));
             AddTable(EnvironmentState = new(conn));
@@ -54,7 +54,6 @@ namespace SpacetimeDB.Types
             AddTable(ShipChannel = new(conn));
             AddTable(ShipMovement = new(conn));
             AddTable(ShipStats = new(conn));
-            AddTable(ShipStatus = new(conn));
             AddTable(SimulationTelemetry = new(conn));
             AddTable(StatCaps = new(conn));
             AddTable(Volley = new(conn));
@@ -556,13 +555,13 @@ namespace SpacetimeDB.Types
 
         internal static string[] AllTablesSqlQueries() => new string[]
         {
-            new QueryBuilder().From.AbilityDef().ToSql(),
             new QueryBuilder().From.AmmoDef().ToSql(),
             new QueryBuilder().From.CannonDef().ToSql(),
             new QueryBuilder().From.CombatEvent().ToSql(),
             new QueryBuilder().From.CommandResultEvent().ToSql(),
             new QueryBuilder().From.Cooldown().ToSql(),
             new QueryBuilder().From.CurrentZone().ToSql(),
+            new QueryBuilder().From.Effect().ToSql(),
             new QueryBuilder().From.EncounterReward().ToSql(),
             new QueryBuilder().From.EncounterRewardEvent().ToSql(),
             new QueryBuilder().From.EnvironmentState().ToSql(),
@@ -583,7 +582,6 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.ShipChannel().ToSql(),
             new QueryBuilder().From.ShipMovement().ToSql(),
             new QueryBuilder().From.ShipStats().ToSql(),
-            new QueryBuilder().From.ShipStatus().ToSql(),
             new QueryBuilder().From.SimulationTelemetry().ToSql(),
             new QueryBuilder().From.StatCaps().ToSql(),
             new QueryBuilder().From.Volley().ToSql(),
@@ -595,13 +593,13 @@ namespace SpacetimeDB.Types
 
     public sealed class From
     {
-        public global::SpacetimeDB.Table<AbilityDef, AbilityDefCols, AbilityDefIxCols> AbilityDef() => new("ability_def", new AbilityDefCols("ability_def"), new AbilityDefIxCols("ability_def"));
         public global::SpacetimeDB.Table<AmmoDef, AmmoDefCols, AmmoDefIxCols> AmmoDef() => new("ammo_def", new AmmoDefCols("ammo_def"), new AmmoDefIxCols("ammo_def"));
         public global::SpacetimeDB.Table<CannonDef, CannonDefCols, CannonDefIxCols> CannonDef() => new("cannon_def", new CannonDefCols("cannon_def"), new CannonDefIxCols("cannon_def"));
         public global::SpacetimeDB.Table<CombatEvent, CombatEventCols, CombatEventIxCols> CombatEvent() => new("combat_event", new CombatEventCols("combat_event"), new CombatEventIxCols("combat_event"));
         public global::SpacetimeDB.Table<CommandResultEvent, CommandResultEventCols, CommandResultEventIxCols> CommandResultEvent() => new("command_result_event", new CommandResultEventCols("command_result_event"), new CommandResultEventIxCols("command_result_event"));
         public global::SpacetimeDB.Table<Cooldown, CooldownCols, CooldownIxCols> Cooldown() => new("cooldown", new CooldownCols("cooldown"), new CooldownIxCols("cooldown"));
         public global::SpacetimeDB.Table<CurrentZone, CurrentZoneCols, CurrentZoneIxCols> CurrentZone() => new("current_zone", new CurrentZoneCols("current_zone"), new CurrentZoneIxCols("current_zone"));
+        public global::SpacetimeDB.Table<Effect, EffectCols, EffectIxCols> Effect() => new("effect", new EffectCols("effect"), new EffectIxCols("effect"));
         public global::SpacetimeDB.Table<EncounterReward, EncounterRewardCols, EncounterRewardIxCols> EncounterReward() => new("encounter_reward", new EncounterRewardCols("encounter_reward"), new EncounterRewardIxCols("encounter_reward"));
         public global::SpacetimeDB.Table<EncounterRewardEvent, EncounterRewardEventCols, EncounterRewardEventIxCols> EncounterRewardEvent() => new("encounter_reward_event", new EncounterRewardEventCols("encounter_reward_event"), new EncounterRewardEventIxCols("encounter_reward_event"));
         public global::SpacetimeDB.Table<EnvironmentState, EnvironmentStateCols, EnvironmentStateIxCols> EnvironmentState() => new("environment_state", new EnvironmentStateCols("environment_state"), new EnvironmentStateIxCols("environment_state"));
@@ -622,7 +620,6 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<ShipChannel, ShipChannelCols, ShipChannelIxCols> ShipChannel() => new("ship_channel", new ShipChannelCols("ship_channel"), new ShipChannelIxCols("ship_channel"));
         public global::SpacetimeDB.Table<ShipMovement, ShipMovementCols, ShipMovementIxCols> ShipMovement() => new("ship_movement", new ShipMovementCols("ship_movement"), new ShipMovementIxCols("ship_movement"));
         public global::SpacetimeDB.Table<ShipStats, ShipStatsCols, ShipStatsIxCols> ShipStats() => new("ship_stats", new ShipStatsCols("ship_stats"), new ShipStatsIxCols("ship_stats"));
-        public global::SpacetimeDB.Table<ShipStatus, ShipStatusCols, ShipStatusIxCols> ShipStatus() => new("ship_status", new ShipStatusCols("ship_status"), new ShipStatusIxCols("ship_status"));
         public global::SpacetimeDB.Table<SimulationTelemetry, SimulationTelemetryCols, SimulationTelemetryIxCols> SimulationTelemetry() => new("simulation_telemetry", new SimulationTelemetryCols("simulation_telemetry"), new SimulationTelemetryIxCols("simulation_telemetry"));
         public global::SpacetimeDB.Table<StatCaps, StatCapsCols, StatCapsIxCols> StatCaps() => new("stat_caps", new StatCapsCols("stat_caps"), new StatCapsIxCols("stat_caps"));
         public global::SpacetimeDB.Table<Volley, VolleyCols, VolleyIxCols> Volley() => new("volley", new VolleyCols("volley"), new VolleyIxCols("volley"));

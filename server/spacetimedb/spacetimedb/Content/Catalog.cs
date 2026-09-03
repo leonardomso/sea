@@ -16,9 +16,6 @@ internal static class Catalog
     public static readonly AmmunitionContent?[] AmmunitionByCode =
         ContentIndex.AmmunitionByCode(Content);
 
-    public static readonly AbilityContent?[] AbilityByCode =
-        ContentIndex.AbilityByCode(Content);
-
     public static readonly NpcContent?[] NpcByArchetypeCode =
         ContentIndex.NpcByArchetypeCode(Content);
 

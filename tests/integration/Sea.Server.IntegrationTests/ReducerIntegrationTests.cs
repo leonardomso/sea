@@ -16,17 +16,18 @@ public sealed class ReducerIntegrationTests
         client.LoadPlayer();
         var before = client.OwnedShip();
 
-        var result = client.IssueBroadside(commandId: 1);
+        var result = client.IssueFire(commandId: 1);
         var after = client.OwnedShip();
 
         Assert.False(result.Accepted);
-        Assert.Equal(12, result.RejectionCode);
+        Assert.Equal(11, result.RejectionCode);
         Assert.False(result.IsDuplicate);
         Assert.Null(client.UnhandledReducerError);
         Assert.Equal(before.EntityId, after.EntityId);
         Assert.Equal(before.Hull, after.Hull);
         Assert.Equal(before.TargetEntityId, after.TargetEntityId);
-        Assert.Equal(before.NextPortFireTick, after.NextPortFireTick);
+        Assert.Equal(before.ReadyVolleys, after.ReadyVolleys);
+        Assert.Equal(before.ReloadProgressTicks, after.ReloadProgressTicks);
     }
 
     [Fact]
@@ -111,8 +112,11 @@ public sealed class ReducerIntegrationTests
             expectedPlayerShips.IsSubsetOf(client.VisiblePlayerShipIds())));
         var target = second.OwnedShip().EntityId;
         Assert.True(first.IssueSelectTarget(2, target).Accepted);
-        Assert.Equal(8, first.IssueBroadside(3).RejectionCode);
-        Assert.Equal(8, first.IssueBoarding(4).RejectionCode);
+        Assert.Equal(8, first.IssueFire(3).RejectionCode);
+
+        // Boarding retired with the magazine rework but stays on the wire, so a stale client
+        // gets a stable "not available" rather than a silently reinterpreted command.
+        Assert.Equal(21, first.IssueBoarding(4).RejectionCode);
         Assert.All(clients, client => Assert.True(client.HasOnlyBoundedSpatialRows(3, 5)));
     }
 

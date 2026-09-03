@@ -106,7 +106,7 @@ internal sealed class IntegrationClient : IDisposable
             .Subscribe([
                 $"SELECT * FROM ship WHERE entity_id = {ownership.ShipEntityId}",
                 $"SELECT * FROM inventory WHERE ship_entity_id = {ownership.ShipEntityId}",
-                $"SELECT * FROM ship_status WHERE ship_entity_id = {ownership.ShipEntityId}",
+                $"SELECT * FROM effect WHERE ship_entity_id = {ownership.ShipEntityId}",
                 $"SELECT * FROM cooldown WHERE ship_entity_id = {ownership.ShipEntityId}",
                 $"SELECT * FROM ship_channel WHERE ship_entity_id = {ownership.ShipEntityId}",
             ]));
@@ -254,9 +254,33 @@ internal sealed class IntegrationClient : IDisposable
 
     public EncounterReward[] EncounterRewards() => connection.Db.EncounterReward.Iter().ToArray();
 
-    public CommandResultEvent IssueBroadside(ulong commandId) => Issue(
+    /// <summary>
+    /// Subscribes to the shots this ship fires. The volley row is the only public record that a
+    /// fire command actually reached the world, so a combat test has to read it rather than
+    /// infer the shot from the damage it caused.
+    /// </summary>
+    public void SubscribeVolleys()
+    {
+        var ownership = connection.Db.PlayerOwnership.Owner.Find(identity)
+            ?? throw new InvalidOperationException("The integration identity has no ownership row.");
+        var volleysSubscribed = false;
+        subscriptions.Add(connection.SubscriptionBuilder()
+            .OnApplied(_ => volleysSubscribed = true)
+            .OnError((_, error) => failure = error)
+            .Subscribe([
+                $"SELECT * FROM volley WHERE source_entity_id = {ownership.ShipEntityId}",
+            ]));
+        PumpUntil(connection, () => volleysSubscribed || failure is not null);
+        ThrowIfFailed();
+    }
+
+    public Volley[] Volleys() => connection.Db.Volley.Iter().ToArray();
+
+    public Effect[] Effects() => connection.Db.Effect.Iter().ToArray();
+
+    public CommandResultEvent IssueFire(ulong commandId) => Issue(
         commandId,
-        new ShipCommand.FireBroadside(new FireBroadsideCommand("port", "hull")));
+        new ShipCommand.Fire(new FireCommand()));
 
     public CommandResultEvent IssueSetCourse(ulong commandId, float x, float y) => Issue(
         commandId,
@@ -269,6 +293,10 @@ internal sealed class IntegrationClient : IDisposable
     public CommandResultEvent IssueBoarding(ulong commandId) => Issue(
         commandId,
         new ShipCommand.StartBoarding(new StartBoardingCommand()));
+
+    public CommandResultEvent IssueAbility(ulong commandId, string abilityId) => Issue(
+        commandId,
+        new ShipCommand.ActivateAbility(new ActivateAbilityCommand(abilityId)));
 
     public CommandResultEvent SetCourse(float x, float y) => Issue(
         nextCommandId++,
@@ -286,9 +314,9 @@ internal sealed class IntegrationClient : IDisposable
         nextCommandId++,
         new ShipCommand.SetAmmo(new SetAmmoCommand(ammunitionId)));
 
-    public CommandResultEvent FireBroadside(string side) => Issue(
+    public CommandResultEvent Fire() => Issue(
         nextCommandId++,
-        new ShipCommand.FireBroadside(new FireBroadsideCommand(side, "hull")));
+        new ShipCommand.Fire(new FireCommand()));
 
     public bool IsNear(float x, float y, float radius)
     {

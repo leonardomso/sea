@@ -3,141 +3,131 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    private static void ApplyFireBroadside(
-        ReducerContext ctx,
-        TickWorld world,
-        ref Ship source,
-        FireBroadsideCommand command,
-        BroadsideSide side,
-        WeakPoint weakPoint)
+    /// <summary>
+    /// Fires one volley. Shots resolve on the tick they are fired: there is no travel time to
+    /// simulate, so the <see cref="Volley"/> row that goes out is purely something for the client
+    /// to draw.
+    /// </summary>
+    private static void ApplyFire(ReducerContext ctx, TickWorld world, ref Ship source)
     {
         var target = ctx.Db.Ship.EntityId.Find(source.TargetEntityId) ??
-            throw new InvalidOperationException("Accepted broadside has no target.");
+            throw new InvalidOperationException("Accepted fire command has no target.");
+        // Facing is read off the live course, not the fat row, which only republishes on a
+        // chunk change; a stale heading would hand the shooter the wrong armour face.
+        HydrateTrackedKinematics(ctx, ref target);
         var ammunition = Catalog.AmmunitionByCode[source.SelectedAmmoCode] ??
             throw new InvalidOperationException("Selected ammunition definition is missing.");
-        var inventory = FindInventory(ctx, source.EntityId, ammunition.Id) ??
-            throw new InvalidOperationException("Accepted broadside has no ammunition.");
-        var damage = BroadsideDamage(ctx, world, source, ammunition, weakPoint);
-        var distance = CombatRules.Distance(
-            source.PositionX,
-            source.PositionY,
-            target.PositionX,
-            target.PositionY);
-        var impactAtTick = world.Tick + CombatRules.VolleyTravelTicks(
-            distance,
-            CombatRules.ProjectileSpeed,
-            WorldRules.TickRateHz);
 
-        inventory.Quantity--;
-        ctx.Db.Inventory.InventoryId.Update(inventory);
-        source.SelectedWeakPointCode = (byte)weakPoint;
+        var facing = CombatRules.ResolveFacing(
+            target.HeadingDegrees,
+            target.PositionX,
+            target.PositionY,
+            source.PositionX,
+            source.PositionY);
+        var damage = CombatRules.ResolveDamage(
+            source.VolleyDamage,
+            ammunition.DamageMultiplier,
+            CombatRules.ArmorOn(facing, target.ArmorFront, target.ArmorSides, target.ArmorBack));
+
+        var magazine = CombatRules.Spend(
+            new MagazineState(source.ReadyVolleys, source.ReloadProgressTicks));
+        source.ReadyVolleys = magazine.ReadyVolleys;
+        source.ReloadProgressTicks = magazine.ReloadProgressTicks;
+        source.IsReloading = source.ReadyVolleys < source.MagazineSize;
+        source.HasFired = true;
+        source.LastShotTick = world.Tick;
+        source.LastCombatTick = world.Tick;
         source.IsEngaged = true;
-        ApplyReload(ref source, side, world.Tick);
+
+        PublishVolley(ctx, world, source, target, ammunition, facing);
+        LandVolley(ctx, world, source, target, ammunition, damage);
+    }
+
+    /// <summary>
+    /// Writes the row the client draws the shot from. It carries the shooter's chunk so the volley
+    /// reaches exactly the subscribers who can already see the shooter.
+    /// </summary>
+    private static void PublishVolley(
+        ReducerContext ctx,
+        TickWorld world,
+        Ship source,
+        Ship target,
+        AmmunitionContent ammunition,
+        ArmorFace facing)
+    {
         ctx.Db.Volley.Insert(new Volley
         {
             SourceEntityId = source.EntityId,
             TargetEntityId = target.EntityId,
-            Side = command.Side.ToLowerInvariant(),
-            SideCode = (byte)(side == BroadsideSide.Port
-                ? BroadsideCode.Port
-                : BroadsideCode.Starboard),
             AmmoId = ammunition.Id,
             AmmoCode = (byte)ammunition.Code,
-            WeakPoint = command.WeakPoint.ToLowerInvariant(),
-            WeakPointCode = (byte)weakPoint,
             OriginX = source.PositionX,
             OriginY = source.PositionY,
+            TargetX = target.PositionX,
+            TargetY = target.PositionY,
             ChunkX = source.ChunkX,
             ChunkY = source.ChunkY,
             FiredAtTick = world.Tick,
-            ImpactAtTick = impactAtTick,
-            HullDamage = damage.Hull,
-            SailDamage = damage.Sails,
-            CannonDamage = damage.Cannons,
-            CrewDamage = damage.Crew,
+            ExpiresAtTick = world.Tick + CombatRules.VolleyDisplayTicks,
             IsActive = true,
         });
         AppendEvent(
             ctx,
             world.Tick,
             source.EntityId,
-            "broadside_fired",
-            $"target={target.EntityId},side={command.Side},ammo={ammunition.Id},impact_tick={impactAtTick}");
+            "volley_fired",
+            $"target={target.EntityId},ammo={ammunition.Id},face={HotPathCodes.ArmorFaceId(facing)}");
     }
 
-    private static CombatDamage BroadsideDamage(
+    /// <summary>
+    /// Applies the damage and, on a target still afloat, whatever the ammunition leaves behind.
+    /// The buffer is local because a volley is fired from the command path, which runs after the
+    /// dispatcher has already flushed its own.
+    /// </summary>
+    private static void LandVolley(
         ReducerContext ctx,
         TickWorld world,
         Ship source,
+        Ship target,
         AmmunitionContent ammunition,
-        WeakPoint weakPoint)
+        uint damage)
     {
-        var damage = CombatRules.DamageProfile(
-            ammunition,
-            weakPoint,
-            source.CannonDamage,
-            source.Cannons,
-            source.MaxCannons);
-        var hazards = HazardsAt(ctx, world, source.PositionX, source.PositionY);
-        return hazards.InStorm
-            ? ScaleCombatDamage(damage, hazards.Modifiers.WeaponEffectiveness)
-            : damage;
-    }
-
-    private static void ApplyReload(ref Ship source, BroadsideSide side, ulong tick)
-    {
-        var reloadTicks = TacticalRules.AdjustedReloadTicks(
-            source.CannonCooldownTicks,
-            source.Cannons,
-            source.MaxCannons);
-        if (side == BroadsideSide.Port)
-        {
-            source.NextPortFireTick = tick + reloadTicks;
-        }
-        else
-        {
-            source.NextStarboardFireTick = tick + reloadTicks;
-        }
-    }
-
-    private static void ApplyActivateAbility(
-        ReducerContext ctx,
-        TickWorld world,
-        ref Ship ship,
-        ActivateAbilityCommand command)
-    {
-        var ability = HotPathCodes.TryParseAbility(command.AbilityId, out var abilityCode)
-            ? Catalog.AbilityByCode[(byte)abilityCode]
-            : null;
-        if (ability is null)
-        {
-            throw new InvalidOperationException("Accepted ability definition is missing.");
-        }
-
-        if (abilityCode == AbilityCode.EmergencyPump)
-        {
-            DeactivateStatus(ctx, ship.EntityId, StatusCode.Flooding, world.Tick);
-        }
-
-        var statusCode = HotPathCodes.StatusFor(abilityCode);
-        ApplyStatus(
+        var ships = new ShipTickBuffer();
+        var defender = target;
+        var applied = ApplyDamageToShip(
             ctx,
-            ship.EntityId,
-            statusCode,
+            ships,
+            source.EntityId,
+            ref defender,
+            damage,
             world.Tick,
-            ability.DurationTicks,
-            maximumStacks: 1);
-        ship.MovementStatusMask |= HotPathCodes.MovementMask(statusCode);
-        SetCooldown(
-            ctx,
-            ship.EntityId,
-            HotPathCodes.CooldownFor(abilityCode),
-            world.Tick + ability.CooldownTicks);
+            "volley");
+
+        if (defender.IsAlive)
+        {
+            var distance = CombatRules.Distance(
+                source.PositionX,
+                source.PositionY,
+                defender.PositionX,
+                defender.PositionY);
+            if (EffectRules.TryResolve(ammunition, distance, world.Tick, out var application))
+            {
+                ApplyEffect(ctx, defender.EntityId, source.EntityId, application, world.Tick);
+                defender.MovementStatusMask |= HotPathCodes.MovementMask(application.Code);
+                if (application.Code == EffectCode.Slowed)
+                {
+                    defender.MovementSlowMagnitude = application.Magnitude;
+                }
+            }
+        }
+
+        ships.Stage(defender);
+        ships.Flush(ctx, world.Tick);
         AppendEvent(
             ctx,
             world.Tick,
-            ship.EntityId,
-            "ability_activated",
-            $"ability={command.AbilityId}");
+            source.EntityId,
+            defender.IsAlive ? "volley_impact" : "enemy_sunk",
+            $"target={defender.EntityId},damage={applied}");
     }
 }

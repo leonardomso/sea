@@ -5,6 +5,13 @@ namespace Sea.Server.Tests;
 
 public sealed class CommandPolicyTests
 {
+    /// <summary>Abilities and boarding left the model in 1b but keep their keys bound.</summary>
+    private static readonly ShipCommandKind[] Retired =
+    [
+        ShipCommandKind.ActivateAbility,
+        ShipCommandKind.StartBoarding,
+    ];
+
     public static IEnumerable<object[]> ModeCommandCases()
     {
         foreach (var mode in Enum.GetValues<ShipMode>())
@@ -24,13 +31,29 @@ public sealed class CommandPolicyTests
         var expected = ExpectedAccepted(mode, command);
 
         Assert.Equal(expected, decision.Accepted);
-        Assert.Equal(expected ? CommandRejectionCode.None : ExpectedModeRejection(mode),
+        Assert.Equal(
+            expected ? CommandRejectionCode.None : ExpectedRejection(mode, command),
             decision.Rejection);
     }
 
     [Theory]
+    [InlineData(ShipCommandKind.ActivateAbility)]
+    [InlineData(ShipCommandKind.StartBoarding)]
+    public void RetiredCommandsAnswerNotAvailableInEveryMode(ShipCommandKind command)
+    {
+        foreach (var mode in Enum.GetValues<ShipMode>())
+        {
+            var decision = CommandPolicy.Evaluate(ValidSnapshot(mode), command);
+
+            Assert.False(decision.Accepted);
+            Assert.Equal(CommandRejectionCode.NotAvailable, decision.Rejection);
+            Assert.Equal(mode, decision.NextMode);
+            Assert.Equal(CommandEffect.None, decision.Effects);
+        }
+    }
+
+    [Theory]
     [InlineData(ShipCommandKind.StartRepair, ShipMode.Repairing)]
-    [InlineData(ShipCommandKind.StartBoarding, ShipMode.Boarding)]
     [InlineData(ShipCommandKind.CancelChannel, ShipMode.Operational)]
     public void ChannelCommandsReturnTheNextMode(
         ShipCommandKind command,
@@ -50,10 +73,8 @@ public sealed class CommandPolicyTests
     [InlineData(ShipCommandKind.SetCourse, CommandRejectionCode.InvalidCourse)]
     [InlineData(ShipCommandKind.SelectTarget, CommandRejectionCode.InvalidTarget)]
     [InlineData(ShipCommandKind.SetAmmo, CommandRejectionCode.UnknownAmmunition)]
-    [InlineData(ShipCommandKind.FireBroadside, CommandRejectionCode.NoTarget)]
-    [InlineData(ShipCommandKind.ActivateAbility, CommandRejectionCode.UnknownAbility)]
+    [InlineData(ShipCommandKind.Fire, CommandRejectionCode.NoTarget)]
     [InlineData(ShipCommandKind.StartRepair, CommandRejectionCode.NoRepairKit)]
-    [InlineData(ShipCommandKind.StartBoarding, CommandRejectionCode.TargetTooStrong)]
     public void InvalidGameplayStateReturnsAStableCode(
         ShipCommandKind command,
         CommandRejectionCode expected)
@@ -64,9 +85,7 @@ public sealed class CommandPolicyTests
             TargetValid = false,
             AmmoKnown = false,
             FireRejection = FireRejection.NoTarget,
-            AbilityRejection = AbilityRejection.UnknownAbility,
             RepairRejection = RepairRejection.NoRepairKit,
-            BoardingRejection = BoardingRejection.TargetTooStrong,
         };
 
         var decision = CommandPolicy.Evaluate(snapshot, command);
@@ -105,17 +124,15 @@ public sealed class CommandPolicyTests
         Assert.Equal(CommandEffect.SelectTarget, decision.Effects);
     }
 
-    [Theory]
-    [InlineData(ShipCommandKind.FireBroadside)]
-    [InlineData(ShipCommandKind.StartBoarding)]
-    public void PlayerShipCannotBeAttackedOrBoarded(ShipCommandKind command)
+    [Fact]
+    public void PlayerShipCannotBeFiredOn()
     {
         var snapshot = ValidSnapshot(ShipMode.Operational) with
         {
             TargetIsFriendly = true,
         };
 
-        var decision = CommandPolicy.Evaluate(snapshot, command);
+        var decision = CommandPolicy.Evaluate(snapshot, ShipCommandKind.Fire);
 
         Assert.False(decision.Accepted);
         Assert.Equal(CommandRejectionCode.PlayerTargetForbidden, decision.Rejection);
@@ -126,12 +143,11 @@ public sealed class CommandPolicyTests
     [InlineData(FireRejection.SourceSunk, CommandRejectionCode.Sunk)]
     [InlineData(FireRejection.NoTarget, CommandRejectionCode.NoTarget)]
     [InlineData(FireRejection.TargetSunk, CommandRejectionCode.TargetSunk)]
-    [InlineData(FireRejection.CannonsDisabled, CommandRejectionCode.CannonsDisabled)]
-    [InlineData(FireRejection.NoAmmunition, CommandRejectionCode.NoAmmunition)]
     [InlineData(FireRejection.Reloading, CommandRejectionCode.Reloading)]
+    [InlineData(FireRejection.FiringTooFast, CommandRejectionCode.FiringTooFast)]
     [InlineData(FireRejection.OutOfRange, CommandRejectionCode.OutOfRange)]
-    [InlineData(FireRejection.OutsideArc, CommandRejectionCode.OutsideArc)]
-    public void BroadsideFailuresHaveStableCommandCodes(
+    [InlineData(FireRejection.InPort, CommandRejectionCode.InPort)]
+    public void VolleyFailuresHaveStableCommandCodes(
         FireRejection failure,
         CommandRejectionCode expected)
     {
@@ -140,42 +156,24 @@ public sealed class CommandPolicyTests
             FireRejection = failure,
         };
 
-        var decision = CommandPolicy.Evaluate(snapshot, ShipCommandKind.FireBroadside);
+        var decision = CommandPolicy.Evaluate(snapshot, ShipCommandKind.Fire);
 
         Assert.False(decision.Accepted);
         Assert.Equal(expected, decision.Rejection);
         Assert.Equal(CommandEffect.None, decision.Effects);
     }
 
-    [Theory]
-    [InlineData(AbilityRejection.Cooldown, CommandRejectionCode.Cooldown)]
-    [InlineData(AbilityRejection.UnknownAbility, CommandRejectionCode.UnknownAbility)]
-    public void AbilityFailuresHaveStableCommandCodes(
-        AbilityRejection failure,
-        CommandRejectionCode expected)
+    [Fact]
+    public void AnUnmappedFireFailureIsReportedRatherThanAccepted()
     {
         var snapshot = ValidSnapshot(ShipMode.Operational) with
         {
-            AbilityRejection = failure,
+            FireRejection = (FireRejection)byte.MaxValue,
         };
 
         Assert.Equal(
-            expected,
-            CommandPolicy.Evaluate(snapshot, ShipCommandKind.ActivateAbility).Rejection);
-    }
-
-    [Fact]
-    public void PlayerAndNpcActorsReceiveTheSameDecisionFromTheSameSnapshot()
-    {
-        var snapshot = ValidSnapshot(ShipMode.Operational) with
-        {
-            FireRejection = FireRejection.Reloading,
-        };
-
-        var playerDecision = CommandPolicy.Evaluate(snapshot, ShipCommandKind.FireBroadside);
-        var npcDecision = CommandPolicy.Evaluate(snapshot, ShipCommandKind.FireBroadside);
-
-        Assert.Equal(playerDecision, npcDecision);
+            CommandRejectionCode.MissingResource,
+            CommandPolicy.Evaluate(snapshot, ShipCommandKind.Fire).Rejection);
     }
 
     [Theory]
@@ -197,50 +195,49 @@ public sealed class CommandPolicyTests
     {
         var snapshot = ValidSnapshot(ShipMode.Operational) with
         {
-            ArgumentRejection = CommandRejectionCode.InvalidBroadsideSide,
+            ArgumentRejection = CommandRejectionCode.UnknownAmmunition,
         };
 
-        var decision = CommandPolicy.Evaluate(snapshot, ShipCommandKind.FireBroadside);
+        var decision = CommandPolicy.Evaluate(snapshot, ShipCommandKind.Fire);
 
-        Assert.Equal(CommandRejectionCode.InvalidBroadsideSide, decision.Rejection);
+        Assert.Equal(CommandRejectionCode.UnknownAmmunition, decision.Rejection);
         Assert.Equal(CommandEffect.None, decision.Effects);
     }
 
     [Fact]
-    public void ConcealedTargetAndMissingAmmunitionHaveStableCodes()
+    public void ConcealedTargetsHaveAStableCode()
     {
         var concealed = ValidSnapshot(ShipMode.Operational) with { TargetConcealed = true };
-        var missingAmmo = ValidSnapshot(ShipMode.Operational) with { AmmoOwned = false };
 
-        Assert.Equal(CommandRejectionCode.TargetConcealed,
+        Assert.Equal(
+            CommandRejectionCode.TargetConcealed,
             CommandPolicy.Evaluate(concealed, ShipCommandKind.SelectTarget).Rejection);
-        Assert.Equal(CommandRejectionCode.AmmunitionNotOwned,
-            CommandPolicy.Evaluate(missingAmmo, ShipCommandKind.SetAmmo).Rejection);
     }
 
     [Theory]
-    [InlineData(FireRejection.Busy, ShipCommandKind.FireBroadside)]
-    [InlineData(AbilityRejection.Busy, ShipCommandKind.ActivateAbility)]
-    [InlineData(RepairRejection.Busy, ShipCommandKind.StartRepair)]
-    [InlineData(BoardingRejection.Busy, ShipCommandKind.StartBoarding)]
-    public void BusySubsystemsMapToModeConflict(object rejection, ShipCommandKind command)
+    [InlineData(true, false, ShipCommandKind.Fire)]
+    [InlineData(false, true, ShipCommandKind.StartRepair)]
+    public void BusySubsystemsMapToModeConflict(bool fire, bool repair, ShipCommandKind command)
     {
         var snapshot = ValidSnapshot(ShipMode.Operational) with
         {
-            FireRejection = rejection is FireRejection fire ? fire : FireRejection.None,
-            AbilityRejection = rejection is AbilityRejection ability
-                ? ability
-                : AbilityRejection.None,
-            RepairRejection = rejection is RepairRejection repair
-                ? repair
-                : RepairRejection.None,
-            BoardingRejection = rejection is BoardingRejection boarding
-                ? boarding
-                : BoardingRejection.None,
+            FireRejection = fire ? FireRejection.Busy : FireRejection.None,
+            RepairRejection = repair ? RepairRejection.Busy : RepairRejection.None,
         };
 
-        Assert.Equal(CommandRejectionCode.ModeConflict,
+        Assert.Equal(
+            CommandRejectionCode.ModeConflict,
             CommandPolicy.Evaluate(snapshot, command).Rejection);
+    }
+
+    [Fact]
+    public void CancellingWithoutAChannelIsRejectedEvenWhenTheModeAllowsIt()
+    {
+        var snapshot = ValidSnapshot(ShipMode.Repairing) with { HasActiveChannel = false };
+
+        Assert.Equal(
+            CommandRejectionCode.NotChanneling,
+            CommandPolicy.Evaluate(snapshot, ShipCommandKind.CancelChannel).Rejection);
     }
 
     [Fact]
@@ -271,32 +268,45 @@ public sealed class CommandPolicyTests
         CourseValid = true,
         TargetValid = true,
         AmmoKnown = true,
-        AmmoOwned = true,
         FireRejection = FireRejection.None,
-        AbilityRejection = AbilityRejection.None,
         RepairRejection = RepairRejection.None,
-        BoardingRejection = BoardingRejection.None,
-        HasActiveChannel = mode is ShipMode.Repairing or ShipMode.Boarding,
+        HasActiveChannel = mode == ShipMode.Repairing,
     };
 
-    private static bool ExpectedAccepted(ShipMode mode, ShipCommandKind command) => mode switch
+    private static bool ExpectedAccepted(ShipMode mode, ShipCommandKind command)
     {
-        ShipMode.Operational => command != ShipCommandKind.CancelChannel,
-        ShipMode.Repairing or ShipMode.Boarding => command is
-            ShipCommandKind.SetCourse or
-            ShipCommandKind.StopCourse or
-            ShipCommandKind.SelectTarget or
-            ShipCommandKind.ClearTarget or
-            ShipCommandKind.CancelChannel,
-        ShipMode.Sunk => false,
-        _ => throw new ArgumentOutOfRangeException(nameof(mode)),
-    };
+        if (Array.IndexOf(Retired, command) >= 0)
+        {
+            return false;
+        }
 
-    private static CommandRejectionCode ExpectedModeRejection(ShipMode mode) => mode switch
+        return mode switch
+        {
+            ShipMode.Operational => command != ShipCommandKind.CancelChannel,
+            ShipMode.Repairing => command is
+                ShipCommandKind.SetCourse or
+                ShipCommandKind.StopCourse or
+                ShipCommandKind.SelectTarget or
+                ShipCommandKind.ClearTarget or
+                ShipCommandKind.CancelChannel,
+            ShipMode.Sunk => false,
+            _ => throw new ArgumentOutOfRangeException(nameof(mode)),
+        };
+    }
+
+    private static CommandRejectionCode ExpectedRejection(ShipMode mode, ShipCommandKind command)
     {
-        ShipMode.Operational => CommandRejectionCode.NotChanneling,
-        ShipMode.Repairing or ShipMode.Boarding => CommandRejectionCode.ModeConflict,
-        ShipMode.Sunk => CommandRejectionCode.Sunk,
-        _ => throw new ArgumentOutOfRangeException(nameof(mode)),
-    };
+        if (Array.IndexOf(Retired, command) >= 0)
+        {
+            return CommandRejectionCode.NotAvailable;
+        }
+
+        return mode switch
+        {
+            ShipMode.Operational => CommandRejectionCode.NotChanneling,
+            ShipMode.Repairing => CommandRejectionCode.ModeConflict,
+            ShipMode.Sunk => CommandRejectionCode.Sunk,
+            _ => throw new ArgumentOutOfRangeException(nameof(mode)),
+        };
+    }
 }

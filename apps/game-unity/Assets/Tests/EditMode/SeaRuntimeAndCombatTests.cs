@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Sea.Client;
-using SpacetimeDB;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -47,9 +46,7 @@ namespace Sea.Tests
             {
                 "Point", "SetCourse", "StopCourse", "PanChart", "ZoomChart", "DragChart", "RecenterChart",
                 "OpenNavigator", "CycleTargetNext", "CycleTargetPrevious", "ClearTarget", "Pause",
-                "FirePort", "FireStarboard", "AimHull", "AimSails", "AimCannons", "AmmoRound",
-                "AmmoChain", "AmmoGrapeshot", "AmmoIncendiary", "FullSail", "Brace",
-                "EmergencyPump", "SmokeScreen", "Repair", "Board",
+                "Fire", "AmmoRound", "AmmoChain", "AmmoGrapeshot", "AmmoIncendiary", "Repair",
             };
 
             Assert.That(gameplay.actions.Select(action => action.name), Is.EquivalentTo(requiredActions));
@@ -67,6 +64,8 @@ namespace Sea.Tests
                 "Assets/Generated/SpacetimeDB/Reducers/MoveTo.g.cs"), Is.False);
             Assert.That(File.Exists(
                 "Assets/Generated/SpacetimeDB/Reducers/FireBroadside.g.cs"), Is.False);
+            Assert.That(File.Exists(
+                "Assets/Generated/SpacetimeDB/Types/FireBroadsideCommand.g.cs"), Is.False);
         }
 
         [Test]
@@ -76,7 +75,7 @@ namespace Sea.Tests
             {
                 "SetCourseCommand.g.cs", "StopCourseCommand.g.cs",
                 "SelectTargetCommand.g.cs", "ClearTargetCommand.g.cs",
-                "SetAmmoCommand.g.cs", "FireBroadsideCommand.g.cs",
+                "SetAmmoCommand.g.cs", "FireCommand.g.cs",
                 "ActivateAbilityCommand.g.cs", "StartRepairCommand.g.cs",
                 "StartBoardingCommand.g.cs", "CancelChannelCommand.g.cs",
             };
@@ -90,8 +89,9 @@ namespace Sea.Tests
         {
             Assert.That(SeaCommandResultText.Rejection(1), Is.EqualTo("stale command"));
             Assert.That(SeaCommandResultText.Rejection(6), Is.EqualTo("destination blocked"));
-            Assert.That(SeaCommandResultText.Rejection(18),
-                Is.EqualTo("target outside firing arc"));
+            Assert.That(SeaCommandResultText.Rejection(13),
+                Is.EqualTo("magazine reloading"));
+            Assert.That(SeaCommandResultText.Rejection(21), Is.EqualTo("not available yet"));
             Assert.That(SeaCommandResultText.Rejection(255), Is.EqualTo("rejection code 255"));
         }
 
@@ -175,16 +175,36 @@ namespace Sea.Tests
         }
 
         [Test]
-        public void Broadside_effects_spawn_on_the_ordered_side()
+        public void Muzzle_smoke_follows_the_bearing_to_the_target()
         {
-            Assert.That(SeaVolleyPresentationRules.LocalSideOffset("port", 3f),
-                Is.EqualTo(new Vector3(-3f, 0f, 0f)));
-            Assert.That(SeaVolleyPresentationRules.LocalSideOffset("starboard", 3f),
-                Is.EqualTo(new Vector3(3f, 0f, 0f)));
-            Assert.That(SeaVolleyPresentationRules.IsInsideBroadsideArc(
-                Vector2.zero, 0f, Vector2.left * 10f, "port"), Is.True);
-            Assert.That(SeaVolleyPresentationRules.IsInsideBroadsideArc(
-                Vector2.zero, 0f, Vector2.right * 10f, "port"), Is.False);
+            // The offset is local to the firing ship, so a target dead ahead puts the smoke on
+            // the bow whatever the ship is heading; a beam target puts it out on that side.
+            var ahead = SeaVolleyPresentationRules.LocalMuzzleOffset(
+                90f, Vector2.zero, Vector2.right * 10f, 3f);
+            Assert.That(ahead.z, Is.EqualTo(3f).Within(0.001f));
+            Assert.That(ahead.x, Is.EqualTo(0f).Within(0.001f));
+
+            var starboard = SeaVolleyPresentationRules.LocalMuzzleOffset(
+                0f, Vector2.zero, Vector2.right * 10f, 3f);
+            Assert.That(starboard.x, Is.EqualTo(3f).Within(0.001f));
+
+            var port = SeaVolleyPresentationRules.LocalMuzzleOffset(
+                0f, Vector2.zero, Vector2.left * 10f, 3f);
+            Assert.That(port.x, Is.EqualTo(-3f).Within(0.001f));
+        }
+
+        [Test]
+        public void The_hud_names_the_same_armour_face_the_server_charges_for()
+        {
+            // CombatRules.ResolveFacing: 45 degrees of bow, 45 of stern, the rest is beam.
+            Assert.That(SeaVolleyPresentationRules.ArmorFaceAt(
+                0f, Vector2.zero, Vector2.up * 10f), Is.EqualTo("front"));
+            Assert.That(SeaVolleyPresentationRules.ArmorFaceAt(
+                0f, Vector2.zero, Vector2.down * 10f), Is.EqualTo("back"));
+            Assert.That(SeaVolleyPresentationRules.ArmorFaceAt(
+                0f, Vector2.zero, Vector2.right * 10f), Is.EqualTo("sides"));
+            Assert.That(SeaVolleyPresentationRules.ArmorFaceAt(
+                0f, Vector2.zero, Vector2.zero), Is.EqualTo("sides"));
         }
 
         [Test]
@@ -294,13 +314,11 @@ namespace Sea.Tests
                 TargetName = "RAIDER 7",
                 TargetHull = 300,
                 TargetMaxHull = 600,
-                TargetSails = 100,
-                TargetMaxSails = 400,
-                TargetCannons = 50,
-                TargetMaxCannons = 200,
-                PortReloadRemainingSeconds = 2f,
+                TargetArmorFace = "front",
+                TargetArmorAbsorption = 0.25f,
+                ReadyVolleys = 0,
+                ReloadRemainingSeconds = 2f,
                 ReloadDurationSeconds = 4f,
-                StarboardReloadRemainingSeconds = 0f,
             });
 
             Assert.That(model.HullProgress, Is.EqualTo(0.75f));
@@ -314,10 +332,11 @@ namespace Sea.Tests
             Assert.That(model.NavigationText, Is.EqualTo("AX 59  •  275°  •  12.5 KN"));
             Assert.That(model.HasTarget, Is.True);
             Assert.That(model.TargetHullProgress, Is.EqualTo(0.5f));
-            Assert.That(model.TargetSailsProgress, Is.EqualTo(0.25f));
-            Assert.That(model.TargetCannonsProgress, Is.EqualTo(0.25f));
-            Assert.That(model.PortReloadProgress, Is.EqualTo(0.5f));
-            Assert.That(model.StarboardReady, Is.True);
+            Assert.That(model.TargetArmorText, Is.EqualTo("FRONT  •  25% ABSORBED"));
+            Assert.That(model.ReloadProgress, Is.EqualTo(0.5f));
+            Assert.That(model.IsLoaded, Is.False);
+            Assert.That(model.ReloadText, Is.EqualTo("2.0s"));
+            Assert.That(model.MagazineText, Is.EqualTo("0 / 6"));
         }
 
         [Test]
@@ -334,18 +353,22 @@ namespace Sea.Tests
                 "map-rank-label", "ship-loadout", "volley-text", "combat-power-label",
                 "player-hull",
                 "mini-map-frame",
-                "target-frame", "target-hull", "target-sails", "target-cannons",
-                "port-broadside", "starboard-broadside", "weak-point-rail", "ammo-rail",
+                "target-frame", "target-hull", "target-armor-text",
+                "fire-control", "reload-gauge", "reload-text", "magazine-text", "ammo-rail",
                 "ability-rail", "status-strip", "channel-progress", "coordinate-navigator",
                 "chart-menu", "rebind-list",
             };
 
             Assert.That(requiredElements.All(name => root.Q(name) != null), Is.True);
             Assert.That(root.Q("player-experience"), Is.Null);
-            Assert.That(root.Q<Button>("aim-hull").text, Is.EqualTo("1"));
-            Assert.That(root.Q<Button>("ability-full-sail").text, Is.EqualTo("Z"));
-            Assert.That(root.Q<Button>("port-broadside"), Is.Not.Null);
-            Assert.That(root.Q<Button>("starboard-broadside"), Is.Not.Null);
+
+            // One magazine bearing in every direction: the aim rail and the broadside pair are
+            // gone, and the abilities they sat beside went with them.
+            Assert.That(root.Q("weak-point-rail"), Is.Null);
+            Assert.That(root.Q("port-broadside"), Is.Null);
+            Assert.That(root.Q("starboard-broadside"), Is.Null);
+            Assert.That(root.Q("ability-full-sail"), Is.Null);
+            Assert.That(root.Q<Button>("repair").text, Is.EqualTo("R"));
         }
 
         [Test]
@@ -390,89 +413,6 @@ namespace Sea.Tests
             Assert.That(runtimeSources.Any(source => source.Contains("void OnGUI(")), Is.False);
             Assert.That(runtimeSources.Any(source => source.Contains("Input.Get")), Is.False);
         }
-
-        [Test]
-        public void Auth_token_store_can_clear_a_stale_local_identity()
-        {
-            const string testKey = "sea.tests.identity-token";
-            var tokens = new SeaAuthTokenStore(testKey);
-            tokens.Save("stale-token");
-
-            tokens.Clear();
-
-            Assert.That(tokens.Token, Is.Empty);
-        }
-
-        [Test]
-        public void Unauthorized_cached_identity_is_cleared_and_retried_anonymously()
-        {
-            var decision = SeaConnectionRecoveryPolicy.Decide(
-                new WebSocketUpgradeException(401, "Unauthorized"),
-                attemptedWithToken: true,
-                transientFailureCount: 0);
-
-            Assert.That(decision.Action, Is.EqualTo(SeaConnectionRecoveryAction.ClearIdentityAndRetry));
-            Assert.That(decision.DelaySeconds, Is.Zero);
-        }
-
-        [Test]
-        public void Unauthorized_anonymous_connection_stops_retrying()
-        {
-            var decision = SeaConnectionRecoveryPolicy.Decide(
-                new WebSocketUpgradeException(401, "Unauthorized"),
-                attemptedWithToken: false,
-                transientFailureCount: 0);
-
-            Assert.That(decision.Action, Is.EqualTo(SeaConnectionRecoveryAction.Stop));
-        }
-
-        [Test]
-        public void Transient_connection_failures_use_bounded_backoff()
-        {
-            var first = SeaConnectionRecoveryPolicy.Decide(
-                new System.TimeoutException("offline"),
-                attemptedWithToken: false,
-                transientFailureCount: 0);
-            var repeated = SeaConnectionRecoveryPolicy.Decide(
-                new System.TimeoutException("offline"),
-                attemptedWithToken: false,
-                transientFailureCount: 20);
-
-            Assert.That(first.Action, Is.EqualTo(SeaConnectionRecoveryAction.RetryAfterDelay));
-            Assert.That(first.DelaySeconds, Is.EqualTo(2f));
-            Assert.That(repeated.DelaySeconds, Is.EqualTo(30f));
-        }
-
-        [Test]
-        public void Missing_database_is_a_permanent_connection_failure()
-        {
-            var decision = SeaConnectionRecoveryPolicy.Decide(
-                new WebSocketUpgradeException(404, "Not Found"),
-                attemptedWithToken: false,
-                transientFailureCount: 0);
-
-            Assert.That(decision.Action, Is.EqualTo(SeaConnectionRecoveryAction.Stop));
-        }
-
-        [Test]
-        public void World_material_factory_always_returns_a_runtime_material()
-        {
-            var material = SeaMaterialFactory.Create(Color.white);
-
-            Assert.That(material, Is.Not.Null);
-            Object.DestroyImmediate(material);
-        }
-
-        [TestCase(new[] { "game", "-seaDatabaseName", "sea-smoke" }, "sea-smoke")]
-        [TestCase(new[] { "game", "-seaDatabaseName=sea-smoke" }, "sea-smoke")]
-        [TestCase(new[] { "game" }, "sea-local")]
-        public void Runtime_database_can_be_isolated_by_command_line(
-            string[] arguments,
-            string expected)
-        {
-            Assert.That(SeaClientOptions.DatabaseName(arguments, "sea-local"), Is.EqualTo(expected));
-        }
-
     }
 }
 #endif

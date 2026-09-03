@@ -133,10 +133,9 @@ public static partial class Module
         ReducerContext ctx,
         ulong encounterId,
         ulong contributorEntityId,
-        ulong damage,
-        ulong boarding)
+        ulong damage)
     {
-        if (encounterId == 0 || (damage == 0 && boarding == 0))
+        if (encounterId == 0 || damage == 0)
         {
             return;
         }
@@ -146,7 +145,6 @@ public static partial class Module
         {
             var updated = existing;
             updated.Damage = ProgressionRules.AddSaturating(updated.Damage, damage);
-            updated.Boarding = ProgressionRules.AddSaturating(updated.Boarding, boarding);
             ctx.Db.CombatContribution.ContributionId.Update(updated);
             return;
         }
@@ -156,7 +154,7 @@ public static partial class Module
             EncounterId = encounterId,
             ContributorEntityId = contributorEntityId,
             Damage = damage,
-            Boarding = boarding,
+            Boarding = 0,
             Support = 0,
         });
     }

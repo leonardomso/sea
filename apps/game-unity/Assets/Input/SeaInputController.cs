@@ -192,21 +192,13 @@ namespace Sea.Client
             Bind("Pause", _ => SetMenuOpen(true));
             BindMenu("CloseMenu", _ => SetMenuOpen(false));
 
-            Bind("FirePort", _ => game?.FireBroadside("port"));
-            Bind("FireStarboard", _ => game?.FireBroadside("starboard"));
-            Bind("AimHull", _ => game?.SetSelectedWeakPoint("hull"));
-            Bind("AimSails", _ => game?.SetSelectedWeakPoint("sails"));
-            Bind("AimCannons", _ => game?.SetSelectedWeakPoint("cannons"));
+            // Guns bear in every direction: one key, one magazine, no aim point.
+            Bind("Fire", _ => game?.Fire());
             Bind("AmmoRound", _ => game?.SetSelectedAmmo("round"));
             Bind("AmmoChain", _ => game?.SetSelectedAmmo("chain"));
             Bind("AmmoGrapeshot", _ => game?.SetSelectedAmmo("grapeshot"));
             Bind("AmmoIncendiary", _ => game?.SetSelectedAmmo("incendiary"));
-            Bind("FullSail", _ => game?.ActivateAbility("full_sail"));
-            Bind("Brace", _ => game?.ActivateAbility("brace"));
-            Bind("EmergencyPump", _ => game?.ActivateAbility("emergency_pump"));
-            Bind("SmokeScreen", _ => game?.ActivateAbility("smoke_screen"));
             Bind("Repair", _ => game?.ToggleRepair());
-            Bind("Board", _ => game?.ToggleBoarding());
         }
 
         private void Bind(string actionName, Action<InputAction.CallbackContext> callback, bool canceled = false)

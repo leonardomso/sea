@@ -233,7 +233,7 @@ namespace Sea.Client
                     {
                         combatValidated = true;
                         MarkRuntimeMilestone(SeaRuntimeMilestone.Combat);
-                        Debug.Log("Sea runtime observed authoritative manual broadside combat.", this);
+                        Debug.Log("Sea runtime observed authoritative manual magazine combat.", this);
                     }
 
                     if (progressionEnabledForThisRun)
@@ -257,15 +257,15 @@ namespace Sea.Client
                 return;
             }
 
-            var broadside = SeaRuntimeValidationRules.PlanBroadside(
+            var firing = SeaRuntimeValidationRules.PlanFire(
                 playerPosition,
                 LiveHeading(player),
                 targetPosition);
-            if (!broadside.CanFire)
+            if (!firing.CanFire)
             {
                 if (Time.unscaledTime >= nextCombatCourseTime)
                 {
-                    var desiredHeading = broadside.DesiredHeadingDegrees * Mathf.Deg2Rad;
+                    var desiredHeading = firing.DesiredHeadingDegrees * Mathf.Deg2Rad;
                     var turnDestination = playerPosition + new Vector2(
                         Mathf.Sin(desiredHeading),
                         Mathf.Cos(desiredHeading)) * 10f;
@@ -287,10 +287,7 @@ namespace Sea.Client
             combatInitialHull = target.Hull;
             combatFireRequested = true;
             combatFireRequestedAt = Time.unscaledTime;
-            Issue(
-                new ShipCommand.FireBroadside(
-                    new FireBroadsideCommand(broadside.Side, "hull")),
-                "runtime fire broadside");
+            Issue(new ShipCommand.Fire(new FireCommand()), "runtime fire");
         }
 
         private void SetCombatCourse(float x, float y)

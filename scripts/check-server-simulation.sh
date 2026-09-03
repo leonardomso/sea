@@ -9,8 +9,9 @@ simulation="$repo_root/server/spacetimedb/spacetimedb/Simulation"
 navigation="$repo_root/server/spacetimedb/spacetimedb/Navigation/NavigationState.cs"
 
 for required in \
-  'Accessor = "ByStatusDue"' \
-  'Accessor = "ByImpactDue"' \
+  'Accessor = "ByEffectDue"' \
+  'Accessor = "ByVolleyExpiry"' \
+  'Accessor = "ByReloading"' \
   'Accessor = "ByChannelDue"' \
   'Accessor = "ByLootExpiryDue"' \
   'Accessor = "ByRespawnDue"' \

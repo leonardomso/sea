@@ -40,12 +40,12 @@ namespace Sea.Client
                     IsAlive = true,
                     Hull = 750,
                     MaxHull = 1_000,
-                    Sails = 500,
-                    MaxSails = 500,
-                    Cannons = 400,
-                    MaxCannons = 400,
-                    Crew = 300,
-                    MaxCrew = 300,
+                    MagazineSize = 3,
+                    ReadyVolleys = 3,
+                    ReloadTicks = 30,
+                    ArmorFront = 0.25f,
+                    ArmorSides = 0.1f,
+                    ArmorBack = 0.05f,
                 });
             }
 

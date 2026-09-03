@@ -93,41 +93,50 @@ public static partial class Module
         ship.IsAlive = true;
         ship.ModeCode = (byte)ShipMode.Operational;
         ship.MovementStatusMask = 0;
+        ship.MovementSlowMagnitude = 0f;
         ship.EnvironmentExposureCode = 0;
         ship.Hull = restored.Hull;
-        ship.Sails = ship.MaxSails;
-        ship.Cannons = ship.MaxCannons;
-        ship.Crew = ship.MaxCrew;
+
+        // A ship comes back with its guns loaded; the fire interval is the only thing between it
+        // and its first volley.
+        ship.ReadyVolleys = ship.MagazineSize;
+        ship.ReloadProgressTicks = 0;
+        ship.IsReloading = false;
+        ship.HasFired = false;
+        ship.LastShotTick = 0;
         ship.RespawnAtTick = 0;
         ship.InvulnerableUntilTick = restored.InvulnerableUntilTick;
         ClearRespawnState(ctx, ship.EntityId);
-        if (!player && ctx.Db.NpcAi.ShipEntityId.Find(ship.EntityId) is NpcAi ai)
+        if (!player)
         {
-            ship.EncounterId = AllocateEntityId(ctx);
-            var definition = Catalog.NpcByArchetypeCode[ship.ArchetypeCode] ??
-                throw new InvalidOperationException("Respawning NPC definition is missing.");
-
-            OpenNpcEncounter(
-                ctx,
-                ship,
-                definition.GoldReward,
-                definition.ExperienceReward,
-                tick);
-            ai.IsActive = true;
-            ai.NextDecisionTick = tick + NpcRules.DecisionIntervalTicks;
-            ctx.Db.NpcAi.ShipEntityId.Update(ai);
+            ReopenNpcEncounter(ctx, ref ship, tick);
         }
+    }
+
+    /// <summary>
+    /// A respawned NPC is a fresh bounty: it gets a new encounter id so the contributions from the
+    /// fight that sank it cannot be paid out twice.
+    /// </summary>
+    private static void ReopenNpcEncounter(ReducerContext ctx, ref Ship ship, ulong tick)
+    {
+        if (ctx.Db.NpcAi.ShipEntityId.Find(ship.EntityId) is not NpcAi ai)
+        {
+            return;
+        }
+
+        ship.EncounterId = AllocateEntityId(ctx);
+        var definition = Catalog.NpcByArchetypeCode[ship.ArchetypeCode] ??
+            throw new InvalidOperationException("Respawning NPC definition is missing.");
+
+        OpenNpcEncounter(ctx, ship, definition.GoldReward, definition.ExperienceReward, tick);
+        ai.IsActive = true;
+        ai.NextDecisionTick = tick + NpcRules.DecisionIntervalTicks;
+        ctx.Db.NpcAi.ShipEntityId.Update(ai);
     }
 
     private static void ClearRespawnState(ReducerContext ctx, ulong shipEntityId)
     {
-        var statusIds = ctx.Db.ShipStatus.ByShip.Filter(shipEntityId)
-            .Select(status => status.StatusId)
-            .ToArray();
-        foreach (var statusId in statusIds)
-        {
-            ctx.Db.ShipStatus.StatusId.Delete(statusId);
-        }
+        ClearEffects(ctx, shipEntityId);
 
         if (ctx.Db.ShipChannel.ShipEntityId.Find(shipEntityId) is not null)
         {

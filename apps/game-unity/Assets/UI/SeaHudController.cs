@@ -17,8 +17,7 @@ namespace Sea.Client
         private VisualElement hudRoot;
         private VisualElement connectionBeacon;
         private VisualElement targetFrame;
-        private VisualElement portBroadside;
-        private VisualElement starboardBroadside;
+        private VisualElement fireControl;
         private VisualElement coordinateNavigator;
         private VisualElement chartMenu;
         private VisualElement miniMapFrame;
@@ -188,13 +187,11 @@ namespace Sea.Client
             progressCache.Clear();
             buttonCache.Clear();
             ammoLabelsApplied = false;
-            abilityLabelsApplied = false;
             root.pickingMode = PickingMode.Ignore;
             hudRoot.pickingMode = PickingMode.Ignore;
             connectionBeacon = root.Q("connection-beacon");
             targetFrame = root.Q("target-frame");
-            portBroadside = root.Q("port-broadside");
-            starboardBroadside = root.Q("starboard-broadside");
+            fireControl = root.Q("fire-control");
             coordinateNavigator = root.Q("coordinate-navigator");
             chartMenu = root.Q("chart-menu");
             miniMapFrame = root.Q("mini-map-frame");
@@ -221,21 +218,12 @@ namespace Sea.Client
             HookButton("resume-button", () => input?.SetMenuOpen(false));
             HookButton("coordinate-submit", SubmitCoordinate);
             HookButton("coordinate-cancel", CloseCoordinateNavigator);
-            HookButton("aim-hull", () => game?.SetSelectedWeakPoint("hull"));
-            HookButton("aim-sails", () => game?.SetSelectedWeakPoint("sails"));
-            HookButton("aim-cannons", () => game?.SetSelectedWeakPoint("cannons"));
             HookButton("ammo-round", () => game?.SetSelectedAmmo("round"));
             HookButton("ammo-chain", () => game?.SetSelectedAmmo("chain"));
             HookButton("ammo-grapeshot", () => game?.SetSelectedAmmo("grapeshot"));
             HookButton("ammo-incendiary", () => game?.SetSelectedAmmo("incendiary"));
-            HookButton("port-broadside", () => game?.FireBroadside("port"));
-            HookButton("starboard-broadside", () => game?.FireBroadside("starboard"));
-            HookButton("ability-full-sail", () => game?.ActivateAbility("full_sail"));
-            HookButton("ability-brace", () => game?.ActivateAbility("brace"));
-            HookButton("ability-pump", () => game?.ActivateAbility("emergency_pump"));
-            HookButton("ability-smoke", () => game?.ActivateAbility("smoke_screen"));
+            HookButton("fire-control", () => game?.Fire());
             HookButton("repair", () => game?.ToggleRepair());
-            HookButton("board", () => game?.ToggleBoarding());
             coordinateInput.RegisterCallback<KeyDownEvent>(HandleCoordinateKey);
             hudDirty.Mark();
         }
@@ -260,23 +248,15 @@ namespace Sea.Client
                 SetText("target-name", model.TargetName);
                 SetText("target-range", model.TargetRangeText);
                 SetText("target-hull-text", model.TargetHullText);
-                SetText("target-sails-text", model.TargetSailsText);
-                SetText("target-cannons-text", model.TargetCannonsText);
+                SetText("target-armor-text", model.TargetArmorText);
                 SetProgress("target-hull", model.TargetHullProgress);
-                SetProgress("target-sails", model.TargetSailsProgress);
-                SetProgress("target-cannons", model.TargetCannonsProgress);
             }
 
-            SetProgress("port-reload", model.PortReloadProgress);
-            SetProgress("starboard-reload", model.StarboardReloadProgress);
-            SetText("port-reload-text", model.PortReloadText);
-            SetText("starboard-reload-text", model.StarboardReloadText);
-            portBroadside?.EnableInClassList("ready", model.PortReady);
-            starboardBroadside?.EnableInClassList("ready", model.StarboardReady);
+            SetProgress("reload-gauge", model.ReloadProgress);
+            SetText("reload-text", model.ReloadText);
+            SetText("magazine-text", model.MagazineText);
+            fireControl?.EnableInClassList("ready", model.IsLoaded);
             SetText("ammo-count", $"{model.SelectedAmmoLabel} • {model.AmmoQuantity}");
-            SelectButton("aim-hull", model.SelectedWeakPoint == "HULL");
-            SelectButton("aim-sails", model.SelectedWeakPoint == "SAILS");
-            SelectButton("aim-cannons", model.SelectedWeakPoint == "CANNONS");
             SelectButton("ammo-round", model.SelectedAmmo == "ROUND");
             SelectButton("ammo-chain", model.SelectedAmmo == "CHAIN");
             SelectButton("ammo-grapeshot", model.SelectedAmmo == "GRAPESHOT");
@@ -284,10 +264,7 @@ namespace Sea.Client
             SetText("status-text", model.StatusText);
             SetText("channel-label", string.IsNullOrWhiteSpace(model.ProgressText) ? "NO ACTIVE ORDER" : model.ProgressText);
             SetProgress("channel-progress", model.Progress);
-            SetAbilityCooldown("ability-full-sail", "Z", model.FullSailCooldownSeconds);
-            SetAbilityCooldown("ability-brace", "X", model.BraceCooldownSeconds);
-            SetAbilityCooldown("ability-pump", "C", model.PumpCooldownSeconds);
-            SetAbilityCooldown("ability-smoke", "V", model.SmokeCooldownSeconds);
+            SetAbilityCooldown("repair", "R", model.RepairCooldownSeconds);
         }
 
         private void SetAbilityCooldown(string name, string binding, float seconds)

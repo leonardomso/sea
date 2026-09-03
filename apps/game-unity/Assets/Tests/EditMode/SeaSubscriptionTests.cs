@@ -68,7 +68,7 @@ namespace Sea.Tests
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM ship_movement WHERE entity_id = 42"));
             Assert.That(queries, Does.Contain(
-                "SELECT * FROM ship_status WHERE ship_entity_id = 42"));
+                "SELECT * FROM effect WHERE ship_entity_id = 42"));
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM volley WHERE is_active = true AND " +
                 "(source_entity_id = 7 OR target_entity_id = 7 OR " +

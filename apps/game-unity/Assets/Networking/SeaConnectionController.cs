@@ -38,6 +38,15 @@ namespace Sea.Client
         public string DatabaseName => databaseName;
         public string CommandStatus { get; private set; } = string.Empty;
 
+        /// <summary>
+        /// The last command the server answered and how it answered. The HUD only needs the
+        /// sentence in <see cref="CommandStatus"/>; the runtime probe needs the raw code so it
+        /// can assert the module still rejects a retired command rather than acting on it.
+        /// </summary>
+        public ulong AnsweredCommandId { get; private set; }
+
+        public byte AnsweredRejectionCode { get; private set; }
+
         public ulong IssueCommand(ShipCommand command, string description)
         {
             if (Connection == null || !IsSubscribed)
@@ -282,6 +291,8 @@ namespace Sea.Client
             }
 
             latestCommandId = result.CommandId;
+            AnsweredCommandId = result.CommandId;
+            AnsweredRejectionCode = result.Accepted ? (byte)0 : result.RejectionCode;
             var description = string.IsNullOrEmpty(latestCommandDescription)
                 ? $"Command {result.CommandId}"
                 : latestCommandDescription;
@@ -429,6 +440,8 @@ namespace Sea.Client
             subscribedPlayerEntityId = 0;
             ResetInterestSubscriptions();
             latestCommandId = 0;
+            AnsweredCommandId = 0;
+            AnsweredRejectionCode = 0;
             latestCommandDescription = string.Empty;
             CommandStatus = string.Empty;
         }

@@ -26,12 +26,16 @@ public static partial class Module
         Profile("wind");
 
         var world = new TickWorld(tick);
+        // Reloads run before anything stages a ship so the sweep and the tick buffer never
+        // write the same row twice.
+        ProcessReloads(ctx, tick);
+        Profile("reloads");
         var ships = new ShipTickBuffer();
-        ProcessStatuses(ctx, ships, tick);
-        Profile("statuses");
+        ProcessEffects(ctx, ships, tick);
+        Profile("effects");
         ProcessChannels(ctx, ships, tick);
         Profile("channels");
-        ResolveVolleys(ctx, ships, tick);
+        RetireVolleys(ctx, tick);
         Profile("volleys");
         ProcessRespawns(ctx, ships, tick);
         Profile("respawns");

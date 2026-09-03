@@ -70,16 +70,11 @@ public sealed class ContentValidationTests
         { "round: name is empty.", Ammunition(ammo => ammo with { Name = "" }) },
         { "round: ammunition code must not be None.", Ammunition(ammo => ammo with { Code = AmmunitionCode.None }) },
         { "round_copy: duplicate ammunition code 'Round'.", Catalog with { Ammunition = [Catalog.Ammunition[0], Catalog.Ammunition[0] with { Id = "round_copy" }] } },
-        { "round: applied status 'burning' does not match code 'Flooding'.", Ammunition(ammo => ammo with { AppliedStatus = "burning" }) },
         { "round: damage multiplier must be positive.", Ammunition(ammo => ammo with { DamageMultiplier = 0f }) },
         { "round: reload multiplier must be positive.", Ammunition(ammo => ammo with { ReloadMultiplier = 0f }) },
         { "round: range multiplier must be positive.", Ammunition(ammo => ammo with { RangeMultiplier = 0f }) },
         { "round: effect magnitude must not be negative.", Ammunition(ammo => ammo with { EffectMagnitude = -1f }) },
         { "round: effect duration must not be negative.", Ammunition(ammo => ammo with { EffectDurationSeconds = -1f }) },
-        { "full_sail: ability code must not be None.", Ability(ability => ability with { Code = AbilityCode.None }) },
-        { "full_sail: code 'Brace' does not match the id.", Ability(ability => ability with { Code = AbilityCode.Brace }) },
-        { "full_sail: cooldown ticks must be positive.", Ability(ability => ability with { CooldownTicks = 0 }) },
-        { "full_sail: duration ticks must be positive.", Ability(ability => ability with { DurationTicks = 0 }) },
         { "At least one npc is required.", Catalog with { Npcs = [] } },
         { "Duplicate npc id 'patrol'.", Catalog with { Npcs = [Catalog.Npcs[0], Catalog.Npcs[0]] } },
         { "npc id is empty.", Npc(npc => npc with { Id = "" }) },
@@ -142,9 +137,6 @@ public sealed class ContentValidationTests
 
     private static GameContent Ammunition(Func<AmmunitionContent, AmmunitionContent> change) =>
         Catalog with { Ammunition = [change(Catalog.Ammunition[0])] };
-
-    private static GameContent Ability(Func<AbilityContent, AbilityContent> change) =>
-        Catalog with { Abilities = [change(Catalog.Abilities[0])] };
 
     private static GameContent Npc(Func<NpcContent, NpcContent> change) =>
         Catalog with { Npcs = [change(Catalog.Npcs[0])] };

@@ -71,7 +71,7 @@ public static partial class Module
             SetLoadedConnectionState(ctx, ref ownership, true);
             EnsurePlayerProgression(ctx, ctx.Sender);
             EnsurePlayerAccount(ctx, ctx.Sender);
-            EnsureHull(ctx, ctx.Sender);
+            EnsureHull(ctx, ctx.Sender, ownership.ShipEntityId);
             EnsureCommandState(ctx, ctx.Sender, ownership.ShipEntityId);
             SynchronizePlayerClock(ctx, ctx.Sender);
             return;
@@ -93,7 +93,7 @@ public static partial class Module
         AdjustConnectedPlayerCount(ctx, 1);
         EnsurePlayerProgression(ctx, ctx.Sender);
         EnsurePlayerAccount(ctx, ctx.Sender);
-        EnsureHull(ctx, ctx.Sender);
+        EnsureHull(ctx, ctx.Sender, entityId);
         EnsureCommandState(ctx, ctx.Sender, entityId);
         SeedPlayerInventory(ctx, entityId);
         AppendEvent(ctx, tick, entityId, "player_loaded", $"entity_id={entityId}");
@@ -150,14 +150,16 @@ public static partial class Module
     /// reflects it. Login seeding lives here, next to <see cref="EnsurePlayerProgression"/> and
     /// <see cref="EnsurePlayerAccount"/>, not in the tick pipeline.
     /// </summary>
-    private static void EnsureHull(ReducerContext ctx, Identity owner)
+    private static void EnsureHull(ReducerContext ctx, Identity owner, ulong shipEntityId)
     {
         // 1a seeds exactly one hull; this loop already has the shape 1c's dock needs once a player
         // can own several.
         var owned = false;
         foreach (var existing in ctx.Db.Hull.ByOwner.Filter(owner))
         {
-            RecomputeShipStats(ctx, existing);
+            // Logging back in must not hand a damaged ship a free repair, so the sheet lands on
+            // the row without restocking it.
+            PublishStatSheet(ctx, shipEntityId, RecomputeShipStats(ctx, existing), restock: false);
             owned = true;
         }
 
@@ -175,6 +177,26 @@ public static partial class Module
             CannonDefId = Catalog.StarterCannon.Id,
             CannonCount = Catalog.StarterHull.CannonSlots,
         });
-        RecomputeShipStats(ctx, hull);
+        PublishStatSheet(ctx, shipEntityId, RecomputeShipStats(ctx, hull), restock: true);
+    }
+
+    /// <summary>
+    /// Copies a freshly computed stat sheet onto the live <see cref="Ship"/> row. The fat row
+    /// carries the combat numbers outright so the tick never joins the dock tables to fire a
+    /// volley; kinematics are untouched, so this needs no movement republication.
+    /// </summary>
+    private static void PublishStatSheet(
+        ReducerContext ctx,
+        ulong shipEntityId,
+        ShipStatSheet sheet,
+        bool restock)
+    {
+        if (ctx.Db.Ship.EntityId.Find(shipEntityId) is not Ship ship)
+        {
+            return;
+        }
+
+        ApplyStatSheet(ref ship, sheet, restock);
+        ctx.Db.Ship.EntityId.Update(ship);
     }
 }

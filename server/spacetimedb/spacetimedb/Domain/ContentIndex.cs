@@ -17,12 +17,6 @@ public static class ContentIndex
         return ByCode(content.Ammunition, entry => entry.Code, entry => entry.Id, "Ammunition");
     }
 
-    public static AbilityContent?[] AbilityByCode(GameContent content)
-    {
-        ArgumentNullException.ThrowIfNull(content);
-        return ByCode(content.Abilities, entry => entry.Code, entry => entry.Id, "Ability");
-    }
-
     public static NpcContent?[] NpcByArchetypeCode(GameContent content)
     {
         ArgumentNullException.ThrowIfNull(content);

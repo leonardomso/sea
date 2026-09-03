@@ -114,10 +114,9 @@ public static partial class Module
             CandidateTargetId = candidate?.EntityId ?? 0,
             DesiredRange = definition.DesiredRange,
             PreferredAmmunition = definition.PreferredAmmunition,
-            PreferredWeakPoint = definition.PreferredWeakPoint,
             SelectedAmmunition = (AmmunitionCode)ship.SelectedAmmoCode,
-            PortReady = tick >= ship.NextPortFireTick,
-            StarboardReady = tick >= ship.NextStarboardFireTick,
+            CanFire = ship.ReadyVolleys > 0 &&
+            (!ship.HasFired || tick >= ship.LastShotTick + CombatRules.FireIntervalTicks),
             DecisionSeed = ai.HomeSeed,
             DecisionTick = tick,
             HomeX = ai.HomeX,
@@ -233,18 +232,8 @@ public static partial class Module
         {
             AmmoId = HotPathCodes.AmmunitionId(decision.Ammunition),
         }),
-        NpcActionKind.FirePort => FireCommand("port", decision.WeakPoint),
-        NpcActionKind.FireStarboard => FireCommand("starboard", decision.WeakPoint),
+        NpcActionKind.Fire => new ShipCommand.Fire(new FireCommand()),
         NpcActionKind.StartRepair => new ShipCommand.StartRepair(new StartRepairCommand()),
         _ => null,
     };
-
-    private static ShipCommand.FireBroadside FireCommand(
-        string side,
-        WeakPointCode weakPoint) =>
-        new ShipCommand.FireBroadside(new FireBroadsideCommand
-        {
-            Side = side,
-            WeakPoint = HotPathCodes.WeakPointId(weakPoint),
-        });
 }

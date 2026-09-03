@@ -14,7 +14,7 @@ namespace SpacetimeDB.Types
         SelectTargetCommand SelectTarget,
         ClearTargetCommand ClearTarget,
         SetAmmoCommand SetAmmo,
-        FireBroadsideCommand FireBroadside,
+        FireCommand Fire,
         ActivateAbilityCommand ActivateAbility,
         StartRepairCommand StartRepair,
         StartBoardingCommand StartBoarding,

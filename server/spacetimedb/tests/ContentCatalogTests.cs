@@ -62,21 +62,6 @@ public sealed class ContentCatalogTests
     }
 
     [Fact]
-    public void Duplicate_ability_code_behind_a_duplicate_id_is_still_reported()
-    {
-        var errors = ContentCatalog.Validate(Catalog with { Abilities = [.. Catalog.Abilities, Catalog.Abilities[0]] });
-        Assert.Contains("Duplicate ability id 'full_sail'.", errors, StringComparer.Ordinal);
-        Assert.Contains("full_sail: duplicate ability code 'FullSail'.", errors, StringComparer.Ordinal);
-    }
-
-    [Fact]
-    public void Empty_ability_list_is_rejected()
-    {
-        var errors = ContentCatalog.Validate(Catalog with { Abilities = [] });
-        Assert.Contains("At least one ability is required.", errors, StringComparer.Ordinal);
-    }
-
-    [Fact]
     public void Short_terrain_row_is_rejected()
     {
         var map = Catalog.Maps[0];

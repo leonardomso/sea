@@ -2,20 +2,15 @@ using UnityEngine;
 
 namespace Sea.Client
 {
-    public readonly struct RuntimeBroadsidePlan
+    public readonly struct RuntimeFirePlan
     {
-        public RuntimeBroadsidePlan(
-            bool canFire,
-            string side,
-            float desiredHeadingDegrees)
+        public RuntimeFirePlan(bool canFire, float desiredHeadingDegrees)
         {
             CanFire = canFire;
-            Side = side;
             DesiredHeadingDegrees = desiredHeadingDegrees;
         }
 
         public bool CanFire { get; }
-        public string Side { get; }
         public float DesiredHeadingDegrees { get; }
     }
 
@@ -33,9 +28,11 @@ namespace Sea.Client
         private const float SeededStormDirectionDegrees = 72f;
         private const float SeededStormSpeed = 1.5f;
         private const float SimulationTicksPerSecond = 10f;
-        private const float SafeBroadsideHalfArcDegrees = 44f;
-
-        public static RuntimeBroadsidePlan PlanBroadside(
+        /// <summary>
+        /// There is no firing arc left: the magazine bears in every direction, so the only thing
+        /// the probe still plans is the approach heading that puts the target dead ahead.
+        /// </summary>
+        public static RuntimeFirePlan PlanFire(
             Vector2 source,
             float headingDegrees,
             Vector2 target)
@@ -43,30 +40,11 @@ namespace Sea.Client
             var delta = target - source;
             if (delta.sqrMagnitude <= Mathf.Epsilon)
             {
-                return new RuntimeBroadsidePlan(false, string.Empty, headingDegrees);
+                return new RuntimeFirePlan(false, headingDegrees);
             }
 
             var bearing = Mathf.Atan2(delta.x, delta.y) * Mathf.Rad2Deg;
-            var portError = Mathf.Abs(Mathf.DeltaAngle(headingDegrees - 90f, bearing));
-            var starboardError = Mathf.Abs(Mathf.DeltaAngle(headingDegrees + 90f, bearing));
-            var portCanFire = portError <= SafeBroadsideHalfArcDegrees;
-            var starboardCanFire = starboardError <= SafeBroadsideHalfArcDegrees;
-            if (portCanFire || starboardCanFire)
-            {
-                var side = portCanFire && (!starboardCanFire || portError <= starboardError)
-                    ? "port"
-                    : "starboard";
-                return new RuntimeBroadsidePlan(true, side, headingDegrees);
-            }
-
-            var portHeading = bearing + 90f;
-            var starboardHeading = bearing - 90f;
-            var portTurn = Mathf.Abs(Mathf.DeltaAngle(headingDegrees, portHeading));
-            var starboardTurn = Mathf.Abs(Mathf.DeltaAngle(headingDegrees, starboardHeading));
-            return new RuntimeBroadsidePlan(
-                false,
-                string.Empty,
-                portTurn <= starboardTurn ? portHeading : starboardHeading);
+            return new RuntimeFirePlan(true, bearing);
         }
 
         public static bool ShouldRestoreSyntheticFleet(

@@ -133,7 +133,6 @@ public sealed class WorldRulesTests
         var content = ContentCatalog.CreateDefault();
 
         Assert.Equal(4, content.Ammunition.Count);
-        Assert.Equal(4, content.Abilities.Count);
         Assert.Equal(3, content.Npcs.Count);
         Assert.Empty(ContentCatalog.Validate(content));
     }

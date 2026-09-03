@@ -4,8 +4,7 @@ public enum ShipMode : byte
 {
     Operational = 0,
     Repairing = 1,
-    Boarding = 2,
-    Sunk = 3,
+    Sunk = 2,
 }
 
 public enum ShipCommandKind : byte
@@ -15,7 +14,7 @@ public enum ShipCommandKind : byte
     SelectTarget = 2,
     ClearTarget = 3,
     SetAmmo = 4,
-    FireBroadside = 5,
+    Fire = 5,
     ActivateAbility = 6,
     StartRepair = 7,
     StartBoarding = 8,
@@ -35,23 +34,17 @@ public enum CommandRejectionCode : byte
     PlayerTargetForbidden = 8,
     TargetConcealed = 9,
     UnknownAmmunition = 10,
-    AmmunitionNotOwned = 11,
-    NoTarget = 12,
-    TargetSunk = 13,
-    CannonsDisabled = 14,
-    NoAmmunition = 15,
-    Reloading = 16,
-    OutOfRange = 17,
-    OutsideArc = 18,
-    UnknownAbility = 19,
-    Cooldown = 20,
-    NoRepairKit = 21,
-    NothingToRepair = 22,
-    TargetTooStrong = 23,
-    NotChanneling = 24,
-    MissingResource = 25,
-    InvalidBroadsideSide = 26,
-    InvalidWeakPoint = 27,
+    NoTarget = 11,
+    TargetSunk = 12,
+    Reloading = 13,
+    FiringTooFast = 14,
+    OutOfRange = 15,
+    InPort = 16,
+    NoRepairKit = 17,
+    NothingToRepair = 18,
+    NotChanneling = 19,
+    MissingResource = 20,
+    NotAvailable = 21,
 }
 
 [Flags]
@@ -63,11 +56,9 @@ public enum CommandEffect : ushort
     SelectTarget = 1 << 2,
     ClearTarget = 1 << 3,
     SetAmmo = 1 << 4,
-    FireBroadside = 1 << 5,
-    ActivateAbility = 1 << 6,
-    StartRepair = 1 << 7,
-    StartBoarding = 1 << 8,
-    CancelChannel = 1 << 9,
+    Fire = 1 << 5,
+    StartRepair = 1 << 6,
+    CancelChannel = 1 << 7,
 }
 
 public readonly record struct CommandSnapshot
@@ -79,11 +70,8 @@ public readonly record struct CommandSnapshot
     public bool TargetIsFriendly { get; init; }
     public bool TargetConcealed { get; init; }
     public bool AmmoKnown { get; init; }
-    public bool AmmoOwned { get; init; }
     public FireRejection FireRejection { get; init; }
-    public AbilityRejection AbilityRejection { get; init; }
     public RepairRejection RepairRejection { get; init; }
-    public BoardingRejection BoardingRejection { get; init; }
     public bool HasActiveChannel { get; init; }
     public CommandRejectionCode ArgumentRejection { get; init; }
 }
@@ -127,6 +115,13 @@ public static class CommandPolicy
             return Reject(snapshot.Mode, CommandRejectionCode.MissingResource);
         }
 
+        // Abilities and boarding left the model with the four damage pools they scaled off. Their
+        // keys stay bound on the client, so they answer "not available yet" rather than nothing.
+        if (command is ShipCommandKind.ActivateAbility or ShipCommandKind.StartBoarding)
+        {
+            return Reject(snapshot.Mode, CommandRejectionCode.NotAvailable);
+        }
+
         if (snapshot.Mode == ShipMode.Sunk)
         {
             return Reject(snapshot.Mode, CommandRejectionCode.Sunk);
@@ -158,7 +153,7 @@ public static class CommandPolicy
     private static bool ModeAllows(ShipMode mode, ShipCommandKind command) => mode switch
     {
         ShipMode.Operational => command != ShipCommandKind.CancelChannel,
-        ShipMode.Repairing or ShipMode.Boarding => command is
+        ShipMode.Repairing => command is
             ShipCommandKind.SetCourse or
             ShipCommandKind.StopCourse or
             ShipCommandKind.SelectTarget or
@@ -173,15 +168,13 @@ public static class CommandPolicy
         {
             ShipCommandKind.SetCourse => ValidateCourse(snapshot),
             ShipCommandKind.SelectTarget => ValidateTarget(snapshot),
-            ShipCommandKind.SetAmmo => ValidateAmmo(snapshot),
-            ShipCommandKind.FireBroadside when snapshot.TargetIsFriendly =>
+            ShipCommandKind.SetAmmo => snapshot.AmmoKnown
+                ? CommandRejectionCode.None
+                : CommandRejectionCode.UnknownAmmunition,
+            ShipCommandKind.Fire when snapshot.TargetIsFriendly =>
                 CommandRejectionCode.PlayerTargetForbidden,
-            ShipCommandKind.FireBroadside => Map(snapshot.FireRejection),
-            ShipCommandKind.ActivateAbility => Map(snapshot.AbilityRejection),
+            ShipCommandKind.Fire => Map(snapshot.FireRejection),
             ShipCommandKind.StartRepair => Map(snapshot.RepairRejection),
-            ShipCommandKind.StartBoarding when snapshot.TargetIsFriendly =>
-                CommandRejectionCode.PlayerTargetForbidden,
-            ShipCommandKind.StartBoarding => Map(snapshot.BoardingRejection),
             ShipCommandKind.CancelChannel when !snapshot.HasActiveChannel =>
                 CommandRejectionCode.NotChanneling,
             _ => CommandRejectionCode.None,
@@ -211,22 +204,9 @@ public static class CommandPolicy
             : CommandRejectionCode.None;
     }
 
-    private static CommandRejectionCode ValidateAmmo(CommandSnapshot snapshot)
-    {
-        if (!snapshot.AmmoKnown)
-        {
-            return CommandRejectionCode.UnknownAmmunition;
-        }
-
-        return snapshot.AmmoOwned
-            ? CommandRejectionCode.None
-            : CommandRejectionCode.AmmunitionNotOwned;
-    }
-
     private static ShipMode NextMode(ShipMode current, ShipCommandKind command) => command switch
     {
         ShipCommandKind.StartRepair => ShipMode.Repairing,
-        ShipCommandKind.StartBoarding => ShipMode.Boarding,
         ShipCommandKind.CancelChannel => ShipMode.Operational,
         _ => current,
     };
@@ -238,10 +218,8 @@ public static class CommandPolicy
         ShipCommandKind.SelectTarget => CommandEffect.SelectTarget,
         ShipCommandKind.ClearTarget => CommandEffect.ClearTarget,
         ShipCommandKind.SetAmmo => CommandEffect.SetAmmo,
-        ShipCommandKind.FireBroadside => CommandEffect.FireBroadside,
-        ShipCommandKind.ActivateAbility => CommandEffect.ActivateAbility,
+        ShipCommandKind.Fire => CommandEffect.Fire,
         ShipCommandKind.StartRepair => CommandEffect.StartRepair,
-        ShipCommandKind.StartBoarding => CommandEffect.StartBoarding,
         ShipCommandKind.CancelChannel => CommandEffect.CancelChannel,
         _ => CommandEffect.None,
     };
@@ -255,22 +233,11 @@ public static class CommandPolicy
         FireRejection.SourceSunk => CommandRejectionCode.Sunk,
         FireRejection.NoTarget => CommandRejectionCode.NoTarget,
         FireRejection.TargetSunk => CommandRejectionCode.TargetSunk,
-        FireRejection.CannonsDisabled => CommandRejectionCode.CannonsDisabled,
-        FireRejection.NoAmmunition => CommandRejectionCode.NoAmmunition,
         FireRejection.Reloading => CommandRejectionCode.Reloading,
+        FireRejection.FiringTooFast => CommandRejectionCode.FiringTooFast,
         FireRejection.OutOfRange => CommandRejectionCode.OutOfRange,
-        FireRejection.OutsideArc => CommandRejectionCode.OutsideArc,
+        FireRejection.InPort => CommandRejectionCode.InPort,
         FireRejection.Busy => CommandRejectionCode.ModeConflict,
-        _ => CommandRejectionCode.MissingResource,
-    };
-
-    private static CommandRejectionCode Map(AbilityRejection rejection) => rejection switch
-    {
-        AbilityRejection.None => CommandRejectionCode.None,
-        AbilityRejection.SourceSunk => CommandRejectionCode.Sunk,
-        AbilityRejection.UnknownAbility => CommandRejectionCode.UnknownAbility,
-        AbilityRejection.Cooldown => CommandRejectionCode.Cooldown,
-        AbilityRejection.Busy => CommandRejectionCode.ModeConflict,
         _ => CommandRejectionCode.MissingResource,
     };
 
@@ -281,18 +248,6 @@ public static class CommandPolicy
         RepairRejection.Busy => CommandRejectionCode.ModeConflict,
         RepairRejection.NoRepairKit => CommandRejectionCode.NoRepairKit,
         RepairRejection.NothingToRepair => CommandRejectionCode.NothingToRepair,
-        _ => CommandRejectionCode.MissingResource,
-    };
-
-    private static CommandRejectionCode Map(BoardingRejection rejection) => rejection switch
-    {
-        BoardingRejection.None => CommandRejectionCode.None,
-        BoardingRejection.SourceSunk => CommandRejectionCode.Sunk,
-        BoardingRejection.TargetSunk => CommandRejectionCode.TargetSunk,
-        BoardingRejection.Busy => CommandRejectionCode.ModeConflict,
-        BoardingRejection.TargetTooStrong => CommandRejectionCode.TargetTooStrong,
-        BoardingRejection.OutOfRange => CommandRejectionCode.OutOfRange,
-        BoardingRejection.Cooldown => CommandRejectionCode.Cooldown,
         _ => CommandRejectionCode.MissingResource,
     };
 }

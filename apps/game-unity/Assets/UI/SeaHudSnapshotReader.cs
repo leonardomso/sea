@@ -11,18 +11,14 @@ namespace Sea.Client
     {
         private const byte StatCapsRowId = 1;
 
-        // Indexed by AmmunitionCode / AbilityCode minus one.
+        // Indexed by AmmunitionCode minus one.
         private static readonly string[] AmmoSlotNames =
             { "ammo-round", "ammo-chain", "ammo-grapeshot", "ammo-incendiary" };
-
-        private static readonly string[] AbilitySlotNames =
-            { "ability-full-sail", "ability-brace", "ability-pump", "ability-smoke" };
 
         // Reused across rebuilds: a ship carries at most a handful of statuses and the
         // HUD flattens them into one string immediately.
         private readonly List<string> statusBuffer = new(8);
         private bool ammoLabelsApplied;
-        private bool abilityLabelsApplied;
 
         private SeaHudSnapshot CaptureSnapshot()
         {
@@ -46,7 +42,6 @@ namespace Sea.Client
             snapshot.Speed = ship.Speed;
             snapshot.Hull = ship.Hull;
             snapshot.SelectedAmmo = game.SelectedAmmoId;
-            snapshot.SelectedWeakPoint = game.SelectedWeakPoint;
             snapshot.SelectedAmmoName =
                 db.AmmoDef.AmmoId.Find(game.SelectedAmmoId)?.Name ?? game.SelectedAmmoId;
 
@@ -61,24 +56,26 @@ namespace Sea.Client
 
             snapshot.AmmoQuantity = AmmoQuantity(db, ship.EntityId, game.SelectedAmmoId);
 
-            var tickRate = connection.WorldTickRate;
+            var tickRate = Mathf.Max(1u, connection.WorldTickRate);
 
             // Damage is still resolved against the ship row's hull budget, so the bar
             // pairs Hull with that row's MaxHull; mixing in ship_stats reads "50 / 1,600".
             snapshot.MaxHull = ship.MaxHull;
-            // The ship_stats row is the dock-authored reload; the tick budget only
+            // The ship_stats row is the dock-authored reload; the ship row's own reload budget
             // stands in until that row replicates.
             snapshot.ReloadDurationSeconds = stats != null
                 ? stats.ReloadMilliseconds / 1000f
-                : (float)ship.CannonCooldownTicks / tickRate;
+                : (float)ship.ReloadTicks / tickRate;
+            snapshot.ReadyVolleys = ship.ReadyVolleys;
+            snapshot.MagazineSize = ship.MagazineSize;
 
             var world = db.WorldState.Id.Find(1);
             if (world != null)
             {
-                var worldTick = connection.CurrentWorldTick;
-                snapshot.PortReloadRemainingSeconds = RemainingSeconds(ship.NextPortFireTick, worldTick, tickRate);
-                snapshot.StarboardReloadRemainingSeconds =
-                    RemainingSeconds(ship.NextStarboardFireTick, worldTick, tickRate);
+                // One magazine, one bar: what is left of the reload behind the next volley.
+                snapshot.ReloadRemainingSeconds = ship.ReloadTicks <= ship.ReloadProgressTicks
+                    ? 0f
+                    : (float)(ship.ReloadTicks - ship.ReloadProgressTicks) / tickRate;
             }
 
             ReadTarget(db, ship, snapshot);
@@ -134,7 +131,6 @@ namespace Sea.Client
 
             snapshot.VolleyDamage = stats.VolleyDamage;
             snapshot.ReloadMilliseconds = stats.ReloadMilliseconds;
-            snapshot.MagazineSize = stats.Magazine;
             snapshot.CombatPowerUsed = stats.CombatPowerUsed;
             return stats;
         }
@@ -164,27 +160,31 @@ namespace Sea.Client
                 target.EntityId);
             snapshot.TargetHull = target.Hull;
             snapshot.TargetMaxHull = target.MaxHull;
-            snapshot.TargetSails = target.Sails;
-            snapshot.TargetMaxSails = target.MaxSails;
-            snapshot.TargetCannons = target.Cannons;
-            snapshot.TargetMaxCannons = target.MaxCannons;
             snapshot.TargetRange = range;
+
+            // The server reads the face from where this ship sits, so the HUD reads it the same
+            // way rather than asking the captain to pick an aim point that no longer exists.
+            var face = SeaVolleyPresentationRules.ArmorFaceAt(
+                target.HeadingDegrees,
+                new Vector2(target.PositionX, target.PositionY),
+                new Vector2(ship.PositionX, ship.PositionY));
+            snapshot.TargetArmorFace = face;
+            snapshot.TargetArmorAbsorption = face switch
+            {
+                "front" => target.ArmorFront,
+                "back" => target.ArmorBack,
+                _ => target.ArmorSides,
+            };
         }
 
         private void ReadStatuses(RemoteTables db, Ship ship, SeaHudSnapshot snapshot)
         {
             statusBuffer.Clear();
-            foreach (var status in db.ShipStatus.ByShip.Filter(ship.EntityId))
+            foreach (var effect in db.Effect.ByShip.Filter(ship.EntityId))
             {
-                if (status.IsActive)
+                if (effect.IsActive)
                 {
-                    statusBuffer.Add(status.Stacks > 1
-                        ? string.Format(
-                            CultureInfo.InvariantCulture,
-                            "{0} ×{1}",
-                            status.StatusType.ToUpperInvariant(),
-                            status.Stacks)
-                        : status.StatusType.ToUpperInvariant());
+                    statusBuffer.Add(effect.EffectType.ToUpperInvariant());
                 }
             }
 
@@ -210,32 +210,22 @@ namespace Sea.Client
                     connection.CurrentWorldTick);
             }
 
+            // Repair is the only cooldown the module still writes; the ability rail that owned
+            // the rest went out with the abilities.
             foreach (var cooldown in db.Cooldown.ByShip.Filter(ship.EntityId))
             {
-                var seconds = RemainingSeconds(
-                    cooldown.ReadyAtTick,
-                    connection.CurrentWorldTick,
-                    connection.WorldTickRate);
-                switch (cooldown.CooldownType)
+                if (cooldown.CooldownType == "repair")
                 {
-                    case "full_sail":
-                        snapshot.FullSailCooldownSeconds = seconds;
-                        break;
-                    case "brace":
-                        snapshot.BraceCooldownSeconds = seconds;
-                        break;
-                    case "emergency_pump":
-                        snapshot.PumpCooldownSeconds = seconds;
-                        break;
-                    case "smoke_screen":
-                        snapshot.SmokeCooldownSeconds = seconds;
-                        break;
+                    snapshot.RepairCooldownSeconds = RemainingSeconds(
+                        cooldown.ReadyAtTick,
+                        connection.CurrentWorldTick,
+                        connection.WorldTickRate);
                 }
             }
         }
 
-        // Slot tooltips are content, not chrome: the ammo rail and the ability rail read
-        // their names and cooldowns from ammo_def/ability_def once the tables arrive.
+        // Slot tooltips are content, not chrome: the ammo rail reads its names from ammo_def
+        // once the table arrives.
         private void ApplyContentLabels(RemoteTables db)
         {
             if (root == null)
@@ -243,7 +233,6 @@ namespace Sea.Client
                 return;
             }
 
-            var tickRate = Mathf.Max(1u, connection.WorldTickRate);
             if (!ammoLabelsApplied)
             {
                 var applied = false;
@@ -262,31 +251,6 @@ namespace Sea.Client
 
                 ammoLabelsApplied = applied;
             }
-
-            if (abilityLabelsApplied)
-            {
-                return;
-            }
-
-            var abilitiesApplied = false;
-            for (var index = 0; index < AbilitySlotNames.Length; index++)
-            {
-                var ability = db.AbilityDef.AbilityCode.Find((byte)(index + 1));
-                var button = ButtonFor(AbilitySlotNames[index]);
-                if (ability == null || button == null)
-                {
-                    continue;
-                }
-
-                button.tooltip = string.Format(
-                    CultureInfo.InvariantCulture,
-                    "{0}  •  {1:0.0}s cooldown  •  not available yet",
-                    ability.AbilityId.Replace('_', ' ').ToUpperInvariant(),
-                    (float)ability.CooldownTicks / tickRate);
-                abilitiesApplied = true;
-            }
-
-            abilityLabelsApplied = abilitiesApplied;
         }
 
         // npc_def owns the display name for every hostile archetype; the code is only a

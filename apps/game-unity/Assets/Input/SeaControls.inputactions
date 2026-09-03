@@ -1,93 +1,317 @@
 {
-  "name": "SeaControls",
-  "maps": [
-    {
-      "name": "Gameplay",
-      "id": "81e26081-8c68-4ac4-8fe8-c401835a0001",
-      "actions": [
-        { "name": "Point", "type": "PassThrough", "id": "81e26081-8c68-4ac4-8fe8-c401835a0101", "expectedControlType": "Vector2" },
-        { "name": "SetCourse", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0102", "expectedControlType": "Button" },
-        { "name": "StopCourse", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0103", "expectedControlType": "Button" },
-        { "name": "PanChart", "type": "Value", "id": "81e26081-8c68-4ac4-8fe8-c401835a0104", "expectedControlType": "Vector2" },
-        { "name": "ZoomChart", "type": "PassThrough", "id": "81e26081-8c68-4ac4-8fe8-c401835a0105", "expectedControlType": "Vector2" },
-        { "name": "DragChart", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0127", "expectedControlType": "Button" },
-        { "name": "RecenterChart", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0106", "expectedControlType": "Button" },
-        { "name": "OpenNavigator", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0107", "expectedControlType": "Button" },
-        { "name": "CycleTargetNext", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0108", "expectedControlType": "Button" },
-        { "name": "CycleTargetPrevious", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0109", "expectedControlType": "Button" },
-        { "name": "ClearTarget", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0110", "expectedControlType": "Button" },
-        { "name": "Pause", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0111", "expectedControlType": "Button" },
-        { "name": "FirePort", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0112", "expectedControlType": "Button" },
-        { "name": "FireStarboard", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0113", "expectedControlType": "Button" },
-        { "name": "AimHull", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0114", "expectedControlType": "Button" },
-        { "name": "AimSails", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0115", "expectedControlType": "Button" },
-        { "name": "AimCannons", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0116", "expectedControlType": "Button" },
-        { "name": "AmmoRound", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0117", "expectedControlType": "Button" },
-        { "name": "AmmoChain", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0118", "expectedControlType": "Button" },
-        { "name": "AmmoGrapeshot", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0119", "expectedControlType": "Button" },
-        { "name": "AmmoIncendiary", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0120", "expectedControlType": "Button" },
-        { "name": "FullSail", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0121", "expectedControlType": "Button" },
-        { "name": "Brace", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0122", "expectedControlType": "Button" },
-        { "name": "EmergencyPump", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0123", "expectedControlType": "Button" },
-        { "name": "SmokeScreen", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0124", "expectedControlType": "Button" },
-        { "name": "Repair", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0125", "expectedControlType": "Button" },
-        { "name": "Board", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a0126", "expectedControlType": "Button" }
-      ],
-      "bindings": [
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0001", "path": "<Mouse>/position", "action": "Point", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0002", "path": "<Mouse>/leftButton", "action": "SetCourse", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0003", "path": "<Mouse>/rightButton", "action": "StopCourse", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0004", "name": "WASD", "path": "2DVector", "action": "PanChart", "isComposite": true },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0005", "name": "up", "path": "<Keyboard>/w", "action": "PanChart", "groups": "KeyboardMouse", "isPartOfComposite": true },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0006", "name": "down", "path": "<Keyboard>/s", "action": "PanChart", "groups": "KeyboardMouse", "isPartOfComposite": true },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0007", "name": "left", "path": "<Keyboard>/a", "action": "PanChart", "groups": "KeyboardMouse", "isPartOfComposite": true },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0008", "name": "right", "path": "<Keyboard>/d", "action": "PanChart", "groups": "KeyboardMouse", "isPartOfComposite": true },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0009", "path": "<Mouse>/scroll", "action": "ZoomChart", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0127", "path": "<Mouse>/middleButton", "action": "DragChart", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0010", "path": "<Keyboard>/space", "action": "RecenterChart", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0011", "path": "<Keyboard>/n", "action": "OpenNavigator", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0012", "path": "<Keyboard>/tab", "action": "CycleTargetNext", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0013", "name": "ShiftTab", "path": "OneModifier", "action": "CycleTargetPrevious", "isComposite": true },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0014", "name": "modifier", "path": "<Keyboard>/shift", "action": "CycleTargetPrevious", "groups": "KeyboardMouse", "isPartOfComposite": true },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0015", "name": "binding", "path": "<Keyboard>/tab", "action": "CycleTargetPrevious", "groups": "KeyboardMouse", "isPartOfComposite": true },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0016", "path": "<Keyboard>/t", "action": "ClearTarget", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0017", "path": "<Keyboard>/escape", "action": "Pause", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0018", "path": "<Keyboard>/q", "action": "FirePort", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0019", "path": "<Keyboard>/e", "action": "FireStarboard", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0020", "path": "<Keyboard>/1", "action": "AimHull", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0021", "path": "<Keyboard>/2", "action": "AimSails", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0022", "path": "<Keyboard>/3", "action": "AimCannons", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0023", "path": "<Keyboard>/4", "action": "AmmoRound", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0024", "path": "<Keyboard>/5", "action": "AmmoChain", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0025", "path": "<Keyboard>/6", "action": "AmmoGrapeshot", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0026", "path": "<Keyboard>/7", "action": "AmmoIncendiary", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0027", "path": "<Keyboard>/z", "action": "FullSail", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0028", "path": "<Keyboard>/x", "action": "Brace", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0029", "path": "<Keyboard>/c", "action": "EmergencyPump", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0030", "path": "<Keyboard>/v", "action": "SmokeScreen", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0031", "path": "<Keyboard>/r", "action": "Repair", "groups": "KeyboardMouse" },
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a0032", "path": "<Keyboard>/b", "action": "Board", "groups": "KeyboardMouse" }
-      ]
-    },
-    {
-      "name": "Menu",
-      "id": "81e26081-8c68-4ac4-8fe8-c401835a1001",
-      "actions": [
-        { "name": "CloseMenu", "type": "Button", "id": "81e26081-8c68-4ac4-8fe8-c401835a1101", "expectedControlType": "Button" }
-      ],
-      "bindings": [
-        { "id": "91e26081-8c68-4ac4-8fe8-c401835a1001", "path": "<Keyboard>/escape", "action": "CloseMenu", "groups": "KeyboardMouse" }
-      ]
-    }
-  ],
-  "controlSchemes": [
-    {
-      "name": "KeyboardMouse",
-      "bindingGroup": "KeyboardMouse",
-      "devices": [
-        { "devicePath": "<Keyboard>", "isOptional": false, "isOR": false },
-        { "devicePath": "<Mouse>", "isOptional": false, "isOR": false }
-      ]
-    }
-  ]
+    "name": "SeaControls",
+    "maps": [
+        {
+            "name": "Gameplay",
+            "id": "81e26081-8c68-4ac4-8fe8-c401835a0001",
+            "actions": [
+                {
+                    "name": "Point",
+                    "type": "PassThrough",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0101",
+                    "expectedControlType": "Vector2"
+                },
+                {
+                    "name": "SetCourse",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0102",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "StopCourse",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0103",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "PanChart",
+                    "type": "Value",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0104",
+                    "expectedControlType": "Vector2"
+                },
+                {
+                    "name": "ZoomChart",
+                    "type": "PassThrough",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0105",
+                    "expectedControlType": "Vector2"
+                },
+                {
+                    "name": "DragChart",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0127",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "RecenterChart",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0106",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "OpenNavigator",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0107",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "CycleTargetNext",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0108",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "CycleTargetPrevious",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0109",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "ClearTarget",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0110",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "Pause",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0111",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "Fire",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0112",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "AmmoRound",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0117",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "AmmoChain",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0118",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "AmmoGrapeshot",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0119",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "AmmoIncendiary",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0120",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "Repair",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0125",
+                    "expectedControlType": "Button"
+                }
+            ],
+            "bindings": [
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0001",
+                    "path": "<Mouse>/position",
+                    "action": "Point",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0002",
+                    "path": "<Mouse>/leftButton",
+                    "action": "SetCourse",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0003",
+                    "path": "<Mouse>/rightButton",
+                    "action": "StopCourse",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0004",
+                    "name": "WASD",
+                    "path": "2DVector",
+                    "action": "PanChart",
+                    "isComposite": true
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0005",
+                    "name": "up",
+                    "path": "<Keyboard>/w",
+                    "action": "PanChart",
+                    "groups": "KeyboardMouse",
+                    "isPartOfComposite": true
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0006",
+                    "name": "down",
+                    "path": "<Keyboard>/s",
+                    "action": "PanChart",
+                    "groups": "KeyboardMouse",
+                    "isPartOfComposite": true
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0007",
+                    "name": "left",
+                    "path": "<Keyboard>/a",
+                    "action": "PanChart",
+                    "groups": "KeyboardMouse",
+                    "isPartOfComposite": true
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0008",
+                    "name": "right",
+                    "path": "<Keyboard>/d",
+                    "action": "PanChart",
+                    "groups": "KeyboardMouse",
+                    "isPartOfComposite": true
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0009",
+                    "path": "<Mouse>/scroll",
+                    "action": "ZoomChart",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0127",
+                    "path": "<Mouse>/middleButton",
+                    "action": "DragChart",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0010",
+                    "path": "<Keyboard>/space",
+                    "action": "RecenterChart",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0011",
+                    "path": "<Keyboard>/n",
+                    "action": "OpenNavigator",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0012",
+                    "path": "<Keyboard>/tab",
+                    "action": "CycleTargetNext",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0013",
+                    "name": "ShiftTab",
+                    "path": "OneModifier",
+                    "action": "CycleTargetPrevious",
+                    "isComposite": true
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0014",
+                    "name": "modifier",
+                    "path": "<Keyboard>/shift",
+                    "action": "CycleTargetPrevious",
+                    "groups": "KeyboardMouse",
+                    "isPartOfComposite": true
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0015",
+                    "name": "binding",
+                    "path": "<Keyboard>/tab",
+                    "action": "CycleTargetPrevious",
+                    "groups": "KeyboardMouse",
+                    "isPartOfComposite": true
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0016",
+                    "path": "<Keyboard>/t",
+                    "action": "ClearTarget",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0017",
+                    "path": "<Keyboard>/escape",
+                    "action": "Pause",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0018",
+                    "path": "<Keyboard>/q",
+                    "action": "Fire",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0023",
+                    "path": "<Keyboard>/4",
+                    "action": "AmmoRound",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0024",
+                    "path": "<Keyboard>/5",
+                    "action": "AmmoChain",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0025",
+                    "path": "<Keyboard>/6",
+                    "action": "AmmoGrapeshot",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0026",
+                    "path": "<Keyboard>/7",
+                    "action": "AmmoIncendiary",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0031",
+                    "path": "<Keyboard>/r",
+                    "action": "Repair",
+                    "groups": "KeyboardMouse"
+                }
+            ]
+        },
+        {
+            "name": "Menu",
+            "id": "81e26081-8c68-4ac4-8fe8-c401835a1001",
+            "actions": [
+                {
+                    "name": "CloseMenu",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a1101",
+                    "expectedControlType": "Button"
+                }
+            ],
+            "bindings": [
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a1001",
+                    "path": "<Keyboard>/escape",
+                    "action": "CloseMenu",
+                    "groups": "KeyboardMouse"
+                }
+            ]
+        }
+    ],
+    "controlSchemes": [
+        {
+            "name": "KeyboardMouse",
+            "bindingGroup": "KeyboardMouse",
+            "devices": [
+                {
+                    "devicePath": "<Keyboard>",
+                    "isOptional": false,
+                    "isOR": false
+                },
+                {
+                    "devicePath": "<Mouse>",
+                    "isOptional": false,
+                    "isOR": false
+                }
+            ]
+        }
+    ]
 }

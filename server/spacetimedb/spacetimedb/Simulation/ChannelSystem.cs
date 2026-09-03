@@ -28,18 +28,13 @@ public static partial class Module
             return;
         }
 
-        switch ((ChannelCode)channel.ChannelTypeCode)
+        if ((ChannelCode)channel.ChannelTypeCode == ChannelCode.Repair)
         {
-            case ChannelCode.Repair:
-                ProcessRepairChannel(ctx, ships, channel, source, tick);
-                break;
-            case ChannelCode.Boarding:
-                ProcessBoardingChannel(ctx, ships, channel, source, tick);
-                break;
-            default:
-                CloseUnknownChannel(ctx, ships, channel, source);
-                break;
+            ProcessRepairChannel(ctx, ships, channel, source, tick);
+            return;
         }
+
+        CloseUnknownChannel(ctx, ships, channel, source);
     }
 
     private static void ProcessRepairChannel(
@@ -52,14 +47,14 @@ public static partial class Module
         var elapsed = Math.Min(
             (ulong)TacticalRules.RepairDurationTicks,
             tick - channel.StartedAtTick);
-        source.Hull = TacticalRules.ProgressiveRestore(
+        var restored = TacticalRules.ProgressiveRestore(
             channel.InitialHull, source.MaxHull, 50, elapsed, TacticalRules.RepairDurationTicks);
-        source.Sails = TacticalRules.ProgressiveRestore(
-            channel.InitialSails, source.MaxSails, 40, elapsed, TacticalRules.RepairDurationTicks);
-        source.Cannons = TacticalRules.ProgressiveRestore(
-            channel.InitialCannons, source.MaxCannons, 40, elapsed, TacticalRules.RepairDurationTicks);
-        source.Crew = TacticalRules.ProgressiveRestore(
-            channel.InitialCrew, source.MaxCrew, 20, elapsed, TacticalRules.RepairDurationTicks);
+        // A burning ship repairs at half rate, which is the only thing incendiary rounds do
+        // beyond their own damage over time.
+        var healing = EffectRules.HealingMultiplier(
+            HasActiveEffect(ctx, source.EntityId, EffectCode.Burning, tick));
+        source.Hull = channel.InitialHull +
+            (uint)((restored - channel.InitialHull) * healing);
 
         if (tick >= channel.CompletesAtTick)
         {
@@ -73,103 +68,6 @@ public static partial class Module
         }
 
         ships.Stage(source);
-        SynchronizeDisabledSails(ctx, source, tick);
-    }
-
-    private static void ProcessBoardingChannel(
-        ReducerContext ctx,
-        ShipTickBuffer ships,
-        ShipChannel channel,
-        Ship source,
-        ulong tick)
-    {
-        if (!TryGetValidBoardingTarget(ctx, ships, channel, source, tick, out var target))
-        {
-            InterruptBoarding(ctx, channel.ShipEntityId, tick, "boarding_interrupted");
-            source.ModeCode = (byte)ShipMode.Operational;
-            ships.Stage(source);
-            return;
-        }
-
-        if (tick < channel.CompletesAtTick)
-        {
-            ScheduleChannel(ctx, channel, tick);
-            return;
-        }
-
-        ResolveBoarding(ctx, ships, source, target, tick);
-        SetCooldown(
-            ctx,
-            source.EntityId,
-            CooldownCode.Boarding,
-            tick + TacticalRules.BoardingCooldownTicks);
-        ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
-        source.ModeCode = (byte)ShipMode.Operational;
-        ships.Stage(source);
-    }
-
-    private static bool TryGetValidBoardingTarget(
-        ReducerContext ctx,
-        ShipTickBuffer ships,
-        ShipChannel channel,
-        Ship source,
-        ulong tick,
-        out Ship target)
-    {
-        return ships.TryGet(ctx, channel.TargetEntityId, out target) &&
-            TacticalRules.ValidateBoarding(new BoardingRequest(
-                source.IsActive && source.IsAlive,
-                target.IsActive && target.IsAlive,
-                IsIdle: true,
-                target.Hull,
-                target.MaxHull,
-                CombatRules.Distance(
-                    source.PositionX,
-                    source.PositionY,
-                    target.PositionX,
-                    target.PositionY),
-                CurrentTick: tick,
-                ReadyAtTick: tick)) == BoardingRejection.None;
-    }
-
-    private static void ResolveBoarding(
-        ReducerContext ctx,
-        ShipTickBuffer ships,
-        Ship source,
-        Ship target,
-        ulong tick)
-    {
-        var fatigued = HasActiveStatus(
-            ctx, source.EntityId, StatusCode.BoardingFatigue, tick);
-        if (TacticalRules.BoardingSucceeds(source.Crew, target.Crew, fatigued))
-        {
-            target.Crew = WorldRules.ApplyDamage(target.Crew, 25);
-            ships.Stage(target);
-            AddInventory(ctx, source.EntityId, "boarding_cache", 1);
-            // Boarding channels are created only by IssueShipCommand, which rejects senders
-            // without PlayerOwnership, so `source` is always a player ship.
-            if (target.FactionCode == (byte)FactionCode.Npc)
-            {
-                RecordContribution(
-                    ctx,
-                    target.EncounterId,
-                    source.EntityId,
-                    damage: 0,
-                    ProgressionRules.BoardingContribution);
-            }
-
-            AppendEvent(ctx, tick, source.EntityId, "boarding_succeeded", $"target={target.EntityId}");
-            return;
-        }
-
-        ApplyStatus(
-            ctx,
-            source.EntityId,
-            StatusCode.BoardingFatigue,
-            tick,
-            TacticalRules.BoardingFatigueTicks,
-            maximumStacks: 1);
-        AppendEvent(ctx, tick, source.EntityId, "boarding_failed", $"target={target.EntityId}");
     }
 
     private static void ScheduleChannel(ReducerContext ctx, ShipChannel channel, ulong tick)
@@ -188,5 +86,4 @@ public static partial class Module
         source.ModeCode = (byte)ShipMode.Operational;
         ships.Stage(source);
     }
-
 }

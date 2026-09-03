@@ -39,8 +39,6 @@ namespace SpacetimeDB.Types
         public uint CannonDamage;
         [DataMember(Name = "preferred_ammo_code")]
         public byte PreferredAmmoCode;
-        [DataMember(Name = "preferred_weak_point_code")]
-        public byte PreferredWeakPointCode;
         [DataMember(Name = "gold_reward")]
         public uint GoldReward;
         [DataMember(Name = "experience_reward")]
@@ -60,7 +58,6 @@ namespace SpacetimeDB.Types
             uint Hull,
             uint CannonDamage,
             byte PreferredAmmoCode,
-            byte PreferredWeakPointCode,
             uint GoldReward,
             ulong ExperienceReward
         )
@@ -78,7 +75,6 @@ namespace SpacetimeDB.Types
             this.Hull = Hull;
             this.CannonDamage = CannonDamage;
             this.PreferredAmmoCode = PreferredAmmoCode;
-            this.PreferredWeakPointCode = PreferredWeakPointCode;
             this.GoldReward = GoldReward;
             this.ExperienceReward = ExperienceReward;
         }

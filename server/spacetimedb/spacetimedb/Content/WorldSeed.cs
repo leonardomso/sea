@@ -68,13 +68,13 @@ public static partial class Module
             blockers,
             entityId ^ unchecked((ulong)(archetypeIndex + 1) * 0x9E3779B97F4A7C15UL));
         var ship = CreateShip(entityId, definition.Id, "npc", spawn.X, spawn.Y);
+        // An NPC keeps the baseline sloop's armour, magazine and range; its tier only moves the
+        // three numbers the content author actually tunes.
         ship.MaximumSpeed = definition.MaximumSpeed;
         ship.Hull = definition.Hull;
         ship.MaxHull = definition.Hull;
-        ship.CannonDamage = definition.CannonDamage;
-        ship.CannonCooldownTicks = WorldRules.EnemyCannonCooldownTicks;
+        ship.VolleyDamage = definition.CannonDamage;
         ship.SelectedAmmoCode = (byte)definition.PreferredAmmunition;
-        ship.SelectedWeakPointCode = (byte)definition.PreferredWeakPoint;
         ship.EncounterId = entityId;
         ctx.Db.Ship.Insert(ship);
         InsertShipMovement(ctx, ship, CurrentSimulationTick(ctx));

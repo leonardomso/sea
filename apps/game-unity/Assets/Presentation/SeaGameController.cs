@@ -14,7 +14,6 @@ namespace Sea.Client
         public string SelectedAmmoId => TryGetLocalShip(out var ship)
             ? AmmoId(ship.SelectedAmmoCode)
             : "round";
-        public string SelectedWeakPoint { get; private set; } = "hull";
         private string localAction = "Click water to set course.";
         public string LastAction => string.IsNullOrEmpty(connection?.CommandStatus)
             ? localAction
@@ -173,13 +172,12 @@ namespace Sea.Client
                 $"Select {ammoId} shot");
         }
 
-        public void SetSelectedWeakPoint(string weakPoint)
-        {
-            SelectedWeakPoint = weakPoint;
-            localAction = $"Gunners aim for {weakPoint.ToUpperInvariant()}.";
-        }
-
-        public void FireBroadside(string side)
+        /// <summary>
+        /// Guns bear in every direction now, so firing is one command with no side and no aim
+        /// point: the server picks the armour face from where this ship sits relative to its
+        /// target.
+        /// </summary>
+        public void Fire()
         {
             if (!IsReady)
             {
@@ -193,22 +191,7 @@ namespace Sea.Client
                 return;
             }
 
-            Issue(
-                new ShipCommand.FireBroadside(
-                    new FireBroadsideCommand(side, SelectedWeakPoint)),
-                $"Fire {side} broadside");
-        }
-
-        public void ActivateAbility(string abilityId)
-        {
-            if (!IsReady)
-            {
-                return;
-            }
-
-            Issue(
-                new ShipCommand.ActivateAbility(new ActivateAbilityCommand(abilityId)),
-                $"Activate {abilityId.Replace('_', ' ')}");
+            Issue(new ShipCommand.Fire(new FireCommand()), "Fire");
         }
 
         public void ToggleRepair()
@@ -226,23 +209,6 @@ namespace Sea.Client
             }
 
             Issue(new ShipCommand.StartRepair(new StartRepairCommand()), "Start repair");
-        }
-
-        public void ToggleBoarding()
-        {
-            if (!TryGetLocalShip(out var ship))
-            {
-                return;
-            }
-
-            var channel = connection.Connection.Db.ShipChannel.ShipEntityId.Find(ship.EntityId);
-            if (channel != null && channel.IsActive && channel.ChannelType == "boarding")
-            {
-                Issue(new ShipCommand.CancelChannel(new CancelChannelCommand()), "Cancel boarding");
-                return;
-            }
-
-            Issue(new ShipCommand.StartBoarding(new StartBoardingCommand()), "Start boarding");
         }
 
         public bool TryGetLocalShip(out Ship ship)

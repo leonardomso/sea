@@ -32,11 +32,6 @@ public static partial class Module
             ctx.Db.AmmoDef.Insert(AmmoDef.From(ammunition));
         }
 
-        foreach (var ability in content.Abilities)
-        {
-            ctx.Db.AbilityDef.Insert(AbilityDef.From(ability));
-        }
-
         foreach (var npc in content.Npcs)
         {
             ctx.Db.NpcDef.Insert(NpcDef.From(npc));

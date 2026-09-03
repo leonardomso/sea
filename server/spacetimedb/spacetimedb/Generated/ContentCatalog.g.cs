@@ -265,13 +265,7 @@ public static partial class ContentCatalog
                 EffectMagnitude = 0f,
                 EffectDurationSeconds = 0f,
                 RangeLimitSquares = (byte)0,
-                HullDamage = 25u,
-                SailDamage = 5u,
-                CannonDamage = 5u,
-                CrewDamage = 2u,
                 RangeMultiplier = 1f,
-                AppliedStatus = "flooding",
-                AppliedStatusCode = StatusCode.Flooding,
             },
             new AmmunitionContent
             {
@@ -285,13 +279,7 @@ public static partial class ContentCatalog
                 EffectMagnitude = 0.3f,
                 EffectDurationSeconds = 4f,
                 RangeLimitSquares = (byte)0,
-                HullDamage = 5u,
-                SailDamage = 28u,
-                CannonDamage = 2u,
-                CrewDamage = 2u,
                 RangeMultiplier = 0.9f,
-                AppliedStatus = "slowed",
-                AppliedStatusCode = StatusCode.Slowed,
             },
             new AmmunitionContent
             {
@@ -305,13 +293,7 @@ public static partial class ContentCatalog
                 EffectMagnitude = 0.5f,
                 EffectDurationSeconds = 3f,
                 RangeLimitSquares = (byte)4,
-                HullDamage = 4u,
-                SailDamage = 3u,
-                CannonDamage = 4u,
-                CrewDamage = 30u,
                 RangeMultiplier = 0.55f,
-                AppliedStatus = "none",
-                AppliedStatusCode = StatusCode.None,
             },
             new AmmunitionContent
             {
@@ -325,44 +307,7 @@ public static partial class ContentCatalog
                 EffectMagnitude = 0.006f,
                 EffectDurationSeconds = 5f,
                 RangeLimitSquares = (byte)0,
-                HullDamage = 14u,
-                SailDamage = 8u,
-                CannonDamage = 8u,
-                CrewDamage = 5u,
                 RangeMultiplier = 0.85f,
-                AppliedStatus = "burning",
-                AppliedStatusCode = StatusCode.Burning,
-            },
-        },
-        Abilities = new AbilityContent[]
-        {
-            new AbilityContent
-            {
-                Id = "full_sail",
-                Code = AbilityCode.FullSail,
-                CooldownTicks = 200u,
-                DurationTicks = 50u,
-            },
-            new AbilityContent
-            {
-                Id = "brace",
-                Code = AbilityCode.Brace,
-                CooldownTicks = 180u,
-                DurationTicks = 40u,
-            },
-            new AbilityContent
-            {
-                Id = "emergency_pump",
-                Code = AbilityCode.EmergencyPump,
-                CooldownTicks = 300u,
-                DurationTicks = 50u,
-            },
-            new AbilityContent
-            {
-                Id = "smoke_screen",
-                Code = AbilityCode.SmokeScreen,
-                CooldownTicks = 240u,
-                DurationTicks = 40u,
             },
         },
         Npcs = new NpcContent[]
@@ -382,7 +327,6 @@ public static partial class ContentCatalog
                 Hull = 100u,
                 CannonDamage = 18u,
                 PreferredAmmunition = AmmunitionCode.Round,
-                PreferredWeakPoint = WeakPointCode.Hull,
                 GoldReward = 80u,
                 ExperienceReward = 100UL,
             },
@@ -401,7 +345,6 @@ public static partial class ContentCatalog
                 Hull = 90u,
                 CannonDamage = 20u,
                 PreferredAmmunition = AmmunitionCode.Chain,
-                PreferredWeakPoint = WeakPointCode.Sails,
                 GoldReward = 100u,
                 ExperienceReward = 125UL,
             },
@@ -420,7 +363,6 @@ public static partial class ContentCatalog
                 Hull = 130u,
                 CannonDamage = 28u,
                 PreferredAmmunition = AmmunitionCode.Incendiary,
-                PreferredWeakPoint = WeakPointCode.Hull,
                 GoldReward = 140u,
                 ExperienceReward = 175UL,
             },

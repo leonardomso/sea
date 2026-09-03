@@ -24,57 +24,16 @@ public enum AmmunitionCode : byte
     Incendiary = 4,
 }
 
-public enum AbilityCode : byte
-{
-    None = 0,
-    FullSail = 1,
-    Brace = 2,
-    EmergencyPump = 3,
-    SmokeScreen = 4,
-}
-
-public enum StatusCode : byte
-{
-    None = 0,
-    Burning = 1,
-    Flooding = 2,
-    Slowed = 3,
-    DisabledSails = 4,
-    FullSail = 5,
-    Brace = 6,
-    EmergencyPump = 7,
-    SmokeScreen = 8,
-    BoardingFatigue = 9,
-}
-
-public enum WeakPointCode : byte
-{
-    Hull = 0,
-    Sails = 1,
-    Cannons = 2,
-}
-
-public enum BroadsideCode : byte
-{
-    Port = 0,
-    Starboard = 1,
-}
-
 public enum ChannelCode : byte
 {
     None = 0,
     Repair = 1,
-    Boarding = 2,
 }
 
 public enum CooldownCode : byte
 {
     None = 0,
-    FullSail = 1,
-    Brace = 2,
-    EmergencyPump = 3,
-    SmokeScreen = 4,
-    Boarding = 5,
+    Repair = 1,
 }
 
 public enum WorldObjectCode : byte
@@ -103,15 +62,14 @@ public enum AmmoEffectCode : byte
 
 public static class HotPathCodes
 {
-    public const byte FullSailMovementMask = 1 << 0;
-    public const byte SlowedMovementMask = 1 << 1;
+    /// <summary>
+    /// The one movement-relevant effect left. It rides on <c>Ship.MovementStatusMask</c> so the
+    /// sailing shard can read it without touching the effect table.
+    /// </summary>
+    public const byte SlowedMovementMask = 1 << 0;
 
-    public static byte MovementMask(StatusCode status) => status switch
-    {
-        StatusCode.FullSail => FullSailMovementMask,
-        StatusCode.Slowed => SlowedMovementMask,
-        _ => 0,
-    };
+    public static byte MovementMask(EffectCode effect) =>
+        effect == EffectCode.Slowed ? SlowedMovementMask : (byte)0;
 
     public static ShipArchetypeCode ShipArchetype(string id) => id switch
     {
@@ -142,49 +100,6 @@ public static class HotPathCodes
         AmmunitionCode.Incendiary => "incendiary",
         _ => "none",
     };
-
-    public static string WeakPointId(WeakPointCode code) => code switch
-    {
-        WeakPointCode.Sails => "sails",
-        WeakPointCode.Cannons => "cannons",
-        _ => "hull",
-    };
-
-    public static bool TryParseAbility(string? id, out AbilityCode code)
-    {
-        code = id switch
-        {
-            "full_sail" => AbilityCode.FullSail,
-            "brace" => AbilityCode.Brace,
-            "emergency_pump" => AbilityCode.EmergencyPump,
-            "smoke_screen" => AbilityCode.SmokeScreen,
-            _ => AbilityCode.None,
-        };
-        return code != AbilityCode.None;
-    }
-
-    public static bool TryParseWeakPoint(string? id, out WeakPointCode code)
-    {
-        code = id?.ToLowerInvariant() switch
-        {
-            "hull" => WeakPointCode.Hull,
-            "sails" => WeakPointCode.Sails,
-            "cannons" => WeakPointCode.Cannons,
-            _ => (WeakPointCode)byte.MaxValue,
-        };
-        return (byte)code != byte.MaxValue;
-    }
-
-    public static bool TryParseBroadside(string? id, out BroadsideCode code)
-    {
-        code = id?.ToLowerInvariant() switch
-        {
-            "port" => BroadsideCode.Port,
-            "starboard" => BroadsideCode.Starboard,
-            _ => (BroadsideCode)byte.MaxValue,
-        };
-        return (byte)code != byte.MaxValue;
-    }
 
     public static bool TryParseWorldObject(string? id, out WorldObjectCode code)
     {
@@ -219,62 +134,27 @@ public static class HotPathCodes
         }
     }
 
-    public static StatusCode TryStatus(string? id) => id switch
-    {
-        "burning" => StatusCode.Burning,
-        "flooding" => StatusCode.Flooding,
-        "slowed" => StatusCode.Slowed,
-        "disabled_sails" => StatusCode.DisabledSails,
-        "full_sail" => StatusCode.FullSail,
-        "brace" => StatusCode.Brace,
-        "emergency_pump" => StatusCode.EmergencyPump,
-        "smoke_screen" => StatusCode.SmokeScreen,
-        "boarding_fatigue" => StatusCode.BoardingFatigue,
-        _ => StatusCode.None,
-    };
-
-    public static StatusCode StatusFor(AbilityCode ability) => ability switch
-    {
-        AbilityCode.FullSail => StatusCode.FullSail,
-        AbilityCode.Brace => StatusCode.Brace,
-        AbilityCode.EmergencyPump => StatusCode.EmergencyPump,
-        AbilityCode.SmokeScreen => StatusCode.SmokeScreen,
-        _ => StatusCode.None,
-    };
-
-    public static CooldownCode CooldownFor(AbilityCode ability) => ability switch
-    {
-        AbilityCode.FullSail => CooldownCode.FullSail,
-        AbilityCode.Brace => CooldownCode.Brace,
-        AbilityCode.EmergencyPump => CooldownCode.EmergencyPump,
-        AbilityCode.SmokeScreen => CooldownCode.SmokeScreen,
-        _ => CooldownCode.None,
-    };
-
     public static bool BlocksMovement(WorldObjectCode kind) =>
         kind is WorldObjectCode.Island or WorldObjectCode.Reef;
 
-    public static string StatusId(StatusCode code) => code switch
+    public static string EffectId(EffectCode code) => code switch
     {
-        StatusCode.Burning => "burning",
-        StatusCode.Flooding => "flooding",
-        StatusCode.Slowed => "slowed",
-        StatusCode.DisabledSails => "disabled_sails",
-        StatusCode.FullSail => "full_sail",
-        StatusCode.Brace => "brace",
-        StatusCode.EmergencyPump => "emergency_pump",
-        StatusCode.SmokeScreen => "smoke_screen",
-        StatusCode.BoardingFatigue => "boarding_fatigue",
+        EffectCode.Slowed => "slowed",
+        EffectCode.Burning => "burning",
+        EffectCode.ReloadSlowed => "reload_slowed",
         _ => "none",
+    };
+
+    public static string ArmorFaceId(ArmorFace face) => face switch
+    {
+        ArmorFace.Front => "front",
+        ArmorFace.Back => "back",
+        _ => "sides",
     };
 
     public static string CooldownId(CooldownCode code) => code switch
     {
-        CooldownCode.FullSail => "full_sail",
-        CooldownCode.Brace => "brace",
-        CooldownCode.EmergencyPump => "emergency_pump",
-        CooldownCode.SmokeScreen => "smoke_screen",
-        CooldownCode.Boarding => "boarding",
+        CooldownCode.Repair => "repair",
         _ => "none",
     };
 }

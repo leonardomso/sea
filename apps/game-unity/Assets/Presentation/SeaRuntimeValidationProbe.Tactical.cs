@@ -6,8 +6,18 @@ namespace Sea.Client
 {
     public sealed partial class SeaRuntimeValidationProbe
     {
-        private bool tacticalAbilityRequested;
-        private bool tacticalAbilityObserved;
+        private const byte NotAvailableRejectionCode = 21;
+
+        private static readonly ShipCommand[] RetiredCommands =
+        {
+            new ShipCommand.ActivateAbility(new ActivateAbilityCommand("full_sail")),
+            new ShipCommand.StartBoarding(new StartBoardingCommand()),
+        };
+
+        private int retiredCommandIndex;
+        private bool retiredCommandPending;
+        private ulong retiredCommandId;
+        private bool tacticalHullSampled;
         private bool tacticalStormCourseRequested;
         private bool tacticalDamageObserved;
         private bool tacticalRetreatRequested;
@@ -17,7 +27,6 @@ namespace Sea.Client
         private uint tacticalDamagedHull;
         private Vector2 tacticalRetreat;
         private float nextTacticalCourseTime;
-        private float tacticalAbilityRequestedAt;
         private float tacticalRepairRequestedAt;
 
         private void ObserveTactical(Ship player)
@@ -29,7 +38,12 @@ namespace Sea.Client
             }
 
             var worldTick = connection.CurrentWorldTick;
-            if (!ObserveTacticalAbility(player, worldTick))
+            if (!ObserveRetiredCommands(player))
+            {
+                return;
+            }
+
+            if (!SampleTacticalHull(player))
             {
                 return;
             }
@@ -45,47 +59,70 @@ namespace Sea.Client
             ObserveStormAndRepair(player, storm);
         }
 
-        private bool ObserveTacticalAbility(Ship player, ulong worldTick)
+        /// <summary>
+        /// Abilities and boarding left the game with 1b, but a stale client can still put those
+        /// variants on the wire, so the module keeps them and answers <c>NotAvailable</c>. This
+        /// walks that path in the built player: every retired command must come back rejected
+        /// with the stable code and must never move the ship.
+        /// </summary>
+        private bool ObserveRetiredCommands(Ship player)
         {
-            if (!tacticalAbilityRequested)
+            if (retiredCommandIndex >= RetiredCommands.Length)
+            {
+                return true;
+            }
+
+            if (!retiredCommandPending)
             {
                 if (!CanIssueTacticalCommand(player))
                 {
                     return false;
                 }
 
-                tacticalInitialHull = player.Hull;
-                tacticalAbilityRequested = true;
-                tacticalAbilityRequestedAt = Time.unscaledTime;
-                Issue(
-                    new ShipCommand.ActivateAbility(new ActivateAbilityCommand("full_sail")),
-                    "runtime activate full sail");
+                retiredCommandId = connection.IssueCommand(
+                    RetiredCommands[retiredCommandIndex],
+                    "runtime retired command");
+                retiredCommandPending = retiredCommandId != 0;
                 return false;
             }
 
-            if (tacticalAbilityObserved)
+            if (connection.AnsweredCommandId < retiredCommandId)
+            {
+                return false;
+            }
+
+            if (connection.AnsweredRejectionCode != NotAvailableRejectionCode)
+            {
+                Debug.LogError(
+                    "Sea runtime saw a retired command answered with code " +
+                    $"{connection.AnsweredRejectionCode} instead of {NotAvailableRejectionCode}.",
+                    this);
+            }
+
+            retiredCommandPending = false;
+            retiredCommandIndex++;
+            return retiredCommandIndex >= RetiredCommands.Length;
+        }
+
+        /// <summary>
+        /// The storm leg measures damage against the hull the probe started with, so it needs one
+        /// clean reading before the weather is allowed to bite.
+        /// </summary>
+        private bool SampleTacticalHull(Ship player)
+        {
+            if (tacticalHullSampled)
             {
                 return true;
             }
 
-            var status = connection.Connection.Db.ShipStatus.ByShip
-                .Filter(player.EntityId)
-                .FirstOrDefault(item => item.StatusType == "full_sail" && item.IsActive);
-            var cooldown = connection.Connection.Db.Cooldown.ByShip
-                .Filter(player.EntityId)
-                .FirstOrDefault(item => item.CooldownType == "full_sail");
-            tacticalAbilityObserved = status != null && cooldown != null &&
-                cooldown.ReadyAtTick > worldTick;
-            if (!tacticalAbilityObserved &&
-                SeaRuntimeValidationRules.ShouldRetryTacticalCommand(
-                    observed: false,
-                    tacticalAbilityRequestedAt,
-                    Time.unscaledTime))
+            if (!CanIssueTacticalCommand(player))
             {
-                tacticalAbilityRequested = false;
+                return false;
             }
 
-            return tacticalAbilityObserved;
+            tacticalInitialHull = player.Hull;
+            tacticalHullSampled = true;
+            return true;
         }
 
         private void SailToPredictedStorm(ulong worldTick)

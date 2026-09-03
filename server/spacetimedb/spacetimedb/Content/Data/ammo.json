@@ -11,13 +11,7 @@
       "effectMagnitude": 0,
       "effectDurationSeconds": 0,
       "rangeLimitSquares": 0,
-      "hullDamage": 25,
-      "sailDamage": 5,
-      "cannonDamage": 5,
-      "crewDamage": 2,
-      "rangeMultiplier": 1.0,
-      "appliedStatus": "flooding",
-      "appliedStatusCode": "Flooding"
+      "rangeMultiplier": 1.0
     },
     {
       "id": "chain",
@@ -30,13 +24,7 @@
       "effectMagnitude": 0.3,
       "effectDurationSeconds": 4,
       "rangeLimitSquares": 0,
-      "hullDamage": 5,
-      "sailDamage": 28,
-      "cannonDamage": 2,
-      "crewDamage": 2,
-      "rangeMultiplier": 0.9,
-      "appliedStatus": "slowed",
-      "appliedStatusCode": "Slowed"
+      "rangeMultiplier": 0.9
     },
     {
       "id": "grapeshot",
@@ -49,13 +37,7 @@
       "effectMagnitude": 0.5,
       "effectDurationSeconds": 3,
       "rangeLimitSquares": 4,
-      "hullDamage": 4,
-      "sailDamage": 3,
-      "cannonDamage": 4,
-      "crewDamage": 30,
-      "rangeMultiplier": 0.55,
-      "appliedStatus": "none",
-      "appliedStatusCode": "None"
+      "rangeMultiplier": 0.55
     },
     {
       "id": "incendiary",
@@ -68,13 +50,7 @@
       "effectMagnitude": 0.006,
       "effectDurationSeconds": 5,
       "rangeLimitSquares": 0,
-      "hullDamage": 14,
-      "sailDamage": 8,
-      "cannonDamage": 8,
-      "crewDamage": 5,
-      "rangeMultiplier": 0.85,
-      "appliedStatus": "burning",
-      "appliedStatusCode": "Burning"
+      "rangeMultiplier": 0.85
     }
   ]
 }

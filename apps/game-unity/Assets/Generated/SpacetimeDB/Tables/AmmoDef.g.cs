@@ -59,13 +59,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<AmmoDef, float> EffectMagnitude { get; }
         public global::SpacetimeDB.Col<AmmoDef, float> EffectDurationSeconds { get; }
         public global::SpacetimeDB.Col<AmmoDef, byte> RangeLimitSquares { get; }
-        public global::SpacetimeDB.Col<AmmoDef, uint> HullDamage { get; }
-        public global::SpacetimeDB.Col<AmmoDef, uint> SailDamage { get; }
-        public global::SpacetimeDB.Col<AmmoDef, uint> CannonDamage { get; }
-        public global::SpacetimeDB.Col<AmmoDef, uint> CrewDamage { get; }
         public global::SpacetimeDB.Col<AmmoDef, float> RangeMultiplier { get; }
-        public global::SpacetimeDB.Col<AmmoDef, string> AppliedStatus { get; }
-        public global::SpacetimeDB.Col<AmmoDef, byte> AppliedStatusCode { get; }
 
         public AmmoDefCols(string tableName)
         {
@@ -79,13 +73,7 @@ namespace SpacetimeDB.Types
             EffectMagnitude = new global::SpacetimeDB.Col<AmmoDef, float>(tableName, "effect_magnitude");
             EffectDurationSeconds = new global::SpacetimeDB.Col<AmmoDef, float>(tableName, "effect_duration_seconds");
             RangeLimitSquares = new global::SpacetimeDB.Col<AmmoDef, byte>(tableName, "range_limit_squares");
-            HullDamage = new global::SpacetimeDB.Col<AmmoDef, uint>(tableName, "hull_damage");
-            SailDamage = new global::SpacetimeDB.Col<AmmoDef, uint>(tableName, "sail_damage");
-            CannonDamage = new global::SpacetimeDB.Col<AmmoDef, uint>(tableName, "cannon_damage");
-            CrewDamage = new global::SpacetimeDB.Col<AmmoDef, uint>(tableName, "crew_damage");
             RangeMultiplier = new global::SpacetimeDB.Col<AmmoDef, float>(tableName, "range_multiplier");
-            AppliedStatus = new global::SpacetimeDB.Col<AmmoDef, string>(tableName, "applied_status");
-            AppliedStatusCode = new global::SpacetimeDB.Col<AmmoDef, byte>(tableName, "applied_status_code");
         }
     }
 

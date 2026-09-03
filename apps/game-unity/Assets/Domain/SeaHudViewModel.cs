@@ -19,31 +19,25 @@ namespace Sea.Client
         public byte CannonTier { get; set; }
         public uint VolleyDamage { get; set; }
         public uint ReloadMilliseconds { get; set; }
-        public byte MagazineSize { get; set; }
+        public uint MagazineSize { get; set; }
         public float CombatPowerUsed { get; set; }
         public float CombatPowerBudget { get; set; }
         public string SelectedAmmoName { get; set; } = string.Empty;
         public string TargetName { get; set; } = string.Empty;
         public uint TargetHull { get; set; }
         public uint TargetMaxHull { get; set; }
-        public uint TargetSails { get; set; }
-        public uint TargetMaxSails { get; set; }
-        public uint TargetCannons { get; set; }
-        public uint TargetMaxCannons { get; set; }
         public float TargetRange { get; set; }
-        public string SelectedWeakPoint { get; set; } = "hull";
+        public string TargetArmorFace { get; set; } = string.Empty;
+        public float TargetArmorAbsorption { get; set; }
         public string SelectedAmmo { get; set; } = "round";
         public uint AmmoQuantity { get; set; }
-        public float PortReloadRemainingSeconds { get; set; }
-        public float StarboardReloadRemainingSeconds { get; set; }
+        public uint ReadyVolleys { get; set; }
+        public float ReloadRemainingSeconds { get; set; }
         public float ReloadDurationSeconds { get; set; } = 1f;
         public string StatusText { get; set; } = "CLEAR";
         public string ProgressText { get; set; } = string.Empty;
         public float Progress { get; set; }
-        public float FullSailCooldownSeconds { get; set; }
-        public float BraceCooldownSeconds { get; set; }
-        public float PumpCooldownSeconds { get; set; }
-        public float SmokeCooldownSeconds { get; set; }
+        public float RepairCooldownSeconds { get; set; }
         public string LastAction { get; set; } = string.Empty;
     }
 
@@ -75,29 +69,20 @@ namespace Sea.Client
         public bool HasTarget { get; private set; }
         public string TargetName { get; private set; }
         public float TargetHullProgress { get; private set; }
-        public float TargetSailsProgress { get; private set; }
-        public float TargetCannonsProgress { get; private set; }
         public string TargetHullText { get; private set; }
-        public string TargetSailsText { get; private set; }
-        public string TargetCannonsText { get; private set; }
         public string TargetRangeText { get; private set; }
-        public string SelectedWeakPoint { get; private set; }
+        public string TargetArmorText { get; private set; }
         public string SelectedAmmo { get; private set; }
         public string SelectedAmmoLabel { get; private set; }
         public string AmmoQuantity { get; private set; }
-        public float PortReloadProgress { get; private set; }
-        public float StarboardReloadProgress { get; private set; }
-        public bool PortReady { get; private set; }
-        public bool StarboardReady { get; private set; }
-        public string PortReloadText { get; private set; }
-        public string StarboardReloadText { get; private set; }
+        public float ReloadProgress { get; private set; }
+        public bool IsLoaded { get; private set; }
+        public string ReloadText { get; private set; }
+        public string MagazineText { get; private set; }
         public string StatusText { get; private set; }
         public string ProgressText { get; private set; }
         public float Progress { get; private set; }
-        public float FullSailCooldownSeconds { get; private set; }
-        public float BraceCooldownSeconds { get; private set; }
-        public float PumpCooldownSeconds { get; private set; }
-        public float SmokeCooldownSeconds { get; private set; }
+        public float RepairCooldownSeconds { get; private set; }
         public string LastAction { get; private set; }
 
         public static SeaHudViewModel From(SeaHudSnapshot source)
@@ -132,31 +117,22 @@ namespace Sea.Client
                 HasTarget = !string.IsNullOrWhiteSpace(source.TargetName),
                 TargetName = source.TargetName,
                 TargetHullProgress = Ratio(source.TargetHull, source.TargetMaxHull),
-                TargetSailsProgress = Ratio(source.TargetSails, source.TargetMaxSails),
-                TargetCannonsProgress = Ratio(source.TargetCannons, source.TargetMaxCannons),
                 TargetHullText = Pair(source.TargetHull, source.TargetMaxHull),
-                TargetSailsText = Pair(source.TargetSails, source.TargetMaxSails),
-                TargetCannonsText = Pair(source.TargetCannons, source.TargetMaxCannons),
                 TargetRangeText = string.Format(DisplayCulture, "{0:0.0} NM", source.TargetRange),
-                SelectedWeakPoint = source.SelectedWeakPoint.ToUpperInvariant(),
+                TargetArmorText = ArmorText(source),
                 SelectedAmmo = source.SelectedAmmo.ToUpperInvariant(),
                 SelectedAmmoLabel = (string.IsNullOrWhiteSpace(source.SelectedAmmoName)
                     ? source.SelectedAmmo
                     : source.SelectedAmmoName).ToUpperInvariant(),
                 AmmoQuantity = source.AmmoQuantity.ToString("N0", DisplayCulture),
-                PortReloadProgress = 1f - Mathf.Clamp01(source.PortReloadRemainingSeconds / reloadDuration),
-                StarboardReloadProgress = 1f - Mathf.Clamp01(source.StarboardReloadRemainingSeconds / reloadDuration),
-                PortReady = source.PortReloadRemainingSeconds <= 0f,
-                StarboardReady = source.StarboardReloadRemainingSeconds <= 0f,
-                PortReloadText = ReloadText(source.PortReloadRemainingSeconds),
-                StarboardReloadText = ReloadText(source.StarboardReloadRemainingSeconds),
+                ReloadProgress = 1f - Mathf.Clamp01(source.ReloadRemainingSeconds / reloadDuration),
+                IsLoaded = source.ReadyVolleys > 0,
+                ReloadText = ReadinessText(source),
+                MagazineText = Pair(source.ReadyVolleys, source.MagazineSize),
                 StatusText = source.StatusText,
                 ProgressText = source.ProgressText,
                 Progress = Mathf.Clamp01(source.Progress),
-                FullSailCooldownSeconds = Mathf.Max(0f, source.FullSailCooldownSeconds),
-                BraceCooldownSeconds = Mathf.Max(0f, source.BraceCooldownSeconds),
-                PumpCooldownSeconds = Mathf.Max(0f, source.PumpCooldownSeconds),
-                SmokeCooldownSeconds = Mathf.Max(0f, source.SmokeCooldownSeconds),
+                RepairCooldownSeconds = Mathf.Max(0f, source.RepairCooldownSeconds),
                 LastAction = source.LastAction,
             };
         }
@@ -190,7 +166,29 @@ namespace Sea.Client
             return heading < 0f ? heading + 360f : heading;
         }
 
-        private static string ReloadText(float seconds) =>
-            seconds <= 0f ? "READY" : string.Format(DisplayCulture, "{0:0.0}s", seconds);
+        /// <summary>
+        /// A loaded magazine reads READY however long the reload behind it still has to run;
+        /// the countdown only matters once the last volley has left the racks.
+        /// </summary>
+        private static string ReadinessText(SeaHudSnapshot source)
+        {
+            if (source.ReadyVolleys > 0)
+            {
+                return "READY";
+            }
+
+            return source.ReloadRemainingSeconds <= 0f
+                ? "LOADING"
+                : string.Format(DisplayCulture, "{0:0.0}s", source.ReloadRemainingSeconds);
+        }
+
+        private static string ArmorText(SeaHudSnapshot source) =>
+            string.IsNullOrWhiteSpace(source.TargetArmorFace)
+                ? "—"
+                : string.Format(
+                    DisplayCulture,
+                    "{0}  •  {1:0}% ABSORBED",
+                    source.TargetArmorFace.ToUpperInvariant(),
+                    Mathf.Clamp01(source.TargetArmorAbsorption) * 100f);
     }
 }

@@ -5,25 +5,12 @@ namespace Sea.Server.Tests;
 
 public sealed partial class NpcRulesTests
 {
-    [Fact]
-    public void Neutral_patrol_roams_until_it_has_been_attacked()
-    {
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Patrol) with
-        {
-            CandidateTargetId = 42,
-        });
-
-        Assert.Equal(NpcActionKind.SetCourse, decision.Action);
-        Assert.Equal(0ul, decision.TargetEntityId);
-    }
-
     [Theory]
-    [InlineData(ShipArchetypeCode.Raider, AmmunitionCode.Chain, WeakPointCode.Sails)]
-    [InlineData(ShipArchetypeCode.Gunship, AmmunitionCode.Incendiary, WeakPointCode.Hull)]
-    public void Hostile_archetypes_acquire_players_with_their_tactical_loadout(
+    [InlineData(ShipArchetypeCode.Raider, AmmunitionCode.Chain)]
+    [InlineData(ShipArchetypeCode.Gunship, AmmunitionCode.Incendiary)]
+    public void Hostile_archetypes_acquire_players_with_their_preferred_shot(
         ShipArchetypeCode archetype,
-        AmmunitionCode ammunition,
-        WeakPointCode weakPoint)
+        AmmunitionCode ammunition)
     {
         var decision = NpcRules.Decide(Snapshot(archetype) with
         {
@@ -33,7 +20,6 @@ public sealed partial class NpcRulesTests
         Assert.Equal(NpcActionKind.SelectTarget, decision.Action);
         Assert.Equal(42ul, decision.TargetEntityId);
         Assert.Equal(ammunition, decision.Ammunition);
-        Assert.Equal(weakPoint, decision.WeakPoint);
     }
 
     [Fact]
@@ -81,7 +67,7 @@ public sealed partial class NpcRulesTests
     }
 
     [Fact]
-    public void Npc_finishes_its_turn_before_plotting_another_broadside_turn()
+    public void Npc_at_range_with_an_empty_magazine_holds_its_station()
     {
         var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Patrol) with
         {
@@ -90,8 +76,7 @@ public sealed partial class NpcRulesTests
             DistanceToTarget = 45f,
             TargetX = 45f,
             HasCourse = true,
-            PortReady = false,
-            StarboardReady = false,
+            CanFire = false,
         });
 
         Assert.Equal(NpcActionKind.Hold, decision.Action);
@@ -124,7 +109,7 @@ public sealed partial class NpcRulesTests
     }
 
     [Fact]
-    public void Broadside_decision_is_deterministic_for_the_same_snapshot()
+    public void Fire_decision_is_deterministic_for_the_same_snapshot()
     {
         var snapshot = Snapshot(ShipArchetypeCode.Gunship) with
         {
@@ -134,30 +119,17 @@ public sealed partial class NpcRulesTests
             TargetX = -48f,
             HeadingDegrees = 0f,
             SelectedAmmunition = AmmunitionCode.Incendiary,
-            PortReady = true,
-            StarboardReady = true,
+            CanFire = true,
         };
 
         Assert.Equal(NpcRules.Decide(snapshot), NpcRules.Decide(snapshot));
-        Assert.Equal(NpcActionKind.FirePort, NpcRules.Decide(snapshot).Action);
-    }
-
-    [Theory]
-    [InlineData(0, true)]
-    [InlineData(1, false)]
-    [InlineData(8, false)]
-    public void Automatic_aggro_limits_hostile_fan_in(
-        int currentAttackers,
-        bool expected)
-    {
-        Assert.Equal(expected, NpcRules.HasAutomaticAggroCapacity(currentAttackers));
+        Assert.Equal(NpcActionKind.Fire, NpcRules.Decide(snapshot).Action);
     }
 
     [Theory]
     [InlineData(false, ShipMode.Operational)]
     [InlineData(true, ShipMode.Sunk)]
     [InlineData(true, ShipMode.Repairing)]
-    [InlineData(true, ShipMode.Boarding)]
     public void InactiveOrNonOperationalNpcHolds(bool active, ShipMode mode)
     {
         var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Raider) with
@@ -210,7 +182,7 @@ public sealed partial class NpcRulesTests
     }
 
     [Fact]
-    public void StarboardArcFiresAndUnavailableArcsTurn()
+    public void AShipAtRangeFiresWhenLoadedAndOtherwiseHolds()
     {
         var starboard = Snapshot(ShipArchetypeCode.Patrol) with
         {
@@ -219,13 +191,12 @@ public sealed partial class NpcRulesTests
             DistanceToTarget = 45,
             TargetX = 45,
             SelectedAmmunition = AmmunitionCode.Round,
-            PortReady = false,
-            StarboardReady = true,
+            CanFire = true,
         };
 
-        Assert.Equal(NpcActionKind.FireStarboard, NpcRules.Decide(starboard).Action);
-        Assert.Equal(NpcActionKind.SetCourse,
-            NpcRules.Decide(starboard with { StarboardReady = false }).Action);
+        Assert.Equal(NpcActionKind.Fire, NpcRules.Decide(starboard).Action);
+        Assert.Equal(NpcActionKind.Hold,
+            NpcRules.Decide(starboard with { CanFire = false }).Action);
     }
 
     [Fact]
@@ -302,11 +273,7 @@ public sealed partial class NpcRulesTests
             ShipArchetypeCode.Gunship => AmmunitionCode.Incendiary,
             _ => AmmunitionCode.Round,
         },
-        PreferredWeakPoint = archetype == ShipArchetypeCode.Raider
-            ? WeakPointCode.Sails
-            : WeakPointCode.Hull,
-        PortReady = true,
-        StarboardReady = true,
+        CanFire = true,
         DecisionSeed = 99,
         DecisionTick = 500,
     };

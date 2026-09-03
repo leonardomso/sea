@@ -55,9 +55,9 @@ namespace Sea.Client
             connection.Db.Inventory.OnInsert += HandleHudRowInserted;
             connection.Db.Inventory.OnUpdate += HandleHudRowUpdated;
             connection.Db.Inventory.OnDelete += HandleHudRowDeleted;
-            connection.Db.ShipStatus.OnInsert += HandleHudRowInserted;
-            connection.Db.ShipStatus.OnUpdate += HandleHudRowUpdated;
-            connection.Db.ShipStatus.OnDelete += HandleHudRowDeleted;
+            connection.Db.Effect.OnInsert += HandleHudRowInserted;
+            connection.Db.Effect.OnUpdate += HandleHudRowUpdated;
+            connection.Db.Effect.OnDelete += HandleHudRowDeleted;
             connection.Db.Cooldown.OnInsert += HandleHudRowInserted;
             connection.Db.Cooldown.OnUpdate += HandleHudRowUpdated;
             connection.Db.Cooldown.OnDelete += HandleHudRowDeleted;

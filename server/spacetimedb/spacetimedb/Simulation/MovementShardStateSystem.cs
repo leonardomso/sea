@@ -286,10 +286,8 @@ public static partial class Module
     private static SailingParameters TacticalMovementParameters(Ship ship)
     {
         var modifiers = TacticalRules.MovementModifiers(
-            (ship.MovementStatusMask & HotPathCodes.FullSailMovementMask) != 0,
-            (ship.MovementStatusMask & HotPathCodes.SlowedMovementMask) != 0 ? 1u : 0u,
-            ship.Sails == 0,
-            ship.MaxSails == 0 ? 0f : (float)ship.Sails / ship.MaxSails,
+            (ship.MovementStatusMask & HotPathCodes.SlowedMovementMask) != 0,
+            ship.MovementSlowMagnitude,
             (ship.EnvironmentExposureCode & 2) != 0,
             (ship.EnvironmentExposureCode & 1) != 0,
             ship.ModeCode == (byte)ShipMode.Repairing);

@@ -28,11 +28,7 @@ public static partial class Module
     }
 
     [SpacetimeDB.Type]
-    public partial struct FireBroadsideCommand
-    {
-        public string Side;
-        public string WeakPoint;
-    }
+    public partial struct FireCommand;
 
     [SpacetimeDB.Type]
     public partial struct ActivateAbilityCommand
@@ -56,7 +52,7 @@ public static partial class Module
         SelectTargetCommand SelectTarget,
         ClearTargetCommand ClearTarget,
         SetAmmoCommand SetAmmo,
-        FireBroadsideCommand FireBroadside,
+        FireCommand Fire,
         ActivateAbilityCommand ActivateAbility,
         StartRepairCommand StartRepair,
         StartBoardingCommand StartBoarding,

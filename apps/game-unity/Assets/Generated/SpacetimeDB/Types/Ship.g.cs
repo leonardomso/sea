@@ -63,6 +63,8 @@ namespace SpacetimeDB.Types
         public byte ModeCode;
         [DataMember(Name = "movement_status_mask")]
         public byte MovementStatusMask;
+        [DataMember(Name = "movement_slow_magnitude")]
+        public float MovementSlowMagnitude;
         [DataMember(Name = "environment_exposure_code")]
         public byte EnvironmentExposureCode;
         [DataMember(Name = "current_velocity_x")]
@@ -77,32 +79,36 @@ namespace SpacetimeDB.Types
         public ulong TargetEntityId;
         [DataMember(Name = "selected_ammo_code")]
         public byte SelectedAmmoCode;
-        [DataMember(Name = "selected_weak_point_code")]
-        public byte SelectedWeakPointCode;
         [DataMember(Name = "hull")]
         public uint Hull;
         [DataMember(Name = "max_hull")]
         public uint MaxHull;
-        [DataMember(Name = "sails")]
-        public uint Sails;
-        [DataMember(Name = "max_sails")]
-        public uint MaxSails;
-        [DataMember(Name = "cannons")]
-        public uint Cannons;
-        [DataMember(Name = "max_cannons")]
-        public uint MaxCannons;
-        [DataMember(Name = "crew")]
-        public uint Crew;
-        [DataMember(Name = "max_crew")]
-        public uint MaxCrew;
-        [DataMember(Name = "cannon_damage")]
-        public uint CannonDamage;
-        [DataMember(Name = "cannon_cooldown_ticks")]
-        public uint CannonCooldownTicks;
-        [DataMember(Name = "next_port_fire_tick")]
-        public ulong NextPortFireTick;
-        [DataMember(Name = "next_starboard_fire_tick")]
-        public ulong NextStarboardFireTick;
+        [DataMember(Name = "volley_damage")]
+        public uint VolleyDamage;
+        [DataMember(Name = "reload_ticks")]
+        public uint ReloadTicks;
+        [DataMember(Name = "magazine_size")]
+        public uint MagazineSize;
+        [DataMember(Name = "range_squares")]
+        public float RangeSquares;
+        [DataMember(Name = "armor_front")]
+        public float ArmorFront;
+        [DataMember(Name = "armor_sides")]
+        public float ArmorSides;
+        [DataMember(Name = "armor_back")]
+        public float ArmorBack;
+        [DataMember(Name = "ready_volleys")]
+        public uint ReadyVolleys;
+        [DataMember(Name = "reload_progress_ticks")]
+        public uint ReloadProgressTicks;
+        [DataMember(Name = "is_reloading")]
+        public bool IsReloading;
+        [DataMember(Name = "has_fired")]
+        public bool HasFired;
+        [DataMember(Name = "last_shot_tick")]
+        public ulong LastShotTick;
+        [DataMember(Name = "last_combat_tick")]
+        public ulong LastCombatTick;
         [DataMember(Name = "respawn_at_tick")]
         public ulong RespawnAtTick;
         [DataMember(Name = "invulnerable_until_tick")]
@@ -136,6 +142,7 @@ namespace SpacetimeDB.Types
             bool IsEngaged,
             byte ModeCode,
             byte MovementStatusMask,
+            float MovementSlowMagnitude,
             byte EnvironmentExposureCode,
             float CurrentVelocityX,
             float CurrentVelocityY,
@@ -143,19 +150,21 @@ namespace SpacetimeDB.Types
             int ChunkY,
             ulong TargetEntityId,
             byte SelectedAmmoCode,
-            byte SelectedWeakPointCode,
             uint Hull,
             uint MaxHull,
-            uint Sails,
-            uint MaxSails,
-            uint Cannons,
-            uint MaxCannons,
-            uint Crew,
-            uint MaxCrew,
-            uint CannonDamage,
-            uint CannonCooldownTicks,
-            ulong NextPortFireTick,
-            ulong NextStarboardFireTick,
+            uint VolleyDamage,
+            uint ReloadTicks,
+            uint MagazineSize,
+            float RangeSquares,
+            float ArmorFront,
+            float ArmorSides,
+            float ArmorBack,
+            uint ReadyVolleys,
+            uint ReloadProgressTicks,
+            bool IsReloading,
+            bool HasFired,
+            ulong LastShotTick,
+            ulong LastCombatTick,
             ulong RespawnAtTick,
             ulong InvulnerableUntilTick,
             ulong EncounterId
@@ -186,6 +195,7 @@ namespace SpacetimeDB.Types
             this.IsEngaged = IsEngaged;
             this.ModeCode = ModeCode;
             this.MovementStatusMask = MovementStatusMask;
+            this.MovementSlowMagnitude = MovementSlowMagnitude;
             this.EnvironmentExposureCode = EnvironmentExposureCode;
             this.CurrentVelocityX = CurrentVelocityX;
             this.CurrentVelocityY = CurrentVelocityY;
@@ -193,19 +203,21 @@ namespace SpacetimeDB.Types
             this.ChunkY = ChunkY;
             this.TargetEntityId = TargetEntityId;
             this.SelectedAmmoCode = SelectedAmmoCode;
-            this.SelectedWeakPointCode = SelectedWeakPointCode;
             this.Hull = Hull;
             this.MaxHull = MaxHull;
-            this.Sails = Sails;
-            this.MaxSails = MaxSails;
-            this.Cannons = Cannons;
-            this.MaxCannons = MaxCannons;
-            this.Crew = Crew;
-            this.MaxCrew = MaxCrew;
-            this.CannonDamage = CannonDamage;
-            this.CannonCooldownTicks = CannonCooldownTicks;
-            this.NextPortFireTick = NextPortFireTick;
-            this.NextStarboardFireTick = NextStarboardFireTick;
+            this.VolleyDamage = VolleyDamage;
+            this.ReloadTicks = ReloadTicks;
+            this.MagazineSize = MagazineSize;
+            this.RangeSquares = RangeSquares;
+            this.ArmorFront = ArmorFront;
+            this.ArmorSides = ArmorSides;
+            this.ArmorBack = ArmorBack;
+            this.ReadyVolleys = ReadyVolleys;
+            this.ReloadProgressTicks = ReloadProgressTicks;
+            this.IsReloading = IsReloading;
+            this.HasFired = HasFired;
+            this.LastShotTick = LastShotTick;
+            this.LastCombatTick = LastCombatTick;
             this.RespawnAtTick = RespawnAtTick;
             this.InvulnerableUntilTick = InvulnerableUntilTick;
             this.EncounterId = EncounterId;

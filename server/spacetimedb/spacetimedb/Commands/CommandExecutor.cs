@@ -7,9 +7,7 @@ public static partial class Module
         ShipCommandKind Kind,
         SetCourseCommand SetCourse = default,
         SelectTargetCommand SelectTarget = default,
-        SetAmmoCommand SetAmmo = default,
-        FireBroadsideCommand FireBroadside = default,
-        ActivateAbilityCommand ActivateAbility = default);
+        SetAmmoCommand SetAmmo = default);
 
     private static DecodedCommand DecodeCommand(ShipCommand command) => command switch
     {
@@ -20,12 +18,8 @@ public static partial class Module
             SelectTarget: value),
         ShipCommand.ClearTarget => new(ShipCommandKind.ClearTarget),
         ShipCommand.SetAmmo(var value) => new(ShipCommandKind.SetAmmo, SetAmmo: value),
-        ShipCommand.FireBroadside(var value) => new(
-            ShipCommandKind.FireBroadside,
-            FireBroadside: value),
-        ShipCommand.ActivateAbility(var value) => new(
-            ShipCommandKind.ActivateAbility,
-            ActivateAbility: value),
+        ShipCommand.Fire => new(ShipCommandKind.Fire),
+        ShipCommand.ActivateAbility => new(ShipCommandKind.ActivateAbility),
         ShipCommand.StartRepair => new(ShipCommandKind.StartRepair),
         ShipCommand.StartBoarding => new(ShipCommandKind.StartBoarding),
         ShipCommand.CancelChannel => new(ShipCommandKind.CancelChannel),
@@ -38,18 +32,14 @@ public static partial class Module
         Ship ship,
         DecodedCommand command)
     {
-        var mode = ResolveMode(ship);
         var snapshot = new CommandSnapshot
         {
-            Mode = mode,
+            Mode = ResolveMode(ship),
             CourseValid = true,
             TargetValid = true,
             AmmoKnown = true,
-            AmmoOwned = true,
             FireRejection = FireRejection.None,
-            AbilityRejection = AbilityRejection.None,
             RepairRejection = RepairRejection.None,
-            BoardingRejection = BoardingRejection.None,
             HasActiveChannel = FindActiveChannel(ctx, ship.EntityId) is not null,
         };
 
@@ -58,25 +48,12 @@ public static partial class Module
             ShipCommandKind.SetCourse => CourseSnapshot(ctx, world, snapshot, command.SetCourse),
             ShipCommandKind.SelectTarget => TargetSnapshot(
                 ctx,
-                world,
                 ship,
                 snapshot,
                 command.SelectTarget),
-            ShipCommandKind.SetAmmo => AmmoSnapshot(ctx, ship, snapshot, command.SetAmmo),
-            ShipCommandKind.FireBroadside => FireSnapshot(
-                ctx,
-                world,
-                ship,
-                snapshot,
-                command.FireBroadside),
-            ShipCommandKind.ActivateAbility => AbilitySnapshot(
-                ctx,
-                world,
-                ship,
-                snapshot,
-                command.ActivateAbility),
+            ShipCommandKind.SetAmmo => AmmoSnapshot(snapshot, command.SetAmmo),
+            ShipCommandKind.Fire => FireSnapshot(ctx, world, ship, snapshot),
             ShipCommandKind.StartRepair => RepairSnapshot(ctx, ship, snapshot),
-            ShipCommandKind.StartBoarding => BoardingSnapshot(ctx, world, ship, snapshot),
             _ => snapshot,
         };
     }
@@ -105,27 +82,11 @@ public static partial class Module
             case ShipCommandKind.SetAmmo:
                 ApplySetAmmo(ctx, world, ref ship, command.SetAmmo);
                 break;
-            case ShipCommandKind.FireBroadside:
-                if (!CombatRules.TryParseWeakPoint(
-                        command.FireBroadside.WeakPoint,
-                        out var weakPoint) ||
-                    !Enum.TryParse<BroadsideSide>(
-                    command.FireBroadside.Side,
-                    ignoreCase: true,
-                    out var side))
-                {
-                    throw new InvalidOperationException("Accepted broadside arguments are invalid.");
-                }
-                ApplyFireBroadside(ctx, world, ref ship, command.FireBroadside, side, weakPoint);
-                break;
-            case ShipCommandKind.ActivateAbility:
-                ApplyActivateAbility(ctx, world, ref ship, command.ActivateAbility);
+            case ShipCommandKind.Fire:
+                ApplyFire(ctx, world, ref ship);
                 break;
             case ShipCommandKind.StartRepair:
                 ApplyStartRepair(ctx, world, ref ship);
-                break;
-            case ShipCommandKind.StartBoarding:
-                ApplyStartBoarding(ctx, world, ref ship);
                 break;
             case ShipCommandKind.CancelChannel:
                 ApplyCancelChannel(ctx, world, ship);

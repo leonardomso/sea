@@ -239,8 +239,7 @@
     background-color: #10323966;
 }
 
-.port-side { border-right-width: 1px; border-right-color: var(--line-soft); }
-.starboard-side { border-left-width: 1px; border-left-color: var(--line-soft); }
+.fire-control { border-left-width: 1px; border-left-color: var(--line-soft); }
 .broadside-side.ready { background-color: #61bfa626; }
 
 .key-cap {
@@ -274,8 +273,6 @@
 .unity-progress-bar__progress { background-color: var(--sea-glass); border-width: 0; }
 .unity-progress-bar__title { display: none; }
 .hull-bar .unity-progress-bar__progress { background-color: var(--crimson); }
-.sails-bar .unity-progress-bar__progress { background-color: var(--sea-glass); }
-.cannon-bar .unity-progress-bar__progress { background-color: var(--bronze); }
 
 .bottom-deck {
     position: absolute;

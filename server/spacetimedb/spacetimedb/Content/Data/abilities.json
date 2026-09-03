@@ -1,8 +1,0 @@
-{
-  "abilities": [
-    { "id": "full_sail", "code": "FullSail", "cooldownTicks": 200, "durationTicks": 50 },
-    { "id": "brace", "code": "Brace", "cooldownTicks": 180, "durationTicks": 40 },
-    { "id": "emergency_pump", "code": "EmergencyPump", "cooldownTicks": 300, "durationTicks": 50 },
-    { "id": "smoke_screen", "code": "SmokeScreen", "cooldownTicks": 240, "durationTicks": 40 }
-  ]
-}

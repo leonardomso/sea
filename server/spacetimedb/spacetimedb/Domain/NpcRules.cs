@@ -8,9 +8,8 @@ public enum NpcActionKind : byte
     SelectTarget = 3,
     ClearTarget = 4,
     SetAmmo = 5,
-    FirePort = 6,
-    FireStarboard = 7,
-    StartRepair = 8,
+    Fire = 6,
+    StartRepair = 7,
 }
 
 public readonly record struct NpcSnapshot
@@ -35,10 +34,9 @@ public readonly record struct NpcSnapshot
     public ulong CandidateTargetId { get; init; }
     public float DesiredRange { get; init; }
     public AmmunitionCode PreferredAmmunition { get; init; }
-    public WeakPointCode PreferredWeakPoint { get; init; }
     public AmmunitionCode SelectedAmmunition { get; init; }
-    public bool PortReady { get; init; }
-    public bool StarboardReady { get; init; }
+    /// <summary>Whether the magazine and the one-second floor both allow a shot this decision.</summary>
+    public bool CanFire { get; init; }
     public ulong DecisionSeed { get; init; }
     public ulong DecisionTick { get; init; }
     public float HomeX { get; init; }
@@ -51,8 +49,7 @@ public readonly record struct NpcDecision(
     ulong TargetEntityId = 0,
     float DestinationX = 0f,
     float DestinationY = 0f,
-    AmmunitionCode Ammunition = AmmunitionCode.None,
-    WeakPointCode WeakPoint = WeakPointCode.Hull);
+    AmmunitionCode Ammunition = AmmunitionCode.None);
 
 public static class NpcRules
 {
@@ -103,9 +100,7 @@ public static class NpcRules
 
     public static NpcDecision Decide(NpcSnapshot snapshot)
     {
-        var loadout = new NpcLoadout(
-            snapshot.PreferredAmmunition,
-            snapshot.PreferredWeakPoint);
+        var loadout = new NpcLoadout(snapshot.PreferredAmmunition);
         if (!snapshot.Active || snapshot.Mode == ShipMode.Sunk)
         {
             return new NpcDecision(NpcActionKind.Hold);
@@ -155,8 +150,7 @@ public static class NpcRules
             return new NpcDecision(
                 NpcActionKind.SelectTarget,
                 snapshot.CandidateTargetId,
-                Ammunition: loadout.Ammunition,
-                WeakPoint: loadout.WeakPoint);
+                Ammunition: loadout.Ammunition);
         }
 
         // A leg still under way is kept unless it was plotted while chasing something
@@ -175,8 +169,7 @@ public static class NpcRules
             NpcActionKind.SetCourse,
             DestinationX: roam.X,
             DestinationY: roam.Y,
-            Ammunition: loadout.Ammunition,
-            WeakPoint: loadout.WeakPoint);
+            Ammunition: loadout.Ammunition);
     }
 
     private static NpcDecision DecideEngagement(
@@ -198,45 +191,17 @@ public static class NpcRules
         {
             return new NpcDecision(
                 NpcActionKind.SetAmmo,
-                Ammunition: loadout.Ammunition,
-                WeakPoint: loadout.WeakPoint);
+                Ammunition: loadout.Ammunition);
         }
 
-        if (snapshot.PortReady && CombatRules.IsInsideBroadsideArc(
-                snapshot.X,
-                snapshot.Y,
-                snapshot.HeadingDegrees,
-                snapshot.TargetX,
-                snapshot.TargetY,
-                BroadsideSide.Port))
-        {
-            return new NpcDecision(
-                NpcActionKind.FirePort,
+        // Guns bear in every direction now, so a ship at its desired range simply shoots
+        // whenever the magazine allows and otherwise holds the range it has.
+        return snapshot.CanFire
+            ? new NpcDecision(
+                NpcActionKind.Fire,
                 snapshot.TargetEntityId,
-                Ammunition: loadout.Ammunition,
-                WeakPoint: loadout.WeakPoint);
-        }
-
-        if (snapshot.StarboardReady && CombatRules.IsInsideBroadsideArc(
-                snapshot.X,
-                snapshot.Y,
-                snapshot.HeadingDegrees,
-                snapshot.TargetX,
-                snapshot.TargetY,
-                BroadsideSide.Starboard))
-        {
-            return new NpcDecision(
-                NpcActionKind.FireStarboard,
-                snapshot.TargetEntityId,
-                Ammunition: loadout.Ammunition,
-                WeakPoint: loadout.WeakPoint);
-        }
-
-        // A turn already under way brings a broadside to bear; re-plotting it every
-        // decision would leave the ship twitching between headings.
-        return snapshot.HasCourse
-            ? new NpcDecision(NpcActionKind.Hold)
-            : BroadsideTurn(snapshot, loadout);
+                Ammunition: loadout.Ammunition)
+            : new NpcDecision(NpcActionKind.Hold);
     }
 
     public static SpawnPoint RoamDestination(NpcSnapshot snapshot)
@@ -293,18 +258,6 @@ public static class NpcRules
             loadout);
     }
 
-    private static NpcDecision BroadsideTurn(NpcSnapshot snapshot, NpcLoadout loadout)
-    {
-        var deltaX = snapshot.TargetX - snapshot.X;
-        var deltaY = snapshot.TargetY - snapshot.Y;
-        var length = MathF.Max(0.001f, MathF.Sqrt(deltaX * deltaX + deltaY * deltaY));
-        return SailTo(
-            snapshot,
-            snapshot.X + deltaY / length * TurnCourseDistance,
-            snapshot.Y - deltaX / length * TurnCourseDistance,
-            loadout);
-    }
-
     private static NpcDecision SailTo(
         NpcSnapshot snapshot,
         float x,
@@ -325,8 +278,7 @@ public static class NpcRules
             snapshot.TargetEntityId,
             x,
             y,
-            loadout.Ammunition,
-            loadout.WeakPoint);
+            loadout.Ammunition);
     }
 
     // A destination inside an island would be rejected outright and leave the ship
@@ -351,7 +303,5 @@ public static class NpcRules
         return (float)((state >> 40) / 16_777_216d);
     }
 
-    private readonly record struct NpcLoadout(
-        AmmunitionCode Ammunition,
-        WeakPointCode WeakPoint);
+    private readonly record struct NpcLoadout(AmmunitionCode Ammunition);
 }

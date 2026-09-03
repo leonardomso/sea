@@ -7,6 +7,7 @@ public static partial class Module
     [SpacetimeDB.Index.BTree(Accessor = "ByActiveChunk", Columns = new[] { nameof(IsActive), nameof(ChunkX), nameof(ChunkY) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByEnvironmentExposure", Columns = new[] { nameof(EnvironmentExposureCode) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByTarget", Columns = new[] { nameof(TargetEntityId) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByReloading", Columns = new[] { nameof(IsReloading) })]
     public partial struct Ship
     {
         [PrimaryKey]
@@ -35,6 +36,10 @@ public static partial class Module
         public bool IsEngaged;
         public byte ModeCode;
         public byte MovementStatusMask;
+
+        // The live slow magnitude behind the mask bit, so the sailing shard reads one float
+        // instead of joining the effect table every tick.
+        public float MovementSlowMagnitude;
         public byte EnvironmentExposureCode;
         public float CurrentVelocityX;
         public float CurrentVelocityY;
@@ -42,19 +47,30 @@ public static partial class Module
         public int ChunkY;
         public ulong TargetEntityId;
         public byte SelectedAmmoCode;
-        public byte SelectedWeakPointCode;
         public uint Hull;
         public uint MaxHull;
-        public uint Sails;
-        public uint MaxSails;
-        public uint Cannons;
-        public uint MaxCannons;
-        public uint Crew;
-        public uint MaxCrew;
-        public uint CannonDamage;
-        public uint CannonCooldownTicks;
-        public ulong NextPortFireTick;
-        public ulong NextStarboardFireTick;
+
+        // The live combat sheet. RecomputeShipStats writes these for players and NPC spawn writes
+        // them for NPCs, so firing reads one row instead of joining the dock-facing projection.
+        public uint VolleyDamage;
+        public uint ReloadTicks;
+        public uint MagazineSize;
+        public float RangeSquares;
+        public float ArmorFront;
+        public float ArmorSides;
+        public float ArmorBack;
+
+        // The magazine itself. Reload advances every tick whether or not the ship is firing.
+        public uint ReadyVolleys;
+        public uint ReloadProgressTicks;
+
+        // Indexed so the tick advances reloads for the handful of ships mid-magazine instead
+        // of walking every hull afloat.
+        public bool IsReloading;
+        public bool HasFired;
+        public ulong LastShotTick;
+        public ulong LastCombatTick;
+
         public ulong RespawnAtTick;
         public ulong InvulnerableUntilTick;
         public ulong EncounterId;
@@ -147,27 +163,36 @@ public static partial class Module
         public uint Quantity;
     }
 
-    [SpacetimeDB.Table(Accessor = "ShipStatus", Public = true)]
+    /// <summary>
+    /// One live effect on one ship. The same code refreshes its own row's expiry, different codes
+    /// take a row each, so there is no stack count to keep.
+    /// </summary>
+    [SpacetimeDB.Table(Accessor = "Effect", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByShip", Columns = new[] { nameof(ShipEntityId) })]
-    [SpacetimeDB.Index.BTree(Accessor = "ByShipStatus", Columns = new[] { nameof(ShipEntityId), nameof(StatusCode) })]
-    [SpacetimeDB.Index.BTree(Accessor = "ByStatusDue", Columns = new[] { nameof(IsActive), nameof(NextProcessTick) })]
-    public partial struct ShipStatus
+    [SpacetimeDB.Index.BTree(Accessor = "ByShipEffect", Columns = new[] { nameof(ShipEntityId), nameof(EffectCode) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByEffectDue", Columns = new[] { nameof(IsActive), nameof(NextProcessTick) })]
+    public partial struct Effect
     {
         [PrimaryKey]
         [AutoInc]
-        public ulong StatusId;
+        public ulong EffectId;
         public ulong ShipEntityId;
-        public string StatusType;
-        public byte StatusCode;
-        public uint Stacks;
+        public ulong SourceEntityId;
+        public string EffectType;
+        public byte EffectCode;
+        public float Magnitude;
+        public ulong AppliedAtTick;
         public ulong ExpiresAtTick;
-        public ulong ImmunityUntilTick;
         public ulong NextProcessTick;
         public bool IsActive;
     }
 
+    /// <summary>
+    /// A shot the client animates. Damage resolves on the tick the volley is fired, so the row
+    /// carries no damage state and exists only until its animation window closes.
+    /// </summary>
     [SpacetimeDB.Table(Accessor = "Volley", Public = true)]
-    [SpacetimeDB.Index.BTree(Accessor = "ByImpactDue", Columns = new[] { nameof(IsActive), nameof(ImpactAtTick) })]
+    [SpacetimeDB.Index.BTree(Accessor = "ByVolleyExpiry", Columns = new[] { nameof(IsActive), nameof(ExpiresAtTick) })]
     public partial struct Volley
     {
         [PrimaryKey]
@@ -175,22 +200,16 @@ public static partial class Module
         public ulong VolleyId;
         public ulong SourceEntityId;
         public ulong TargetEntityId;
-        public string Side;
-        public byte SideCode;
         public string AmmoId;
         public byte AmmoCode;
-        public string WeakPoint;
-        public byte WeakPointCode;
         public float OriginX;
         public float OriginY;
+        public float TargetX;
+        public float TargetY;
         public int ChunkX;
         public int ChunkY;
         public ulong FiredAtTick;
-        public ulong ImpactAtTick;
-        public uint HullDamage;
-        public uint SailDamage;
-        public uint CannonDamage;
-        public uint CrewDamage;
+        public ulong ExpiresAtTick;
         public bool IsActive;
     }
 
@@ -240,9 +259,6 @@ public static partial class Module
         public ulong CompletesAtTick;
         public ulong NextProcessTick;
         public uint InitialHull;
-        public uint InitialSails;
-        public uint InitialCannons;
-        public uint InitialCrew;
         public bool IsActive;
     }
 

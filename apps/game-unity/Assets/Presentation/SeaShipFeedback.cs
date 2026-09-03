@@ -10,7 +10,7 @@ namespace Sea.Client
         private Quaternion baseLocalRotation;
         private float phase;
         private float normalizedSpeed;
-        private float broadsideRecoil;
+        private float volleyRecoil;
 
         public static bool ShouldEmitWake(float speed, float maximumSpeed) =>
             maximumSpeed > 0f && speed / maximumSpeed >= 0.04f;
@@ -44,7 +44,7 @@ namespace Sea.Client
         public void ResetPresentation()
         {
             normalizedSpeed = 0f;
-            broadsideRecoil = 0f;
+            volleyRecoil = 0f;
             if (visual != null)
             {
                 visual.localPosition = baseLocalPosition;
@@ -78,14 +78,14 @@ namespace Sea.Client
             }
         }
 
-        public void PlayBroadside(string side)
+        /// <summary>
+        /// The magazine bears in every direction, so the recoil kicks away from wherever the
+        /// guns actually spoke: <paramref name="lateralBias"/> is the muzzle's local sideways
+        /// component, +1 to starboard and -1 to port.
+        /// </summary>
+        public void PlayVolley(float lateralBias)
         {
-            broadsideRecoil = string.Equals(
-                side,
-                "port",
-                System.StringComparison.OrdinalIgnoreCase)
-                ? 1f
-                : -1f;
+            volleyRecoil = -Mathf.Clamp(lateralBias, -1f, 1f);
         }
 
         private void LateUpdate()
@@ -100,12 +100,12 @@ namespace Sea.Client
             var roll = Mathf.Sin(time * 1.05f) * (0.55f + normalizedSpeed * 0.45f);
             var pitch = Mathf.Sin(time * 1.62f + 0.8f) * (0.35f + normalizedSpeed * 0.25f);
             visual.localPosition = baseLocalPosition + Vector3.up * heave +
-                Vector3.right * (broadsideRecoil * 0.22f);
+                Vector3.right * (volleyRecoil * 0.22f);
             visual.localRotation = baseLocalRotation * Quaternion.Euler(
                 pitch,
                 0f,
-                roll + broadsideRecoil * 2.6f);
-            broadsideRecoil = Mathf.MoveTowards(broadsideRecoil, 0f, Time.deltaTime * 4.8f);
+                roll + volleyRecoil * 2.6f);
+            volleyRecoil = Mathf.MoveTowards(volleyRecoil, 0f, Time.deltaTime * 4.8f);
         }
 
         private TrailRenderer CreateWake(string name, float localX, Material material)

@@ -57,13 +57,6 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="target-frame" class="target-frame chart-surface hidden">
-            <ui:Button name="port-broadside" class="broadside-side port-side">
-                <ui:Label text="Q" class="key-cap" />
-                <ui:Label text="PORT" class="broadside-name" />
-                <ui:ProgressBar name="port-reload" low-value="0" high-value="1" value="1" class="reload-gauge" />
-                <ui:Label name="port-reload-text" text="READY" class="readiness" />
-            </ui:Button>
-
             <ui:VisualElement class="target-core">
                 <ui:VisualElement class="target-heading-line">
                     <ui:Label text="◁ 100°" class="arc-mark" />
@@ -81,23 +74,18 @@
                         <ui:Label name="target-hull-text" text="—" class="instrument-value" />
                     </ui:VisualElement>
                     <ui:VisualElement class="instrument-row">
-                        <ui:Label text="SAILS" class="instrument-label" />
-                        <ui:ProgressBar name="target-sails" low-value="0" high-value="1" class="instrument-bar sails-bar" />
-                        <ui:Label name="target-sails-text" text="—" class="instrument-value" />
-                    </ui:VisualElement>
-                    <ui:VisualElement class="instrument-row">
-                        <ui:Label text="GUNS" class="instrument-label" />
-                        <ui:ProgressBar name="target-cannons" low-value="0" high-value="1" class="instrument-bar cannon-bar" />
-                        <ui:Label name="target-cannons-text" text="—" class="instrument-value" />
+                        <ui:Label text="ARMOUR" class="instrument-label" />
+                        <ui:Label name="target-armor-text" text="—" class="instrument-value" />
                     </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:Button name="starboard-broadside" class="broadside-side starboard-side">
-                <ui:Label text="E" class="key-cap" />
-                <ui:Label text="STARBOARD" class="broadside-name" />
-                <ui:ProgressBar name="starboard-reload" low-value="0" high-value="1" value="1" class="reload-gauge" />
-                <ui:Label name="starboard-reload-text" text="READY" class="readiness" />
+            <ui:Button name="fire-control" class="broadside-side fire-control">
+                <ui:Label text="Q" class="key-cap" />
+                <ui:Label text="FIRE" class="broadside-name" />
+                <ui:ProgressBar name="reload-gauge" low-value="0" high-value="1" value="1" class="reload-gauge" />
+                <ui:Label name="reload-text" text="READY" class="readiness" />
+                <ui:Label name="magazine-text" text="—" class="readiness" />
             </ui:Button>
         </ui:VisualElement>
 
@@ -126,12 +114,6 @@
                     <ui:Label name="volley-text" text="—" class="micro-label" />
                     <ui:Label name="ammo-count" text="ROUND • 0" class="data-label bronze-text" />
                 </ui:VisualElement>
-                <ui:VisualElement name="weak-point-rail" class="command-rail">
-                    <ui:Label text="AIM" class="rail-label" />
-                    <ui:Button name="aim-hull" text="1" tooltip="Aim at hull" class="command-slot selected" />
-                    <ui:Button name="aim-sails" text="2" tooltip="Aim at sails" class="command-slot" />
-                    <ui:Button name="aim-cannons" text="3" tooltip="Aim at cannons" class="command-slot" />
-                </ui:VisualElement>
                 <ui:VisualElement name="ammo-rail" class="command-rail">
                     <ui:Label text="SHOT" class="rail-label" />
                     <ui:Button name="ammo-round" text="4" tooltip="Round shot" class="command-slot selected" />
@@ -140,12 +122,7 @@
                     <ui:Button name="ammo-incendiary" text="7" tooltip="Incendiary shot" class="command-slot" />
                 </ui:VisualElement>
                 <ui:VisualElement name="ability-rail" class="command-rail ability-rail">
-                    <ui:Button name="ability-full-sail" text="Z" tooltip="Full Sail" class="command-slot ability-slot" />
-                    <ui:Button name="ability-brace" text="X" tooltip="Brace" class="command-slot ability-slot" />
-                    <ui:Button name="ability-pump" text="C" tooltip="Emergency Pump" class="command-slot ability-slot" />
-                    <ui:Button name="ability-smoke" text="V" tooltip="Smoke Screen" class="command-slot ability-slot" />
                     <ui:Button name="repair" text="R" tooltip="Repair" class="command-slot ability-slot" />
-                    <ui:Button name="board" text="B" tooltip="Board" class="command-slot ability-slot" />
                 </ui:VisualElement>
             </ui:VisualElement>
 

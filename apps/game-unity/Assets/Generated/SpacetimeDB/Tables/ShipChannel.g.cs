@@ -57,9 +57,6 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<ShipChannel, ulong> CompletesAtTick { get; }
         public global::SpacetimeDB.Col<ShipChannel, ulong> NextProcessTick { get; }
         public global::SpacetimeDB.Col<ShipChannel, uint> InitialHull { get; }
-        public global::SpacetimeDB.Col<ShipChannel, uint> InitialSails { get; }
-        public global::SpacetimeDB.Col<ShipChannel, uint> InitialCannons { get; }
-        public global::SpacetimeDB.Col<ShipChannel, uint> InitialCrew { get; }
         public global::SpacetimeDB.Col<ShipChannel, bool> IsActive { get; }
 
         public ShipChannelCols(string tableName)
@@ -72,9 +69,6 @@ namespace SpacetimeDB.Types
             CompletesAtTick = new global::SpacetimeDB.Col<ShipChannel, ulong>(tableName, "completes_at_tick");
             NextProcessTick = new global::SpacetimeDB.Col<ShipChannel, ulong>(tableName, "next_process_tick");
             InitialHull = new global::SpacetimeDB.Col<ShipChannel, uint>(tableName, "initial_hull");
-            InitialSails = new global::SpacetimeDB.Col<ShipChannel, uint>(tableName, "initial_sails");
-            InitialCannons = new global::SpacetimeDB.Col<ShipChannel, uint>(tableName, "initial_cannons");
-            InitialCrew = new global::SpacetimeDB.Col<ShipChannel, uint>(tableName, "initial_crew");
             IsActive = new global::SpacetimeDB.Col<ShipChannel, bool>(tableName, "is_active");
         }
     }

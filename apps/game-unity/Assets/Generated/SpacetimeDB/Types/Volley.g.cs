@@ -19,38 +19,26 @@ namespace SpacetimeDB.Types
         public ulong SourceEntityId;
         [DataMember(Name = "target_entity_id")]
         public ulong TargetEntityId;
-        [DataMember(Name = "side")]
-        public string Side;
-        [DataMember(Name = "side_code")]
-        public byte SideCode;
         [DataMember(Name = "ammo_id")]
         public string AmmoId;
         [DataMember(Name = "ammo_code")]
         public byte AmmoCode;
-        [DataMember(Name = "weak_point")]
-        public string WeakPoint;
-        [DataMember(Name = "weak_point_code")]
-        public byte WeakPointCode;
         [DataMember(Name = "origin_x")]
         public float OriginX;
         [DataMember(Name = "origin_y")]
         public float OriginY;
+        [DataMember(Name = "target_x")]
+        public float TargetX;
+        [DataMember(Name = "target_y")]
+        public float TargetY;
         [DataMember(Name = "chunk_x")]
         public int ChunkX;
         [DataMember(Name = "chunk_y")]
         public int ChunkY;
         [DataMember(Name = "fired_at_tick")]
         public ulong FiredAtTick;
-        [DataMember(Name = "impact_at_tick")]
-        public ulong ImpactAtTick;
-        [DataMember(Name = "hull_damage")]
-        public uint HullDamage;
-        [DataMember(Name = "sail_damage")]
-        public uint SailDamage;
-        [DataMember(Name = "cannon_damage")]
-        public uint CannonDamage;
-        [DataMember(Name = "crew_damage")]
-        public uint CrewDamage;
+        [DataMember(Name = "expires_at_tick")]
+        public ulong ExpiresAtTick;
         [DataMember(Name = "is_active")]
         public bool IsActive;
 
@@ -58,52 +46,38 @@ namespace SpacetimeDB.Types
             ulong VolleyId,
             ulong SourceEntityId,
             ulong TargetEntityId,
-            string Side,
-            byte SideCode,
             string AmmoId,
             byte AmmoCode,
-            string WeakPoint,
-            byte WeakPointCode,
             float OriginX,
             float OriginY,
+            float TargetX,
+            float TargetY,
             int ChunkX,
             int ChunkY,
             ulong FiredAtTick,
-            ulong ImpactAtTick,
-            uint HullDamage,
-            uint SailDamage,
-            uint CannonDamage,
-            uint CrewDamage,
+            ulong ExpiresAtTick,
             bool IsActive
         )
         {
             this.VolleyId = VolleyId;
             this.SourceEntityId = SourceEntityId;
             this.TargetEntityId = TargetEntityId;
-            this.Side = Side;
-            this.SideCode = SideCode;
             this.AmmoId = AmmoId;
             this.AmmoCode = AmmoCode;
-            this.WeakPoint = WeakPoint;
-            this.WeakPointCode = WeakPointCode;
             this.OriginX = OriginX;
             this.OriginY = OriginY;
+            this.TargetX = TargetX;
+            this.TargetY = TargetY;
             this.ChunkX = ChunkX;
             this.ChunkY = ChunkY;
             this.FiredAtTick = FiredAtTick;
-            this.ImpactAtTick = ImpactAtTick;
-            this.HullDamage = HullDamage;
-            this.SailDamage = SailDamage;
-            this.CannonDamage = CannonDamage;
-            this.CrewDamage = CrewDamage;
+            this.ExpiresAtTick = ExpiresAtTick;
             this.IsActive = IsActive;
         }
 
         public Volley()
         {
-            this.Side = "";
             this.AmmoId = "";
-            this.WeakPoint = "";
         }
     }
 }

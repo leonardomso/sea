@@ -93,7 +93,7 @@ public static partial class Module
         float x,
         float y)
     {
-        return new Ship
+        var ship = new Ship
         {
             EntityId = entityId,
             ArchetypeCode = (byte)HotPathCodes.ShipArchetype(archetypeId),
@@ -129,23 +129,18 @@ public static partial class Module
             ChunkY = SpatialRules.ChunkCoordinate(y),
             TargetEntityId = 0,
             SelectedAmmoCode = (byte)AmmunitionCode.Round,
-            SelectedWeakPointCode = (byte)WeakPointCode.Hull,
-            Hull = WorldRules.InitialHealth,
-            MaxHull = WorldRules.InitialHealth,
-            Sails = 100,
-            MaxSails = 100,
-            Cannons = 100,
-            MaxCannons = 100,
-            Crew = 100,
-            MaxCrew = 100,
-            CannonDamage = WorldRules.InitialCannonDamage,
-            CannonCooldownTicks = WorldRules.InitialCannonCooldownTicks / 2,
-            NextPortFireTick = 0,
-            NextStarboardFireTick = 0,
+            HasFired = false,
+            LastShotTick = 0,
+            LastCombatTick = 0,
             RespawnAtTick = 0,
             InvulnerableUntilTick = 0,
             EncounterId = 0,
         };
+
+        // Every hull leaves the yard as a starter sloop. The owner's own sheet lands on the row at
+        // login, and an NPC's tier numbers land on it at seed time.
+        ApplyStatSheet(ref ship, BaselineStatSheet(), restock: true);
+        return ship;
     }
 
     private static Ship FindShip(ReducerContext ctx, ulong entityId) =>

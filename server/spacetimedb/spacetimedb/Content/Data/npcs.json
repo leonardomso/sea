@@ -14,7 +14,6 @@
       "hull": 100,
       "cannonDamage": 18,
       "preferredAmmunition": "Round",
-      "preferredWeakPoint": "Hull",
       "goldReward": 80,
       "experienceReward": 100
     },
@@ -32,7 +31,6 @@
       "hull": 90,
       "cannonDamage": 20,
       "preferredAmmunition": "Chain",
-      "preferredWeakPoint": "Sails",
       "goldReward": 100,
       "experienceReward": 125
     },
@@ -50,7 +48,6 @@
       "hull": 130,
       "cannonDamage": 28,
       "preferredAmmunition": "Incendiary",
-      "preferredWeakPoint": "Hull",
       "goldReward": 140,
       "experienceReward": 175
     }

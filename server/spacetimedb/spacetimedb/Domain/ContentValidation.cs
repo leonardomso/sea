@@ -16,7 +16,6 @@ public static partial class ContentCatalog
         ValidateHulls(content.Hulls, content.StatCaps, errors);
         ValidateCannons(content.Cannons, content.StatCaps, errors);
         ValidateAmmunition(content.Ammunition, errors);
-        ValidateAbilities(content.Abilities, errors);
         ValidateNpcs(content.Npcs, content.Maps, errors);
         return errors;
     }
@@ -172,12 +171,6 @@ public static partial class ContentCatalog
                 }
             }
 
-            if (!string.Equals(ammo.AppliedStatus, HotPathCodes.StatusId(ammo.AppliedStatusCode), StringComparison.Ordinal))
-            {
-                errors.Add(
-                    $"{ammo.Id}: applied status '{ammo.AppliedStatus}' does not match code '{ammo.AppliedStatusCode}'.");
-            }
-
             Positive(ammo.Id, "damage multiplier", ammo.DamageMultiplier, errors);
             Positive(ammo.Id, "reload multiplier", ammo.ReloadMultiplier, errors);
             Positive(ammo.Id, "range multiplier", ammo.RangeMultiplier, errors);
@@ -188,37 +181,6 @@ public static partial class ContentCatalog
         if (!codes.Contains(AmmunitionCode.Round))
         {
             errors.Add("Ammunition must include the Round baseline.");
-        }
-    }
-
-    private static void ValidateAbilities(IReadOnlyList<AbilityContent> abilities, List<string> errors)
-    {
-        if (abilities.Count == 0)
-        {
-            errors.Add("At least one ability is required.");
-        }
-
-        var ids = new IdSet("ability");
-        var codes = new CodeSet<AbilityCode>("ability");
-        foreach (var ability in abilities)
-        {
-            ids.Add(ability.Id, errors);
-
-            if (ability.Code == AbilityCode.None)
-            {
-                errors.Add($"{ability.Id}: ability code must not be None.");
-            }
-            else
-            {
-                codes.Add(ability.Id, ability.Code, errors);
-                if (!HotPathCodes.TryParseAbility(ability.Id, out var parsed) || parsed != ability.Code)
-                {
-                    errors.Add($"{ability.Id}: code '{ability.Code}' does not match the id.");
-                }
-            }
-
-            Positive(ability.Id, "cooldown ticks", ability.CooldownTicks, errors);
-            Positive(ability.Id, "duration ticks", ability.DurationTicks, errors);
         }
     }
 

@@ -127,13 +127,7 @@ public static partial class Module
         public float EffectMagnitude;
         public float EffectDurationSeconds;
         public byte RangeLimitSquares;
-        public uint HullDamage;
-        public uint SailDamage;
-        public uint CannonDamage;
-        public uint CrewDamage;
         public float RangeMultiplier;
-        public string AppliedStatus;
-        public byte AppliedStatusCode;
 
         public static AmmoDef From(AmmunitionContent ammunition) => new()
         {
@@ -147,32 +141,7 @@ public static partial class Module
             EffectMagnitude = ammunition.EffectMagnitude,
             EffectDurationSeconds = ammunition.EffectDurationSeconds,
             RangeLimitSquares = ammunition.RangeLimitSquares,
-            HullDamage = ammunition.HullDamage,
-            SailDamage = ammunition.SailDamage,
-            CannonDamage = ammunition.CannonDamage,
-            CrewDamage = ammunition.CrewDamage,
             RangeMultiplier = ammunition.RangeMultiplier,
-            AppliedStatus = ammunition.AppliedStatus,
-            AppliedStatusCode = (byte)ammunition.AppliedStatusCode,
-        };
-    }
-
-    [SpacetimeDB.Table(Accessor = "AbilityDef", Public = true)]
-    public partial struct AbilityDef
-    {
-        [PrimaryKey]
-        public string AbilityId;
-        [Unique]
-        public byte AbilityCode;
-        public uint CooldownTicks;
-        public uint DurationTicks;
-
-        public static AbilityDef From(AbilityContent ability) => new()
-        {
-            AbilityId = ability.Id,
-            AbilityCode = (byte)ability.Code,
-            CooldownTicks = ability.CooldownTicks,
-            DurationTicks = ability.DurationTicks,
         };
     }
 
@@ -194,7 +163,6 @@ public static partial class Module
         public uint Hull;
         public uint CannonDamage;
         public byte PreferredAmmoCode;
-        public byte PreferredWeakPointCode;
         public uint GoldReward;
         public ulong ExperienceReward;
 
@@ -213,7 +181,6 @@ public static partial class Module
             Hull = npc.Hull,
             CannonDamage = npc.CannonDamage,
             PreferredAmmoCode = (byte)npc.PreferredAmmunition,
-            PreferredWeakPointCode = (byte)npc.PreferredWeakPoint,
             GoldReward = npc.GoldReward,
             ExperienceReward = npc.ExperienceReward,
         };

@@ -62,7 +62,6 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<NpcDef, uint> Hull { get; }
         public global::SpacetimeDB.Col<NpcDef, uint> CannonDamage { get; }
         public global::SpacetimeDB.Col<NpcDef, byte> PreferredAmmoCode { get; }
-        public global::SpacetimeDB.Col<NpcDef, byte> PreferredWeakPointCode { get; }
         public global::SpacetimeDB.Col<NpcDef, uint> GoldReward { get; }
         public global::SpacetimeDB.Col<NpcDef, ulong> ExperienceReward { get; }
 
@@ -81,7 +80,6 @@ namespace SpacetimeDB.Types
             Hull = new global::SpacetimeDB.Col<NpcDef, uint>(tableName, "hull");
             CannonDamage = new global::SpacetimeDB.Col<NpcDef, uint>(tableName, "cannon_damage");
             PreferredAmmoCode = new global::SpacetimeDB.Col<NpcDef, byte>(tableName, "preferred_ammo_code");
-            PreferredWeakPointCode = new global::SpacetimeDB.Col<NpcDef, byte>(tableName, "preferred_weak_point_code");
             GoldReward = new global::SpacetimeDB.Col<NpcDef, uint>(tableName, "gold_reward");
             ExperienceReward = new global::SpacetimeDB.Col<NpcDef, ulong>(tableName, "experience_reward");
         }

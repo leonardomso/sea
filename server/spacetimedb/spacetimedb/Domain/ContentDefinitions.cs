@@ -87,21 +87,7 @@ public sealed record AmmunitionContent
     public required float EffectMagnitude { get; init; }
     public required float EffectDurationSeconds { get; init; }
     public required byte RangeLimitSquares { get; init; }
-    public required uint HullDamage { get; init; }
-    public required uint SailDamage { get; init; }
-    public required uint CannonDamage { get; init; }
-    public required uint CrewDamage { get; init; }
     public required float RangeMultiplier { get; init; }
-    public required string AppliedStatus { get; init; }
-    public required StatusCode AppliedStatusCode { get; init; }
-}
-
-public sealed record AbilityContent
-{
-    public required string Id { get; init; }
-    public required AbilityCode Code { get; init; }
-    public required uint CooldownTicks { get; init; }
-    public required uint DurationTicks { get; init; }
 }
 
 public sealed record NpcContent
@@ -119,7 +105,6 @@ public sealed record NpcContent
     public required uint Hull { get; init; }
     public required uint CannonDamage { get; init; }
     public required AmmunitionCode PreferredAmmunition { get; init; }
-    public required WeakPointCode PreferredWeakPoint { get; init; }
     public required uint GoldReward { get; init; }
     public required ulong ExperienceReward { get; init; }
 }
@@ -169,7 +154,6 @@ public sealed record GameContent
     public required IReadOnlyList<HullContent> Hulls { get; init; }
     public required IReadOnlyList<CannonContent> Cannons { get; init; }
     public required IReadOnlyList<AmmunitionContent> Ammunition { get; init; }
-    public required IReadOnlyList<AbilityContent> Abilities { get; init; }
     public required IReadOnlyList<NpcContent> Npcs { get; init; }
     public required StatCapsContent StatCaps { get; init; }
 }
