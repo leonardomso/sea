@@ -27,9 +27,8 @@ namespace Sea.Tests
         [Test]
         public void Chart_camera_rules_clamp_zoom_and_do_not_issue_ship_commands()
         {
-            Assert.That(SeaChartCameraRules.ClampZoom(5f, aspect: 1f), Is.EqualTo(20f));
-            Assert.That(SeaChartCameraRules.ClampZoom(100f, aspect: 1f), Is.EqualTo(80f));
-            Assert.That(SeaChartCameraRules.MaximumZoomFor(16f / 9f), Is.EqualTo(56.25f).Within(0.001f));
+            Assert.That(SeaChartCameraRules.ClampZoom(5f), Is.EqualTo(12f));
+            Assert.That(SeaChartCameraRules.ClampZoom(100f), Is.EqualTo(45f));
             Assert.That(SeaChartCameraRules.PanDelta(1f, -1f, 20f, 0.5f),
                 Is.EqualTo(new Vector3(10f, 0f, -10f)));
         }

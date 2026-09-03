@@ -100,7 +100,10 @@ namespace Sea.Tests
 
             Assert.That(worldCamera, Is.Not.Null);
             Assert.That(worldCamera.transform.eulerAngles.x, Is.EqualTo(55f).Within(0.1f));
-            Assert.That(worldCamera.orthographicSize, Is.EqualTo(34f).Within(0.1f));
+            Assert.That(
+                worldCamera.orthographicSize,
+                Is.EqualTo(SeaChartCameraRules.DefaultZoom).Within(0.1f),
+                "The scene ships the framing the rules call default, or the first frame jumps.");
         }
 
         [Test]
@@ -235,20 +238,23 @@ namespace Sea.Tests
             var cameraObject = new GameObject("Zooming Chart Camera");
             var chartCamera = cameraObject.AddComponent<Camera>();
             chartCamera.orthographic = true;
-            chartCamera.orthographicSize = 45f;
+            chartCamera.orthographicSize = SeaChartCameraRules.DefaultZoom;
             cameraObject.transform.position = new Vector3(0f, 70f, -50f);
             cameraObject.transform.rotation = Quaternion.Euler(55f, 0f, 0f);
             var controller = cameraObject.AddComponent<SeaChartCameraController>();
             controller.Configure(chartCamera);
 
             controller.Zoom(1f);
-            Assert.That(chartCamera.orthographicSize, Is.LessThan(45f), "Scrolling forward zooms in.");
+            Assert.That(
+                chartCamera.orthographicSize,
+                Is.LessThan(SeaChartCameraRules.DefaultZoom),
+                "Scrolling forward zooms in.");
             Assert.That(controller.IsFollowingPlayer, Is.True, "Zooming never detaches the camera from the ship.");
             controller.Zoom(-100f);
             Assert.That(
                 chartCamera.orthographicSize,
-                Is.EqualTo(SeaChartCameraRules.MaximumZoomFor(chartCamera.aspect)).Within(0.001f),
-                "Zooming out stops where the map edge would show.");
+                Is.EqualTo(SeaChartCameraRules.MaximumZoom).Within(0.001f),
+                "Zooming out stops at the widest framing the ship camera allows.");
 
             // Zoomed all the way out the footprint spans the map, so zoom back in to leave room to drag.
             chartCamera.orthographicSize = SeaChartCameraRules.MinimumZoom;

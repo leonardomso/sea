@@ -7,28 +7,25 @@ namespace Sea.Tests
     public sealed class SeaChartCameraRulesTests
     {
         [Test]
-        public void Zoom_is_clamped_between_the_minimum_and_the_map_bound_maximum()
+        public void Zoom_is_clamped_between_the_minimum_and_the_maximum()
         {
-            Assert.That(SeaChartCameraRules.ClampZoom(5f, 16f / 9f), Is.EqualTo(SeaChartCameraRules.MinimumZoom));
-            Assert.That(SeaChartCameraRules.ClampZoom(45f, 16f / 9f), Is.EqualTo(45f));
-            Assert.That(
-                SeaChartCameraRules.ClampZoom(500f, 16f / 9f),
-                Is.EqualTo(SeaChartCameraRules.MaximumZoomFor(16f / 9f)));
+            Assert.That(SeaChartCameraRules.ClampZoom(5f), Is.EqualTo(SeaChartCameraRules.MinimumZoom));
+            Assert.That(SeaChartCameraRules.ClampZoom(20f), Is.EqualTo(20f));
+            Assert.That(SeaChartCameraRules.ClampZoom(500f), Is.EqualTo(SeaChartCameraRules.MaximumZoom));
         }
 
         [Test]
-        public void Wider_screens_get_a_lower_zoom_cap_so_the_map_edge_stays_hidden()
+        public void The_default_zoom_frames_the_ship_rather_than_the_whole_chart()
         {
-            var ultraWide = SeaChartCameraRules.MaximumZoomFor(21f / 9f);
-            var wide = SeaChartCameraRules.MaximumZoomFor(16f / 9f);
-            var square = SeaChartCameraRules.MaximumZoomFor(1f);
+            var extents = SeaChartCameraRules.ViewHalfExtents(SeaChartCameraRules.DefaultZoom, 16f / 9f);
+            var mapHalfSize = (SeaChartCoordinates.MapMaximum - SeaChartCoordinates.MapMinimum) / 2f;
 
-            Assert.That(ultraWide, Is.LessThan(wide));
-            Assert.That(wide, Is.LessThan(square));
+            Assert.That(SeaChartCameraRules.DefaultZoom, Is.LessThan(SeaChartCameraRules.MaximumZoom));
+            Assert.That(SeaChartCameraRules.DefaultZoom, Is.GreaterThan(SeaChartCameraRules.MinimumZoom));
             Assert.That(
-                SeaChartCameraRules.ViewHalfExtents(ultraWide, 21f / 9f).x,
-                Is.LessThanOrEqualTo(100.001f),
-                "At the cap the footprint never reaches past the map edge.");
+                extents.x,
+                Is.LessThan(mapHalfSize / 2f),
+                "The default view shows a quarter of the map or less, so sailing reads as motion.");
         }
 
         [Test]
@@ -56,21 +53,27 @@ namespace Sea.Tests
         }
 
         [Test]
-        public void Clamp_center_keeps_the_footprint_inside_every_map_edge()
+        public void Clamp_center_keeps_the_footprint_inside_the_drawn_water()
         {
-            var extents = new Vector2(30f, 40f);
+            // Half-extents of 60 by 80 leave a reach of 80 on x and 60 on z: the view may carry
+            // one margin past the map edge, but never past the water the world draws.
+            var extents = new Vector2(60f, 80f);
 
             Assert.That(
                 SeaChartCameraRules.ClampCenter(new Vector3(-150f, 0f, 150f), extents),
-                Is.EqualTo(new Vector3(-70f, 0f, 60f)));
+                Is.EqualTo(new Vector3(-80f, 0f, 60f)));
             Assert.That(
                 SeaChartCameraRules.ClampCenter(new Vector3(10f, 3f, -20f), extents),
                 Is.EqualTo(new Vector3(10f, 3f, -20f)),
-                "A center whose footprint is already inside the map is untouched.");
+                "A center well inside the water is untouched.");
             Assert.That(
-                SeaChartCameraRules.ClampCenter(new Vector3(70f, 0f, -60f), extents),
-                Is.EqualTo(new Vector3(70f, 0f, -60f)),
-                "A footprint that exactly touches the map edge is allowed.");
+                SeaChartCameraRules.ClampCenter(new Vector3(80f, 0f, -60f), extents),
+                Is.EqualTo(new Vector3(80f, 0f, -60f)),
+                "A footprint that exactly touches the drawn edge is allowed.");
+            Assert.That(
+                SeaChartCameraRules.ClampCenter(new Vector3(100f, 0f, -100f), new Vector2(35f, 25f)),
+                Is.EqualTo(new Vector3(100f, 0f, -100f)),
+                "At the default zoom the camera reaches the map corner itself.");
         }
 
         [Test]

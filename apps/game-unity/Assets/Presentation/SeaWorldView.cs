@@ -23,10 +23,16 @@ namespace Sea.Client
         private const float ShipFootprint = 10f;
         private const int MaximumTrackedShipRows = 6000;
         private const int MainChartFogLayer = 8;
+        // A Unity plane is ten units across per unit of scale. The water and fog reach one camera
+        // margin past each map edge, because the camera stays centred on a ship sailing along the
+        // edge and would otherwise frame the void beyond it.
+        private const float MapPlaneSpan =
+            SeaChartCoordinates.MapMaximum - SeaChartCoordinates.MapMinimum
+            + (2f * SeaChartCameraRules.MapMargin);
         private static readonly Vector3 MapPlaneScale = new(
-            (SeaChartCoordinates.MapMaximum - SeaChartCoordinates.MapMinimum) / 10f,
+            MapPlaneSpan / 10f,
             1f,
-            (SeaChartCoordinates.MapMaximum - SeaChartCoordinates.MapMinimum) / 10f);
+            MapPlaneSpan / 10f);
         public const float WaterSurfaceHeight = -0.35f;
         public const float ShipRootHeight = -0.43f;
 

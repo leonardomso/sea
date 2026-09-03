@@ -109,21 +109,24 @@ namespace Sea.Tests.EditMode
         }
 
         [Test]
-        public void Chart_camera_footprint_and_zoom_cap_keep_the_view_inside_the_map()
+        public void Chart_camera_footprint_follows_the_ship_to_the_map_edge()
         {
-            var extents = SeaChartCameraRules.ViewHalfExtents(45f, 16f / 9f);
-            Assert.That(extents.x, Is.EqualTo(80f).Within(0.01f));
-            Assert.That(extents.y, Is.EqualTo(54.936f).Within(0.01f));
+            var extents = SeaChartCameraRules.ViewHalfExtents(SeaChartCameraRules.DefaultZoom, 16f / 9f);
+            Assert.That(extents.x, Is.EqualTo(35.556f).Within(0.01f));
+            Assert.That(extents.y, Is.EqualTo(24.416f).Within(0.01f));
 
-            Assert.That(SeaChartCameraRules.MaximumZoomFor(16f / 9f), Is.EqualTo(56.25f).Within(0.001f));
-            Assert.That(SeaChartCameraRules.MaximumZoomFor(1f), Is.EqualTo(80f));
-
-            var clamped = SeaChartCameraRules.ClampCenter(new Vector3(90f, 5f, -90f), new Vector2(30f, 40f));
-            Assert.That(clamped, Is.EqualTo(new Vector3(70f, 5f, -60f)));
             Assert.That(
-                SeaChartCameraRules.ClampCenter(new Vector3(50f, 0f, 50f), new Vector2(120f, 120f)),
+                SeaChartCameraRules.ClampCenter(new Vector3(100f, 5f, -100f), extents),
+                Is.EqualTo(new Vector3(100f, 5f, -100f)),
+                "A ship in the map corner still gets the camera centred on it.");
+            Assert.That(
+                SeaChartCameraRules.ClampCenter(new Vector3(90f, 5f, -90f), new Vector2(60f, 80f)),
+                Is.EqualTo(new Vector3(80f, 5f, -60f)),
+                "A zoomed-out view stops where the drawn water would run out.");
+            Assert.That(
+                SeaChartCameraRules.ClampCenter(new Vector3(50f, 0f, 50f), new Vector2(200f, 200f)),
                 Is.EqualTo(Vector3.zero),
-                "A view wider than the map centers on it.");
+                "A view wider than the water centers on the map.");
         }
 
         [Test]

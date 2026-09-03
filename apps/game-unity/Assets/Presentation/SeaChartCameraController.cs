@@ -60,30 +60,35 @@ namespace Sea.Client
     }
 
     /// <summary>
-    /// Pure rules for the tilted orthographic chart camera. The visible ground footprint of the
-    /// camera is a rectangle of half-extents (zoom * aspect, zoom / sin(tilt)); the view is kept
-    /// inside the map so no water past the map edge is ever shown.
+    /// Pure rules for the tilted orthographic ship camera. The visible ground footprint of the
+    /// camera is a rectangle of half-extents (zoom * aspect, zoom / sin(tilt)); the view stays on
+    /// the ship, and is allowed past the map edge only as far as the world still draws water.
     /// </summary>
     public static class SeaChartCameraRules
     {
-        public const float DefaultZoom = 45f;
-        public const float MinimumZoom = 20f;
-        public const float MaximumZoom = 80f;
+        // A ship camera, not a chart camera. At the default zoom a 16:9 screen shows roughly
+        // 71 by 49 units of a 200 by 200 map, close enough that sailing reads as motion past the
+        // water instead of a marker creeping over a chart.
+        public const float DefaultZoom = 20f;
+        public const float MinimumZoom = 12f;
+        public const float MaximumZoom = 45f;
         public const float TiltDegrees = 55f;
+
+        // How far the view may carry past the map edge so the camera can stay centred on a ship
+        // sailing along it. The water and fog planes are built to the same margin, so the
+        // overshoot shows sea rather than void.
+        public const float MapMargin = 40f;
 
         private const float MapHalfSize =
             (SeaChartCoordinates.MapMaximum - SeaChartCoordinates.MapMinimum) / 2f;
 
+        private const float ReachHalfSize = MapHalfSize + MapMargin;
+
         public static Vector2 ViewHalfExtents(float zoom, float aspect) =>
             new(zoom * aspect, zoom / Mathf.Sin(TiltDegrees * Mathf.Deg2Rad));
 
-        public static float MaximumZoomFor(float aspect) => Mathf.Min(
-            MaximumZoom,
-            MapHalfSize / Mathf.Max(aspect, 0.01f),
-            MapHalfSize * Mathf.Sin(TiltDegrees * Mathf.Deg2Rad));
-
-        public static float ClampZoom(float zoom, float aspect) =>
-            Mathf.Clamp(zoom, MinimumZoom, MaximumZoomFor(aspect));
+        public static float ClampZoom(float zoom) =>
+            Mathf.Clamp(zoom, MinimumZoom, MaximumZoom);
 
         public static Vector3 PanDelta(
             float horizontal,
@@ -103,9 +108,12 @@ namespace Sea.Client
             center.y,
             ClampAxis(center.z, viewHalfExtents.y));
 
+        // The camera follows the ship right up to the map edge, because a ship pinned to the side
+        // of the screen is what made the old chart camera feel like it was not following at all.
+        // It stops only where the view would run past the water the world actually draws.
         private static float ClampAxis(float value, float halfExtent)
         {
-            var reach = Mathf.Max(0f, MapHalfSize - halfExtent);
+            var reach = Mathf.Min(MapHalfSize, Mathf.Max(0f, ReachHalfSize - halfExtent));
             return Mathf.Clamp(value, -reach, reach);
         }
     }
@@ -121,7 +129,11 @@ namespace Sea.Client
         [SerializeField] private float panSpeed = 45f;
         [SerializeField] private float panSharpness = 10f;
         [SerializeField] private float zoomSpeed = 8f;
-        [SerializeField] private float followSharpness = 6f;
+        // An exponential follower trails its target by speed / sharpness for as long as the
+        // target keeps moving. At 6 a ship under full sail sat four units behind the centre of
+        // the screen for the whole voyage; at 40 the residue is under a unit, so the camera reads
+        // as locked to the ship while still easing over a respawn or a recenter.
+        [SerializeField] private float followSharpness = 40f;
 
         private readonly SeaChartFollowState follow = new();
         private readonly SeaChartPanMomentum panMomentum = new();
@@ -165,8 +177,7 @@ namespace Sea.Client
             using var _ = CameraMarker.Auto();
             var deltaTime = Time.unscaledDeltaTime;
             chartCamera.orthographicSize = SeaChartCameraRules.ClampZoom(
-                chartCamera.orthographicSize,
-                chartCamera.aspect);
+                chartCamera.orthographicSize);
 
             var hasPlayer = TryGetPlayerPosition(out var playerPosition);
             if (hasPlayer && !hasInitialCenter)
@@ -227,8 +238,7 @@ namespace Sea.Client
             if (chartCamera != null && !Mathf.Approximately(scroll, 0f))
             {
                 chartCamera.orthographicSize = SeaChartCameraRules.ClampZoom(
-                    chartCamera.orthographicSize - scroll * zoomSpeed,
-                    chartCamera.aspect);
+                    chartCamera.orthographicSize - scroll * zoomSpeed);
                 KeepChartInBounds();
             }
         }
