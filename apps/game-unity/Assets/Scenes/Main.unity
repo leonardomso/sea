@@ -541,6 +541,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Sea.Presentation::Sea.Client.SeaGameController
   connection: {fileID: 2016663748}
   worldCamera: {fileID: 1184568874}
+  worldView: {fileID: 2016663743}
   movePlaneHeight: 0
 --- !u!114 &2016663746
 MonoBehaviour:

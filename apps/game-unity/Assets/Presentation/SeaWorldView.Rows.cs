@@ -299,7 +299,7 @@ namespace Sea.Client
             fogMaterial.SetVector("_PlayerPosition", new Vector4(playerPosition.x, playerPosition.z, 0f, 0f));
             UpdateTargetRing(localShip);
             UpdateOwnShipRing();
-            UpdateCourseIndicator(localShip);
+            UpdateCoursePing();
         }
 
         private Vector3 PlayerChartPosition() => playerObject != null

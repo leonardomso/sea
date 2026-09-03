@@ -123,14 +123,9 @@ namespace Sea.Client
                 ownShipRing.SetActive(false);
             }
 
-            if (courseLine != null)
+            if (coursePing != null)
             {
-                courseLine.gameObject.SetActive(false);
-            }
-
-            if (destinationRing != null)
-            {
-                destinationRing.gameObject.SetActive(false);
+                coursePing.gameObject.SetActive(false);
             }
 
             combatPresenter?.Reset();

@@ -77,8 +77,9 @@ namespace Sea.Client
         private Transform chartCameraTransform;
         private Vector3 previousVisibilityOrigin = new(float.PositiveInfinity, 0f, 0f);
         private bool visibilityDirty = true;
-        private LineRenderer courseLine;
-        private LineRenderer destinationRing;
+        private LineRenderer coursePing;
+        private float coursePingStartedAt;
+        private Vector3 coursePingCenter;
 
         public Shader FogShader => fogShader;
         public float ModelYawOffset => modelYawOffset;
@@ -208,7 +209,7 @@ namespace Sea.Client
             var water = SeaPrimitive.Create(PrimitiveType.Plane, "Water Surface", waterMaterial);
             water.transform.position = new Vector3(0f, WaterSurfaceHeight, 0f);
             water.transform.localScale = MapPlaneScale;
-            CreateCourseIndicator();
+            CreateCoursePing();
         }
 
         private void CreateFog()
@@ -337,59 +338,59 @@ namespace Sea.Client
             return ship;
         }
 
-        private void CreateCourseIndicator()
+        private void CreateCoursePing()
         {
-            var routeObject = new GameObject("Plotted Course");
-            courseLine = routeObject.AddComponent<LineRenderer>();
-            courseLine.sharedMaterial = SeaMaterialFactory.CreateTransparent(
-                new Color(0.91f, 0.72f, 0.39f, 0.58f));
-            courseLine.positionCount = 2;
-            courseLine.startWidth = 0.13f;
-            courseLine.endWidth = 0.04f;
-            courseLine.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-
-            var markerObject = new GameObject("Course Destination");
-            destinationRing = markerObject.AddComponent<LineRenderer>();
-            destinationRing.sharedMaterial = courseLine.sharedMaterial;
-            destinationRing.loop = true;
-            destinationRing.positionCount = 40;
-            destinationRing.startWidth = 0.14f;
-            destinationRing.endWidth = 0.14f;
-            destinationRing.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            courseLine.gameObject.SetActive(false);
-            destinationRing.gameObject.SetActive(false);
+            var pingObject = new GameObject("Course Ping");
+            coursePing = pingObject.AddComponent<LineRenderer>();
+            coursePing.sharedMaterial = SeaMaterialFactory.CreateTransparent(
+                new Color(0.91f, 0.72f, 0.39f, 1f));
+            coursePing.loop = true;
+            coursePing.positionCount = SeaClickPingRules.Segments;
+            coursePing.startWidth = 0.16f;
+            coursePing.endWidth = 0.16f;
+            coursePing.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            coursePing.gameObject.SetActive(false);
         }
 
-        private void UpdateCourseIndicator(Ship ship)
+        /// <summary>
+        /// Answers a click on the water where it was made, without waiting for the server to
+        /// confirm the course: the ring is feedback on the order, not a picture of the route.
+        /// </summary>
+        public void PingChartPosition(Vector2 destination)
         {
-            var show = ship.HasCourse && playerObject != null;
-            courseLine.gameObject.SetActive(show);
-            destinationRing.gameObject.SetActive(show);
-            if (!show)
+            if (coursePing == null)
             {
                 return;
             }
 
-            var start = playerObject.transform.position + Vector3.up * 0.18f;
-            var destination = ToWorld(ship.DestinationX, ship.DestinationY, 0.08f);
-            courseLine.positionCount = ship.HasWaypoint ? 3 : 2;
-            courseLine.SetPosition(0, start);
-            if (ship.HasWaypoint)
+            coursePingCenter = ToWorld(destination.x, destination.y, 0.08f);
+            coursePingStartedAt = Time.time;
+            coursePing.gameObject.SetActive(true);
+        }
+
+        private void UpdateCoursePing()
+        {
+            if (coursePing == null || !coursePing.gameObject.activeSelf)
             {
-                courseLine.SetPosition(1, ToWorld(ship.WaypointX, ship.WaypointY, 0.08f));
-                courseLine.SetPosition(2, destination);
+                return;
             }
-            else
+
+            var elapsed = Time.time - coursePingStartedAt;
+            if (!SeaClickPingRules.IsAlive(elapsed))
             {
-                courseLine.SetPosition(1, destination);
+                coursePing.gameObject.SetActive(false);
+                return;
             }
-            const float markerRadius = 1.55f;
-            for (var index = 0; index < destinationRing.positionCount; index++)
+
+            var radius = SeaClickPingRules.RadiusAt(elapsed);
+            var color = new Color(0.97f, 0.85f, 0.55f, SeaClickPingRules.AlphaAt(elapsed));
+            coursePing.startColor = color;
+            coursePing.endColor = color;
+            for (var index = 0; index < coursePing.positionCount; index++)
             {
-                var angle = index * Mathf.PI * 2f / destinationRing.positionCount;
-                destinationRing.SetPosition(
+                coursePing.SetPosition(
                     index,
-                    destination + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * markerRadius);
+                    SeaClickPingRules.SegmentPosition(coursePingCenter, index, radius));
             }
         }
 

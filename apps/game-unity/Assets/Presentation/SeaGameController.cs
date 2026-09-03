@@ -8,6 +8,7 @@ namespace Sea.Client
     {
         [SerializeField] private SeaConnectionController connection;
         [SerializeField] private Camera worldCamera;
+        [SerializeField] private SeaWorldView worldView;
         [SerializeField] private float movePlaneHeight;
 
         public ulong SelectedTargetId => TryGetLocalShip(out var ship) ? ship.TargetEntityId : 0;
@@ -28,10 +29,14 @@ namespace Sea.Client
             _ => "round",
         };
 
-        public void ConfigureDependencies(SeaConnectionController connectionController, Camera camera)
+        public void ConfigureDependencies(
+            SeaConnectionController connectionController,
+            Camera camera,
+            SeaWorldView view = null)
         {
             connection = connectionController;
             worldCamera = camera;
+            worldView = view;
         }
 
         private void Awake() => worldCamera ??= Camera.main;
@@ -72,6 +77,9 @@ namespace Sea.Client
                 }
             }
 
+            // Ping before issuing, so the click is answered on the frame it was made rather
+            // than a round trip later.
+            worldView?.PingChartPosition(destination);
             Issue(
                 new ShipCommand.SetCourse(new SetCourseCommand(destination.x, destination.y)),
                 $"Set course to {SeaChartCoordinates.LabelAt(destination.x, destination.y)}");
@@ -154,6 +162,7 @@ namespace Sea.Client
                 return false;
             }
 
+            worldView?.PingChartPosition(new Vector2(cell.X, cell.Y));
             Issue(
                 new ShipCommand.SetCourse(new SetCourseCommand(cell.X, cell.Y)),
                 $"Set course to {SeaChartCoordinates.LabelAt(cell.X, cell.Y)}");
