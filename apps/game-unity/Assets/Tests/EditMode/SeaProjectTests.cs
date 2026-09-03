@@ -208,6 +208,28 @@ namespace Sea.Tests
         }
 
         [Test]
+        public void Recentering_the_chart_ends_the_pan_glide_it_was_coasting_on()
+        {
+            var cameraObject = new GameObject("Chart Camera");
+            var chartCamera = cameraObject.AddComponent<Camera>();
+            var controller = cameraObject.AddComponent<SeaChartCameraController>();
+            controller.Configure(chartCamera);
+
+            Assert.That(controller.IsGliding, Is.False);
+            controller.SetPanInput(Vector2.right);
+            controller.Pan(1f / 60f);
+            Assert.That(controller.IsGliding, Is.True, "Holding WASD builds a glide.");
+
+            controller.SetPanInput(Vector2.zero);
+            controller.Recenter();
+
+            Assert.That(controller.IsGliding, Is.False,
+                "Leftover glide would push the chart away from the ship the follow pulls it to.");
+            Assert.That(controller.IsFollowingPlayer, Is.True);
+            Object.DestroyImmediate(cameraObject);
+        }
+
+        [Test]
         public void Chart_zoom_and_drag_keep_the_camera_attached_or_detached_as_the_player_left_it()
         {
             var cameraObject = new GameObject("Zooming Chart Camera");

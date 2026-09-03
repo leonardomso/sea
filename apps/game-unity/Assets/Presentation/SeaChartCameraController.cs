@@ -124,14 +124,15 @@ namespace Sea.Client
         [SerializeField] private float followSharpness = 6f;
 
         private readonly SeaChartFollowState follow = new();
+        private readonly SeaChartPanMomentum panMomentum = new();
         private SeaMiniMapViewportMarker viewportMarker;
         private Vector2 panInput;
-        private Vector2 panVelocity;
         private Vector2 dragAnchor;
         private bool isDragging;
         private bool hasInitialCenter;
 
         public bool IsFollowingPlayer => follow.IsFollowing;
+        public bool IsGliding => panMomentum.IsGliding;
         public Camera MiniMapCamera => miniMapCamera;
 
         public void Configure(Camera camera, Camera mapCamera = null)
@@ -232,7 +233,13 @@ namespace Sea.Client
             }
         }
 
-        public void Recenter() => follow.Resume();
+        // The glide has to end with the detour, or the follow spends the next frames
+        // pulling the chart back against velocity the player already let go of.
+        public void Recenter()
+        {
+            panMomentum.Stop();
+            follow.Resume();
+        }
 
         public void ShowChartPosition(Vector3 worldPosition)
         {
@@ -241,6 +248,7 @@ namespace Sea.Client
                 return;
             }
 
+            panMomentum.Stop();
             follow.Interrupt();
             CenterOn(worldPosition);
         }
@@ -259,22 +267,29 @@ namespace Sea.Client
             return true;
         }
 
-        private void Pan(float deltaTime)
+        // Public so a test can drive the glide with an explicit delta; LateUpdate is at
+        // the mercy of whatever unscaled frame time the editor happens to report.
+        public void Pan(float deltaTime)
         {
-            var zoomScale = chartCamera.orthographicSize / SeaChartCameraRules.DefaultZoom;
-            panVelocity = Vector2.Lerp(
-                panVelocity,
-                panInput * (panSpeed * zoomScale),
-                1f - Mathf.Exp(-panSharpness * deltaTime));
-            if (panVelocity.sqrMagnitude < 0.0001f)
+            if (chartCamera == null)
             {
-                panVelocity = Vector2.zero;
+                return;
+            }
+
+            var zoomScale = chartCamera.orthographicSize / SeaChartCameraRules.DefaultZoom;
+            var velocity = panMomentum.Advance(
+                panInput,
+                panSpeed * zoomScale,
+                panSharpness,
+                deltaTime);
+            if (velocity == Vector2.zero)
+            {
                 return;
             }
 
             chartCamera.transform.position += SeaChartCameraRules.PanDelta(
-                panVelocity.x,
-                panVelocity.y,
+                velocity.x,
+                velocity.y,
                 1f,
                 deltaTime);
         }

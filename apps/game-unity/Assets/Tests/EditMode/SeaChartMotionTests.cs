@@ -161,5 +161,76 @@ namespace Sea.Tests.EditMode
             var vertical = SeaChartCameraRules.DragDelta(new Vector2(0f, 90f), 45f, 900f);
             Assert.That(vertical.z, Is.EqualTo(-10.987f).Within(0.01f));
         }
+
+        [Test]
+        public void Pan_momentum_ramps_toward_the_held_direction_without_overshooting_it()
+        {
+            var momentum = new SeaChartPanMomentum();
+            Assert.That(momentum.IsGliding, Is.False);
+
+            var first = momentum.Advance(Vector2.right, 45f, 10f, 1f / 60f);
+            Assert.That(first.x, Is.GreaterThan(0f));
+            Assert.That(first.x, Is.LessThan(45f), "One frame must not jump to full pan speed.");
+            Assert.That(momentum.IsGliding, Is.True);
+
+            var velocity = first;
+            for (var frame = 0; frame < 300; frame++)
+            {
+                velocity = momentum.Advance(Vector2.right, 45f, 10f, 1f / 60f);
+            }
+
+            Assert.That(velocity.x, Is.EqualTo(45f).Within(0.01f));
+            Assert.That(velocity.y, Is.EqualTo(0f).Within(0.0001f));
+        }
+
+        [Test]
+        public void Pan_momentum_coasts_to_a_full_stop_after_the_key_is_released()
+        {
+            var momentum = new SeaChartPanMomentum();
+            for (var frame = 0; frame < 60; frame++)
+            {
+                momentum.Advance(Vector2.up, 45f, 10f, 1f / 60f);
+            }
+
+            var released = momentum.Advance(Vector2.zero, 45f, 10f, 1f / 60f);
+            Assert.That(released.y, Is.GreaterThan(0f), "Releasing WASD glides rather than snapping.");
+
+            for (var frame = 0; frame < 600; frame++)
+            {
+                momentum.Advance(Vector2.zero, 45f, 10f, 1f / 60f);
+            }
+
+            Assert.That(momentum.Velocity, Is.EqualTo(Vector2.zero),
+                "A coast that never reaches zero would fight the follow forever.");
+            Assert.That(momentum.IsGliding, Is.False);
+        }
+
+        [Test]
+        public void Stopping_the_glide_drops_the_velocity_immediately()
+        {
+            var momentum = new SeaChartPanMomentum();
+            momentum.Advance(new Vector2(1f, 1f), 45f, 10f, 1f / 60f);
+            Assert.That(momentum.IsGliding, Is.True);
+
+            momentum.Stop();
+
+            Assert.That(momentum.Velocity, Is.EqualTo(Vector2.zero));
+            Assert.That(momentum.IsGliding, Is.False);
+        }
+
+        [Test]
+        public void Pan_momentum_scales_with_the_speed_it_is_given()
+        {
+            var slow = new SeaChartPanMomentum();
+            var fast = new SeaChartPanMomentum();
+            for (var frame = 0; frame < 300; frame++)
+            {
+                slow.Advance(Vector2.right, 20f, 10f, 1f / 60f);
+                fast.Advance(Vector2.right, 80f, 10f, 1f / 60f);
+            }
+
+            Assert.That(slow.Velocity.x, Is.EqualTo(20f).Within(0.01f));
+            Assert.That(fast.Velocity.x, Is.EqualTo(80f).Within(0.01f));
+        }
     }
 }
