@@ -29,10 +29,7 @@ namespace Sea.Client
                 return;
             }
 
-            spatialInterest.Observe(
-                ship.ChunkX,
-                ship.ChunkY,
-                Time.realtimeSinceStartupAsDouble);
+            ObserveChunk(ship.ChunkX, ship.ChunkY);
             if (selectedTargetEntityId != ship.TargetEntityId)
             {
                 selectedTargetEntityId = ship.TargetEntityId;
@@ -47,10 +44,22 @@ namespace Sea.Client
                 return;
             }
 
-            spatialInterest.Observe(
-                movement.ChunkX,
-                movement.ChunkY,
-                Time.realtimeSinceStartupAsDouble);
+            ObserveChunk(movement.ChunkX, movement.ChunkY);
+        }
+
+        /// <summary>
+        /// Follows the local ship across chunk borders, unless the client already holds the whole
+        /// map. Resubscribing to water it is already streaming would tear the terrain down and
+        /// rebuild it identically, and throw away the motion history of every ship in view.
+        /// </summary>
+        private void ObserveChunk(int chunkX, int chunkY)
+        {
+            if (SeaSubscriptionPlan.CoversWholeMap)
+            {
+                return;
+            }
+
+            spatialInterest.Observe(chunkX, chunkY, Time.realtimeSinceStartupAsDouble);
         }
 
         private void SubscribeSpatialScope(DbConnection connection, int chunkX, int chunkY)
@@ -88,7 +97,9 @@ namespace Sea.Client
                     generation,
                     chunk,
                     error))
-                .Subscribe(SeaSubscriptionPlan.Spatial(chunk.X, chunk.Y, SeaSubscriptionPlan.SpatialRadius));
+                .Subscribe(SeaSubscriptionPlan.CoversWholeMap
+                    ? SeaSubscriptionPlan.WholeMap()
+                    : SeaSubscriptionPlan.Spatial(chunk.X, chunk.Y, SeaSubscriptionPlan.SpatialRadius));
             pendingSpatialSubscription = next;
         }
 
@@ -114,7 +125,11 @@ namespace Sea.Client
 
             IsSubscribed = true;
             Status = "Ready";
-            Debug.Log($"Sea client ready. Chunk {chunk.X},{chunk.Y}.", this);
+            Debug.Log(
+                SeaSubscriptionPlan.CoversWholeMap
+                    ? "Sea client ready. Whole map subscribed."
+                    : $"Sea client ready. Chunk {chunk.X},{chunk.Y}.",
+                this);
         }
 
         private void HandleSpatialSubscriptionError(

@@ -15,6 +15,29 @@ namespace Sea.Client
         // beyond the fog is hidden anyway, so a wider window only streams rows nobody can see.
         public const int SpatialRadius = 5;
 
+        // The chunk window earns its cost on a map too large to hold at once. Havenmere is not
+        // that map: 200x200 units is 64 chunks, and at sailing speed the player crosses a chunk
+        // border every couple of seconds. Each crossing resubscribed, which destroyed and
+        // rebuilt terrain meshes on the main thread and threw away the motion history of every
+        // ship in view - the freeze. Under this budget the client takes the whole map in one
+        // subscription that never changes; over it, the chunk window comes back.
+        public const int WholeMapChunkBudget = 144;
+
+        public static bool CoversWholeMap =>
+            FitsInOneSubscription(SeaChartCoordinates.MapMinimum, SeaChartCoordinates.MapMaximum);
+
+        public static bool FitsInOneSubscription(float mapMinimum, float mapMaximum)
+        {
+            var span = mapMaximum - mapMinimum;
+            if (!(span > 0f))
+            {
+                throw new ArgumentOutOfRangeException(nameof(mapMaximum));
+            }
+
+            var chunksPerAxis = (int)Math.Ceiling(span / ChunkSize);
+            return chunksPerAxis * chunksPerAxis <= WholeMapChunkBudget;
+        }
+
         public static string[] Initial(string ownerSqlLiteral)
         {
             if (string.IsNullOrWhiteSpace(ownerSqlLiteral))
@@ -110,6 +133,24 @@ namespace Sea.Client
                 $"SELECT * FROM cooldown WHERE {statusPredicate}",
                 $"SELECT * FROM ship_channel WHERE {statusPredicate}",
                 $"SELECT * FROM volley WHERE is_active = true AND ({volleyPredicate})",
+            };
+        }
+
+        /// <summary>
+        /// The spatial tables without a chunk predicate. Only legal while
+        /// <see cref="CoversWholeMap"/> holds; it is the one subscription the client keeps for
+        /// the whole voyage.
+        /// </summary>
+        public static string[] WholeMap()
+        {
+            return new[]
+            {
+                "SELECT * FROM ship WHERE is_active = true",
+                "SELECT * FROM ship_movement WHERE is_active = true",
+                "SELECT * FROM volley WHERE is_active = true",
+                "SELECT * FROM loot WHERE is_active = true",
+                "SELECT * FROM world_object WHERE is_active = true",
+                "SELECT * FROM current_zone WHERE is_active = true",
             };
         }
 

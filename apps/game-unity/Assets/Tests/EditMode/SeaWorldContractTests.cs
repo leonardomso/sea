@@ -24,6 +24,7 @@ namespace Sea.Tests
                 .Concat(SeaSubscriptionPlan.Player(7))
                 .Concat(SeaSubscriptionPlan.Focus(7, new ulong[] { 8, 9 }))
                 .Concat(SeaSubscriptionPlan.Spatial(-3, 2, SeaSubscriptionPlan.SpatialRadius))
+                .Concat(SeaSubscriptionPlan.WholeMap())
                 .Append(SeaRuntimeValidationRules.RuntimeNpcSubscriptionQuery)
                 .Append(SeaRuntimeValidationRules.RuntimeMovementSubscriptionQuery)
                 .ToList();

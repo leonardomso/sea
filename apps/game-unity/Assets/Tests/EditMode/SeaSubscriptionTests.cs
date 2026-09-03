@@ -102,6 +102,48 @@ namespace Sea.Tests
         }
 
         [Test]
+        public void The_shipped_map_is_small_enough_to_hold_in_one_subscription()
+        {
+            Assert.That(SeaSubscriptionPlan.CoversWholeMap, Is.True);
+        }
+
+        [Test]
+        public void A_map_past_the_chunk_budget_falls_back_to_the_chunk_window()
+        {
+            var budgetedSpan = SeaSubscriptionPlan.ChunkSize *
+                Math.Sqrt(SeaSubscriptionPlan.WholeMapChunkBudget);
+
+            Assert.That(
+                SeaSubscriptionPlan.FitsInOneSubscription(0f, (float)budgetedSpan),
+                Is.True);
+            Assert.That(
+                SeaSubscriptionPlan.FitsInOneSubscription(0f, (float)budgetedSpan + SeaSubscriptionPlan.ChunkSize),
+                Is.False);
+        }
+
+        [Test]
+        public void A_map_without_a_positive_span_is_rejected_rather_than_guessed_at()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => SeaSubscriptionPlan.FitsInOneSubscription(0f, 0f));
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => SeaSubscriptionPlan.FitsInOneSubscription(0f, float.NaN));
+        }
+
+        [Test]
+        public void The_whole_map_plan_covers_the_same_tables_as_the_chunk_window()
+        {
+            var wholeMap = SeaSubscriptionPlan.WholeMap();
+            var chunked = SeaSubscriptionPlan.Spatial(0, 0, SeaSubscriptionPlan.SpatialRadius);
+
+            Assert.That(wholeMap.Length, Is.EqualTo(chunked.Length));
+            Assert.That(wholeMap.All(query => query.Contains("is_active = true")), Is.True);
+            Assert.That(wholeMap.All(query => !query.Contains("chunk_")), Is.True);
+            Assert.That(wholeMap, Has.Some.StartsWith("SELECT * FROM world_object"));
+            Assert.That(wholeMap, Has.Some.StartsWith("SELECT * FROM ship_movement"));
+        }
+
+        [Test]
         public void Only_the_latest_subscription_generation_can_apply()
         {
             var generations = new SeaSubscriptionGeneration();
