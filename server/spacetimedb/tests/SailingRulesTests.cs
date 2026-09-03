@@ -381,4 +381,37 @@ public sealed class SailingRulesTests
         Assert.True(tailwind > 1f);
         Assert.True(headwind < 1f);
     }
+
+    [Theory]
+    [InlineData(3f, 0f, 14.5f, 0f)]
+    [InlineData(0f, 0f, 14.5f, 0f)]
+    [InlineData(-30f, 0f, -30f, 0f)]
+    public void Nearest_clear_point_leaves_a_blocker_on_its_near_side(
+        float x,
+        float y,
+        float expectedX,
+        float expectedY)
+    {
+        var blockers = new[] { new NavigationBlocker(0f, 0f, 10f) };
+
+        var point = NavigationRules.NearestClearPoint(x, y, blockers);
+
+        Assert.Equal(expectedX, point.X, 3);
+        Assert.Equal(expectedY, point.Y, 3);
+        Assert.False(NavigationRules.IsDestinationBlocked(point.X, point.Y, blockers));
+    }
+
+    [Fact]
+    public void Nearest_clear_point_escapes_overlapping_blockers()
+    {
+        var blockers = new[]
+        {
+            new NavigationBlocker(0f, 0f, 10f),
+            new NavigationBlocker(16f, 0f, 10f),
+        };
+
+        var point = NavigationRules.NearestClearPoint(2f, 0f, blockers);
+
+        Assert.False(NavigationRules.IsDestinationBlocked(point.X, point.Y, blockers));
+    }
 }

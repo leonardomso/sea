@@ -15,6 +15,9 @@ public static class WorldRules
     public const uint EnemyCannonCooldownTicks = 40;
     public const uint EnemyGoldReward = 100;
     public const float CannonRange = 60f;
+
+    // Mirrors the client's fog radius; nothing should engage a player from beyond it.
+    public const float VisionRadius = 44f;
     public const float PlayerShipSpeed = 12f;
     public const float PlayerShipTurnRateDegrees = 360f;
 

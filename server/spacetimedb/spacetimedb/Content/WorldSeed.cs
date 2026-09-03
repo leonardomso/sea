@@ -64,6 +64,8 @@ public static partial class Module
             DecisionShard = SimulationWorkRules.NpcShard(entityId),
             NextDecisionTick = (ulong)archetypeIndex,
             HomeSeed = entityId * 17,
+            HomeX = spawn.X,
+            HomeY = spawn.Y,
         });
         SeedNpcInventory(ctx, entityId);
     }

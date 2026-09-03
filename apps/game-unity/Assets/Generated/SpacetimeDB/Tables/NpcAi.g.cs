@@ -54,6 +54,8 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<NpcAi, byte> DecisionShard { get; }
         public global::SpacetimeDB.Col<NpcAi, ulong> NextDecisionTick { get; }
         public global::SpacetimeDB.Col<NpcAi, ulong> HomeSeed { get; }
+        public global::SpacetimeDB.Col<NpcAi, float> HomeX { get; }
+        public global::SpacetimeDB.Col<NpcAi, float> HomeY { get; }
 
         public NpcAiCols(string tableName)
         {
@@ -62,6 +64,8 @@ namespace SpacetimeDB.Types
             DecisionShard = new global::SpacetimeDB.Col<NpcAi, byte>(tableName, "decision_shard");
             NextDecisionTick = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "next_decision_tick");
             HomeSeed = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "home_seed");
+            HomeX = new global::SpacetimeDB.Col<NpcAi, float>(tableName, "home_x");
+            HomeY = new global::SpacetimeDB.Col<NpcAi, float>(tableName, "home_y");
         }
     }
 

@@ -16,4 +16,6 @@ export default __t.row({
   decisionShard: __t.u8().name("decision_shard"),
   nextDecisionTick: __t.u64().name("next_decision_tick"),
   homeSeed: __t.u64().name("home_seed"),
+  homeX: __t.f32().name("home_x"),
+  homeY: __t.f32().name("home_y"),
 });

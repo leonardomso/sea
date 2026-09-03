@@ -18,6 +18,7 @@ public static class NavigationRules
 {
     public const float DetourClearance = 4f;
     public const float WaypointArrivalRadius = 2.5f;
+    private const int RingSamples = 16;
 
     public static bool IsDestinationBlocked(
         float x,
@@ -78,6 +79,70 @@ public static class NavigationRules
 
         waypoint = firstScore <= secondScore ? first : second;
         return true;
+    }
+
+    /// <summary>
+    /// Pulls a point that sits inside a blocker back out to open water on the side
+    /// nearest to it, so a course plotted at an island still has somewhere to go.
+    /// </summary>
+    public static SpawnPoint NearestClearPoint(
+        float x,
+        float y,
+        IReadOnlyCollection<NavigationBlocker> blockers)
+    {
+        var point = new SpawnPoint(x, y);
+        // Leaving one blocker can land inside a neighbour, so sweep a few times.
+        for (var pass = 0; pass < 4; pass++)
+        {
+            var moved = false;
+            foreach (var blocker in blockers)
+            {
+                var deltaX = point.X - blocker.X;
+                var deltaY = point.Y - blocker.Y;
+                var distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
+                if (distance > blocker.Radius + WorldRules.CollisionPadding)
+                {
+                    continue;
+                }
+
+                if (distance <= 0.001f)
+                {
+                    deltaX = 1f;
+                    deltaY = 0f;
+                    distance = 1f;
+                }
+
+                var clearance = blocker.Radius + WorldRules.CollisionPadding + DetourClearance;
+                point = new SpawnPoint(
+                    blocker.X + deltaX / distance * clearance,
+                    blocker.Y + deltaY / distance * clearance);
+                moved = true;
+            }
+
+            if (!moved)
+            {
+                return point;
+            }
+        }
+
+        // Overlapping blockers can bounce the nudge between them; widen a ring
+        // around the original point until open water turns up.
+        for (var radius = DetourClearance; radius <= WorldRules.MapMax - WorldRules.MapMin; radius += DetourClearance)
+        {
+            for (var step = 0; step < RingSamples; step++)
+            {
+                var angle = step * MathF.PI * 2f / RingSamples;
+                var candidate = new SpawnPoint(
+                    x + MathF.Cos(angle) * radius,
+                    y + MathF.Sin(angle) * radius);
+                if (!IsDestinationBlocked(candidate.X, candidate.Y, blockers))
+                {
+                    return candidate;
+                }
+            }
+        }
+
+        return point;
     }
 
     private static NavigationBlocker? NearestBlocker(

@@ -55,13 +55,33 @@ public sealed class NpcRulesTests
         });
 
         Assert.Equal(NpcActionKind.SetCourse, raider.Action);
-        Assert.True(raider.DestinationX > 0f);
+        Assert.Equal(22f, raider.DestinationX, 3);
         Assert.Equal(NpcActionKind.SetCourse, gunship.Action);
-        Assert.True(gunship.DestinationX < 0f);
+        Assert.Equal(-36f, gunship.DestinationX, 3);
+    }
+
+    [Theory]
+    [InlineData(22f, NpcActionKind.Hold)]
+    [InlineData(10f, NpcActionKind.SetCourse)]
+    public void Npc_keeps_a_course_that_already_ends_at_its_holding_point(
+        float courseX,
+        NpcActionKind expected)
+    {
+        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Raider) with
+        {
+            TargetEntityId = 42,
+            TargetAvailable = true,
+            DistanceToTarget = 40f,
+            TargetX = 40f,
+            HasCourse = true,
+            CourseX = courseX,
+        });
+
+        Assert.Equal(expected, decision.Action);
     }
 
     [Fact]
-    public void Npc_stops_its_previous_course_after_entering_the_combat_range_band()
+    public void Npc_finishes_its_turn_before_plotting_another_broadside_turn()
     {
         var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Patrol) with
         {
@@ -70,9 +90,11 @@ public sealed class NpcRulesTests
             DistanceToTarget = 45f,
             TargetX = 45f,
             HasCourse = true,
+            PortReady = false,
+            StarboardReady = false,
         });
 
-        Assert.Equal(NpcActionKind.StopCourse, decision.Action);
+        Assert.Equal(NpcActionKind.Hold, decision.Action);
     }
 
     [Fact]
@@ -123,12 +145,72 @@ public sealed class NpcRulesTests
     [Fact]
     public void Fixed_seed_roaming_replays_and_stays_inside_the_chart()
     {
-        var first = NpcRules.RoamDestination(seed: 99, decisionTick: 500);
-        var replay = NpcRules.RoamDestination(seed: 99, decisionTick: 500);
+        var snapshot = Snapshot(ShipArchetypeCode.Patrol) with { HomeX = 30f, HomeY = -20f };
+
+        var first = NpcRules.RoamDestination(snapshot);
+        var replay = NpcRules.RoamDestination(snapshot);
 
         Assert.Equal(first, replay);
         Assert.InRange(first.X, WorldRules.MapMin, WorldRules.MapMax);
         Assert.InRange(first.Y, WorldRules.MapMin, WorldRules.MapMax);
+    }
+
+    [Theory]
+    [InlineData(0f, 0f, 500UL)]
+    [InlineData(30f, -20f, 505UL)]
+    [InlineData(-60f, 70f, 510UL)]
+    public void Roaming_patrols_the_waters_around_home_with_a_real_leg(
+        float homeX,
+        float homeY,
+        ulong tick)
+    {
+        var snapshot = Snapshot(ShipArchetypeCode.Patrol) with
+        {
+            X = homeX,
+            Y = homeY,
+            HomeX = homeX,
+            HomeY = homeY,
+            DecisionTick = tick,
+        };
+
+        var destination = NpcRules.RoamDestination(snapshot);
+
+        Assert.InRange(
+            CombatRules.Distance(homeX, homeY, destination.X, destination.Y),
+            NpcRules.MinimumRoamLeg,
+            NpcRules.RoamRadius);
+    }
+
+    [Fact]
+    public void Roaming_near_the_chart_edge_stays_on_the_chart()
+    {
+        for (var tick = 0UL; tick < 200; tick += NpcRules.DecisionIntervalTicks)
+        {
+            var destination = NpcRules.RoamDestination(Snapshot(ShipArchetypeCode.Patrol) with
+            {
+                X = WorldRules.MapMax,
+                Y = WorldRules.MapMin,
+                HomeX = WorldRules.MapMax,
+                HomeY = WorldRules.MapMin,
+                DecisionTick = tick,
+            });
+
+            Assert.InRange(destination.X, WorldRules.MapMin, WorldRules.MapMax);
+            Assert.InRange(destination.Y, WorldRules.MapMin, WorldRules.MapMax);
+        }
+    }
+
+    [Fact]
+    public void Idle_npc_sets_course_for_a_roam_waypoint()
+    {
+        var snapshot = Snapshot(ShipArchetypeCode.Patrol) with { HomeX = 30f, HomeY = -20f };
+
+        var decision = NpcRules.Decide(snapshot);
+        var waypoint = NpcRules.RoamDestination(snapshot);
+
+        Assert.Equal(NpcActionKind.SetCourse, decision.Action);
+        Assert.Equal(waypoint.X, decision.DestinationX);
+        Assert.Equal(waypoint.Y, decision.DestinationY);
     }
 
     [Theory]
@@ -190,7 +272,7 @@ public sealed class NpcRulesTests
         float aggroRange,
         bool expected)
     {
-        Assert.Equal(expected, NpcRules.ShouldSearchForTarget(targetAvailable, aggroRange));
+        Assert.Equal(expected, NpcRules.ShouldSearchForTarget(targetAvailable, aggroRange, 0f));
     }
 
     [Fact]
@@ -226,6 +308,79 @@ public sealed class NpcRulesTests
         Assert.Equal(NpcActionKind.FireStarboard, NpcRules.Decide(starboard).Action);
         Assert.Equal(NpcActionKind.SetCourse,
             NpcRules.Decide(starboard with { StarboardReady = false }).Action);
+    }
+
+    [Fact]
+    public void Hold_range_point_inside_an_island_is_steered_to_open_water()
+    {
+        // Raider at the origin, target 40 east, island squarely on the 22-unit hold point.
+        var island = new NavigationBlocker(22f, 0f, 10f);
+        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Raider) with
+        {
+            TargetEntityId = 42,
+            TargetAvailable = true,
+            DistanceToTarget = 40f,
+            TargetX = 40f,
+            Blockers = [island],
+        });
+
+        Assert.Equal(NpcActionKind.SetCourse, decision.Action);
+        Assert.False(NavigationRules.IsDestinationBlocked(
+            decision.DestinationX,
+            decision.DestinationY,
+            [island]));
+    }
+
+    [Fact]
+    public void Roaming_never_plots_a_leg_into_an_island()
+    {
+        var island = new NavigationBlocker(20f, 0f, 30f);
+        for (var tick = 0UL; tick < 400; tick += NpcRules.DecisionIntervalTicks)
+        {
+            var destination = NpcRules.RoamDestination(Snapshot(ShipArchetypeCode.Patrol) with
+            {
+                DecisionTick = tick,
+                Blockers = [island],
+            });
+
+            Assert.False(NavigationRules.IsDestinationBlocked(destination.X, destination.Y, [island]));
+        }
+    }
+
+    [Fact]
+    public void Ship_dragged_past_the_leash_lets_its_target_go()
+    {
+        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Raider) with
+        {
+            X = NpcRules.LeashRadius + 1f,
+            TargetEntityId = 42,
+            TargetAvailable = true,
+            DistanceToTarget = 10f,
+            TargetX = NpcRules.LeashRadius + 11f,
+        });
+
+        Assert.Equal(NpcActionKind.ClearTarget, decision.Action);
+    }
+
+    [Fact]
+    public void Ship_outside_home_waters_sails_home_instead_of_hunting()
+    {
+        var snapshot = Snapshot(ShipArchetypeCode.Raider) with
+        {
+            X = NpcRules.LeashRadius + 1f,
+            HasCourse = true,
+            CourseX = NpcRules.LeashRadius + 20f,
+        };
+
+        var decision = NpcRules.Decide(snapshot);
+
+        Assert.False(NpcRules.ShouldSearchForTarget(false, 40f, NpcRules.RoamRadius + 1f));
+        Assert.True(NpcRules.ShouldSearchForTarget(false, 40f, NpcRules.RoamRadius));
+        Assert.Equal(NpcActionKind.SetCourse, decision.Action);
+        Assert.InRange(
+            CombatRules.Distance(snapshot.HomeX, snapshot.HomeY, decision.DestinationX, decision.DestinationY),
+            0f,
+            NpcRules.RoamRadius);
     }
 
     private static NpcSnapshot Snapshot(ShipArchetypeCode archetype) => new()

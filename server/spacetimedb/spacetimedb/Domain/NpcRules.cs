@@ -22,6 +22,8 @@ public readonly record struct NpcSnapshot
     public float Y { get; init; }
     public float HeadingDegrees { get; init; }
     public bool HasCourse { get; init; }
+    public float CourseX { get; init; }
+    public float CourseY { get; init; }
     public uint Hull { get; init; }
     public uint MaximumHull { get; init; }
     public bool HasRepairKit { get; init; }
@@ -39,6 +41,9 @@ public readonly record struct NpcSnapshot
     public bool StarboardReady { get; init; }
     public ulong DecisionSeed { get; init; }
     public ulong DecisionTick { get; init; }
+    public float HomeX { get; init; }
+    public float HomeY { get; init; }
+    public IReadOnlyCollection<NavigationBlocker>? Blockers { get; init; }
 }
 
 public readonly record struct NpcDecision(
@@ -57,11 +62,25 @@ public static class NpcRules
     private const float RepairHullRatio = 0.3f;
     private const float TurnCourseDistance = 8f;
 
+    // Idle ships patrol the waters around their spawn instead of criss-crossing the chart,
+    // and each leg is long enough to read as a sail rather than a twitch.
+    public const float RoamRadius = 40f;
+    public const float MinimumRoamLeg = 12f;
+    private const int RoamCandidates = 4;
+
+    // A ship dragged this far from home lets its target go and roams back; it only
+    // hunts again once it is inside its home waters, so a fleeing player is not
+    // chased across the whole chart.
+    public const float LeashRadius = 60f;
+
     public static bool HasAutomaticAggroCapacity(int currentAttackers) =>
         currentAttackers < MaximumAutomaticAttackersPerPlayer;
 
-    public static bool ShouldSearchForTarget(bool targetAvailable, float aggroRange) =>
-        !targetAvailable && aggroRange > 0f;
+    public static bool ShouldSearchForTarget(
+        bool targetAvailable,
+        float aggroRange,
+        float distanceFromHome) =>
+        !targetAvailable && aggroRange > 0f && distanceFromHome <= RoamRadius;
 
     public static bool ShouldAttemptRepair(uint hull, uint maximumHull) =>
         maximumHull > 0 && (float)hull / maximumHull <= RepairHullRatio;
@@ -87,10 +106,24 @@ public static class NpcRules
             return new NpcDecision(NpcActionKind.StartRepair);
         }
 
+        if (snapshot.TargetEntityId != 0 && DistanceFromHome(snapshot) > LeashRadius)
+        {
+            return new NpcDecision(NpcActionKind.ClearTarget);
+        }
+
         return snapshot.TargetEntityId == 0
             ? DecideWithoutTarget(snapshot, loadout)
             : DecideEngagement(snapshot, loadout);
     }
+
+    private static float DistanceFromHome(NpcSnapshot snapshot) =>
+        CombatRules.Distance(snapshot.X, snapshot.Y, snapshot.HomeX, snapshot.HomeY);
+
+    private static bool IsInHomeWaters(NpcSnapshot snapshot, float x, float y) =>
+        CombatRules.Distance(snapshot.HomeX, snapshot.HomeY, x, y) <= RoamRadius;
+
+    private static IReadOnlyCollection<NavigationBlocker> Blockers(NpcSnapshot snapshot) =>
+        snapshot.Blockers ?? [];
 
     private static NpcDecision DecideWithoutTarget(
         NpcSnapshot snapshot,
@@ -106,12 +139,14 @@ public static class NpcRules
                 WeakPoint: loadout.WeakPoint);
         }
 
-        if (snapshot.HasCourse)
+        // A leg still under way is kept unless it was plotted while chasing something
+        // out past the leash; that one is replaced by a leg back into home waters.
+        if (snapshot.HasCourse && IsInHomeWaters(snapshot, snapshot.CourseX, snapshot.CourseY))
         {
             return new NpcDecision(NpcActionKind.Hold);
         }
 
-        var roam = RoamDestination(snapshot.DecisionSeed, snapshot.DecisionTick);
+        var roam = RoamDestination(snapshot);
         return new NpcDecision(
             NpcActionKind.SetCourse,
             DestinationX: roam.X,
@@ -129,19 +164,10 @@ public static class NpcRules
             return new NpcDecision(NpcActionKind.ClearTarget);
         }
 
-        if (snapshot.DistanceToTarget > snapshot.DesiredRange + RangeTolerance)
+        var travel = snapshot.DistanceToTarget - snapshot.DesiredRange;
+        if (MathF.Abs(travel) > RangeTolerance)
         {
-            return CourseToward(snapshot, retreat: false, loadout);
-        }
-
-        if (snapshot.DistanceToTarget < snapshot.DesiredRange - RangeTolerance)
-        {
-            return CourseToward(snapshot, retreat: true, loadout);
-        }
-
-        if (snapshot.HasCourse)
-        {
-            return new NpcDecision(NpcActionKind.StopCourse);
+            return HoldRange(snapshot, travel, loadout);
         }
 
         if (snapshot.SelectedAmmunition != loadout.Ammunition)
@@ -182,36 +208,50 @@ public static class NpcRules
                 WeakPoint: loadout.WeakPoint);
         }
 
-        return BroadsideTurn(snapshot, loadout);
+        // A turn already under way brings a broadside to bear; re-plotting it every
+        // decision would leave the ship twitching between headings.
+        return snapshot.HasCourse
+            ? new NpcDecision(NpcActionKind.Hold)
+            : BroadsideTurn(snapshot, loadout);
     }
 
-    public static SpawnPoint RoamDestination(ulong seed, ulong decisionTick)
+    public static SpawnPoint RoamDestination(NpcSnapshot snapshot)
     {
-        var state = seed ^ unchecked(decisionTick * 0x9E3779B97F4A7C15UL);
-        var margin = SpawnRules.EdgeMargin + 2f;
-        var span = WorldRules.MapMax - WorldRules.MapMin - margin * 2f;
-        return new SpawnPoint(
-            WorldRules.MapMin + margin + NextUnit(ref state) * span,
-            WorldRules.MapMin + margin + NextUnit(ref state) * span);
+        var state = snapshot.DecisionSeed ^ unchecked(snapshot.DecisionTick * 0x9E3779B97F4A7C15UL);
+        var blockers = Blockers(snapshot);
+        var destination = new SpawnPoint(Clamp(snapshot.HomeX), Clamp(snapshot.HomeY));
+        for (var candidate = 0; candidate < RoamCandidates; candidate++)
+        {
+            var angle = NextUnit(ref state) * MathF.PI * 2f;
+            var distance = MathF.Sqrt(NextUnit(ref state)) * RoamRadius;
+            destination = new SpawnPoint(
+                Clamp(snapshot.HomeX + MathF.Cos(angle) * distance),
+                Clamp(snapshot.HomeY + MathF.Sin(angle) * distance));
+            if (CombatRules.Distance(snapshot.X, snapshot.Y, destination.X, destination.Y) >= MinimumRoamLeg &&
+                !NavigationRules.IsDestinationBlocked(destination.X, destination.Y, blockers))
+            {
+                break;
+            }
+        }
+
+        return ClearPoint(destination.X, destination.Y, blockers);
     }
 
-    private static NpcDecision CourseToward(
+    // Sails along the line to the target by `travel` units: forward to close a gap,
+    // backward (negative) to open one, so the ship comes to rest at its desired range.
+    private static NpcDecision HoldRange(
         NpcSnapshot snapshot,
-        bool retreat,
+        float travel,
         NpcLoadout loadout)
     {
         var deltaX = snapshot.TargetX - snapshot.X;
         var deltaY = snapshot.TargetY - snapshot.Y;
         var length = MathF.Max(0.001f, MathF.Sqrt(deltaX * deltaX + deltaY * deltaY));
-        var direction = retreat ? -1f : 1f;
-        var distance = retreat ? snapshot.DesiredRange : MathF.Min(length, snapshot.DesiredRange);
-        return new NpcDecision(
-            NpcActionKind.SetCourse,
-            snapshot.TargetEntityId,
-            Clamp(snapshot.X + deltaX / length * distance * direction),
-            Clamp(snapshot.Y + deltaY / length * distance * direction),
-            loadout.Ammunition,
-            loadout.WeakPoint);
+        return SailTo(
+            snapshot,
+            snapshot.X + deltaX / length * travel,
+            snapshot.Y + deltaY / length * travel,
+            loadout);
     }
 
     private static NpcDecision BroadsideTurn(NpcSnapshot snapshot, NpcLoadout loadout)
@@ -219,13 +259,46 @@ public static class NpcRules
         var deltaX = snapshot.TargetX - snapshot.X;
         var deltaY = snapshot.TargetY - snapshot.Y;
         var length = MathF.Max(0.001f, MathF.Sqrt(deltaX * deltaX + deltaY * deltaY));
+        return SailTo(
+            snapshot,
+            snapshot.X + deltaY / length * TurnCourseDistance,
+            snapshot.Y - deltaX / length * TurnCourseDistance,
+            loadout);
+    }
+
+    private static NpcDecision SailTo(
+        NpcSnapshot snapshot,
+        float x,
+        float y,
+        NpcLoadout loadout)
+    {
+        var destination = ClearPoint(Clamp(x), Clamp(y), Blockers(snapshot));
+        x = destination.X;
+        y = destination.Y;
+        if (snapshot.HasCourse &&
+            CombatRules.Distance(snapshot.CourseX, snapshot.CourseY, x, y) <= RangeTolerance)
+        {
+            return new NpcDecision(NpcActionKind.Hold);
+        }
+
         return new NpcDecision(
             NpcActionKind.SetCourse,
             snapshot.TargetEntityId,
-            Clamp(snapshot.X + deltaY / length * TurnCourseDistance),
-            Clamp(snapshot.Y - deltaX / length * TurnCourseDistance),
+            x,
+            y,
             loadout.Ammunition,
             loadout.WeakPoint);
+    }
+
+    // A destination inside an island would be rejected outright and leave the ship
+    // idling on the spot, so it is nudged to the nearest open water instead.
+    private static SpawnPoint ClearPoint(
+        float x,
+        float y,
+        IReadOnlyCollection<NavigationBlocker> blockers)
+    {
+        var point = NavigationRules.NearestClearPoint(x, y, blockers);
+        return new SpawnPoint(Clamp(point.X), Clamp(point.Y));
     }
 
     private static float Clamp(float value) => Math.Clamp(

@@ -5,27 +5,36 @@ public static partial class Module
 {
     private static (uint Processed, uint Dormant) ProcessNpcDecisions(
         ReducerContext ctx,
-        ulong tick,
-        byte shardId)
+        ulong tick)
     {
         var processed = 0u;
         var dormant = 0u;
-        foreach (var ai in ctx.Db.NpcAi.ByDecisionDueShard.Filter(
-                     (true, shardId, new Bound<ulong>(0, tick))))
+        // Every decision this tick steers around the same islands; read them once.
+        List<NavigationBlocker>? blockers = null;
+        for (byte shardId = 0; shardId < SimulationWorkRules.NpcShardCount; shardId++)
         {
-            processed++;
-            if (!ai.IsActive)
+            foreach (var ai in ctx.Db.NpcAi.ByDecisionDueShard.Filter(
+                         (true, shardId, new Bound<ulong>(0, tick))))
             {
-                dormant++;
-            }
+                processed++;
+                if (!ai.IsActive)
+                {
+                    dormant++;
+                }
 
-            ProcessNpcDecision(ctx, ai, tick);
+                blockers ??= NavigationBlockers(ctx);
+                ProcessNpcDecision(ctx, ai, tick, blockers);
+            }
         }
 
         return (processed, dormant);
     }
 
-    private static void ProcessNpcDecision(ReducerContext ctx, NpcAi ai, ulong tick)
+    private static void ProcessNpcDecision(
+        ReducerContext ctx,
+        NpcAi ai,
+        ulong tick,
+        IReadOnlyCollection<NavigationBlocker> blockers)
     {
         ai.NextDecisionTick = tick + NpcRules.DecisionIntervalTicks;
         if (ctx.Db.Ship.EntityId.Find(ai.ShipEntityId) is not Ship ship ||
@@ -36,17 +45,19 @@ public static partial class Module
             return;
         }
 
+        // Ship rows only republish kinematics on chunk changes; decisions need the
+        // live position and course or every NPC keeps re-plotting from stale points.
+        HydrateTrackedKinematics(ctx, ref ship);
         var definition = Catalog.NpcByArchetypeCode[ship.ArchetypeCode] ??
             throw new InvalidOperationException("NPC content definition is missing.");
-        var target = ship.TargetEntityId == 0
-            ? default(Ship?)
-            : ctx.Db.Ship.EntityId.Find(ship.TargetEntityId);
+        var target = FindHydratedShip(ctx, ship.TargetEntityId);
         var targetAvailable = target is Ship selected &&
             selected.IsActive && selected.IsAlive &&
             selected.FactionCode == (byte)FactionCode.Player;
         var candidate = NpcRules.ShouldSearchForTarget(
                 targetAvailable,
-                definition.AggroRange)
+                definition.AggroRange,
+                CombatRules.Distance(ship.PositionX, ship.PositionY, ai.HomeX, ai.HomeY))
             ? FindNearestPlayer(ctx, ship, definition.AggroRange)
             : default(Ship?);
         ExecuteNpcDecision(ctx, ship, NpcRules.Decide(BuildNpcSnapshot(
@@ -57,8 +68,20 @@ public static partial class Module
             target,
             candidate,
             targetAvailable,
-            tick)));
+            tick,
+            blockers)));
         ctx.Db.NpcAi.ShipEntityId.Update(ai);
+    }
+
+    private static Ship? FindHydratedShip(ReducerContext ctx, ulong entityId)
+    {
+        if (entityId == 0 || ctx.Db.Ship.EntityId.Find(entityId) is not Ship ship)
+        {
+            return null;
+        }
+
+        HydrateTrackedKinematics(ctx, ref ship);
+        return ship;
     }
 
     private static NpcSnapshot BuildNpcSnapshot(
@@ -69,7 +92,8 @@ public static partial class Module
         Ship? target,
         Ship? candidate,
         bool targetAvailable,
-        ulong tick) => new()
+        ulong tick,
+        IReadOnlyCollection<NavigationBlocker> blockers) => new()
         {
             Archetype = (ShipArchetypeCode)ship.ArchetypeCode,
             Active = ship.IsActive && ship.IsAlive,
@@ -78,6 +102,8 @@ public static partial class Module
             Y = ship.PositionY,
             HeadingDegrees = ship.HeadingDegrees,
             HasCourse = ship.HasCourse,
+            CourseX = ship.DestinationX,
+            CourseY = ship.DestinationY,
             Hull = ship.Hull,
             MaximumHull = ship.MaxHull,
             HasRepairKit = NpcRules.ShouldAttemptRepair(ship.Hull, ship.MaxHull) &&
@@ -102,6 +128,9 @@ public static partial class Module
             StarboardReady = tick >= ship.NextStarboardFireTick,
             DecisionSeed = ai.HomeSeed,
             DecisionTick = tick,
+            HomeX = ai.HomeX,
+            HomeY = ai.HomeY,
+            Blockers = blockers,
         };
 
     private static Ship? FindNearestPlayer(ReducerContext ctx, Ship source, float range)
@@ -175,8 +204,6 @@ public static partial class Module
         {
             return;
         }
-
-        HydrateTrackedKinematics(ctx, ref ship);
 
         var decoded = DecodeCommand(command);
         var snapshot = BuildCommandSnapshot(ctx, ship, decoded);

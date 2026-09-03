@@ -141,6 +141,8 @@ public static partial class Module
         public byte DecisionShard;
         public ulong NextDecisionTick;
         public ulong HomeSeed;
+        public float HomeX;
+        public float HomeY;
     }
 
     [SpacetimeDB.Table(Accessor = "Inventory", Public = true)]

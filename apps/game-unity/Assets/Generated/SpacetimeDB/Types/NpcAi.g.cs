@@ -23,13 +23,19 @@ namespace SpacetimeDB.Types
         public ulong NextDecisionTick;
         [DataMember(Name = "home_seed")]
         public ulong HomeSeed;
+        [DataMember(Name = "home_x")]
+        public float HomeX;
+        [DataMember(Name = "home_y")]
+        public float HomeY;
 
         public NpcAi(
             ulong ShipEntityId,
             bool IsActive,
             byte DecisionShard,
             ulong NextDecisionTick,
-            ulong HomeSeed
+            ulong HomeSeed,
+            float HomeX,
+            float HomeY
         )
         {
             this.ShipEntityId = ShipEntityId;
@@ -37,6 +43,8 @@ namespace SpacetimeDB.Types
             this.DecisionShard = DecisionShard;
             this.NextDecisionTick = NextDecisionTick;
             this.HomeSeed = HomeSeed;
+            this.HomeX = HomeX;
+            this.HomeY = HomeY;
         }
 
         public NpcAi()

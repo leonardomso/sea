@@ -290,6 +290,8 @@ export const NpcAi = __t.object("NpcAi", {
   decisionShard: __t.u8(),
   nextDecisionTick: __t.u64(),
   homeSeed: __t.u64(),
+  homeX: __t.f32(),
+  homeY: __t.f32(),
 });
 export type NpcAi = __Infer<typeof NpcAi>;
 
