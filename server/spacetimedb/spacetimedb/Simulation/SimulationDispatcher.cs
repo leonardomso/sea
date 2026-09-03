@@ -13,6 +13,11 @@ public static partial class Module
             return;
         }
 
+        if (!SimulationWorkRules.ShouldAdvanceWorld(clock.ConnectedPlayerCount))
+        {
+            return;
+        }
+
         Profile("start");
         clock.Tick++;
         ctx.Db.SimulationClock.Id.Update(clock);

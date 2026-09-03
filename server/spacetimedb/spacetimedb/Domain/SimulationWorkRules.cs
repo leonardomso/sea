@@ -10,7 +10,6 @@ public static class SimulationWorkRules
     public const byte LootPickupBucketCount = 10;
     public const byte MaximumMovementCatchUpTicks = 8;
     public const ulong HazardIntervalTicks = 5;
-    public const ushort IdleDispatchIntervalMilliseconds = 1_000;
     public const ulong TelemetrySampleIntervalTicks = 100;
 
     // Flip on to log a "PROF <phase>" line after every dispatch phase; feed the module
@@ -23,10 +22,18 @@ public static class SimulationWorkRules
     // Reducers execute one at a time per database, so the whole world tick runs as a
     // single transaction: splitting it into finer timers only multiplies commit and
     // subscription overhead without adding parallelism.
-    public static double DispatchIntervalMilliseconds(bool hasConnectedPlayers) =>
-        hasConnectedPlayers
-            ? 1000d / WorldRules.TickRateHz
-            : IdleDispatchIntervalMilliseconds;
+    //
+    // The interval is fixed for the lifetime of the schedule: SpacetimeDB binds a
+    // scheduled row's interval when the row is inserted, so rewriting ScheduleAt later
+    // leaves the host firing at the interval it was created with. The dispatch timer is
+    // therefore always created at the play interval and an idle world skips its work
+    // instead of slowing the timer down.
+    public static double DispatchIntervalMilliseconds => 1000d / WorldRules.TickRateHz;
+
+    // Nobody is watching an empty world, so the dispatch returns before it touches the
+    // clock: the simulation resumes on the tick the first player connects.
+    public static bool ShouldAdvanceWorld(uint connectedPlayerCount) =>
+        connectedPlayerCount > 0;
 
     public static bool ShouldApplyHazards(ulong tick) =>
         tick % HazardIntervalTicks == 0;

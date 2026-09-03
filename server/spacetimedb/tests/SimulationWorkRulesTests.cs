@@ -77,14 +77,26 @@ public sealed class SimulationWorkRulesTests
     {
         Assert.Equal(
             1000d / WorldRules.TickRateHz,
-            SimulationWorkRules.DispatchIntervalMilliseconds(true));
+            SimulationWorkRules.DispatchIntervalMilliseconds);
     }
 
     [Fact]
-    public void SimulationCadenceSlowsOnlyWhenNoPlayerIsConnected()
+    public void DispatchIntervalStaysAtThePlayRateSoTheScheduleNeverNeedsRewriting()
     {
-        Assert.Equal(100d, SimulationWorkRules.DispatchIntervalMilliseconds(true));
-        Assert.Equal(1_000d, SimulationWorkRules.DispatchIntervalMilliseconds(false));
+        Assert.Equal(100d, SimulationWorkRules.DispatchIntervalMilliseconds);
+    }
+
+    [Theory]
+    [InlineData(0u, false)]
+    [InlineData(1u, true)]
+    [InlineData(7u, true)]
+    public void AnIdleWorldSkipsItsTickInsteadOfSlowingTheTimer(
+        uint connectedPlayerCount,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            SimulationWorkRules.ShouldAdvanceWorld(connectedPlayerCount));
     }
 
     [Theory]

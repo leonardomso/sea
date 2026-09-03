@@ -38,8 +38,7 @@ public static partial class Module
         ctx.Db.SimulationDispatchTimer.Insert(new SimulationDispatchTimer
         {
             ScheduledAt = new ScheduleAt.Interval(
-                TimeSpan.FromMilliseconds(
-                    SimulationWorkRules.DispatchIntervalMilliseconds(false))),
+                TimeSpan.FromMilliseconds(SimulationWorkRules.DispatchIntervalMilliseconds)),
         });
         for (byte shardId = 0; shardId < SimulationWorkRules.MovementShardCount; shardId++)
         {

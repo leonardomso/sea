@@ -74,10 +74,6 @@ public static partial class Module
             ? checked(previous + (uint)delta)
             : previous - Math.Min(previous, (uint)-delta);
         ctx.Db.SimulationClock.Id.Update(clock);
-        if ((previous == 0) != (clock.ConnectedPlayerCount == 0))
-        {
-            SetSimulationCadence(ctx, clock.ConnectedPlayerCount > 0);
-        }
     }
 
     private static ulong AllocateEntityId(ReducerContext ctx)
