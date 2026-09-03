@@ -96,15 +96,19 @@ public sealed class ShipStatRulesTests
     [Fact]
     public void Same_kind_sources_are_ordered_by_source_id()
     {
-        var first = Source(BonusSourceKind.Plates, 1, StatBonuses.None with { Damage = Caps.DamageBonusCap / 3f });
-        var second = Source(BonusSourceKind.Plates, 2, StatBonuses.None with { HitPoints = Caps.HitPointBonusCap });
-        var third = Source(BonusSourceKind.Plates, 3, StatBonuses.None with { ArmorPoints = Caps.ArmorPointsCap });
+        var caps = Caps with { DamageBonusCap = 0.5f, ReloadBonusCap = 0.5f, HitPointBonusCap = 0.5f, CombatPowerBudget = 25f };
+        var first = Source(BonusSourceKind.Plates, 1, StatBonuses.None with { Damage = 0.1f });
+        var second = Source(BonusSourceKind.Plates, 2, StatBonuses.None with { Reload = 0.1f });
+        var third = Source(BonusSourceKind.Plates, 3, StatBonuses.None with { HitPoints = 0.1f });
 
-        var forward = ShipStatRules.Compute(Tier1.Loadout(), new[] { first, second, third }, Caps);
-        var reversed = ShipStatRules.Compute(Tier1.Loadout(), new[] { third, second, first }, Caps);
+        var forward = ShipStatRules.Compute(Tier1.Loadout(), new[] { first, second, third }, caps);
+        var reversed = ShipStatRules.Compute(Tier1.Loadout(), new[] { third, second, first }, caps);
 
         Assert.Equal(forward, reversed);
-        Assert.True(forward.CombatPowerInactive > 0f, "the third source must not fit the budget");
+        Assert.Equal(20f, forward.CombatPowerUsed, 3);
+        Assert.Equal(10f, forward.CombatPowerInactive, 3);
+        Assert.Equal((uint)(Tier1.Sheet().VolleyDamage * 1.1f), forward.VolleyDamage);
+        Assert.Equal(Tier1.Sheet().MaxHitPoints, forward.MaxHitPoints);
     }
 
     [Fact]
@@ -175,15 +179,17 @@ public sealed class ShipStatRulesTests
     [Fact]
     public void A_loadout_without_cannons_is_rejected()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(
+        var error = Assert.Throws<ArgumentOutOfRangeException>(
             () => _ = new ShipLoadout(Tier1.Hull, Tier1.Cannon, 0, 1f, 1f));
+        Assert.StartsWith("A loadout must carry at least one cannon.", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public void A_loadout_with_a_non_finite_ammo_multiplier_is_rejected()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(
+        var error = Assert.Throws<ArgumentOutOfRangeException>(
             () => _ = new ShipLoadout(Tier1.Hull, Tier1.Cannon, 8, float.NaN, 1f));
+        Assert.StartsWith("An ammunition multiplier must be finite and positive.", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -204,7 +210,8 @@ public sealed class ShipStatRulesTests
     {
         var hull = Tier1.Hull with { CannonSlots = 0 };
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => _ = Tier1.Loadout() with { Hull = hull });
+        var error = Assert.Throws<ArgumentOutOfRangeException>(() => _ = Tier1.Loadout() with { Hull = hull });
+        Assert.StartsWith("A hull must have a cannon slot.", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -225,16 +232,120 @@ public sealed class ShipStatRulesTests
         Assert.Throws<ArgumentOutOfRangeException>(() => _ = Tier1.Loadout() with { AmmoReloadMultiplier = 0f });
     }
 
-    [Fact]
-    public void Sources_that_overflow_a_bonus_total_are_rejected()
+    public static TheoryData<StatBonuses> OverflowingBonuses => new()
     {
-        var slots = StatBonuses.None with { ExtraCannonSlots = int.MaxValue };
+        StatBonuses.None with { ExtraCannonSlots = int.MaxValue },
+        StatBonuses.None with { Magazine = int.MaxValue },
+        StatBonuses.None with { RangeSquares = int.MaxValue },
+    };
+
+    [Theory]
+    [MemberData(nameof(OverflowingBonuses))]
+    public void Sources_that_overflow_a_bonus_total_are_rejected(StatBonuses bonuses)
+    {
         var sources = new[]
         {
-            Source(BonusSourceKind.Crew, 1, slots),
-            Source(BonusSourceKind.Crew, 2, slots),
+            Source(BonusSourceKind.Crew, 1, bonuses),
+            Source(BonusSourceKind.Crew, 2, bonuses),
         };
 
         Assert.Throws<OverflowException>(() => ShipStatRules.Compute(Tier1.Loadout(), sources, Caps));
+    }
+
+    [Fact]
+    public void Compute_rejects_missing_arguments()
+    {
+        Assert.Equal(
+            "loadout",
+            Assert.Throws<ArgumentNullException>(() => ShipStatRules.Compute(null!, [], Caps)).ParamName);
+        Assert.Equal(
+            "sources",
+            Assert.Throws<ArgumentNullException>(() => ShipStatRules.Compute(Tier1.Loadout(), null!, Caps)).ParamName);
+        Assert.Equal(
+            "caps",
+            Assert.Throws<ArgumentNullException>(() => ShipStatRules.Compute(Tier1.Loadout(), [], null!)).ParamName);
+    }
+
+    [Fact]
+    public void A_single_cannon_on_a_single_slot_hull_is_a_valid_loadout()
+    {
+        var loadout = new ShipLoadout(Tier1.Hull with { CannonSlots = 1 }, Tier1.Cannon, 1, 1f, 1f);
+
+        var sheet = ShipStatRules.Compute(loadout, [], Caps);
+
+        Assert.Equal(Tier1.Cannon.Damage, sheet.VolleyDamage);
+    }
+
+    [Fact]
+    public void A_budget_below_zero_still_keeps_the_bare_hull()
+    {
+        var sheet = ShipStatRules.Compute(Tier1.Loadout(), [], Caps with { CombatPowerBudget = -1f });
+
+        Assert.Equal(Tier1.Sheet(), sheet);
+    }
+
+    [Fact]
+    public void A_ship_that_cannot_deal_damage_scores_one_against_itself()
+    {
+        var loadout = Tier1.Loadout() with { Cannon = Tier1.Cannon with { Damage = 0 } };
+
+        var sheet = ShipStatRules.Compute(loadout, [], Caps);
+
+        Assert.Equal(0u, sheet.VolleyDamage);
+        Assert.Equal(1f, sheet.FightScore);
+    }
+
+    [Fact]
+    public void A_volley_beyond_the_sheet_range_is_rejected()
+    {
+        var loadout = Tier1.Loadout() with { Cannon = Tier1.Cannon with { Damage = uint.MaxValue }, CannonCount = 2 };
+
+        Assert.Throws<OverflowException>(() => ShipStatRules.Compute(loadout, [], Caps));
+    }
+
+    [Fact]
+    public void A_volley_that_overflows_the_scaling_math_is_rejected()
+    {
+        // 100_000 cannons × 1_844_675 damage × 10_000² basis points passes long.MaxValue;
+        // unchecked, the product wraps to a volley of 59_262.
+        var loadout = Tier1.Loadout() with { Cannon = Tier1.Cannon with { Damage = 1_844_675 }, CannonCount = 100_000 };
+
+        Assert.Throws<OverflowException>(() => ShipStatRules.Compute(loadout, [], Caps));
+    }
+
+    [Fact]
+    public void A_reload_beyond_the_sheet_range_is_rejected()
+    {
+        var loadout = Tier1.Loadout() with { Cannon = Tier1.Cannon with { ReloadSeconds = 5_000_000f } };
+
+        Assert.Throws<OverflowException>(() => ShipStatRules.Compute(loadout, [], Caps));
+    }
+
+    [Fact]
+    public void A_reload_that_overflows_the_scaling_math_is_rejected()
+    {
+        // 184_467_504 s × 1_000 ms × 10_000² basis points passes long.MaxValue;
+        // unchecked, the product wraps to a reload of 63_262 ms.
+        var loadout = Tier1.Loadout() with { Cannon = Tier1.Cannon with { ReloadSeconds = 184_467_504f } };
+
+        Assert.Throws<OverflowException>(() => ShipStatRules.Compute(loadout, [], Caps));
+    }
+
+    [Fact]
+    public void Hit_points_beyond_the_sheet_range_are_rejected()
+    {
+        var loadout = Tier1.Loadout() with { Hull = Tier1.Hull with { HitPoints = uint.MaxValue } };
+        var plates = Source(BonusSourceKind.Plates, 1, StatBonuses.None with { HitPoints = Caps.HitPointBonusCap });
+
+        Assert.Throws<OverflowException>(
+            () => ShipStatRules.Compute(loadout, new[] { plates }, Caps with { CombatPowerBudget = 1_000f }));
+    }
+
+    [Fact]
+    public void A_repair_channel_beyond_the_sheet_range_is_rejected()
+    {
+        var caps = Caps with { RepairChannelSeconds = 5_000_000f };
+
+        Assert.Throws<OverflowException>(() => ShipStatRules.Compute(Tier1.Loadout(), [], caps));
     }
 }

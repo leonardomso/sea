@@ -155,8 +155,7 @@ public static class ShipStatRules
         ArgumentNullException.ThrowIfNull(sources);
         ArgumentNullException.ThrowIfNull(caps);
 
-        // An empty source list needs neither the sort/select chain nor a fresh one-element prefix array.
-        var ordered = sources.Count == 0 ? Array.Empty<StatBonuses>() : Ordered(sources);
+        var ordered = Ordered(sources);
         var prefix = Prefix(ordered);
 
         // Start with every source and drop from the tail until the budget is met, computing each prefix once.
@@ -228,18 +227,9 @@ public static class ShipStatRules
             .Select(source => NonNegative(source.Bonuses))
             .ToArray();
 
-    /// <summary>
-    /// prefix[n] is the sum of the first n sources, so dropping a tail is a single index step. An
-    /// empty input returns the shared, never-written <see cref="EmptyPrefix"/> instead of allocating
-    /// a fresh one-element array.
-    /// </summary>
+    /// <summary>prefix[n] is the sum of the first n sources, so dropping a tail is a single index step.</summary>
     private static StatBonuses[] Prefix(StatBonuses[] ordered)
     {
-        if (ordered.Length == 0)
-        {
-            return EmptyPrefix;
-        }
-
         var prefix = new StatBonuses[ordered.Length + 1];
         for (var index = 0; index < ordered.Length; index++)
         {
@@ -248,9 +238,6 @@ public static class ShipStatRules
 
         return prefix;
     }
-
-    /// <summary>The zero source, shared across every call and never written to.</summary>
-    private static readonly StatBonuses[] EmptyPrefix = new StatBonuses[1];
 
     private static DerivedStats Derive(ShipLoadout loadout, StatBonuses bonuses, StatCapsContent caps)
     {
@@ -341,7 +328,7 @@ public static class ShipStatRules
     private static long ScaleDown(long baseUnits, float multiplier, float bonus) =>
         checked(baseUnits * BasisPoints(multiplier) * (BonusScale - BasisPoints(bonus)) / (BonusScale * BonusScale));
 
-    private static float Floor(float value) => float.IsFinite(value) && value > 0f ? value : 0f;
+    private static float Floor(float value) => float.IsFinite(value) ? MathF.Max(value, 0f) : 0f;
 
     private static long PowerFromRatio(double ratio) => Centis(100.0 * ratio);
 
