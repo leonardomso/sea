@@ -259,10 +259,6 @@ const tablesSchema = __schema({
   loot: __table({
     name: 'loot',
     indexes: [
-      { accessor: 'ByChunk', name: 'loot_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
-        'chunkX',
-        'chunkY',
-      ] },
       { accessor: 'ByActiveChunk', name: 'loot_is_active_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
         'isActive',
         'chunkX',
@@ -271,9 +267,6 @@ const tablesSchema = __schema({
       { accessor: 'ByLootExpiryDue', name: 'loot_is_active_expires_at_tick_idx_btree', algorithm: 'btree', columns: [
         'isActive',
         'expiresAtTick',
-      ] },
-      { accessor: 'ByActive', name: 'loot_is_active_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
       ] },
       { accessor: 'LootId', name: 'loot_loot_id_idx_btree', algorithm: 'btree', columns: [
         'lootId',
@@ -420,22 +413,6 @@ const tablesSchema = __schema({
         'chunkX',
         'chunkY',
       ] },
-      { accessor: 'ByActiveChunkShard', name: 'ship_is_active_chunk_x_chunk_y_movement_shard_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
-        'chunkX',
-        'chunkY',
-        'movementShard',
-      ] },
-      { accessor: 'ByActive', name: 'ship_is_active_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
-      ] },
-      { accessor: 'ByMoving', name: 'ship_is_moving_idx_btree', algorithm: 'btree', columns: [
-        'isMoving',
-      ] },
-      { accessor: 'ByMovingShard', name: 'ship_is_moving_movement_shard_idx_btree', algorithm: 'btree', columns: [
-        'isMoving',
-        'movementShard',
-      ] },
       { accessor: 'ByTarget', name: 'ship_target_entity_id_idx_btree', algorithm: 'btree', columns: [
         'targetEntityId',
       ] },
@@ -447,9 +424,6 @@ const tablesSchema = __schema({
   shipChannel: __table({
     name: 'ship_channel',
     indexes: [
-      { accessor: 'ByActive', name: 'ship_channel_is_active_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
-      ] },
       { accessor: 'ByChannelDue', name: 'ship_channel_is_active_next_process_tick_idx_btree', algorithm: 'btree', columns: [
         'isActive',
         'nextProcessTick',
@@ -499,9 +473,6 @@ const tablesSchema = __schema({
   shipStatus: __table({
     name: 'ship_status',
     indexes: [
-      { accessor: 'ByActive', name: 'ship_status_is_active_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
-      ] },
       { accessor: 'ByStatusDue', name: 'ship_status_is_active_next_process_tick_idx_btree', algorithm: 'btree', columns: [
         'isActive',
         'nextProcessTick',
@@ -546,19 +517,9 @@ const tablesSchema = __schema({
   volley: __table({
     name: 'volley',
     indexes: [
-      { accessor: 'ByChunk', name: 'volley_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
-        'chunkX',
-        'chunkY',
-      ] },
-      { accessor: 'ByActive', name: 'volley_is_active_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
-      ] },
       { accessor: 'ByImpactDue', name: 'volley_is_active_impact_at_tick_idx_btree', algorithm: 'btree', columns: [
         'isActive',
         'impactAtTick',
-      ] },
-      { accessor: 'ByTarget', name: 'volley_target_entity_id_idx_btree', algorithm: 'btree', columns: [
-        'targetEntityId',
       ] },
       { accessor: 'VolleyId', name: 'volley_volley_id_idx_btree', algorithm: 'btree', columns: [
         'volleyId',

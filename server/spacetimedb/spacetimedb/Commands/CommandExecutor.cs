@@ -34,6 +34,7 @@ public static partial class Module
 
     private static CommandSnapshot BuildCommandSnapshot(
         ReducerContext ctx,
+        TickWorld world,
         Ship ship,
         DecodedCommand command)
     {
@@ -54,23 +55,35 @@ public static partial class Module
 
         return command.Kind switch
         {
-            ShipCommandKind.SetCourse => CourseSnapshot(ctx, snapshot, command.SetCourse),
-            ShipCommandKind.SelectTarget => TargetSnapshot(ctx, ship, snapshot, command.SelectTarget),
+            ShipCommandKind.SetCourse => CourseSnapshot(ctx, world, snapshot, command.SetCourse),
+            ShipCommandKind.SelectTarget => TargetSnapshot(
+                ctx,
+                world,
+                ship,
+                snapshot,
+                command.SelectTarget),
             ShipCommandKind.SetAmmo => AmmoSnapshot(ctx, ship, snapshot, command.SetAmmo),
-            ShipCommandKind.FireBroadside => FireSnapshot(ctx, ship, snapshot, command.FireBroadside),
+            ShipCommandKind.FireBroadside => FireSnapshot(
+                ctx,
+                world,
+                ship,
+                snapshot,
+                command.FireBroadside),
             ShipCommandKind.ActivateAbility => AbilitySnapshot(
                 ctx,
+                world,
                 ship,
                 snapshot,
                 command.ActivateAbility),
             ShipCommandKind.StartRepair => RepairSnapshot(ctx, ship, snapshot),
-            ShipCommandKind.StartBoarding => BoardingSnapshot(ctx, ship, snapshot),
+            ShipCommandKind.StartBoarding => BoardingSnapshot(ctx, world, ship, snapshot),
             _ => snapshot,
         };
     }
 
     private static void ApplyAcceptedCommand(
         ReducerContext ctx,
+        TickWorld world,
         ref Ship ship,
         DecodedCommand command,
         CommandDecision decision)
@@ -78,19 +91,19 @@ public static partial class Module
         switch (command.Kind)
         {
             case ShipCommandKind.SetCourse:
-                ApplySetCourse(ctx, ref ship, command.SetCourse);
+                ApplySetCourse(ctx, world, ref ship, command.SetCourse);
                 break;
             case ShipCommandKind.StopCourse:
-                ApplyStopCourse(ctx, ref ship);
+                ApplyStopCourse(ctx, world, ref ship);
                 break;
             case ShipCommandKind.SelectTarget:
-                ApplySelectTarget(ctx, ref ship, command.SelectTarget);
+                ApplySelectTarget(ctx, world, ref ship, command.SelectTarget);
                 break;
             case ShipCommandKind.ClearTarget:
-                ApplyClearTarget(ctx, ref ship);
+                ApplyClearTarget(ctx, world, ref ship);
                 break;
             case ShipCommandKind.SetAmmo:
-                ApplySetAmmo(ctx, ref ship, command.SetAmmo);
+                ApplySetAmmo(ctx, world, ref ship, command.SetAmmo);
                 break;
             case ShipCommandKind.FireBroadside:
                 if (!CombatRules.TryParseWeakPoint(
@@ -103,26 +116,26 @@ public static partial class Module
                 {
                     throw new InvalidOperationException("Accepted broadside arguments are invalid.");
                 }
-                ApplyFireBroadside(ctx, ref ship, command.FireBroadside, side, weakPoint);
+                ApplyFireBroadside(ctx, world, ref ship, command.FireBroadside, side, weakPoint);
                 break;
             case ShipCommandKind.ActivateAbility:
-                ApplyActivateAbility(ctx, ref ship, command.ActivateAbility);
+                ApplyActivateAbility(ctx, world, ref ship, command.ActivateAbility);
                 break;
             case ShipCommandKind.StartRepair:
-                ApplyStartRepair(ctx, ref ship);
+                ApplyStartRepair(ctx, world, ref ship);
                 break;
             case ShipCommandKind.StartBoarding:
-                ApplyStartBoarding(ctx, ref ship);
+                ApplyStartBoarding(ctx, world, ref ship);
                 break;
             case ShipCommandKind.CancelChannel:
-                ApplyCancelChannel(ctx, ship);
+                ApplyCancelChannel(ctx, world, ship);
                 break;
             default:
                 throw new InvalidOperationException("Accepted command has no executor.");
         }
 
         ship.ModeCode = (byte)decision.NextMode;
-        PersistCommandShip(ctx, ship);
+        PersistCommandShip(ctx, ship, world.Tick);
     }
 
     private static ShipMode ResolveMode(Ship ship)

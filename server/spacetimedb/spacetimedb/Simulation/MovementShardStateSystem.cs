@@ -3,18 +3,23 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    private static void PersistCommandShip(ReducerContext ctx, Ship ship)
-    {
-        ctx.Db.Ship.EntityId.Update(ship);
-        UpdateShipMovement(ctx, ship, CurrentSimulationTick(ctx));
-        QueueMovementUpdate(ctx, ship, replaceKinematics: true);
-    }
+    // A command rewrites the ship's course, so its kinematics replace what the shard
+    // is integrating; every other write only retunes how the shard sails it.
+    private static void PersistCommandShip(ReducerContext ctx, Ship ship, ulong tick) =>
+        PersistShip(ctx, ship, tick, replaceKinematics: true);
 
-    private static void PersistShip(ReducerContext ctx, Ship ship)
+    private static void PersistShip(ReducerContext ctx, Ship ship, ulong tick) =>
+        PersistShip(ctx, ship, tick, replaceKinematics: false);
+
+    private static void PersistShip(
+        ReducerContext ctx,
+        Ship ship,
+        ulong tick,
+        bool replaceKinematics)
     {
         ctx.Db.Ship.EntityId.Update(ship);
-        UpdateShipMovement(ctx, ship, CurrentSimulationTick(ctx));
-        QueueMovementUpdate(ctx, ship, replaceKinematics: false);
+        UpdateShipMovement(ctx, ship, tick);
+        QueueMovementUpdate(ctx, ship, replaceKinematics);
     }
 
     // Tracked ships are always active and alive, so the published row is rebuilt from
@@ -39,8 +44,8 @@ public static partial class Module
         }
     }
 
-    private static void InsertShipMovement(ReducerContext ctx, Ship ship) =>
-        ctx.Db.ShipMovement.Insert(ToShipMovement(ship, CurrentSimulationTick(ctx)));
+    private static void InsertShipMovement(ReducerContext ctx, Ship ship, ulong tick) =>
+        ctx.Db.ShipMovement.Insert(ToShipMovement(ship, tick));
 
     private static void UpdateShipMovement(ReducerContext ctx, Ship ship, ulong tick)
     {
@@ -114,31 +119,24 @@ public static partial class Module
         Ship ship,
         bool replaceKinematics)
     {
-        var pending = ctx.Db.MovementUpdate.ShipEntityId.Find(ship.EntityId);
-        if (pending is MovementUpdate existing)
-        {
-            if (!replaceKinematics && existing.ReplaceKinematics)
-            {
-                existing.Ship = ship;
-            }
-            else
-            {
-                existing.Ship = ship;
-                existing.ReplaceKinematics = replaceKinematics;
-            }
-
-            existing.ShardId = ship.MovementShard;
-            ctx.Db.MovementUpdate.ShipEntityId.Update(existing);
-            return;
-        }
-
-        ctx.Db.MovementUpdate.Insert(new MovementUpdate
+        var track = ShouldTrackMovement(ship);
+        var update = new MovementUpdate
         {
             ShipEntityId = ship.EntityId,
             ShardId = ship.MovementShard,
             ReplaceKinematics = replaceKinematics,
-            Ship = ship,
-        });
+            Track = track,
+            Kinematics = track ? ToKinematics(ship) : default,
+        };
+        if (ctx.Db.MovementUpdate.ShipEntityId.Find(ship.EntityId) is MovementUpdate pending)
+        {
+            // A command already waiting keeps its right to replace the tracked course.
+            update.ReplaceKinematics |= pending.ReplaceKinematics;
+            ctx.Db.MovementUpdate.ShipEntityId.Update(update);
+            return;
+        }
+
+        ctx.Db.MovementUpdate.Insert(update);
     }
 
     private static void ApplyPendingMovementUpdates(
@@ -158,7 +156,7 @@ public static partial class Module
         MovementUpdate update)
     {
         var index = FindTrackedShip(ships, update.ShipEntityId);
-        if (!ShouldTrackMovement(update.Ship))
+        if (!update.Track)
         {
             if (index >= 0)
             {
@@ -169,18 +167,20 @@ public static partial class Module
 
         if (index < 0)
         {
-            ships.Add(ToKinematics(update.Ship));
+            ships.Add(update.Kinematics);
             return;
         }
 
         if (update.ReplaceKinematics)
         {
-            ships[index] = ToKinematics(update.Ship);
+            ships[index] = update.Kinematics;
             return;
         }
 
+        // Status and damage changes only retune the sailing parameters; the shard keeps
+        // the position and course it has been integrating.
         var tracked = ships[index];
-        CopyGameplayState(update.Ship, ref tracked);
+        CopyTacticalParameters(update.Kinematics, ref tracked);
         ships[index] = tracked;
     }
 
@@ -274,13 +274,12 @@ public static partial class Module
         target.ChunkY = source.ChunkY;
     }
 
-    private static void CopyGameplayState(Ship source, ref ShipKinematics target)
+    private static void CopyTacticalParameters(ShipKinematics source, ref ShipKinematics target)
     {
-        var tactical = TacticalMovementParameters(source);
-        target.TacticalMaximumSpeed = tactical.MaximumSpeed;
-        target.TacticalAcceleration = tactical.Acceleration;
+        target.TacticalMaximumSpeed = source.TacticalMaximumSpeed;
+        target.TacticalAcceleration = source.TacticalAcceleration;
         target.Deceleration = source.Deceleration;
-        target.TacticalTurnRateDegrees = tactical.TurnRateDegrees;
+        target.TacticalTurnRateDegrees = source.TacticalTurnRateDegrees;
         target.EffectiveMaximumSpeed = -1f;
     }
 

@@ -81,9 +81,10 @@ public static partial class Module
         var entityId = AllocateEntityId(ctx);
         var spawn = FindSafeSpawn(ctx, IdentitySeed(ctx.Sender));
         var ship = CreateShip(entityId, "player_sloop", "player", spawn.X, spawn.Y);
-        ship.InvulnerableUntilTick = RespawnRules.PlayerProtectionUntil(CurrentSimulationTick(ctx));
+        var tick = CurrentSimulationTick(ctx);
+        ship.InvulnerableUntilTick = RespawnRules.PlayerProtectionUntil(tick);
         ctx.Db.Ship.Insert(ship);
-        InsertShipMovement(ctx, ship);
+        InsertShipMovement(ctx, ship, tick);
         ctx.Db.PlayerOwnership.Insert(new PlayerOwnership
         {
             Owner = ctx.Sender,
@@ -96,7 +97,7 @@ public static partial class Module
         EnsureHull(ctx, ctx.Sender);
         EnsureCommandState(ctx, ctx.Sender, entityId);
         SeedPlayerInventory(ctx, entityId);
-        AppendEvent(ctx, entityId, "player_loaded", $"entity_id={entityId}");
+        AppendEvent(ctx, tick, entityId, "player_loaded", $"entity_id={entityId}");
         SynchronizePlayerClock(ctx, ctx.Sender);
     }
 

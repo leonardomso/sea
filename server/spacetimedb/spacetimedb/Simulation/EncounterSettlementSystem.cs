@@ -123,6 +123,7 @@ public static partial class Module
         });
         AppendEvent(
             ctx,
+            tick,
             grant.EntityId,
             "shared_reward",
             $"encounter_id={encounterId},gold={grant.Gold},experience={grant.Experience}");

@@ -12,19 +12,20 @@ public static partial class Module
         ship.RespawnAtTick = tick + (player
             ? RespawnRules.PlayerDelayTicks
             : RespawnRules.NpcDelayTicks);
-        var work = ctx.Db.RespawnWork.ShipEntityId.Find(ship.EntityId) ?? new RespawnWork
+        if (ctx.Db.RespawnWork.ShipEntityId.Find(ship.EntityId) is RespawnWork work)
         {
-            ShipEntityId = ship.EntityId,
-        };
-        work.IsPending = true;
-        work.RespawnAtTick = ship.RespawnAtTick;
-        if (ctx.Db.RespawnWork.ShipEntityId.Find(ship.EntityId) is null)
-        {
-            ctx.Db.RespawnWork.Insert(work);
+            work.IsPending = true;
+            work.RespawnAtTick = ship.RespawnAtTick;
+            ctx.Db.RespawnWork.ShipEntityId.Update(work);
         }
         else
         {
-            ctx.Db.RespawnWork.ShipEntityId.Update(work);
+            ctx.Db.RespawnWork.Insert(new RespawnWork
+            {
+                ShipEntityId = ship.EntityId,
+                IsPending = true,
+                RespawnAtTick = ship.RespawnAtTick,
+            });
         }
 
         if (!player)
@@ -59,7 +60,7 @@ public static partial class Module
             RestoreShipForRespawn(ctx, ref ship, spawn, tick);
             ships.Stage(ship);
             ctx.Db.RespawnWork.ShipEntityId.Delete(work.ShipEntityId);
-            AppendEvent(ctx, ship.EntityId, "ship_respawned", "");
+            AppendEvent(ctx, tick, ship.EntityId, "ship_respawned", "");
         }
     }
 

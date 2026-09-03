@@ -263,8 +263,9 @@ export const MovementUpdate = __t.object("MovementUpdate", {
   shipEntityId: __t.u64(),
   shardId: __t.u8(),
   replaceKinematics: __t.bool(),
-  get ship() {
-    return Ship;
+  track: __t.bool(),
+  get kinematics() {
+    return ShipKinematics;
   },
 });
 export type MovementUpdate = __Infer<typeof MovementUpdate>;
@@ -569,7 +570,6 @@ export const SimulationClock = __t.object("SimulationClock", {
   id: __t.u32(),
   tick: __t.u64(),
   nextEntityId: __t.u64(),
-  activeLootCount: __t.u32(),
   connectedPlayerCount: __t.u32(),
 });
 export type SimulationClock = __Infer<typeof SimulationClock>;

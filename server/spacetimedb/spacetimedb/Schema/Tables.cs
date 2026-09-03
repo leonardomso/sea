@@ -4,11 +4,7 @@ using SpacetimeDB;
 public static partial class Module
 {
     [SpacetimeDB.Table(Accessor = "Ship", Public = true)]
-    [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
-    [SpacetimeDB.Index.BTree(Accessor = "ByMoving", Columns = new[] { nameof(IsMoving) })]
-    [SpacetimeDB.Index.BTree(Accessor = "ByMovingShard", Columns = new[] { nameof(IsMoving), nameof(MovementShard) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByActiveChunk", Columns = new[] { nameof(IsActive), nameof(ChunkX), nameof(ChunkY) })]
-    [SpacetimeDB.Index.BTree(Accessor = "ByActiveChunkShard", Columns = new[] { nameof(IsActive), nameof(ChunkX), nameof(ChunkY), nameof(MovementShard) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByEnvironmentExposure", Columns = new[] { nameof(EnvironmentExposureCode) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByTarget", Columns = new[] { nameof(TargetEntityId) })]
     public partial struct Ship
@@ -153,7 +149,6 @@ public static partial class Module
 
     [SpacetimeDB.Table(Accessor = "ShipStatus", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByShip", Columns = new[] { nameof(ShipEntityId) })]
-    [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByShipStatus", Columns = new[] { nameof(ShipEntityId), nameof(StatusCode) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByStatusDue", Columns = new[] { nameof(IsActive), nameof(NextProcessTick) })]
     public partial struct ShipStatus
@@ -172,9 +167,6 @@ public static partial class Module
     }
 
     [SpacetimeDB.Table(Accessor = "Volley", Public = true)]
-    [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
-    [SpacetimeDB.Index.BTree(Accessor = "ByTarget", Columns = new[] { nameof(TargetEntityId) })]
-    [SpacetimeDB.Index.BTree(Accessor = "ByChunk", Columns = new[] { nameof(ChunkX), nameof(ChunkY) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByImpactDue", Columns = new[] { nameof(IsActive), nameof(ImpactAtTick) })]
     public partial struct Volley
     {
@@ -203,8 +195,6 @@ public static partial class Module
     }
 
     [SpacetimeDB.Table(Accessor = "Loot", Public = true)]
-    [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
-    [SpacetimeDB.Index.BTree(Accessor = "ByChunk", Columns = new[] { nameof(ChunkX), nameof(ChunkY) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByActiveChunk", Columns = new[] { nameof(IsActive), nameof(ChunkX), nameof(ChunkY) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByLootExpiryDue", Columns = new[] { nameof(IsActive), nameof(ExpiresAtTick) })]
     public partial struct Loot
@@ -238,7 +228,6 @@ public static partial class Module
     }
 
     [SpacetimeDB.Table(Accessor = "ShipChannel", Public = true)]
-    [SpacetimeDB.Index.BTree(Accessor = "ByActive", Columns = new[] { nameof(IsActive) })]
     [SpacetimeDB.Index.BTree(Accessor = "ByChannelDue", Columns = new[] { nameof(IsActive), nameof(NextProcessTick) })]
     public partial struct ShipChannel
     {

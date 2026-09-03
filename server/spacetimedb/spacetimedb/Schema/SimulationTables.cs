@@ -20,7 +20,6 @@ public static partial class Module
         public uint Id;
         public ulong Tick;
         public ulong NextEntityId;
-        public uint ActiveLootCount;
         public uint ConnectedPlayerCount;
     }
 
@@ -141,7 +140,8 @@ public static partial class Module
         public ulong ShipEntityId;
         public byte ShardId;
         public bool ReplaceKinematics;
-        public Ship Ship;
+        public bool Track;
+        public ShipKinematics Kinematics;
     }
 
 }

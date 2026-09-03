@@ -5,17 +5,14 @@ public static partial class Module
 {
     private static (uint Processed, uint Dormant) ProcessNpcDecisions(
         ReducerContext ctx,
-        ulong tick)
+        TickWorld world)
     {
         var processed = 0u;
         var dormant = 0u;
-        // Every decision this tick steers around the same islands and respects the
-        // same harbor waters; read both once.
-        NpcWorldContext? world = null;
         for (byte shardId = 0; shardId < SimulationWorkRules.NpcShardCount; shardId++)
         {
             foreach (var ai in ctx.Db.NpcAi.ByDecisionDueShard.Filter(
-                         (true, shardId, new Bound<ulong>(0, tick))))
+                         (true, shardId, new Bound<ulong>(0, world.Tick))))
             {
                 processed++;
                 if (!ai.IsActive)
@@ -23,39 +20,16 @@ public static partial class Module
                     dormant++;
                 }
 
-                world ??= new NpcWorldContext(NavigationBlockers(ctx), FindHarbor(ctx));
-                ProcessNpcDecision(ctx, ai, tick, world.Value);
+                ProcessNpcDecision(ctx, world, ai);
             }
         }
 
         return (processed, dormant);
     }
 
-    private readonly record struct NpcWorldContext(
-        IReadOnlyCollection<NavigationBlocker> Blockers,
-        WorldObject? Harbor)
+    private static void ProcessNpcDecision(ReducerContext ctx, TickWorld world, NpcAi ai)
     {
-        public bool IsAttackablePlayer(Ship ship, ulong tick) =>
-            ship.IsActive && ship.IsAlive &&
-            ship.FactionCode == (byte)FactionCode.Player &&
-            !NpcRules.IsProtectedFromNpcs(
-                ship.InvulnerableUntilTick,
-                tick,
-                Harbor is WorldObject harbor
-                    ? CombatRules.Distance(
-                        ship.PositionX,
-                        ship.PositionY,
-                        harbor.PositionX,
-                        harbor.PositionY)
-                    : float.PositiveInfinity);
-    }
-
-    private static void ProcessNpcDecision(
-        ReducerContext ctx,
-        NpcAi ai,
-        ulong tick,
-        NpcWorldContext world)
-    {
+        var tick = world.Tick;
         ai.NextDecisionTick = tick + NpcRules.DecisionIntervalTicks;
         if (ctx.Db.Ship.EntityId.Find(ai.ShipEntityId) is not Ship ship ||
             !ship.IsActive || !ship.IsAlive)
@@ -71,14 +45,14 @@ public static partial class Module
         var definition = Catalog.NpcByArchetypeCode[ship.ArchetypeCode] ??
             throw new InvalidOperationException("NPC content definition is missing.");
         var target = FindHydratedShip(ctx, ship.TargetEntityId);
-        var targetAvailable = target is Ship selected && world.IsAttackablePlayer(selected, tick);
+        var targetAvailable = target is Ship selected && world.IsAttackablePlayer(ctx, selected);
         var candidate = NpcRules.ShouldSearchForTarget(
                 targetAvailable,
                 definition.AggroRange,
                 CombatRules.Distance(ship.PositionX, ship.PositionY, ai.HomeX, ai.HomeY))
-            ? FindNearestPlayer(ctx, ship, definition.AggroRange, tick, world)
+            ? FindNearestPlayer(ctx, world, ship, definition.AggroRange)
             : default(Ship?);
-        ExecuteNpcDecision(ctx, ship, NpcRules.Decide(BuildNpcSnapshot(
+        ExecuteNpcDecision(ctx, world, ship, NpcRules.Decide(BuildNpcSnapshot(
             ctx,
             ai,
             ship,
@@ -87,7 +61,7 @@ public static partial class Module
             candidate,
             targetAvailable,
             tick,
-            world.Blockers)));
+            world.Blockers(ctx))));
         ctx.Db.NpcAi.ShipEntityId.Update(ai);
     }
 
@@ -153,10 +127,9 @@ public static partial class Module
 
     private static Ship? FindNearestPlayer(
         ReducerContext ctx,
+        TickWorld world,
         Ship source,
-        float range,
-        ulong tick,
-        NpcWorldContext world)
+        float range)
     {
         // Players are few, so walking their thin published rows beats scanning every
         // ship in the surrounding chunks; the fat Ship row is only read for a player
@@ -185,7 +158,7 @@ public static partial class Module
             }
 
             CopyKinematics(movement, ref candidate);
-            if (!world.IsAttackablePlayer(candidate, tick))
+            if (!world.IsAttackablePlayer(ctx, candidate))
             {
                 continue;
             }
@@ -224,6 +197,7 @@ public static partial class Module
 
     private static void ExecuteNpcDecision(
         ReducerContext ctx,
+        TickWorld world,
         Ship ship,
         NpcDecision decision)
     {
@@ -234,11 +208,11 @@ public static partial class Module
         }
 
         var decoded = DecodeCommand(command);
-        var snapshot = BuildCommandSnapshot(ctx, ship, decoded);
+        var snapshot = BuildCommandSnapshot(ctx, world, ship, decoded);
         var commandDecision = CommandPolicy.Evaluate(snapshot, decoded.Kind);
         if (commandDecision.Accepted)
         {
-            ApplyAcceptedCommand(ctx, ref ship, decoded, commandDecision);
+            ApplyAcceptedCommand(ctx, world, ref ship, decoded, commandDecision);
         }
     }
 

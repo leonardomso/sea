@@ -75,12 +75,13 @@ public static partial class Module
         var ship = ctx.Db.Ship.EntityId.Find(ownership.ShipEntityId) ??
             throw new InvalidOperationException("Loaded player ship is missing.");
         HydrateTrackedKinematics(ctx, ref ship);
+        var world = TickWorld.Open(ctx);
         var decoded = DecodeCommand(envelope.Command);
-        var snapshot = BuildCommandSnapshot(ctx, ship, decoded);
+        var snapshot = BuildCommandSnapshot(ctx, world, ship, decoded);
         var decision = CommandPolicy.Evaluate(snapshot, decoded.Kind);
         if (decision.Accepted)
         {
-            ApplyAcceptedCommand(ctx, ref ship, decoded, decision);
+            ApplyAcceptedCommand(ctx, world, ref ship, decoded, decision);
         }
 
         state.LastProcessedCommandId = envelope.CommandId;

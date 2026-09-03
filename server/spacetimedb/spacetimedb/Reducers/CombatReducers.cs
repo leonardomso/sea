@@ -5,20 +5,19 @@ public static partial class Module
 {
     private static void ApplyFireBroadside(
         ReducerContext ctx,
+        TickWorld world,
         ref Ship source,
         FireBroadsideCommand command,
         BroadsideSide side,
         WeakPoint weakPoint)
     {
-        var world = ctx.Db.SimulationClock.Id.Find(1) ??
-            throw new InvalidOperationException("Simulation clock is missing.");
         var target = ctx.Db.Ship.EntityId.Find(source.TargetEntityId) ??
             throw new InvalidOperationException("Accepted broadside has no target.");
         var ammunition = Catalog.AmmunitionByCode[source.SelectedAmmoCode] ??
             throw new InvalidOperationException("Selected ammunition definition is missing.");
         var inventory = FindInventory(ctx, source.EntityId, ammunition.Id) ??
             throw new InvalidOperationException("Accepted broadside has no ammunition.");
-        var damage = BroadsideDamage(ctx, source, ammunition, weakPoint);
+        var damage = BroadsideDamage(ctx, world, source, ammunition, weakPoint);
         var distance = CombatRules.Distance(
             source.PositionX,
             source.PositionY,
@@ -60,6 +59,7 @@ public static partial class Module
         });
         AppendEvent(
             ctx,
+            world.Tick,
             source.EntityId,
             "broadside_fired",
             $"target={target.EntityId},side={command.Side},ammo={ammunition.Id},impact_tick={impactAtTick}");
@@ -67,6 +67,7 @@ public static partial class Module
 
     private static CombatDamage BroadsideDamage(
         ReducerContext ctx,
+        TickWorld world,
         Ship source,
         AmmunitionContent ammunition,
         WeakPoint weakPoint)
@@ -77,7 +78,7 @@ public static partial class Module
             source.CannonDamage,
             source.Cannons,
             source.MaxCannons);
-        var hazards = HazardsAt(ctx, source.PositionX, source.PositionY);
+        var hazards = HazardsAt(ctx, world, source.PositionX, source.PositionY);
         return hazards.InStorm
             ? ScaleCombatDamage(damage, hazards.Modifiers.WeaponEffectiveness)
             : damage;
@@ -101,6 +102,7 @@ public static partial class Module
 
     private static void ApplyActivateAbility(
         ReducerContext ctx,
+        TickWorld world,
         ref Ship ship,
         ActivateAbilityCommand command)
     {
@@ -112,8 +114,6 @@ public static partial class Module
             throw new InvalidOperationException("Accepted ability definition is missing.");
         }
 
-        var world = ctx.Db.SimulationClock.Id.Find(1) ??
-            throw new InvalidOperationException("Simulation clock is missing.");
         if (abilityCode == AbilityCode.EmergencyPump)
         {
             DeactivateStatus(ctx, ship.EntityId, StatusCode.Flooding, world.Tick);
@@ -135,6 +135,7 @@ public static partial class Module
             world.Tick + ability.CooldownTicks);
         AppendEvent(
             ctx,
+            world.Tick,
             ship.EntityId,
             "ability_activated",
             $"ability={command.AbilityId}");

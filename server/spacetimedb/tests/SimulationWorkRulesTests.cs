@@ -55,6 +55,23 @@ public sealed class SimulationWorkRulesTests
             SimulationWorkRules.FirstMovementTick(lastSimulatedTick, currentTick));
     }
 
+    [Theory]
+    [InlineData(10ul, 25ul, true, 25ul)]
+    [InlineData(10ul, 25ul, false, 18ul)]
+    [InlineData(10ul, 12ul, true, 12ul)]
+    [InlineData(10ul, 12ul, false, 11ul)]
+    [InlineData(15ul, 15ul, true, 15ul)]
+    public void IdleShardsResumeAtTheCurrentTickInsteadOfCatchingUp(
+        ulong lastSimulatedTick,
+        ulong currentTick,
+        bool shardWasIdle,
+        ulong expectedFirstTick)
+    {
+        Assert.Equal(
+            expectedFirstTick,
+            SimulationWorkRules.FirstMovementTick(lastSimulatedTick, currentTick, shardWasIdle));
+    }
+
     [Fact]
     public void DispatcherRunsOneWorldTickPerIntervalWhilePlayersAreConnected()
     {

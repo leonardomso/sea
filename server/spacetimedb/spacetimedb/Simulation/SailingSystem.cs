@@ -5,64 +5,46 @@ public static partial class Module
 {
     private static (uint Processed, uint Dormant) AdvanceMovingShips(
         ReducerContext ctx,
-        ulong tick,
-        bool hasActiveLoot)
+        TickWorld world)
     {
-        var spatial = new SpatialTickCache();
-        var environment = ctx.Db.EnvironmentState.Id.Find(1);
-        var currentField = ctx.Db.CurrentFieldState.Id.Find(1);
         var processed = 0u;
         for (byte shardId = 0; shardId < SimulationWorkRules.MovementShardCount; shardId++)
         {
-            processed += AdvanceMovementShard(
-                ctx,
-                spatial,
-                environment,
-                currentField,
-                tick,
-                shardId,
-                hasActiveLoot);
+            processed += AdvanceMovementShard(ctx, world, shardId);
         }
 
         return (processed, 0);
     }
 
-    private static uint AdvanceMovementShard(
-        ReducerContext ctx,
-        SpatialTickCache spatial,
-        EnvironmentState? environment,
-        CurrentFieldState? currentField,
-        ulong tick,
-        byte shardId,
-        bool hasActiveLoot)
+    private static uint AdvanceMovementShard(ReducerContext ctx, TickWorld world, byte shardId)
     {
-        var shard = ctx.Db.MovementShardState.ShardId.Find(shardId) ??
-            throw new InvalidOperationException("Movement shard state is missing.");
+        var shard = FindMovementShard(ctx, shardId);
+        var wasIdle = shard.Ships.Count == 0;
         ApplyPendingMovementUpdates(ctx, ref shard);
+        if (wasIdle && shard.Ships.Count == 0)
+        {
+            // Nothing sailed and nothing started, so the row stays untouched and the
+            // tick pays nothing for an empty shard.
+            return 0;
+        }
+
         var processed = ProcessMovementBatch(
             ctx,
-            spatial,
-            environment,
-            currentField,
+            world,
             shard.Ships,
-            SimulationWorkRules.FirstMovementTick(shard.LastSimulatedTick, tick),
-            tick,
-            hasActiveLoot);
-
-        shard.LastSimulatedTick = tick;
+            SimulationWorkRules.FirstMovementTick(shard.LastSimulatedTick, world.Tick, wasIdle),
+            world.Tick);
+        shard.LastSimulatedTick = world.Tick;
         ctx.Db.MovementShardState.ShardId.Update(shard);
         return processed;
     }
 
     private static uint ProcessMovementBatch(
         ReducerContext ctx,
-        SpatialTickCache spatial,
-        EnvironmentState? environment,
-        CurrentFieldState? currentField,
+        TickWorld world,
         List<ShipKinematics> ships,
         ulong firstTick,
-        ulong lastTick,
-        bool hasActiveLoot)
+        ulong lastTick)
     {
         var processed = 0u;
         var writeIndex = 0;
@@ -76,17 +58,8 @@ public static partial class Module
                 processed++;
                 if (ship.IsMoving)
                 {
-                    ProcessMovingShip(
-                        ctx,
-                        spatial,
-                        environment,
-                        currentField,
-                        ref ship,
-                        tick,
-                        1f / WorldRules.TickRateHz,
-                        hasActiveLoot);
+                    ProcessMovingShip(ctx, world, ref ship, tick, 1f / WorldRules.TickRateHz);
                 }
-
             }
 
             // Every ship publishes in the transaction that moved it, so clients see the
@@ -112,16 +85,13 @@ public static partial class Module
 
     private static void ProcessMovingShip(
         ReducerContext ctx,
-        SpatialTickCache spatial,
-        EnvironmentState? environment,
-        CurrentFieldState? currentField,
+        TickWorld world,
         ref ShipKinematics ship,
         ulong tick,
-        float deltaSeconds,
-        bool hasActiveLoot)
+        float deltaSeconds)
     {
-        RefreshEnvironment(currentField, environment, ref ship, tick);
-        AdvanceNavigationWaypoint(ctx, ref ship);
+        RefreshEnvironment(world.CurrentField(ctx), world.Environment(ctx), ref ship, tick);
+        AdvanceNavigationWaypoint(ctx, world, ref ship);
         var destination = NavigationDestination(ship);
         var parameters = MovementParameters(ship);
         var step = SailingRules.StepTowardHeading(
@@ -133,10 +103,10 @@ public static partial class Module
             parameters,
             deltaSeconds);
         ApplySailingStep(ref ship, step, deltaSeconds);
-        if (hasActiveLoot &&
-            SimulationWorkRules.ShouldProcessLootPickup(ship.EntityId, tick))
+        if (SimulationWorkRules.ShouldProcessLootPickup(ship.EntityId, tick) &&
+            world.HasActiveLoot(ctx))
         {
-            ProcessLootClaimsForMovingShip(ctx, ship);
+            ProcessLootClaimsForMovingShip(ctx, ship, tick);
         }
     }
 
@@ -178,6 +148,7 @@ public static partial class Module
 
     private static void AdvanceNavigationWaypoint(
         ReducerContext ctx,
+        TickWorld world,
         ref ShipKinematics ship)
     {
         if (!ship.HasWaypoint || NavigationRules.Distance(
@@ -190,9 +161,7 @@ public static partial class Module
         }
 
         ship.HasWaypoint = false;
-        ConfigureNavigationWaypoint(
-            ref ship,
-            NavigationBlockers(ctx));
+        ConfigureNavigationWaypoint(ref ship, world.Blockers(ctx));
     }
 
     private static (float X, float Y) NavigationDestination(ShipKinematics ship) =>
@@ -283,39 +252,6 @@ public static partial class Module
     }
 
 
-    private static bool IsNavigablePosition(
-        ReducerContext ctx,
-        SpatialTickCache spatial,
-        float x,
-        float y)
-    {
-        if (!WorldRules.IsInsideMap(x, y))
-        {
-            return false;
-        }
-
-        var bounds = SpatialRules.BoundsAround(
-            x,
-            y,
-            SpatialRules.MaximumWorldInfluenceRadius);
-        foreach (var worldObject in spatial.WorldObjectsIn(ctx, bounds))
-        {
-            if (worldObject.IsActive && worldObject.BlocksMovement &&
-                WorldRules.IsBlocked(
-                    (WorldObjectCode)worldObject.KindCode,
-                    worldObject.PositionX,
-                    worldObject.PositionY,
-                    worldObject.Radius,
-                    x,
-                    y))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     private static void MoveStorms(ReducerContext ctx, ulong tick)
     {
         var deltaSeconds = (float)SimulationWorkRules.PeriodicEffectIntervalTicks /
@@ -342,5 +278,4 @@ public static partial class Module
             ctx.Db.WorldObject.EntityId.Update(moved);
         }
     }
-
 }

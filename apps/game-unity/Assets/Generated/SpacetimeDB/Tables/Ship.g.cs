@@ -44,42 +44,6 @@ namespace SpacetimeDB.Types
 
             public readonly ByActiveChunkIndex ByActiveChunk;
 
-            public sealed class ByActiveChunkShardIndex : BTreeIndexBase<(bool IsActive, int ChunkX, int ChunkY, byte MovementShard)>
-            {
-                protected override (bool IsActive, int ChunkX, int ChunkY, byte MovementShard) GetKey(Ship row) => (row.IsActive, row.ChunkX, row.ChunkY, row.MovementShard);
-
-                public ByActiveChunkShardIndex(ShipHandle table) : base(table) { }
-            }
-
-            public readonly ByActiveChunkShardIndex ByActiveChunkShard;
-
-            public sealed class ByActiveIndex : BTreeIndexBase<bool>
-            {
-                protected override bool GetKey(Ship row) => row.IsActive;
-
-                public ByActiveIndex(ShipHandle table) : base(table) { }
-            }
-
-            public readonly ByActiveIndex ByActive;
-
-            public sealed class ByMovingIndex : BTreeIndexBase<bool>
-            {
-                protected override bool GetKey(Ship row) => row.IsMoving;
-
-                public ByMovingIndex(ShipHandle table) : base(table) { }
-            }
-
-            public readonly ByMovingIndex ByMoving;
-
-            public sealed class ByMovingShardIndex : BTreeIndexBase<(bool IsMoving, byte MovementShard)>
-            {
-                protected override (bool IsMoving, byte MovementShard) GetKey(Ship row) => (row.IsMoving, row.MovementShard);
-
-                public ByMovingShardIndex(ShipHandle table) : base(table) { }
-            }
-
-            public readonly ByMovingShardIndex ByMovingShard;
-
             public sealed class ByTargetIndex : BTreeIndexBase<ulong>
             {
                 protected override ulong GetKey(Ship row) => row.TargetEntityId;
@@ -94,10 +58,6 @@ namespace SpacetimeDB.Types
                 EntityId = new(this);
                 ByEnvironmentExposure = new(this);
                 ByActiveChunk = new(this);
-                ByActiveChunkShard = new(this);
-                ByActive = new(this);
-                ByMoving = new(this);
-                ByMovingShard = new(this);
                 ByTarget = new(this);
             }
 
@@ -214,8 +174,6 @@ namespace SpacetimeDB.Types
     public sealed class ShipIxCols
     {
         public global::SpacetimeDB.IxCol<Ship, ulong> EntityId { get; }
-        public global::SpacetimeDB.IxCol<Ship, bool> IsMoving { get; }
-        public global::SpacetimeDB.IxCol<Ship, byte> MovementShard { get; }
         public global::SpacetimeDB.IxCol<Ship, bool> IsActive { get; }
         public global::SpacetimeDB.IxCol<Ship, byte> EnvironmentExposureCode { get; }
         public global::SpacetimeDB.IxCol<Ship, int> ChunkX { get; }
@@ -225,8 +183,6 @@ namespace SpacetimeDB.Types
         public ShipIxCols(string tableName)
         {
             EntityId = new global::SpacetimeDB.IxCol<Ship, ulong>(tableName, "entity_id");
-            IsMoving = new global::SpacetimeDB.IxCol<Ship, bool>(tableName, "is_moving");
-            MovementShard = new global::SpacetimeDB.IxCol<Ship, byte>(tableName, "movement_shard");
             IsActive = new global::SpacetimeDB.IxCol<Ship, bool>(tableName, "is_active");
             EnvironmentExposureCode = new global::SpacetimeDB.IxCol<Ship, byte>(tableName, "environment_exposure_code");
             ChunkX = new global::SpacetimeDB.IxCol<Ship, int>(tableName, "chunk_x");

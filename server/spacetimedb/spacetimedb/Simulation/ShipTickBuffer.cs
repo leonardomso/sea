@@ -30,11 +30,11 @@ public static partial class Module
 
         public void Stage(Ship ship) => ships[ship.EntityId] = ship;
 
-        public void Flush(ReducerContext ctx)
+        public void Flush(ReducerContext ctx, ulong tick)
         {
             foreach (var ship in ships.Values)
             {
-                PersistShip(ctx, ship);
+                PersistShip(ctx, ship, tick);
             }
         }
     }

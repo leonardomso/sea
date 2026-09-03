@@ -5,12 +5,7 @@ public static partial class Module
 {
     private static (bool InStorm, bool InShoal, TacticalModifiers Modifiers) HazardsAt(
         ReducerContext ctx,
-        float x,
-        float y) => HazardsAt(ctx, new SpatialTickCache(), x, y);
-
-    private static (bool InStorm, bool InShoal, TacticalModifiers Modifiers) HazardsAt(
-        ReducerContext ctx,
-        SpatialTickCache spatial,
+        TickWorld world,
         float x,
         float y)
     {
@@ -20,7 +15,7 @@ public static partial class Module
             x,
             y,
             SpatialRules.MaximumWorldInfluenceRadius);
-        foreach (var worldObject in spatial.WorldObjectsIn(ctx, bounds))
+        foreach (var worldObject in world.WorldObjectsIn(ctx, bounds))
         {
             if (!worldObject.IsActive ||
                 !WorldRules.IsInRange(

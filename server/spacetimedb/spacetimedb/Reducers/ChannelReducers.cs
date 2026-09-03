@@ -3,10 +3,8 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    private static void ApplyStartRepair(ReducerContext ctx, ref Ship ship)
+    private static void ApplyStartRepair(ReducerContext ctx, TickWorld world, ref Ship ship)
     {
-        var world = ctx.Db.SimulationClock.Id.Find(1) ??
-            throw new InvalidOperationException("Simulation clock is missing.");
         var repairKit = FindInventory(ctx, ship.EntityId, "repair_kit") ??
             throw new InvalidOperationException("Accepted repair has no repair kit.");
 
@@ -27,13 +25,11 @@ public static partial class Module
             InitialCrew = ship.Crew,
             IsActive = true,
         });
-        AppendEvent(ctx, ship.EntityId, "repair_started", "");
+        AppendEvent(ctx, world.Tick, ship.EntityId, "repair_started", "");
     }
 
-    private static void ApplyStartBoarding(ReducerContext ctx, ref Ship source)
+    private static void ApplyStartBoarding(ReducerContext ctx, TickWorld world, ref Ship source)
     {
-        var world = ctx.Db.SimulationClock.Id.Find(1) ??
-            throw new InvalidOperationException("Simulation clock is missing.");
         var target = ctx.Db.Ship.EntityId.Find(source.TargetEntityId) ??
             throw new InvalidOperationException("Accepted boarding has no target.");
 
@@ -52,14 +48,14 @@ public static partial class Module
             InitialCrew = source.Crew,
             IsActive = true,
         });
-        AppendEvent(ctx, source.EntityId, "boarding_started", $"target={target.EntityId}");
+        AppendEvent(ctx, world.Tick, source.EntityId, "boarding_started", $"target={target.EntityId}");
     }
 
-    private static void ApplyCancelChannel(ReducerContext ctx, Ship ship)
+    private static void ApplyCancelChannel(ReducerContext ctx, TickWorld world, Ship ship)
     {
         var channel = FindActiveChannel(ctx, ship.EntityId) ??
             throw new InvalidOperationException("Accepted cancellation has no channel.");
         ctx.Db.ShipChannel.ShipEntityId.Delete(ship.EntityId);
-        AppendEvent(ctx, ship.EntityId, $"{channel.ChannelType}_cancelled", "");
+        AppendEvent(ctx, world.Tick, ship.EntityId, $"{channel.ChannelType}_cancelled", "");
     }
 }

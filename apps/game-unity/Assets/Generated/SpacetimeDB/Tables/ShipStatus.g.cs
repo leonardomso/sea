@@ -17,15 +17,6 @@ namespace SpacetimeDB.Types
         {
             public override string RemoteTableName => "ship_status";
 
-            public sealed class ByActiveIndex : BTreeIndexBase<bool>
-            {
-                protected override bool GetKey(ShipStatus row) => row.IsActive;
-
-                public ByActiveIndex(ShipStatusHandle table) : base(table) { }
-            }
-
-            public readonly ByActiveIndex ByActive;
-
             public sealed class ByStatusDueIndex : BTreeIndexBase<(bool IsActive, ulong NextProcessTick)>
             {
                 protected override (bool IsActive, ulong NextProcessTick) GetKey(ShipStatus row) => (row.IsActive, row.NextProcessTick);
@@ -64,7 +55,6 @@ namespace SpacetimeDB.Types
 
             internal ShipStatusHandle(DbConnection conn) : base(conn)
             {
-                ByActive = new(this);
                 ByStatusDue = new(this);
                 ByShip = new(this);
                 ByShipStatus = new(this);

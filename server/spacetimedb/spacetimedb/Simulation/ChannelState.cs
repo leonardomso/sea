@@ -32,6 +32,7 @@ public static partial class Module
         ctx.Db.ShipChannel.ShipEntityId.Delete(shipEntityId);
         AppendEvent(
             ctx,
+            tick,
             shipEntityId,
             $"{channel.ChannelType}_interrupted",
             $"cause={cause}");
@@ -50,7 +51,7 @@ public static partial class Module
             CooldownCode.Boarding,
             tick + TacticalRules.BoardingCooldownTicks);
         ctx.Db.ShipChannel.ShipEntityId.Delete(shipEntityId);
-        AppendEvent(ctx, shipEntityId, eventType, "");
+        AppendEvent(ctx, tick, shipEntityId, eventType, "");
     }
 
     private static Cooldown? FindCooldown(

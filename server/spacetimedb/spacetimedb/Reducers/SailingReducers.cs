@@ -5,10 +5,11 @@ public static partial class Module
 {
     private static void ApplySetCourse(
         ReducerContext ctx,
+        TickWorld world,
         ref Ship ship,
         SetCourseCommand command)
     {
-        var blockers = NavigationBlockers(ctx);
+        var blockers = world.Blockers(ctx);
         ship.DestinationX = command.X;
         ship.DestinationY = command.Y;
         ConfigureNavigationWaypoint(ref ship, blockers);
@@ -17,12 +18,13 @@ public static partial class Module
         ship.IsMoving = ship.HasCourse;
         AppendEvent(
             ctx,
+            world.Tick,
             ship.EntityId,
             "set_course",
             $"x={command.X:0.###},y={command.Y:0.###}");
     }
 
-    private static void ApplyStopCourse(ReducerContext ctx, ref Ship ship)
+    private static void ApplyStopCourse(ReducerContext ctx, TickWorld world, ref Ship ship)
     {
         ship.DestinationX = ship.PositionX;
         ship.DestinationY = ship.PositionY;
@@ -32,28 +34,30 @@ public static partial class Module
         ship.HasCourse = false;
         ship.IsStopping = ship.Speed > 0f;
         ship.IsMoving = ship.Speed > 0f;
-        AppendEvent(ctx, ship.EntityId, "stop_course", "");
+        AppendEvent(ctx, world.Tick, ship.EntityId, "stop_course", "");
     }
 
     private static void ApplySelectTarget(
         ReducerContext ctx,
+        TickWorld world,
         ref Ship ship,
         SelectTargetCommand command)
     {
         ship.TargetEntityId = command.EntityId;
         ship.IsEngaged = false;
-        AppendEvent(ctx, ship.EntityId, "select_target", $"entity_id={command.EntityId}");
+        AppendEvent(ctx, world.Tick, ship.EntityId, "select_target", $"entity_id={command.EntityId}");
     }
 
-    private static void ApplyClearTarget(ReducerContext ctx, ref Ship ship)
+    private static void ApplyClearTarget(ReducerContext ctx, TickWorld world, ref Ship ship)
     {
         ship.TargetEntityId = 0;
         ship.IsEngaged = false;
-        AppendEvent(ctx, ship.EntityId, "clear_target", "");
+        AppendEvent(ctx, world.Tick, ship.EntityId, "clear_target", "");
     }
 
     private static void ApplySetAmmo(
         ReducerContext ctx,
+        TickWorld world,
         ref Ship ship,
         SetAmmoCommand command)
     {
@@ -63,6 +67,6 @@ public static partial class Module
         }
 
         ship.SelectedAmmoCode = (byte)ammunitionCode;
-        AppendEvent(ctx, ship.EntityId, "set_ammo", $"ammo={command.AmmoId}");
+        AppendEvent(ctx, world.Tick, ship.EntityId, "set_ammo", $"ammo={command.AmmoId}");
     }
 }

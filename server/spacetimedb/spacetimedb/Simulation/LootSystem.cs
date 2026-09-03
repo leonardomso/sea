@@ -5,7 +5,8 @@ public static partial class Module
 {
     private static void ProcessLootClaimsForMovingShip(
         ReducerContext ctx,
-        ShipKinematics kinematics)
+        ShipKinematics kinematics,
+        ulong tick)
     {
         if (ctx.Db.Ship.EntityId.Find(kinematics.EntityId) is not Ship ship)
         {
@@ -13,10 +14,13 @@ public static partial class Module
         }
 
         CopyKinematics(kinematics, ref ship);
-        ProcessLootClaimsForMovingShip(ctx, ship);
+        ProcessLootClaimsForMovingShip(ctx, ship, tick);
     }
 
-    private static void ProcessLootClaimsForMovingShip(ReducerContext ctx, Ship movingShip)
+    private static void ProcessLootClaimsForMovingShip(
+        ReducerContext ctx,
+        Ship movingShip,
+        ulong tick)
     {
         if (!movingShip.IsActive || !movingShip.IsAlive ||
             movingShip.FactionCode != (byte)FactionCode.Player)
@@ -30,11 +34,11 @@ public static partial class Module
             LootRules.PickupRadius);
         foreach (var loot in ActiveLootIn(ctx, bounds))
         {
-            TryClaimLoot(ctx, loot, movingShip);
+            TryClaimLoot(ctx, loot, movingShip, tick);
         }
     }
 
-    private static void TryClaimLoot(ReducerContext ctx, Loot loot, Ship movingShip)
+    private static void TryClaimLoot(ReducerContext ctx, Loot loot, Ship movingShip, ulong tick)
     {
         var selection = new LootClaimSelection(0, float.PositiveInfinity);
         var bounds = SpatialRules.BoundsAround(
@@ -70,7 +74,6 @@ public static partial class Module
         }
 
         ctx.Db.Loot.LootId.Delete(loot.LootId);
-        ChangeActiveLootCount(ctx, -1);
         if (string.Equals(loot.LootType, "gold", StringComparison.Ordinal))
         {
             var ownership = ctx.Db.PlayerOwnership.ShipEntityId.Find(claimant) ??
@@ -80,6 +83,7 @@ public static partial class Module
 
         AppendEvent(
             ctx,
+            tick,
             claimant,
             "loot_claimed",
             $"loot_id={loot.LootId},type={loot.LootType},quantity={loot.Quantity}");
@@ -102,21 +106,5 @@ public static partial class Module
             ExpiresAtTick = tick + LootRules.LifetimeTicks,
             ClaimedByEntityId = 0,
         });
-        ChangeActiveLootCount(ctx, 1);
-    }
-
-    private static void ChangeActiveLootCount(ReducerContext ctx, int delta)
-    {
-        var clock = ctx.Db.SimulationClock.Id.Find(1) ??
-            throw new InvalidOperationException("Simulation clock is missing.");
-        if (delta < 0 && clock.ActiveLootCount == 0)
-        {
-            throw new InvalidOperationException("Active loot count cannot be negative.");
-        }
-
-        clock.ActiveLootCount = delta < 0
-            ? clock.ActiveLootCount - 1
-            : checked(clock.ActiveLootCount + 1);
-        ctx.Db.SimulationClock.Id.Update(clock);
     }
 }

@@ -65,17 +65,15 @@ public static partial class Module
                      (true, new Bound<ulong>(0, tick))))
         {
             ctx.Db.Loot.LootId.Delete(loot.LootId);
-            ChangeActiveLootCount(ctx, -1);
         }
     }
 
     private static void AppendEvent(
         ReducerContext ctx,
+        ulong tick,
         ulong ownerEntityId,
         string eventType,
-        string details)
-    {
-        var tick = ctx.Db.SimulationClock.Id.Find(1)?.Tick ?? 0;
+        string details) =>
         ctx.Db.CombatEvent.Insert(new CombatEvent
         {
             OwnerEntityId = ownerEntityId,
@@ -83,7 +81,6 @@ public static partial class Module
             Details = details,
             Tick = tick,
         });
-    }
 
     private static void SeedPlayerInventory(ReducerContext ctx, ulong shipEntityId)
     {

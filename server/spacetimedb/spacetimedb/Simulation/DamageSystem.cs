@@ -34,13 +34,14 @@ public static partial class Module
                 "broadside");
             if (defender.Hull == 0)
             {
-                AppendEvent(ctx, volley.SourceEntityId, "enemy_sunk", $"entity_id={defender.EntityId}");
+                AppendEvent(ctx, tick, volley.SourceEntityId, "enemy_sunk", $"entity_id={defender.EntityId}");
             }
             else
             {
                 ApplyVolleyStatus(ctx, volley, ref defender, tick);
                 AppendEvent(
                     ctx,
+                    tick,
                     volley.SourceEntityId,
                     "broadside_impact",
                     $"entity_id={defender.EntityId},hull={appliedDamage.Hull},sails={appliedDamage.Sails},cannons={appliedDamage.Cannons},crew={appliedDamage.Crew}");
@@ -278,6 +279,7 @@ public static partial class Module
 
         AppendEvent(
             ctx,
+            tick,
             shipEntityId,
             "status_applied",
             $"status={HotPathCodes.StatusId(statusCode)}");

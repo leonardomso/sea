@@ -43,6 +43,14 @@ public static class SimulationWorkRules
     public static bool ShouldProcessLootPickup(ulong shipEntityId, ulong tick) =>
         IsStaggeredWorkDue(shipEntityId, tick, LootPickupBucketCount);
 
+    // A shard that had nothing to sail last tick has nothing to catch up on: a ship
+    // that just joined it starts sailing now instead of replaying the idle gap.
+    public static ulong FirstMovementTick(
+        ulong lastSimulatedTick,
+        ulong currentTick,
+        bool shardWasIdle) =>
+        shardWasIdle ? currentTick : FirstMovementTick(lastSimulatedTick, currentTick);
+
     public static ulong FirstMovementTick(ulong lastSimulatedTick, ulong currentTick)
     {
         if (currentTick <= lastSimulatedTick)

@@ -15,9 +15,7 @@ for required in \
   'Accessor = "ByLootExpiryDue"' \
   'Accessor = "ByRespawnDue"' \
   'Accessor = "ByEnvironmentExposure"' \
-  'Accessor = "ByActiveChunkShard"' \
   'Accessor = "ByActiveFaction"' \
-  'Accessor = "ByMovingShard"' \
   'Accessor = "ByShipCooldown"'; do
   if ! grep -q "$required" "$schema"; then
     echo "Missing indexed simulation contract: $required" >&2

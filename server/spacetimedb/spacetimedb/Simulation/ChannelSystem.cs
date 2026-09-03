@@ -65,7 +65,7 @@ public static partial class Module
         {
             source.ModeCode = (byte)ShipMode.Operational;
             ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
-            AppendEvent(ctx, channel.ShipEntityId, "repair_completed", "");
+            AppendEvent(ctx, tick, channel.ShipEntityId, "repair_completed", "");
         }
         else
         {
@@ -158,7 +158,7 @@ public static partial class Module
                     ProgressionRules.BoardingContribution);
             }
 
-            AppendEvent(ctx, source.EntityId, "boarding_succeeded", $"target={target.EntityId}");
+            AppendEvent(ctx, tick, source.EntityId, "boarding_succeeded", $"target={target.EntityId}");
             return;
         }
 
@@ -169,7 +169,7 @@ public static partial class Module
             tick,
             TacticalRules.BoardingFatigueTicks,
             maximumStacks: 1);
-        AppendEvent(ctx, source.EntityId, "boarding_failed", $"target={target.EntityId}");
+        AppendEvent(ctx, tick, source.EntityId, "boarding_failed", $"target={target.EntityId}");
     }
 
     private static void ScheduleChannel(ReducerContext ctx, ShipChannel channel, ulong tick)

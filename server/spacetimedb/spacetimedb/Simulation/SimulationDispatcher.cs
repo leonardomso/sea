@@ -20,6 +20,7 @@ public static partial class Module
         UpdateWind(ctx, tick);
         Profile("wind");
 
+        var world = new TickWorld(tick);
         var ships = new ShipTickBuffer();
         ProcessStatuses(ctx, ships, tick);
         Profile("statuses");
@@ -35,18 +36,15 @@ public static partial class Module
         }
 
         Profile("hazards");
-        ships.Flush(ctx);
+        ships.Flush(ctx, tick);
         Profile("flush");
         ProcessLootExpiry(ctx, tick);
         Profile("loot");
 
         // Decisions run before movement so a course issued this tick sails this tick.
-        RecordNpcTelemetry(ctx, tick, ProcessNpcDecisions(ctx, tick));
+        RecordNpcTelemetry(ctx, tick, ProcessNpcDecisions(ctx, world));
         Profile("npc");
-        RecordMovementTelemetry(
-            ctx,
-            tick,
-            AdvanceMovingShips(ctx, tick, clock.ActiveLootCount > 0));
+        RecordMovementTelemetry(ctx, tick, AdvanceMovingShips(ctx, world));
         Profile("movement");
     }
 

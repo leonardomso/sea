@@ -17,15 +17,6 @@ namespace SpacetimeDB.Types
         {
             public override string RemoteTableName => "loot";
 
-            public sealed class ByChunkIndex : BTreeIndexBase<(int ChunkX, int ChunkY)>
-            {
-                protected override (int ChunkX, int ChunkY) GetKey(Loot row) => (row.ChunkX, row.ChunkY);
-
-                public ByChunkIndex(LootHandle table) : base(table) { }
-            }
-
-            public readonly ByChunkIndex ByChunk;
-
             public sealed class ByActiveChunkIndex : BTreeIndexBase<(bool IsActive, int ChunkX, int ChunkY)>
             {
                 protected override (bool IsActive, int ChunkX, int ChunkY) GetKey(Loot row) => (row.IsActive, row.ChunkX, row.ChunkY);
@@ -44,15 +35,6 @@ namespace SpacetimeDB.Types
 
             public readonly ByLootExpiryDueIndex ByLootExpiryDue;
 
-            public sealed class ByActiveIndex : BTreeIndexBase<bool>
-            {
-                protected override bool GetKey(Loot row) => row.IsActive;
-
-                public ByActiveIndex(LootHandle table) : base(table) { }
-            }
-
-            public readonly ByActiveIndex ByActive;
-
             public sealed class LootIdUniqueIndex : UniqueIndexBase<ulong>
             {
                 protected override ulong GetKey(Loot row) => row.LootId;
@@ -64,10 +46,8 @@ namespace SpacetimeDB.Types
 
             internal LootHandle(DbConnection conn) : base(conn)
             {
-                ByChunk = new(this);
                 ByActiveChunk = new(this);
                 ByLootExpiryDue = new(this);
-                ByActive = new(this);
                 LootId = new(this);
             }
 
