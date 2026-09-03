@@ -19,8 +19,5 @@ export default __t.row({
   completesAtTick: __t.u64().name("completes_at_tick"),
   nextProcessTick: __t.u64().name("next_process_tick"),
   initialHull: __t.u32().name("initial_hull"),
-  initialSails: __t.u32().name("initial_sails"),
-  initialCannons: __t.u32().name("initial_cannons"),
-  initialCrew: __t.u32().name("initial_crew"),
   isActive: __t.bool().name("is_active"),
 });

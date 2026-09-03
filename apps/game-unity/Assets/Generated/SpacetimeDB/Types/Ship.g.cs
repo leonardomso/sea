@@ -89,8 +89,8 @@ namespace SpacetimeDB.Types
         public uint ReloadTicks;
         [DataMember(Name = "magazine_size")]
         public uint MagazineSize;
-        [DataMember(Name = "range_squares")]
-        public float RangeSquares;
+        [DataMember(Name = "range_units")]
+        public float RangeUnits;
         [DataMember(Name = "armor_front")]
         public float ArmorFront;
         [DataMember(Name = "armor_sides")]
@@ -155,7 +155,7 @@ namespace SpacetimeDB.Types
             uint VolleyDamage,
             uint ReloadTicks,
             uint MagazineSize,
-            float RangeSquares,
+            float RangeUnits,
             float ArmorFront,
             float ArmorSides,
             float ArmorBack,
@@ -208,7 +208,7 @@ namespace SpacetimeDB.Types
             this.VolleyDamage = VolleyDamage;
             this.ReloadTicks = ReloadTicks;
             this.MagazineSize = MagazineSize;
-            this.RangeSquares = RangeSquares;
+            this.RangeUnits = RangeUnits;
             this.ArmorFront = ArmorFront;
             this.ArmorSides = ArmorSides;
             this.ArmorBack = ArmorBack;

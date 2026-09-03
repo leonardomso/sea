@@ -21,11 +21,5 @@ export default __t.row({
   effectMagnitude: __t.f32().name("effect_magnitude"),
   effectDurationSeconds: __t.f32().name("effect_duration_seconds"),
   rangeLimitSquares: __t.u8().name("range_limit_squares"),
-  hullDamage: __t.u32().name("hull_damage"),
-  sailDamage: __t.u32().name("sail_damage"),
-  cannonDamage: __t.u32().name("cannon_damage"),
-  crewDamage: __t.u32().name("crew_damage"),
   rangeMultiplier: __t.f32().name("range_multiplier"),
-  appliedStatus: __t.string().name("applied_status"),
-  appliedStatusCode: __t.u8().name("applied_status_code"),
 });

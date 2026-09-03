@@ -11,13 +11,14 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  statusId: __t.u64().primaryKey().name("status_id"),
+  effectId: __t.u64().primaryKey().name("effect_id"),
   shipEntityId: __t.u64().name("ship_entity_id"),
-  statusType: __t.string().name("status_type"),
-  statusCode: __t.u8().name("status_code"),
-  stacks: __t.u32(),
+  sourceEntityId: __t.u64().name("source_entity_id"),
+  effectType: __t.string().name("effect_type"),
+  effectCode: __t.u8().name("effect_code"),
+  magnitude: __t.f32(),
+  appliedAtTick: __t.u64().name("applied_at_tick"),
   expiresAtTick: __t.u64().name("expires_at_tick"),
-  immunityUntilTick: __t.u64().name("immunity_until_tick"),
   nextProcessTick: __t.u64().name("next_process_tick"),
   isActive: __t.bool().name("is_active"),
 });

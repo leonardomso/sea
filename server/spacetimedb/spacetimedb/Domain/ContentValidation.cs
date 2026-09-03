@@ -218,9 +218,19 @@ public static partial class ContentCatalog
             }
 
             Positive(npc.Id, "tier", npc.Tier, errors);
-            Positive(npc.Id, "maximum speed", npc.MaximumSpeed, errors);
-            PositiveAtMost(npc.Id, "desired range", npc.DesiredRange, WorldRules.VisionRadius, errors);
-            AtMost(npc.Id, "aggro range", npc.AggroRange, WorldRules.VisionRadius, errors);
+            Positive(npc.Id, "maximum speed", npc.MaximumSpeedSquares, errors);
+            PositiveAtMost(
+                npc.Id,
+                "desired range",
+                SectorRules.UnitsFromSquares(npc.DesiredRangeSquares),
+                WorldRules.VisionRadius,
+                errors);
+            AtMost(
+                npc.Id,
+                "aggro range",
+                SectorRules.UnitsFromSquares(npc.AggroRangeSquares),
+                WorldRules.VisionRadius,
+                errors);
             Positive(npc.Id, "hull", npc.Hull, errors);
             Positive(npc.Id, "cannon damage", npc.CannonDamage, errors);
             Positive(npc.Id, "gold reward", npc.GoldReward, errors);

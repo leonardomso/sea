@@ -6,6 +6,13 @@ public static class SectorRules
 {
     public const float SquareSizeUnits = 10f;
 
+    /// <summary>
+    /// Content states every distance in squares because the design sheets do; the simulation
+    /// runs in world units. Every crossing between the two goes through here so a raw square
+    /// can never reach a distance check again.
+    /// </summary>
+    public static float UnitsFromSquares(float squares) => squares * SquareSizeUnits;
+
     public static ulong SectorId(byte mapId, SectorCoordinate sector) =>
         ((ulong)mapId << 16) | ((ulong)checked((byte)sector.Y) << 8) | checked((byte)sector.X);
 

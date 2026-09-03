@@ -56,9 +56,9 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<NpcDef, byte> MapId { get; }
         public global::SpacetimeDB.Col<NpcDef, string> Family { get; }
         public global::SpacetimeDB.Col<NpcDef, string> Behavior { get; }
-        public global::SpacetimeDB.Col<NpcDef, float> AggroRange { get; }
-        public global::SpacetimeDB.Col<NpcDef, float> DesiredRange { get; }
-        public global::SpacetimeDB.Col<NpcDef, float> MaximumSpeed { get; }
+        public global::SpacetimeDB.Col<NpcDef, float> AggroRangeSquares { get; }
+        public global::SpacetimeDB.Col<NpcDef, float> DesiredRangeSquares { get; }
+        public global::SpacetimeDB.Col<NpcDef, float> MaximumSpeedSquares { get; }
         public global::SpacetimeDB.Col<NpcDef, uint> Hull { get; }
         public global::SpacetimeDB.Col<NpcDef, uint> CannonDamage { get; }
         public global::SpacetimeDB.Col<NpcDef, byte> PreferredAmmoCode { get; }
@@ -74,9 +74,9 @@ namespace SpacetimeDB.Types
             MapId = new global::SpacetimeDB.Col<NpcDef, byte>(tableName, "map_id");
             Family = new global::SpacetimeDB.Col<NpcDef, string>(tableName, "family");
             Behavior = new global::SpacetimeDB.Col<NpcDef, string>(tableName, "behavior");
-            AggroRange = new global::SpacetimeDB.Col<NpcDef, float>(tableName, "aggro_range");
-            DesiredRange = new global::SpacetimeDB.Col<NpcDef, float>(tableName, "desired_range");
-            MaximumSpeed = new global::SpacetimeDB.Col<NpcDef, float>(tableName, "maximum_speed");
+            AggroRangeSquares = new global::SpacetimeDB.Col<NpcDef, float>(tableName, "aggro_range_squares");
+            DesiredRangeSquares = new global::SpacetimeDB.Col<NpcDef, float>(tableName, "desired_range_squares");
+            MaximumSpeedSquares = new global::SpacetimeDB.Col<NpcDef, float>(tableName, "maximum_speed_squares");
             Hull = new global::SpacetimeDB.Col<NpcDef, uint>(tableName, "hull");
             CannonDamage = new global::SpacetimeDB.Col<NpcDef, uint>(tableName, "cannon_damage");
             PreferredAmmoCode = new global::SpacetimeDB.Col<NpcDef, byte>(tableName, "preferred_ammo_code");

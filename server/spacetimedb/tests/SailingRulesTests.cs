@@ -173,7 +173,7 @@ public sealed class SailingRulesTests
                     12f,
                     3f,
                     4f,
-                    WorldRules.PlayerShipTurnRateDegrees),
+                    360f),
                 deltaSeconds: 0.1f);
             state = new SailingState(
                 step.PositionX,

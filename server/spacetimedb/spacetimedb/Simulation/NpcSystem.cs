@@ -46,11 +46,12 @@ public static partial class Module
             throw new InvalidOperationException("NPC content definition is missing.");
         var target = FindHydratedShip(ctx, ship.TargetEntityId);
         var targetAvailable = target is Ship selected && world.IsAttackablePlayer(ctx, selected);
+        var aggroRange = SectorRules.UnitsFromSquares(definition.AggroRangeSquares);
         var candidate = NpcRules.ShouldSearchForTarget(
                 targetAvailable,
-                definition.AggroRange,
+                aggroRange,
                 CombatRules.Distance(ship.PositionX, ship.PositionY, ai.HomeX, ai.HomeY))
-            ? FindNearestPlayer(ctx, world, ship, definition.AggroRange)
+            ? FindNearestPlayer(ctx, world, ship, aggroRange)
             : default(Ship?);
         ExecuteNpcDecision(ctx, world, ship, NpcRules.Decide(BuildNpcSnapshot(
             ctx,
@@ -112,7 +113,7 @@ public static partial class Module
                 target.Value.PositionY)
             : float.PositiveInfinity,
             CandidateTargetId = candidate?.EntityId ?? 0,
-            DesiredRange = definition.DesiredRange,
+            DesiredRange = SectorRules.UnitsFromSquares(definition.DesiredRangeSquares),
             PreferredAmmunition = definition.PreferredAmmunition,
             SelectedAmmunition = (AmmunitionCode)ship.SelectedAmmoCode,
             CanFire = ship.ReadyVolleys > 0 &&

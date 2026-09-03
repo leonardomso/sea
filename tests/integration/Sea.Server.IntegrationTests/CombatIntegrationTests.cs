@@ -59,6 +59,7 @@ public sealed class CombatIntegrationTests
                 break;
             }
 
+            targetId = EnsureLiveTarget(client, targetId);
             var shot = FireWhenLegal(client, targetId);
             Assert.True(shot.Accepted, $"Fire was rejected with code {shot.RejectionCode}.");
         }
@@ -67,10 +68,11 @@ public sealed class CombatIntegrationTests
 
         // An empty magazine answers Reloading rather than the one-second shot interval or the
         // range, because the module checks the racks before it checks the clock or the distance.
+        targetId = EnsureLiveTarget(client, targetId);
         Assert.Equal(ReloadingRejection, client.Fire().RejectionCode);
 
         PumpUntil(client, () => client.OwnedShip().ReadyVolleys > 0);
-        Assert.True(FireWhenLegal(client, targetId).Accepted);
+        Assert.True(FireWhenLegal(client, EnsureLiveTarget(client, targetId)).Accepted);
         Assert.Null(client.UnhandledReducerError);
     }
 
@@ -148,6 +150,24 @@ public sealed class CombatIntegrationTests
             client.PumpOnce();
             ThrowIfTimedOut(stopwatch);
         }
+    }
+
+    /// <summary>
+    /// Keeps a live target under the guns. A full magazine outguns a tier one hull several times
+    /// over, so a test that empties the racks has to expect the ship under them to sink and lock
+    /// onto the next one instead of failing on a target that did exactly what it should.
+    /// </summary>
+    private static ulong EnsureLiveTarget(IntegrationClient client, ulong targetId)
+    {
+        if (client.Npc(targetId).IsAlive)
+        {
+            return targetId;
+        }
+
+        var own = client.OwnedShip();
+        var next = client.ClosestLiveNpcTo(own.PositionX, own.PositionY).EntityId;
+        Assert.True(client.SelectTarget(next).Accepted);
+        return next;
     }
 
     private static void PumpUntil(IntegrationClient client, Func<bool> condition)

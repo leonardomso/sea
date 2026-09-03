@@ -127,7 +127,7 @@ namespace Sea.Tests
 
             Assert.That(waterShader, Is.Not.Null);
             Assert.That(Shader.Find("Sea/Chart Fog"), Is.Not.Null);
-            Assert.That(SeaPresentationRules.VisionRadius, Is.EqualTo(44f));
+            Assert.That(SeaPresentationRules.VisionRadius, Is.EqualTo(110f));
         }
 
         [Test]

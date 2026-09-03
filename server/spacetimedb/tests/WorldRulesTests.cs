@@ -35,9 +35,8 @@ public sealed class WorldRulesTests
         Assert.Equal(25u, WorldRules.InitialCannonDamage);
         Assert.Equal(100u, WorldRules.EnemyInitialHealth);
         Assert.Equal(20u, WorldRules.InitialCannonCooldownTicks);
-        Assert.Equal(60f, WorldRules.CannonRange);
         Assert.Equal(100u, WorldRules.EnemyGoldReward);
-        Assert.Equal(12f, WorldRules.PlayerShipSpeed);
+        Assert.Equal(110f, WorldRules.VisionRadius);
     }
 
     [Fact]

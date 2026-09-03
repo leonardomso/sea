@@ -9,10 +9,11 @@ namespace Sea.Client
         // Mirrors the server SpatialRules.ChunkSize until the world contract module owns it.
         public const float ChunkSize = 25f;
 
-        // 5x5 chunks guarantee 50 units of coverage around the local ship wherever it sits
-        // inside its chunk, which covers the 44 unit fog vision radius. Everything beyond
-        // the fog is hidden anyway, so a wider window only streams rows nobody can see.
-        public const int SpatialRadius = 2;
+        // The window has to guarantee radius * ChunkSize units of coverage around the local ship
+        // wherever it sits inside its chunk, and that has to clear the fog vision radius: a ship
+        // the player can see but has not subscribed to is a ship that is not there. Everything
+        // beyond the fog is hidden anyway, so a wider window only streams rows nobody can see.
+        public const int SpatialRadius = 5;
 
         public static string[] Initial(string ownerSqlLiteral)
         {

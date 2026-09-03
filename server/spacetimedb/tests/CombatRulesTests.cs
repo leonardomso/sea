@@ -100,7 +100,7 @@ public sealed class CombatRulesTests
     [Fact]
     public void Fire_admission_rejects_a_target_beyond_the_range_it_was_given()
     {
-        var request = ValidFireRequest() with { TargetX = 0f, TargetY = 34f, RangeSquares = 33f };
+        var request = ValidFireRequest() with { TargetX = 0f, TargetY = 34f, RangeUnits = 33f };
 
         Assert.Equal(FireRejection.OutOfRange, CombatRules.ValidateFire(request));
     }
@@ -108,7 +108,7 @@ public sealed class CombatRulesTests
     [Fact]
     public void Fire_admission_accepts_a_target_exactly_on_the_range_ring()
     {
-        var request = ValidFireRequest() with { TargetX = 0f, TargetY = 34f, RangeSquares = 34f };
+        var request = ValidFireRequest() with { TargetX = 0f, TargetY = 34f, RangeUnits = 34f };
 
         Assert.Equal(FireRejection.None, CombatRules.ValidateFire(request));
     }
@@ -322,6 +322,6 @@ public sealed class CombatRulesTests
         SourceY = 0f,
         TargetX = -10f,
         TargetY = 0f,
-        RangeSquares = 60f,
+        RangeUnits = 60f,
     };
 }

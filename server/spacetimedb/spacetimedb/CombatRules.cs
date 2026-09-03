@@ -47,7 +47,7 @@ public readonly record struct FireRequest
     public float SourceY { get; init; }
     public float TargetX { get; init; }
     public float TargetY { get; init; }
-    public float RangeSquares { get; init; }
+    public float RangeUnits { get; init; }
 }
 
 /// <summary>One ship's magazine: volleys ready to fire, and progress towards the next one.</summary>
@@ -116,7 +116,7 @@ public static class CombatRules
             request.SourceY,
             request.TargetX,
             request.TargetY,
-            request.RangeSquares)
+            request.RangeUnits)
             ? FireRejection.None
             : FireRejection.OutOfRange;
     }

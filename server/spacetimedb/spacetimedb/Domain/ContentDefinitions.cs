@@ -99,9 +99,9 @@ public sealed record NpcContent
     public required byte MapId { get; init; }
     public required string Family { get; init; }
     public required string Behavior { get; init; }
-    public required float AggroRange { get; init; }
-    public required float DesiredRange { get; init; }
-    public required float MaximumSpeed { get; init; }
+    public required float AggroRangeSquares { get; init; }
+    public required float DesiredRangeSquares { get; init; }
+    public required float MaximumSpeedSquares { get; init; }
     public required uint Hull { get; init; }
     public required uint CannonDamage { get; init; }
     public required AmmunitionCode PreferredAmmunition { get; init; }

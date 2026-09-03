@@ -157,9 +157,9 @@ public static partial class Module
         public byte MapId;
         public string Family;
         public string Behavior;
-        public float AggroRange;
-        public float DesiredRange;
-        public float MaximumSpeed;
+        public float AggroRangeSquares;
+        public float DesiredRangeSquares;
+        public float MaximumSpeedSquares;
         public uint Hull;
         public uint CannonDamage;
         public byte PreferredAmmoCode;
@@ -175,9 +175,9 @@ public static partial class Module
             MapId = npc.MapId,
             Family = npc.Family,
             Behavior = npc.Behavior,
-            AggroRange = npc.AggroRange,
-            DesiredRange = npc.DesiredRange,
-            MaximumSpeed = npc.MaximumSpeed,
+            AggroRangeSquares = npc.AggroRangeSquares,
+            DesiredRangeSquares = npc.DesiredRangeSquares,
+            MaximumSpeedSquares = npc.MaximumSpeedSquares,
             Hull = npc.Hull,
             CannonDamage = npc.CannonDamage,
             PreferredAmmoCode = (byte)npc.PreferredAmmunition,

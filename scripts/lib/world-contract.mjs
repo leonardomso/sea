@@ -52,7 +52,6 @@ export function seededRowCounts(content) {
     hull_def: content.hulls.length,
     cannon_def: content.cannons.length,
     ammo_def: content.ammunition.length,
-    ability_def: content.abilities.length,
     npc_def: content.npcs.length,
     npc_ai: content.npcs.length * NPC_SHIPS_PER_DEFINITION,
     stat_caps: 1,

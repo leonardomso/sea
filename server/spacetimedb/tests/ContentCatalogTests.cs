@@ -222,7 +222,7 @@ public sealed class ContentCatalogTests
     [Fact]
     public void Zero_desired_range_is_rejected()
     {
-        var errors = ContentCatalog.Validate(Catalog with { Npcs = [Catalog.Npcs[0] with { DesiredRange = 0f }] });
+        var errors = ContentCatalog.Validate(Catalog with { Npcs = [Catalog.Npcs[0] with { DesiredRangeSquares = 0f }] });
         Assert.Contains("patrol: desired range must be positive.", errors, StringComparer.Ordinal);
     }
 

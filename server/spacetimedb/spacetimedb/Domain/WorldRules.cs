@@ -14,16 +14,14 @@ public static class WorldRules
     public const uint EnemyCannonDamage = 5;
     public const uint EnemyCannonCooldownTicks = 40;
     public const uint EnemyGoldReward = 100;
-    public const float CannonRange = 60f;
 
-    // Mirrors the client's fog radius; nothing should engage a player from beyond it.
-    public const float VisionRadius = 44f;
+    // Mirrors the client's fog radius. It has to clear the longest gun on the map, or a ship
+    // takes fire from water it cannot see and the player has nothing to aim at.
+    public const float VisionRadius = 110f;
 
     // Players spawn and respawn inside these waters around the harbor, and NPCs never
     // pick a target sailing in them, so a fresh spawn is not sunk before it moves.
     public const float HarborSafeRadius = 30f;
-    public const float PlayerShipSpeed = 12f;
-    public const float PlayerShipTurnRateDegrees = 360f;
 
     public readonly struct SailingStep
     {

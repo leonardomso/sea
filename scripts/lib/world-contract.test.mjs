@@ -32,7 +32,6 @@ test("seeded row counts follow the content catalog", () => {
     hulls: [1],
     cannons: [1, 2],
     ammunition: [1, 2, 3],
-    abilities: [1, 2, 3, 4],
     npcs: [1, 2, 3],
   });
   assert.deepEqual(counts, {
@@ -42,7 +41,6 @@ test("seeded row counts follow the content catalog", () => {
     hull_def: 1,
     cannon_def: 2,
     ammo_def: 3,
-    ability_def: 4,
     npc_def: 3,
     npc_ai: 3 * NPC_SHIPS_PER_DEFINITION,
     stat_caps: 1,

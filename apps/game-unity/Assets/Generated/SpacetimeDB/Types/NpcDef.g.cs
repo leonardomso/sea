@@ -27,12 +27,12 @@ namespace SpacetimeDB.Types
         public string Family;
         [DataMember(Name = "behavior")]
         public string Behavior;
-        [DataMember(Name = "aggro_range")]
-        public float AggroRange;
-        [DataMember(Name = "desired_range")]
-        public float DesiredRange;
-        [DataMember(Name = "maximum_speed")]
-        public float MaximumSpeed;
+        [DataMember(Name = "aggro_range_squares")]
+        public float AggroRangeSquares;
+        [DataMember(Name = "desired_range_squares")]
+        public float DesiredRangeSquares;
+        [DataMember(Name = "maximum_speed_squares")]
+        public float MaximumSpeedSquares;
         [DataMember(Name = "hull")]
         public uint Hull;
         [DataMember(Name = "cannon_damage")]
@@ -52,9 +52,9 @@ namespace SpacetimeDB.Types
             byte MapId,
             string Family,
             string Behavior,
-            float AggroRange,
-            float DesiredRange,
-            float MaximumSpeed,
+            float AggroRangeSquares,
+            float DesiredRangeSquares,
+            float MaximumSpeedSquares,
             uint Hull,
             uint CannonDamage,
             byte PreferredAmmoCode,
@@ -69,9 +69,9 @@ namespace SpacetimeDB.Types
             this.MapId = MapId;
             this.Family = Family;
             this.Behavior = Behavior;
-            this.AggroRange = AggroRange;
-            this.DesiredRange = DesiredRange;
-            this.MaximumSpeed = MaximumSpeed;
+            this.AggroRangeSquares = AggroRangeSquares;
+            this.DesiredRangeSquares = DesiredRangeSquares;
+            this.MaximumSpeedSquares = MaximumSpeedSquares;
             this.Hull = Hull;
             this.CannonDamage = CannonDamage;
             this.PreferredAmmoCode = PreferredAmmoCode;

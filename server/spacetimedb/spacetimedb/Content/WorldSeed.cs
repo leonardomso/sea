@@ -32,7 +32,7 @@ public static partial class Module
             {
                 SeedNpc(
                     ctx,
-                    definition.AggroRange > 0f ? hostileBlockers : blockers,
+                    definition.AggroRangeSquares > 0f ? hostileBlockers : blockers,
                     entityId,
                     definition,
                     index);
@@ -70,7 +70,7 @@ public static partial class Module
         var ship = CreateShip(entityId, definition.Id, "npc", spawn.X, spawn.Y);
         // An NPC keeps the baseline sloop's armour, magazine and range; its tier only moves the
         // three numbers the content author actually tunes.
-        ship.MaximumSpeed = definition.MaximumSpeed;
+        ship.MaximumSpeed = SectorRules.UnitsFromSquares(definition.MaximumSpeedSquares);
         ship.Hull = definition.Hull;
         ship.MaxHull = definition.Hull;
         ship.VolleyDamage = definition.CannonDamage;

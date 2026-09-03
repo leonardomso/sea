@@ -10,14 +10,6 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export const AbilityDef = __t.object("AbilityDef", {
-  abilityId: __t.string(),
-  abilityCode: __t.u8(),
-  cooldownTicks: __t.u32(),
-  durationTicks: __t.u32(),
-});
-export type AbilityDef = __Infer<typeof AbilityDef>;
-
 export const ActivateAbilityCommand = __t.object("ActivateAbilityCommand", {
   abilityId: __t.string(),
 });
@@ -34,13 +26,7 @@ export const AmmoDef = __t.object("AmmoDef", {
   effectMagnitude: __t.f32(),
   effectDurationSeconds: __t.f32(),
   rangeLimitSquares: __t.u8(),
-  hullDamage: __t.u32(),
-  sailDamage: __t.u32(),
-  cannonDamage: __t.u32(),
-  crewDamage: __t.u32(),
   rangeMultiplier: __t.f32(),
-  appliedStatus: __t.string(),
-  appliedStatusCode: __t.u8(),
 });
 export type AmmoDef = __Infer<typeof AmmoDef>;
 
@@ -148,6 +134,20 @@ export const CurrentZone = __t.object("CurrentZone", {
 });
 export type CurrentZone = __Infer<typeof CurrentZone>;
 
+export const Effect = __t.object("Effect", {
+  effectId: __t.u64(),
+  shipEntityId: __t.u64(),
+  sourceEntityId: __t.u64(),
+  effectType: __t.string(),
+  effectCode: __t.u8(),
+  magnitude: __t.f32(),
+  appliedAtTick: __t.u64(),
+  expiresAtTick: __t.u64(),
+  nextProcessTick: __t.u64(),
+  isActive: __t.bool(),
+});
+export type Effect = __Infer<typeof Effect>;
+
 export const EncounterReward = __t.object("EncounterReward", {
   rewardId: __t.u64(),
   encounterId: __t.u64(),
@@ -178,11 +178,8 @@ export const EnvironmentState = __t.object("EnvironmentState", {
 });
 export type EnvironmentState = __Infer<typeof EnvironmentState>;
 
-export const FireBroadsideCommand = __t.object("FireBroadsideCommand", {
-  side: __t.string(),
-  weakPoint: __t.string(),
-});
-export type FireBroadsideCommand = __Infer<typeof FireBroadsideCommand>;
+export const FireCommand = __t.object("FireCommand", {});
+export type FireCommand = __Infer<typeof FireCommand>;
 
 export const Hull = __t.object("Hull", {
   hullId: __t.u64(),
@@ -304,13 +301,12 @@ export const NpcDef = __t.object("NpcDef", {
   mapId: __t.u8(),
   family: __t.string(),
   behavior: __t.string(),
-  aggroRange: __t.f32(),
-  desiredRange: __t.f32(),
-  maximumSpeed: __t.f32(),
+  aggroRangeSquares: __t.f32(),
+  desiredRangeSquares: __t.f32(),
+  maximumSpeedSquares: __t.f32(),
   hull: __t.u32(),
   cannonDamage: __t.u32(),
   preferredAmmoCode: __t.u8(),
-  preferredWeakPointCode: __t.u8(),
   goldReward: __t.u32(),
   experienceReward: __t.u64(),
 });
@@ -410,6 +406,7 @@ export const Ship = __t.object("Ship", {
   isEngaged: __t.bool(),
   modeCode: __t.u8(),
   movementStatusMask: __t.u8(),
+  movementSlowMagnitude: __t.f32(),
   environmentExposureCode: __t.u8(),
   currentVelocityX: __t.f32(),
   currentVelocityY: __t.f32(),
@@ -417,19 +414,21 @@ export const Ship = __t.object("Ship", {
   chunkY: __t.i32(),
   targetEntityId: __t.u64(),
   selectedAmmoCode: __t.u8(),
-  selectedWeakPointCode: __t.u8(),
   hull: __t.u32(),
   maxHull: __t.u32(),
-  sails: __t.u32(),
-  maxSails: __t.u32(),
-  cannons: __t.u32(),
-  maxCannons: __t.u32(),
-  crew: __t.u32(),
-  maxCrew: __t.u32(),
-  cannonDamage: __t.u32(),
-  cannonCooldownTicks: __t.u32(),
-  nextPortFireTick: __t.u64(),
-  nextStarboardFireTick: __t.u64(),
+  volleyDamage: __t.u32(),
+  reloadTicks: __t.u32(),
+  magazineSize: __t.u32(),
+  rangeUnits: __t.f32(),
+  armorFront: __t.f32(),
+  armorSides: __t.f32(),
+  armorBack: __t.f32(),
+  readyVolleys: __t.u32(),
+  reloadProgressTicks: __t.u32(),
+  isReloading: __t.bool(),
+  hasFired: __t.bool(),
+  lastShotTick: __t.u64(),
+  lastCombatTick: __t.u64(),
   respawnAtTick: __t.u64(),
   invulnerableUntilTick: __t.u64(),
   encounterId: __t.u64(),
@@ -445,9 +444,6 @@ export const ShipChannel = __t.object("ShipChannel", {
   completesAtTick: __t.u64(),
   nextProcessTick: __t.u64(),
   initialHull: __t.u32(),
-  initialSails: __t.u32(),
-  initialCannons: __t.u32(),
-  initialCrew: __t.u32(),
   isActive: __t.bool(),
 });
 export type ShipChannel = __Infer<typeof ShipChannel>;
@@ -469,8 +465,8 @@ export const ShipCommand = __t.enum("ShipCommand", {
   get SetAmmo() {
     return SetAmmoCommand;
   },
-  get FireBroadside() {
-    return FireBroadsideCommand;
+  get Fire() {
+    return FireCommand;
   },
   get ActivateAbility() {
     return ActivateAbilityCommand;
@@ -553,19 +549,6 @@ export const ShipStats = __t.object("ShipStats", {
 });
 export type ShipStats = __Infer<typeof ShipStats>;
 
-export const ShipStatus = __t.object("ShipStatus", {
-  statusId: __t.u64(),
-  shipEntityId: __t.u64(),
-  statusType: __t.string(),
-  statusCode: __t.u8(),
-  stacks: __t.u32(),
-  expiresAtTick: __t.u64(),
-  immunityUntilTick: __t.u64(),
-  nextProcessTick: __t.u64(),
-  isActive: __t.bool(),
-});
-export type ShipStatus = __Infer<typeof ShipStatus>;
-
 export const SimulationClock = __t.object("SimulationClock", {
   id: __t.u32(),
   tick: __t.u64(),
@@ -643,22 +626,16 @@ export const Volley = __t.object("Volley", {
   volleyId: __t.u64(),
   sourceEntityId: __t.u64(),
   targetEntityId: __t.u64(),
-  side: __t.string(),
-  sideCode: __t.u8(),
   ammoId: __t.string(),
   ammoCode: __t.u8(),
-  weakPoint: __t.string(),
-  weakPointCode: __t.u8(),
   originX: __t.f32(),
   originY: __t.f32(),
+  targetX: __t.f32(),
+  targetY: __t.f32(),
   chunkX: __t.i32(),
   chunkY: __t.i32(),
   firedAtTick: __t.u64(),
-  impactAtTick: __t.u64(),
-  hullDamage: __t.u32(),
-  sailDamage: __t.u32(),
-  cannonDamage: __t.u32(),
-  crewDamage: __t.u32(),
+  expiresAtTick: __t.u64(),
   isActive: __t.bool(),
 });
 export type Volley = __Infer<typeof Volley>;

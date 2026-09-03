@@ -252,6 +252,16 @@ internal sealed class IntegrationClient : IDisposable
         .OrderBy(ship => DistanceSquared(ship.PositionX, ship.PositionY, x, y))
         .First();
 
+    /// <summary>
+    /// The nearest hostile still afloat, whatever it is. A test that has to keep shooting past
+    /// the moment its first target sinks needs a target it can pick up without caring which
+    /// archetype answers.
+    /// </summary>
+    public Ship ClosestLiveNpcTo(float x, float y) => connection.Db.Ship.Iter()
+        .Where(ship => ship.FactionCode == 2 && ship.IsAlive)
+        .OrderBy(ship => DistanceSquared(ship.PositionX, ship.PositionY, x, y))
+        .First();
+
     public EncounterReward[] EncounterRewards() => connection.Db.EncounterReward.Iter().ToArray();
 
     /// <summary>
