@@ -433,4 +433,56 @@ public sealed class NpcRulesTests
             NpcRules.RoamRadius + WorldRules.HarborSafeRadius,
             NpcRules.HostileHomeClearance);
     }
+
+
+    [Theory]
+    [InlineData(98UL, 60f)]
+    [InlineData(99UL, -60f)]
+    public void Roaming_swings_the_next_leg_on_around_home_in_one_fixed_direction(
+        ulong seed,
+        float expectedStepDegrees)
+    {
+        var snapshot = Snapshot(ShipArchetypeCode.Patrol) with
+        {
+            X = 20f,
+            Y = 0f,
+            HomeX = 0f,
+            HomeY = 0f,
+            DecisionSeed = seed,
+        };
+
+        var destination = NpcRules.RoamDestination(snapshot);
+        var bearing = MathF.Atan2(destination.Y, destination.X) * 180f / MathF.PI;
+
+        Assert.Equal(expectedStepDegrees, bearing, 0.5f);
+        Assert.InRange(
+            CombatRules.Distance(0f, 0f, destination.X, destination.Y),
+            NpcRules.MinimumRoamLeg,
+            NpcRules.RoamRadius);
+    }
+
+    [Fact]
+    public void Roaming_closes_a_full_loop_around_home()
+    {
+        var snapshot = Snapshot(ShipArchetypeCode.Patrol) with
+        {
+            X = 25f,
+            Y = 0f,
+            HomeX = 0f,
+            HomeY = 0f,
+            DecisionSeed = 98,
+        };
+        var bearings = new List<float>();
+        for (var leg = 0; leg < 6; leg++)
+        {
+            var destination = NpcRules.RoamDestination(snapshot with
+            {
+                DecisionTick = snapshot.DecisionTick + (ulong)leg * NpcRules.DecisionIntervalTicks,
+            });
+            bearings.Add((MathF.Atan2(destination.Y, destination.X) * 180f / MathF.PI + 360f) % 360f);
+            snapshot = snapshot with { X = destination.X, Y = destination.Y };
+        }
+
+        Assert.Equal([60f, 120f, 180f, 240f, 300f, 0f], bearings.Select(bearing => MathF.Round(bearing)));
+    }
 }

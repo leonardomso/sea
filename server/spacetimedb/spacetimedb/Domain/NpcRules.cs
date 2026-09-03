@@ -68,6 +68,10 @@ public static class NpcRules
     public const float MinimumRoamLeg = 12f;
     private const int RoamCandidates = 4;
 
+    // Each new leg swings the ship's bearing from home on by this step, so a patrol
+    // sails a loop around its home waters rather than darting between random points.
+    public const float CircuitStepDegrees = 60f;
+
     // A ship dragged this far from home lets its target go and roams back; it only
     // hunts again once it is inside its home waters, so a fleeing player is not
     // chased across the whole chart.
@@ -231,14 +235,18 @@ public static class NpcRules
     {
         var state = snapshot.DecisionSeed ^ unchecked(snapshot.DecisionTick * 0x9E3779B97F4A7C15UL);
         var blockers = Blockers(snapshot);
+        // The loop's radius wanders between legs so the circuit never looks drawn with
+        // a compass, and each ship keeps one turning direction for its whole patrol.
+        var radius = MinimumRoamLeg + NextUnit(ref state) * (RoamRadius - MinimumRoamLeg);
+        var direction = (snapshot.DecisionSeed & 1) == 0 ? 1f : -1f;
+        var bearing = CircuitBearing(snapshot, ref state);
         var destination = new SpawnPoint(Clamp(snapshot.HomeX), Clamp(snapshot.HomeY));
-        for (var candidate = 0; candidate < RoamCandidates; candidate++)
+        for (var candidate = 1; candidate <= RoamCandidates; candidate++)
         {
-            var angle = NextUnit(ref state) * MathF.PI * 2f;
-            var distance = MathF.Sqrt(NextUnit(ref state)) * RoamRadius;
+            var angle = bearing + direction * candidate * CircuitStepDegrees * MathF.PI / 180f;
             destination = new SpawnPoint(
-                Clamp(snapshot.HomeX + MathF.Cos(angle) * distance),
-                Clamp(snapshot.HomeY + MathF.Sin(angle) * distance));
+                Clamp(snapshot.HomeX + MathF.Cos(angle) * radius),
+                Clamp(snapshot.HomeY + MathF.Sin(angle) * radius));
             if (CombatRules.Distance(snapshot.X, snapshot.Y, destination.X, destination.Y) >= MinimumRoamLeg &&
                 !NavigationRules.IsDestinationBlocked(destination.X, destination.Y, blockers))
             {
@@ -247,6 +255,17 @@ public static class NpcRules
         }
 
         return ClearPoint(destination.X, destination.Y, blockers);
+    }
+
+    // The loop continues from wherever the ship is on it; a ship sitting on its home
+    // point starts at a seeded bearing.
+    private static float CircuitBearing(NpcSnapshot snapshot, ref ulong state)
+    {
+        var deltaX = snapshot.X - snapshot.HomeX;
+        var deltaY = snapshot.Y - snapshot.HomeY;
+        return deltaX * deltaX + deltaY * deltaY < 1f
+            ? NextUnit(ref state) * MathF.PI * 2f
+            : MathF.Atan2(deltaY, deltaX);
     }
 
     // Sails along the line to the target by `travel` units: forward to close a gap,
