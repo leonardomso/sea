@@ -14,7 +14,7 @@ namespace Sea.Client
         // the fog is hidden anyway, so a wider window only streams rows nobody can see.
         public const int SpatialRadius = 2;
 
-        public static IReadOnlyList<string> Initial(string ownerSqlLiteral)
+        public static string[] Initial(string ownerSqlLiteral)
         {
             if (string.IsNullOrWhiteSpace(ownerSqlLiteral))
             {
@@ -43,7 +43,7 @@ namespace Sea.Client
             };
         }
 
-        public static IReadOnlyList<string> Player(ulong shipEntityId)
+        public static string[] Player(ulong shipEntityId)
         {
             return new[]
             {
@@ -59,11 +59,11 @@ namespace Sea.Client
             };
         }
 
-        public static IReadOnlyList<string> Focus(
+        public static string[] Focus(
             ulong localShipEntityId,
             ulong targetEntityId) => Focus(localShipEntityId, new[] { targetEntityId });
 
-        public static IReadOnlyList<string> Focus(
+        public static string[] Focus(
             ulong localShipEntityId,
             IEnumerable<ulong> targetEntityIds)
         {
@@ -113,7 +113,7 @@ namespace Sea.Client
             };
         }
 
-        public static IReadOnlyList<string> Spatial(int chunkX, int chunkY, int radius)
+        public static string[] Spatial(int chunkX, int chunkY, int radius)
         {
             if (radius < 0)
             {

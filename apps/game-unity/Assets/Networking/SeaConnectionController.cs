@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Linq;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using UnityEngine;
@@ -182,7 +181,7 @@ namespace Sea.Client
             initialSubscription = connection.SubscriptionBuilder()
                 .OnApplied(HandleInitialSubscriptionApplied)
                 .OnError(HandleSubscriptionError)
-                .Subscribe(SeaSubscriptionPlan.Initial(ToIdentitySqlLiteral(identity)).ToArray());
+                .Subscribe(SeaSubscriptionPlan.Initial(ToIdentitySqlLiteral(identity)));
         }
 
         private void HandleInitialSubscriptionApplied(SubscriptionEventContext context)
@@ -230,7 +229,7 @@ namespace Sea.Client
             playerSubscription = connection.SubscriptionBuilder()
                 .OnApplied(context => HandlePlayerSubscriptionApplied(context, shipEntityId))
                 .OnError(HandleSubscriptionError)
-                .Subscribe(SeaSubscriptionPlan.Player(shipEntityId).ToArray());
+                .Subscribe(SeaSubscriptionPlan.Player(shipEntityId));
         }
 
         private void HandlePlayerSubscriptionApplied(

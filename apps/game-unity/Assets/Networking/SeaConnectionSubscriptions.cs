@@ -88,7 +88,7 @@ namespace Sea.Client
                     generation,
                     chunk,
                     error))
-                .Subscribe(SeaSubscriptionPlan.Spatial(chunk.X, chunk.Y, SeaSubscriptionPlan.SpatialRadius).ToArray());
+                .Subscribe(SeaSubscriptionPlan.Spatial(chunk.X, chunk.Y, SeaSubscriptionPlan.SpatialRadius));
             pendingSpatialSubscription = next;
         }
 
@@ -220,7 +220,7 @@ namespace Sea.Client
                 .OnError((_, error) => HandleFocusSubscriptionError(generation, error))
                 .Subscribe(SeaSubscriptionPlan.Focus(
                     subscribedPlayerEntityId,
-                    targetIds).ToArray());
+                    targetIds));
             pendingFocusSubscription = next;
         }
 
