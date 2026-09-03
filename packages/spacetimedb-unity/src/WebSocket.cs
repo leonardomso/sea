@@ -136,13 +136,20 @@ namespace SpacetimeDB
     }
 
     [AOT.MonoPInvokeCallback(typeof(Action<int>))]
-    private static void OnSocketIdReceived(int socketId)
+    private static void OnSocketIdReceived(int socketId, int rejectedHttpStatus)
     {
-        Instance?._socketId.TrySetResult(socketId);
+        if (Instance == null) return;
+        // The browser can fire onopen (and the first messages) before the awaiting
+        // continuation in Connect resumes on the main thread. Record the id here so
+        // HandleWebGLOpen/HandleWebGLMessage do not drop those early events.
+        Instance._webglSocketId = socketId;
+        Instance._webglRejectedHttpStatus = rejectedHttpStatus;
+        Instance._socketId.TrySetResult(socketId);
     }
 
     private static WebSocket Instance;
     private int _webglSocketId = -1;
+    private int _webglRejectedHttpStatus;
     private TaskCompletionSource<int> _socketId;
 
     private void InitializeWebGL()
@@ -177,13 +184,15 @@ namespace SpacetimeDB
                 }
 
                 _socketId = new TaskCompletionSource<int>();
-                var callbackPtr = Marshal.GetFunctionPointerForDelegate((Action<int>)OnSocketIdReceived);
+                var callbackPtr = Marshal.GetFunctionPointerForDelegate((Action<int, int>)OnSocketIdReceived);
                 WebSocket_Connect(host, uri, _options.Protocol, auth, callbackPtr);
                 _webglSocketId = await _socketId.Task;
                 if (_webglSocketId == -1)
                 {
-                    dispatchQueue.Enqueue(() => OnConnectError?.Invoke(
-                        new Exception("Failed to connect WebSocket")));
+                    var error = _webglRejectedHttpStatus == 0
+                        ? new Exception("Failed to connect WebSocket")
+                        : new WebSocketUpgradeException(_webglRejectedHttpStatus, "the identity token was rejected");
+                    dispatchQueue.Enqueue(() => OnConnectError?.Invoke(error));
                 }
                 else if (_cancelConnectRequested)
                 {

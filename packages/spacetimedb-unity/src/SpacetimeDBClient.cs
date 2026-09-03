@@ -237,12 +237,7 @@ namespace SpacetimeDB
                 }
             };
 
-#if UNITY_WEBGL && !UNITY_EDITOR
-            if (SpacetimeDBNetworkManager._instance != null)
-                SpacetimeDBNetworkManager._instance.StartCoroutine(ParseMessages());
 #endif
-#endif
-
         }
 
         internal struct UnparsedMessage
@@ -315,11 +310,7 @@ namespace SpacetimeDB
             _ => $"type={message.GetType().Name}"
         };
 
-#if UNITY_WEBGL && !UNITY_EDITOR
-        internal IEnumerator ParseMessages()
-#else
         internal void ParseMessages()
-#endif
         {
             static BsatnRowList EmptyRowList() => new(new RowSizeHint.RowOffsets(new()), new());
 
@@ -434,18 +425,15 @@ namespace SpacetimeDB
 
             while (!isClosing)
             {
-
-#if UNITY_WEBGL && !UNITY_EDITOR
-                yield return null;
-                while (_parseQueue.Count > 0)
-#endif
                 try
                 {
-#if UNITY_WEBGL && !UNITY_EDITOR
-                    var message = _parseQueue.Take(_parseCancellationToken);
-#else
                     if (!_parseQueue.TryTake(out var message))
                     {
+#if UNITY_WEBGL && !UNITY_EDITOR
+                        // The browser build has no worker thread: FrameTick drains the
+                        // queue once per frame, so an empty queue just ends this pass.
+                        return;
+#else
                         Interlocked.Exchange(ref parseWorkerScheduled, 0);
                         if (_parseQueue.Count == 0 ||
                             Interlocked.CompareExchange(ref parseWorkerScheduled, 1, 0) != 0)
@@ -454,29 +442,22 @@ namespace SpacetimeDB
                         }
 
                         continue;
-                    }
 #endif
+                    }
+
                     var parsedMessage = ParseMessage(message);
                     _applyQueue.Add(parsedMessage, _parseCancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
-#if UNITY_WEBGL && !UNITY_EDITOR
-                    break;
-#else
                     return; // Normal shutdown
-#endif
                 }
                 catch (Exception e)
                 {
                     Log.Exception(e);
                     FailPendingOperations(new OperationCanceledException("Message parsing failed; connection closed.", e));
                     Disconnect();
-#if UNITY_WEBGL && !UNITY_EDITOR
-                    break;
-#else
                     return;
-#endif
                 }
             }
 
@@ -1029,6 +1010,9 @@ namespace SpacetimeDB
         public void FrameTick()
         {
             webSocket.Update();
+#if UNITY_WEBGL && !UNITY_EDITOR
+            ParseMessages();
+#endif
             while (_applyQueue.TryTake(out var parsedMessage))
             {
                 ApplyMessage(parsedMessage);
