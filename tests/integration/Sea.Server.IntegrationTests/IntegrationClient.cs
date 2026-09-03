@@ -15,6 +15,7 @@ internal sealed class IntegrationClient : IDisposable
     private bool subscribed;
     private bool playerSubscribed;
     private bool spatialSubscribed;
+    private bool dockSubscribed;
     private bool npcWorldSubscribed;
     private Exception? failure;
     private bool disposed;
@@ -131,6 +132,75 @@ internal sealed class IntegrationClient : IDisposable
             ]));
     }
 
+    /// <summary>
+    /// Subscribes to the dock tables and the seeded content projections. The hull and stat
+    /// queries are deliberately unfiltered so the rows that arrive are exactly what the
+    /// server's owner visibility filters let through.
+    /// </summary>
+    public void SubscribeDock()
+    {
+        dockSubscribed = false;
+        subscriptions.Add(connection.SubscriptionBuilder()
+            .OnApplied(_ => dockSubscribed = true)
+            .OnError((_, error) => failure = error)
+            .Subscribe([
+                "SELECT * FROM hull",
+                "SELECT * FROM ship_stats",
+                "SELECT * FROM hull_def",
+                "SELECT * FROM cannon_def",
+                "SELECT * FROM ammo_def",
+                "SELECT * FROM stat_caps",
+            ]));
+        PumpUntil(connection, () => dockSubscribed || failure is not null);
+        ThrowIfFailed();
+    }
+
+    /// <summary>
+    /// Calls load_player again on an already loaded identity and waits for the reducer to come
+    /// back. The reducer callback is the signal rather than the player clock: load_player anchors
+    /// that clock to the live tick, so two calls inside the same tick leave it unchanged and no
+    /// amount of pumping would ever move it.
+    /// </summary>
+    public void ReloadPlayer()
+    {
+        var reloaded = false;
+        void Reloaded(ReducerEventContext context) => reloaded = true;
+
+        connection.Reducers.OnLoadPlayer += Reloaded;
+        try
+        {
+            connection.Reducers.LoadPlayer();
+            PumpUntil(connection, () => reloaded || failure is not null);
+        }
+        finally
+        {
+            connection.Reducers.OnLoadPlayer -= Reloaded;
+        }
+
+        ThrowIfFailed();
+    }
+
+    public Hull OwnedHull() => connection.Db.Hull.Iter().Single(hull => hull.Owner == identity);
+
+    public ShipStats OwnedShipStats() =>
+        connection.Db.ShipStats.Iter().Single(stats => stats.Owner == identity);
+
+    public Hull[] VisibleHulls() => connection.Db.Hull.Iter().ToArray();
+
+    public ShipStats[] VisibleShipStats() => connection.Db.ShipStats.Iter().ToArray();
+
+    public PlayerProgression OwnedProgression() =>
+        connection.Db.PlayerProgression.Owner.Find(identity)
+        ?? throw new InvalidOperationException("The integration identity has no progression row.");
+
+    public HullDef[] HullDefs() => connection.Db.HullDef.Iter().ToArray();
+
+    public CannonDef[] CannonDefs() => connection.Db.CannonDef.Iter().ToArray();
+
+    public AmmoDef[] AmmoDefs() => connection.Db.AmmoDef.Iter().ToArray();
+
+    public StatCaps SeededStatCaps() => connection.Db.StatCaps.Iter().Single();
+
     public void SubscribeNpcWorld()
     {
         subscriptions.Add(connection.SubscriptionBuilder()
@@ -138,16 +208,24 @@ internal sealed class IntegrationClient : IDisposable
             .OnError((_, error) => failure = error)
             .Subscribe([
                 "SELECT * FROM ship WHERE faction_code = 2",
+                "SELECT * FROM ship_movement WHERE faction_code = 2",
                 "SELECT * FROM npc_ai",
             ]));
         PumpUntil(connection, () => npcWorldSubscribed || failure is not null);
         ThrowIfFailed();
     }
 
+    /// <summary>
+    /// Live NPC kinematics. The fat <c>ship</c> row is only republished when a ship changes chunk
+    /// or stops, so a moving ship's position has to be read from <c>ship_movement</c>, which the
+    /// tick publishes every frame. That is the same table the game client renders from.
+    /// </summary>
     public Dictionary<ulong, (float X, float Y)> NpcPositions() =>
-        connection.Db.Ship.Iter()
-            .Where(ship => ship.FactionCode == 2)
-            .ToDictionary(ship => ship.EntityId, ship => (ship.PositionX, ship.PositionY));
+        connection.Db.ShipMovement.Iter()
+            .Where(movement => movement.FactionCode == 2)
+            .ToDictionary(
+                movement => movement.EntityId,
+                movement => (movement.PositionX, movement.PositionY));
 
     public int NpcCount(byte archetypeCode) => connection.Db.Ship.Iter()
         .Count(ship => ship.FactionCode == 2 && ship.ArchetypeCode == archetypeCode);

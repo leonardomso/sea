@@ -120,6 +120,10 @@ public sealed class ReducerIntegrationTests
     public void TwelveNpcShipsSeedAndBeginDeterministicRoaming()
     {
         using var client = IntegrationClient.Connect();
+
+        // An empty world skips its dispatch, so the NPCs only roam once a player is
+        // loaded. Connecting a socket is not enough on its own.
+        client.LoadPlayer();
         client.SubscribeNpcWorld();
         var initial = client.NpcPositions();
 
