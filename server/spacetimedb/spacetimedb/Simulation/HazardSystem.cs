@@ -3,6 +3,19 @@ using SpacetimeDB;
 
 public static partial class Module
 {
+    private static void ApplyEnvironmentalHazards(
+        ReducerContext ctx,
+        ShipTickBuffer ships,
+        ulong tick)
+    {
+        MoveStorms(ctx, tick);
+        for (byte shardId = 0; shardId < SimulationWorkRules.HazardShardCount; shardId++)
+        {
+            ApplyEnvironmentalHazardKind(ctx, ships, tick, WorldObjectCode.Storm, shardId);
+            ApplyEnvironmentalHazardKind(ctx, ships, tick, WorldObjectCode.Shoal, shardId);
+        }
+    }
+
     private static void ApplyEnvironmentalHazardKind(
         ReducerContext ctx,
         ShipTickBuffer ships,

@@ -82,60 +82,11 @@ public static partial class Module
         public ulong DormantNpcRows;
     }
 
-    [SpacetimeDB.Table(Accessor = "SimulationDispatchState")]
-    public partial struct SimulationDispatchState
-    {
-        [PrimaryKey]
-        public uint Id;
-        public byte Slot;
-        public byte MovementShard;
-        public byte NpcShard;
-        public byte NpcAccumulator;
-    }
-
     [SpacetimeDB.Table(
         Accessor = "SimulationDispatchTimer",
         Scheduled = "RunSimulationDispatch",
         ScheduledAt = "ScheduledAt")]
     public partial struct SimulationDispatchTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "MovementSnapshotDispatchState")]
-    public partial struct MovementSnapshotDispatchState
-    {
-        [PrimaryKey]
-        public uint Id;
-        public ushort Cursor;
-    }
-
-    [SpacetimeDB.Table(
-        Accessor = "MovementSnapshotDispatchTimer",
-        Scheduled = "RunMovementSnapshotDispatch",
-        ScheduledAt = "ScheduledAt")]
-    public partial struct MovementSnapshotDispatchTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "HazardDispatchState")]
-    public partial struct HazardDispatchState
-    {
-        [PrimaryKey]
-        public uint Id;
-        public byte Cursor;
-    }
-
-    [SpacetimeDB.Table(
-        Accessor = "HazardDispatchTimer",
-        Scheduled = "RunHazardDispatch",
-        ScheduledAt = "ScheduledAt")]
-    public partial struct HazardDispatchTimer
     {
         [PrimaryKey, AutoInc]
         public ulong ScheduledId;
@@ -192,79 +143,4 @@ public static partial class Module
         public Ship Ship;
     }
 
-    [SpacetimeDB.Table(Accessor = "SimulationTimer", Scheduled = "RunSimulationTick", ScheduledAt = "ScheduledAt")]
-    public partial struct SimulationTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "StatusTimer", Scheduled = "RunStatusTick", ScheduledAt = "ScheduledAt")]
-    public partial struct StatusTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "ChannelTimer", Scheduled = "RunChannelTick", ScheduledAt = "ScheduledAt")]
-    public partial struct ChannelTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "VolleyTimer", Scheduled = "RunVolleyTick", ScheduledAt = "ScheduledAt")]
-    public partial struct VolleyTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "RespawnTimer", Scheduled = "RunRespawnTick", ScheduledAt = "ScheduledAt")]
-    public partial struct RespawnTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "LootExpiryTimer", Scheduled = "RunLootExpiryTick", ScheduledAt = "ScheduledAt")]
-    public partial struct LootExpiryTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "HazardTimer", Scheduled = "RunHazardTick", ScheduledAt = "ScheduledAt")]
-    public partial struct HazardTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-        public byte HazardKindCode;
-        public byte ShardId;
-    }
-
-    [SpacetimeDB.Table(Accessor = "NpcTimer", Scheduled = "RunNpcTick", ScheduledAt = "ScheduledAt")]
-    public partial struct NpcTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-        public byte ShardId;
-    }
-
-    [SpacetimeDB.Table(Accessor = "MovementShardTimer", Scheduled = "RunMovementShard", ScheduledAt = "ScheduledAt")]
-    public partial struct MovementShardTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-        public byte ShardId;
-    }
 }

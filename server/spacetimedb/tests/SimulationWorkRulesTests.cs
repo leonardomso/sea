@@ -39,38 +39,6 @@ public sealed class SimulationWorkRulesTests
         Assert.Equal(10, dueTicks[1] - dueTicks[0]);
     }
 
-    [Fact]
-    public void MovementSnapshotCursorVisitsEveryShardAndPartitionOncePerCycle()
-    {
-        var work = Enumerable.Range(
-                0,
-                SimulationWorkRules.MovementShardCount *
-                    SimulationWorkRules.MovementSnapshotPartitionCount)
-            .Select(cursor => (
-                Shard: SimulationWorkRules.MovementSnapshotShard((ushort)cursor),
-                Partition: SimulationWorkRules.MovementSnapshotPartition((ushort)cursor)))
-            .ToArray();
-
-        Assert.Equal(work.Length, work.Distinct().Count());
-        Assert.Equal((ushort)0, SimulationWorkRules.NextMovementSnapshotCursor(
-            (ushort)(work.Length - 1)));
-    }
-
-    [Fact]
-    public void MovementSnapshotPartitionsCoverEachIndexExactlyOnce()
-    {
-        for (var index = 0; index < 100; index++)
-        {
-            Assert.Single(
-                Enumerable.Range(
-                    0,
-                    SimulationWorkRules.MovementSnapshotPartitionCount),
-                partition => SimulationWorkRules.IsInMovementSnapshotPartition(
-                    index,
-                    (byte)partition));
-        }
-    }
-
     [Theory]
     [InlineData(0ul, 2ul, 1ul)]
     [InlineData(10ul, 12ul, 11ul)]
@@ -103,64 +71,31 @@ public sealed class SimulationWorkRulesTests
     }
 
     [Fact]
-    public void HazardCursorVisitsEveryKindAndShardOncePerCycle()
-    {
-        var work = Enumerable.Range(0, 2 * SimulationWorkRules.HazardShardCount)
-            .Select(cursor => (
-                Kind: SimulationWorkRules.HazardKind((byte)cursor),
-                Shard: SimulationWorkRules.HazardDispatchShard((byte)cursor)))
-            .ToArray();
-
-        Assert.Equal(work.Length, work.Distinct().Count());
-        Assert.Equal(
-            (byte)0,
-            SimulationWorkRules.NextHazardCursor((byte)(work.Length - 1)));
-    }
-
-    [Fact]
-    public void EveryMovementShardIsSimulatedAtLeastOncePerWorldTick()
-    {
-        var movementSlotsPerWorldTick =
-            SimulationWorkRules.DispatchSlotsPerWorldTick - 1;
-
-        Assert.True(
-            SimulationWorkRules.MovementShardCount <= movementSlotsPerWorldTick,
-            $"{SimulationWorkRules.MovementShardCount} movement shards cannot all be " +
-            $"advanced inside the {movementSlotsPerWorldTick} movement slots of a world tick.");
-    }
-
-    [Fact]
-    public void EveryShipSnapshotIsPublishedAtLeastOncePerWorldTick()
-    {
-        var snapshotPeriodMilliseconds =
-            SimulationWorkRules.MovementShardCount *
-            SimulationWorkRules.MovementSnapshotPartitionCount *
-            SimulationWorkRules.MovementSnapshotDispatchIntervalMilliseconds;
-
-        Assert.True(
-            snapshotPeriodMilliseconds <= 1000d / WorldRules.TickRateHz,
-            $"A ship snapshot is published every {snapshotPeriodMilliseconds} ms, " +
-            $"slower than the {WorldRules.TickRateHz} Hz world tick.");
-    }
-
-    [Fact]
-    public void DispatcherAdvancesTheWorldClockAtTenHertz()
+    public void DispatcherRunsOneWorldTickPerIntervalWhilePlayersAreConnected()
     {
         Assert.Equal(
-            (uint)WorldRules.TickRateHz,
-            SimulationWorkRules.DispatchRateHz /
-                (uint)SimulationWorkRules.DispatchSlotsPerWorldTick);
+            1000d / WorldRules.TickRateHz,
+            SimulationWorkRules.DispatchIntervalMilliseconds(true));
     }
 
     [Fact]
     public void SimulationCadenceSlowsOnlyWhenNoPlayerIsConnected()
     {
-        Assert.Equal(10d, SimulationWorkRules.DispatchIntervalMilliseconds(true));
-        Assert.Equal(12d, SimulationWorkRules.SnapshotIntervalMilliseconds(true));
-        Assert.Equal(31.25d, SimulationWorkRules.HazardIntervalMilliseconds(true));
-        Assert.Equal(100d, SimulationWorkRules.DispatchIntervalMilliseconds(false));
-        Assert.Equal(1_000d, SimulationWorkRules.SnapshotIntervalMilliseconds(false));
-        Assert.Equal(1_000d, SimulationWorkRules.HazardIntervalMilliseconds(false));
+        Assert.Equal(100d, SimulationWorkRules.DispatchIntervalMilliseconds(true));
+        Assert.Equal(1_000d, SimulationWorkRules.DispatchIntervalMilliseconds(false));
+    }
+
+    [Theory]
+    [InlineData(1ul, false)]
+    [InlineData(4ul, false)]
+    [InlineData(5ul, true)]
+    [InlineData(10ul, true)]
+    public void HazardsApplyEveryHalfSecond(ulong tick, bool expected)
+    {
+        Assert.Equal(
+            500d,
+            SimulationWorkRules.HazardIntervalTicks * 1000d / WorldRules.TickRateHz);
+        Assert.Equal(expected, SimulationWorkRules.ShouldApplyHazards(tick));
     }
 
     [Theory]

@@ -9,35 +9,24 @@ public static class SimulationWorkRules
     public const byte NpcShardCount = 4;
     public const byte CurrentRefreshBucketCount = 16;
     public const byte LootPickupBucketCount = 10;
-    public const byte MovementReducerRateHz = 5;
-    public const byte NpcReducerRateHz = 2;
-    public const byte DispatchRateHz = 100;
-    public const byte DispatchSlotsPerWorldTick = 10;
     public const byte MaximumMovementCatchUpTicks = 8;
-    public const byte MovementSnapshotPartitionCount = 1;
-    public const ushort MovementSnapshotDispatchIntervalMilliseconds = 12;
-    public const byte HazardDispatchRateHz = 32;
-    public const ushort IdleDispatchIntervalMilliseconds = 100;
-    public const ushort IdleBackgroundIntervalMilliseconds = 1_000;
+    public const ulong HazardIntervalTicks = 5;
+    public const ushort IdleDispatchIntervalMilliseconds = 1_000;
     public const ulong TelemetrySampleIntervalTicks = 100;
 
     public static bool ShouldSampleTelemetry(ulong tick) =>
         tick > 0 && tick % TelemetrySampleIntervalTicks == 0;
 
+    // Reducers execute one at a time per database, so the whole world tick runs as a
+    // single transaction: splitting it into finer timers only multiplies commit and
+    // subscription overhead without adding parallelism.
     public static double DispatchIntervalMilliseconds(bool hasConnectedPlayers) =>
         hasConnectedPlayers
-            ? 1000d / DispatchRateHz
+            ? 1000d / WorldRules.TickRateHz
             : IdleDispatchIntervalMilliseconds;
 
-    public static double SnapshotIntervalMilliseconds(bool hasConnectedPlayers) =>
-        hasConnectedPlayers
-            ? MovementSnapshotDispatchIntervalMilliseconds
-            : IdleBackgroundIntervalMilliseconds;
-
-    public static double HazardIntervalMilliseconds(bool hasConnectedPlayers) =>
-        hasConnectedPlayers
-            ? 1000d / HazardDispatchRateHz
-            : IdleBackgroundIntervalMilliseconds;
+    public static bool ShouldApplyHazards(ulong tick) =>
+        tick % HazardIntervalTicks == 0;
 
     public static byte MovementShard(ulong shipEntityId) =>
         (byte)(shipEntityId % MovementShardCount);
@@ -53,29 +42,6 @@ public static class SimulationWorkRules
 
     public static bool ShouldProcessLootPickup(ulong shipEntityId, ulong tick) =>
         IsStaggeredWorkDue(shipEntityId, tick, LootPickupBucketCount);
-
-    public static byte MovementSnapshotShard(ushort cursor) =>
-        (byte)(cursor / MovementSnapshotPartitionCount);
-
-    public static byte MovementSnapshotPartition(ushort cursor) =>
-        (byte)(cursor % MovementSnapshotPartitionCount);
-
-    public static ushort NextMovementSnapshotCursor(ushort cursor) =>
-        (ushort)((cursor + 1) %
-            (MovementShardCount * MovementSnapshotPartitionCount));
-
-    public static bool IsInMovementSnapshotPartition(int index, byte partition) =>
-        index >= 0 && partition < MovementSnapshotPartitionCount &&
-        index % MovementSnapshotPartitionCount == partition;
-
-    public static WorldObjectCode HazardKind(byte cursor) =>
-        cursor < HazardShardCount ? WorldObjectCode.Storm : WorldObjectCode.Shoal;
-
-    public static byte HazardDispatchShard(byte cursor) =>
-        (byte)(cursor % HazardShardCount);
-
-    public static byte NextHazardCursor(byte cursor) =>
-        (byte)((cursor + 1) % (2 * HazardShardCount));
 
     public static ulong FirstMovementTick(ulong lastSimulatedTick, ulong currentTick)
     {

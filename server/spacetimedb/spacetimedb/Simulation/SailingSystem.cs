@@ -5,7 +5,33 @@ public static partial class Module
 {
     private static (uint Processed, uint Dormant) AdvanceMovingShips(
         ReducerContext ctx,
+        ulong tick,
+        bool hasActiveLoot)
+    {
+        var spatial = new SpatialTickCache();
+        var environment = ctx.Db.EnvironmentState.Id.Find(1);
+        var currentField = ctx.Db.CurrentFieldState.Id.Find(1);
+        var processed = 0u;
+        for (byte shardId = 0; shardId < SimulationWorkRules.MovementShardCount; shardId++)
+        {
+            processed += AdvanceMovementShard(
+                ctx,
+                spatial,
+                environment,
+                currentField,
+                tick,
+                shardId,
+                hasActiveLoot);
+        }
+
+        return (processed, 0);
+    }
+
+    private static uint AdvanceMovementShard(
+        ReducerContext ctx,
         SpatialTickCache spatial,
+        EnvironmentState? environment,
+        CurrentFieldState? currentField,
         ulong tick,
         byte shardId,
         bool hasActiveLoot)
@@ -13,25 +39,26 @@ public static partial class Module
         var shard = ctx.Db.MovementShardState.ShardId.Find(shardId) ??
             throw new InvalidOperationException("Movement shard state is missing.");
         ApplyPendingMovementUpdates(ctx, ref shard);
-        var environment = ctx.Db.EnvironmentState.Id.Find(1);
-        var currentField = ctx.Db.CurrentFieldState.Id.Find(1);
-        var processed = 0u;
-        var firstTick = SimulationWorkRules.FirstMovementTick(
-            shard.LastSimulatedTick,
-            tick);
-        processed = ProcessMovementBatch(
+        var processed = ProcessMovementBatch(
             ctx,
             spatial,
             environment,
             currentField,
             shard.Ships,
-            firstTick,
+            SimulationWorkRules.FirstMovementTick(shard.LastSimulatedTick, tick),
             tick,
             hasActiveLoot);
 
+        // Ships that stopped were published while compacting; the rest publish here so
+        // every client sees the tick's kinematics in the same transaction they were made.
+        foreach (var ship in shard.Ships)
+        {
+            WriteMovementSnapshot(ctx, ship, tick);
+        }
+
         shard.LastSimulatedTick = tick;
         ctx.Db.MovementShardState.ShardId.Update(shard);
-        return (processed, 0);
+        return processed;
     }
 
     private static uint ProcessMovementBatch(

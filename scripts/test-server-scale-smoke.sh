@@ -199,14 +199,10 @@ fi
 sample_container_resources "$resource_samples" "$duration" &
 resource_pid=$!
 
-  reducer_labels=(dispatch snapshot hazard)
-  reducer_names=(
-    run_simulation_dispatch
-    run_movement_snapshot_dispatch
-    run_hazard_dispatch
-  )
+  reducer_labels=(dispatch)
+  reducer_names=(run_simulation_dispatch)
 minimum_samples=$((sample_iterations < 20 ? sample_iterations : 20))
-  reducer_minimums=("$minimum_samples" "$minimum_samples" "$minimum_samples")
+  reducer_minimums=("$minimum_samples")
 previous_times=()
 previous_ticks=()
 sample_files=()

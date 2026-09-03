@@ -26,10 +26,6 @@ public static partial class Module
             NextEntityId = 1000,
         });
         ctx.Db.SimulationTelemetry.Insert(new SimulationTelemetry { Id = 1 });
-        ctx.Db.SimulationDispatchState.Insert(new SimulationDispatchState { Id = 1 });
-        ctx.Db.MovementSnapshotDispatchState.Insert(
-            new MovementSnapshotDispatchState { Id = 1 });
-        ctx.Db.HazardDispatchState.Insert(new HazardDispatchState { Id = 1 });
         SeedContent(ctx);
         SeedWorld(ctx);
         SeedNavigationField(ctx);
@@ -44,16 +40,6 @@ public static partial class Module
             ScheduledAt = new ScheduleAt.Interval(
                 TimeSpan.FromMilliseconds(
                     SimulationWorkRules.DispatchIntervalMilliseconds(false))),
-        });
-        ctx.Db.MovementSnapshotDispatchTimer.Insert(new MovementSnapshotDispatchTimer
-        {
-            ScheduledAt = new ScheduleAt.Interval(TimeSpan.FromMilliseconds(
-                SimulationWorkRules.SnapshotIntervalMilliseconds(false))),
-        });
-        ctx.Db.HazardDispatchTimer.Insert(new HazardDispatchTimer
-        {
-            ScheduledAt = new ScheduleAt.Interval(TimeSpan.FromMilliseconds(
-                SimulationWorkRules.HazardIntervalMilliseconds(false))),
         });
         for (byte shardId = 0; shardId < SimulationWorkRules.MovementShardCount; shardId++)
         {
