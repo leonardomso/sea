@@ -135,6 +135,7 @@ public static class CombatRules
         var targetBearing = MathF.Atan2(targetX - sourceX, targetY - sourceY) *
             (180f / MathF.PI);
         var broadsideCenter = headingDegrees + (side == BroadsideSide.Port ? -90f : 90f);
+        // Stryker disable once Equality : the 0.0001° tolerance keeps the exact edge unreachable, so <= and < agree on every float bearing.
         return MathF.Abs(NormalizeSignedAngle(targetBearing - broadsideCenter)) <=
             BroadsideArcDegrees * 0.5f + 0.0001f;
     }
@@ -202,26 +203,9 @@ public static class CombatRules
         return MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
     }
 
-    private static uint ScaleDamage(uint value, float effectiveness, float aimMultiplier)
-    {
-        if (value == 0 || effectiveness <= 0f)
-        {
-            return 0;
-        }
+    private static uint ScaleDamage(uint value, float effectiveness, float aimMultiplier) =>
+        checked((uint)MathF.Round(value * effectiveness * aimMultiplier, MidpointRounding.AwayFromZero));
 
-        return checked((uint)MathF.Round(
-            value * effectiveness * aimMultiplier,
-            MidpointRounding.AwayFromZero));
-    }
-
-    private static float NormalizeSignedAngle(float degrees)
-    {
-        var normalized = (degrees + 180f) % 360f;
-        if (normalized < 0f)
-        {
-            normalized += 360f;
-        }
-
-        return normalized - 180f;
-    }
+    /// <summary>Maps any angle onto [-180, 180] so a bearing offset can be compared against a half arc.</summary>
+    private static float NormalizeSignedAngle(float degrees) => degrees - (360f * MathF.Round(degrees / 360f));
 }

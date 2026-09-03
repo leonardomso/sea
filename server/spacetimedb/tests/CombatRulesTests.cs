@@ -36,6 +36,46 @@ public sealed class CombatRulesTests
     }
 
     [Theory]
+    [InlineData(300f, BroadsideSide.Starboard, 30f, true)]
+    [InlineData(300f, BroadsideSide.Starboard, -30f, false)]
+    [InlineData(300f, BroadsideSide.Port, -120f, true)]
+    [InlineData(-300f, BroadsideSide.Port, -60f, true)]
+    public void Broadside_arcs_wrap_headings_past_a_full_turn(
+        float headingDegrees,
+        BroadsideSide side,
+        float targetBearingDegrees,
+        bool expected)
+    {
+        Assert.Equal(expected, CombatRules.IsInsideBroadsideArc(
+            sourceX: 0f,
+            sourceY: 0f,
+            headingDegrees,
+            targetX: MathF.Sin(targetBearingDegrees * MathF.PI / 180f) * 10f,
+            targetY: MathF.Cos(targetBearingDegrees * MathF.PI / 180f) * 10f,
+            side));
+    }
+
+    [Theory]
+    [InlineData(10f, 20f, false)]
+    [InlineData(20f, 10f, true)]
+    public void Broadside_arcs_are_relative_to_the_source_position(float targetX, float targetY, bool expected)
+    {
+        Assert.Equal(expected, CombatRules.IsInsideBroadsideArc(
+            sourceX: 10f,
+            sourceY: 10f,
+            headingDegrees: 0f,
+            targetX,
+            targetY,
+            BroadsideSide.Starboard));
+    }
+
+    [Fact]
+    public void Distance_is_relative_to_the_source_position()
+    {
+        Assert.Equal(5f, CombatRules.Distance(3, 4, 6, 8));
+    }
+
+    [Theory]
     [InlineData(false, true, 100u, 10u, 20ul, 10ul, FireRejection.SourceSunk)]
     [InlineData(true, false, 100u, 10u, 20ul, 10ul, FireRejection.TargetSunk)]
     [InlineData(true, true, 0u, 10u, 20ul, 10ul, FireRejection.CannonsDisabled)]
@@ -175,6 +215,7 @@ public sealed class CombatRulesTests
     [InlineData(float.NaN, 40f, 10u)]
     [InlineData(1f, 0f, 10u)]
     [InlineData(1f, float.PositiveInfinity, 10u)]
+    [InlineData(1f, 1f, 0u)]
     public void InvalidVolleyTimingInputsAreRejected(
         float distance,
         float projectileSpeed,
@@ -210,6 +251,44 @@ public sealed class CombatRulesTests
 
         Assert.Equal(default, damage);
         Assert.Equal(5f, CombatRules.Distance(0, 0, 3, 4));
+    }
+
+    [Fact]
+    public void Aiming_amplifies_only_the_chosen_subsystem()
+    {
+        var hullAim = RoundShotProfile(WeakPoint.Hull, WorldRules.InitialCannonDamage);
+        var sailsAim = RoundShotProfile(WeakPoint.Sails, WorldRules.InitialCannonDamage);
+        var cannonsAim = RoundShotProfile(WeakPoint.Cannons, WorldRules.InitialCannonDamage);
+
+        Assert.True(hullAim.Hull > sailsAim.Hull);
+        Assert.True(sailsAim.Sails > hullAim.Sails);
+        Assert.True(cannonsAim.Cannons > hullAim.Cannons);
+        Assert.Equal(sailsAim.Hull, cannonsAim.Hull);
+        Assert.Equal(hullAim.Sails, cannonsAim.Sails);
+        Assert.Equal(hullAim.Cannons, sailsAim.Cannons);
+        Assert.Equal(hullAim.Crew, sailsAim.Crew);
+        Assert.Equal(hullAim.Crew, cannonsAim.Crew);
+    }
+
+    [Fact]
+    public void Damage_scales_linearly_with_cannon_effectiveness()
+    {
+        var single = RoundShotProfile(WeakPoint.Hull, WorldRules.InitialCannonDamage);
+        var doubled = RoundShotProfile(WeakPoint.Hull, 2 * WorldRules.InitialCannonDamage);
+
+        Assert.Equal(2u * single.Sails, doubled.Sails);
+        Assert.Equal(2u * single.Crew, doubled.Crew);
+    }
+
+    [Fact]
+    public void Damage_beyond_the_uint_range_is_rejected()
+    {
+        Assert.Throws<OverflowException>(() => CombatRules.DamageProfile(
+            RoundShot(),
+            WeakPoint.Hull,
+            cannonPower: uint.MaxValue,
+            cannons: uint.MaxValue,
+            maxCannons: 1));
     }
 
     [Theory]
@@ -249,6 +328,12 @@ public sealed class CombatRulesTests
         };
         Assert.Equal(expected, aimedDamage);
     }
+
+    private static AmmunitionContent RoundShot() => ContentCatalog.CreateDefault().Ammunition
+        .Single(item => string.Equals(item.Id, "round", StringComparison.Ordinal));
+
+    private static CombatDamage RoundShotProfile(WeakPoint weakPoint, uint cannonPower) =>
+        CombatRules.DamageProfile(RoundShot(), weakPoint, cannonPower, cannons: 100, maxCannons: 100);
 
     private static FireRequest ValidFireRequest() => new()
     {
