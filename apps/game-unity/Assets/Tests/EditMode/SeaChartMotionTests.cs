@@ -18,7 +18,11 @@ namespace Sea.Tests.EditMode
 
             Assert.That(clock.IsRunning, Is.True);
             Assert.That(clock.ServerTick(0d), Is.EqualTo(100d).Within(0.001d));
-            Assert.That(clock.RenderTick(0d), Is.EqualTo(98d).Within(0.001d));
+            Assert.That(clock.RenderTick(0d), Is.EqualTo(99d).Within(0.001d));
+            Assert.That(
+                SeaSnapshotClock.RenderTickFrom(100d),
+                Is.EqualTo(99d).Within(0.001d),
+                "Converting a tick already read must not advance the estimate a second time.");
             Assert.That(clock.ServerTick(0.5d), Is.EqualTo(105d).Within(0.001d));
         }
 

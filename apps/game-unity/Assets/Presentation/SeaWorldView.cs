@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using SpacetimeDB.Types;
 using Unity.Collections;
@@ -266,18 +267,60 @@ namespace Sea.Client
                 return;
             }
 
-            var renderTick = snapshotClock.RenderTick(Time.realtimeSinceStartupAsDouble);
+            var serverTick = snapshotClock.ServerTick(Time.realtimeSinceStartupAsDouble);
+            var renderTick = SeaSnapshotClock.RenderTickFrom(serverTick);
+            var deltaSeconds = Time.deltaTime;
             foreach (var target in targets)
             {
-                if (target.Value.HasSamples &&
-                    entities.TryGetValue(target.Key, out var entityObject))
+                if (!target.Value.HasSamples ||
+                    !entities.TryGetValue(target.Key, out var entityObject))
                 {
-                    var sample = target.Value.Sample(renderTick);
-                    entityObject.transform.SetPositionAndRotation(
-                        sample.Position,
-                        Quaternion.Euler(0f, sample.HeadingDegrees, 0f));
+                    continue;
                 }
+
+                var motion = target.Key == playerEntityId &&
+                    TryPredictLocalShip(serverTick, deltaSeconds, entityObject.transform.position, out var predicted)
+                        ? predicted
+                        : ToMotion(target.Value.Sample(renderTick));
+                entityObject.transform.SetPositionAndRotation(
+                    motion.Position,
+                    Quaternion.Euler(0f, motion.HeadingDegrees, 0f));
             }
+        }
+
+        private static SeaPredictedMotion ToMotion(SeaInterpolationSample sample) =>
+            new(sample.Position, sample.HeadingDegrees);
+
+        // The ship the player steers is drawn where the server has already agreed it is heading,
+        // not a render delay behind it, so a click turns the hull on the frame it is made.
+        private bool TryPredictLocalShip(
+            double serverTick,
+            float deltaSeconds,
+            Vector3 rendered,
+            out SeaPredictedMotion motion)
+        {
+            motion = default;
+            if (localShip == null || !movementRows.TryGetValue(playerEntityId, out var movement))
+            {
+                return false;
+            }
+
+            var tickRate = connection.WorldTickRate > 0
+                ? connection.WorldTickRate
+                : SeaSnapshotClock.DefaultTickRate;
+            var elapsed = (float)Math.Max(0d, (serverTick - movement.SnapshotTick) / tickRate);
+            var predicted = SeaLocalShipPrediction.Predict(
+                ToWorld(movement.PositionX, movement.PositionY, ShipRootHeight),
+                movement.HeadingDegrees,
+                movement.IsMoving ? movement.Speed : 0f,
+                ToWorld(localShip.DestinationX, localShip.DestinationY, ShipRootHeight),
+                localShip.HasCourse && !localShip.IsStopping,
+                localShip.TurnRateDegrees,
+                elapsed);
+            motion = new SeaPredictedMotion(
+                SeaLocalShipPrediction.Reconcile(rendered, predicted.Position, deltaSeconds),
+                predicted.HeadingDegrees);
+            return true;
         }
 
         private GameObject CreateShip(string name, Ship row)
