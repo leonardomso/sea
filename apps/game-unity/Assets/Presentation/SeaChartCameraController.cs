@@ -185,8 +185,7 @@ namespace Sea.Client
                 SmoothCenterOn(playerPosition, deltaTime);
             }
 
-            KeepChartInBounds();
-            UpdateViewportMarker();
+            UpdateViewportMarker(KeepChartInBounds());
         }
 
         public void SetPanInput(Vector2 value)
@@ -330,24 +329,28 @@ namespace Sea.Client
             chartCamera.transform.position += new Vector3(delta.x, 0f, delta.z) * interpolation;
         }
 
-        private Vector3 CenterDelta(Vector3 target)
-        {
-            target = SeaChartCameraRules.ClampCenter(
-                target,
-                SeaChartCameraRules.ViewHalfExtents(chartCamera.orthographicSize, chartCamera.aspect));
-            return target - CurrentChartCenter();
-        }
+        private Vector3 CenterDelta(Vector3 target) =>
+            SeaChartCameraRules.ClampCenter(target, ViewHalfExtents()) - CurrentChartCenter();
 
-        private void KeepChartInBounds()
+        private Vector2 ViewHalfExtents() =>
+            SeaChartCameraRules.ViewHalfExtents(chartCamera.orthographicSize, chartCamera.aspect);
+
+        // Returns the chart center after the correction so the frame needs no second raycast.
+        private Vector3 KeepChartInBounds()
         {
-            var delta = CenterDelta(CurrentChartCenter());
+            var center = CurrentChartCenter();
+            var delta = SeaChartCameraRules.ClampCenter(center, ViewHalfExtents()) - center;
             if (delta.sqrMagnitude > 0.0001f)
             {
-                chartCamera.transform.position += new Vector3(delta.x, 0f, delta.z);
+                var correction = new Vector3(delta.x, 0f, delta.z);
+                chartCamera.transform.position += correction;
+                center += correction;
             }
+
+            return center;
         }
 
-        private void UpdateViewportMarker()
+        private void UpdateViewportMarker(Vector3 chartCenter)
         {
             if (miniMapCamera == null)
             {
@@ -360,9 +363,7 @@ namespace Sea.Client
                 chartCamera.cullingMask &= ~(1 << SeaMiniMapViewportMarker.MiniMapOnlyLayer);
             }
 
-            viewportMarker.Show(
-                CurrentChartCenter(),
-                SeaChartCameraRules.ViewHalfExtents(chartCamera.orthographicSize, chartCamera.aspect));
+            viewportMarker.Show(chartCenter, ViewHalfExtents());
         }
 
         private Vector3 CurrentChartCenter()

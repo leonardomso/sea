@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using UnityEngine;
@@ -17,8 +16,8 @@ namespace Sea.Client
         private SubscriptionHandle pendingSpatialSubscription;
         private SubscriptionHandle activeFocusSubscription;
         private SubscriptionHandle pendingFocusSubscription;
+        private readonly SeaFocusTargetSet focusTargets = new();
         private ulong selectedTargetEntityId;
-        private string focusKey = string.Empty;
 
         public event Action<ulong> ShipLeftInterest;
         public event Action<ulong> WorldObjectLeftInterest;
@@ -184,24 +183,21 @@ namespace Sea.Client
                 return;
             }
 
-            var targetIds = new HashSet<ulong>();
-            AddFocusTarget(targetIds, selectedTargetEntityId);
+            focusTargets.Begin();
+            AddFocusTarget(selectedTargetEntityId);
             foreach (var endpoint in relevantVolleys.Values)
             {
-                AddFocusTarget(targetIds, endpoint.SourceEntityId);
-                AddFocusTarget(targetIds, endpoint.TargetEntityId);
+                AddFocusTarget(endpoint.SourceEntityId);
+                AddFocusTarget(endpoint.TargetEntityId);
             }
 
-            var orderedTargets = targetIds.OrderBy(entityId => entityId).ToArray();
-            var nextKey = string.Join(",", orderedTargets);
-            if (string.Equals(focusKey, nextKey, StringComparison.Ordinal))
+            if (!focusTargets.Commit())
             {
                 return;
             }
 
-            focusKey = nextKey;
             var generation = focusGenerations.Begin();
-            if (orderedTargets.Length == 0)
+            if (focusTargets.Targets.Count == 0)
             {
                 UnsubscribeIfActive(activeFocusSubscription);
                 activeFocusSubscription = null;
@@ -209,7 +205,7 @@ namespace Sea.Client
                 return;
             }
 
-            StartFocusSubscription(connection, generation, orderedTargets);
+            StartFocusSubscription(connection, generation, focusTargets.Targets);
         }
 
         private void StartFocusSubscription(
@@ -273,11 +269,11 @@ namespace Sea.Client
         private void HandleWorldObjectDeleted(EventContext _context, WorldObject worldObject) =>
             WorldObjectLeftInterest?.Invoke(worldObject.EntityId);
 
-        private void AddFocusTarget(ISet<ulong> targets, ulong entityId)
+        private void AddFocusTarget(ulong entityId)
         {
-            if (entityId != 0 && entityId != subscribedPlayerEntityId)
+            if (entityId != subscribedPlayerEntityId)
             {
-                targets.Add(entityId);
+                focusTargets.Add(entityId);
             }
         }
 
@@ -296,7 +292,7 @@ namespace Sea.Client
             activeFocusSubscription = null;
             pendingFocusSubscription = null;
             selectedTargetEntityId = 0;
-            focusKey = string.Empty;
+            focusTargets.Clear();
             relevantVolleys.Clear();
             spatialInterest.Reset();
             spatialGenerations.Reset();

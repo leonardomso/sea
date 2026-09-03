@@ -59,9 +59,7 @@ namespace Sea.Client
                 snapshot.Gold = progression.Gold;
             }
 
-            snapshot.AmmoQuantity = db.Inventory.ByShip
-                .Filter(ship.EntityId)
-                .FirstOrDefault(item => item.ItemId == game.SelectedAmmoId)?.Quantity ?? 0;
+            snapshot.AmmoQuantity = AmmoQuantity(db, ship.EntityId, game.SelectedAmmoId);
 
             var tickRate = connection.WorldTickRate;
 
@@ -95,6 +93,19 @@ namespace Sea.Client
 
         // The dock tables (hull/ship_stats) plus the content definitions they point at
         // are what the ledger reports; the ship row only carries hot-path state.
+        private static uint AmmoQuantity(RemoteTables db, ulong shipEntityId, string ammoId)
+        {
+            foreach (var item in db.Inventory.ByShip.Filter(shipEntityId))
+            {
+                if (item.ItemId == ammoId)
+                {
+                    return item.Quantity;
+                }
+            }
+
+            return 0;
+        }
+
         private ShipStats ReadDock(RemoteTables db, SeaHudSnapshot snapshot)
         {
             var caps = db.StatCaps.Id.Find(StatCapsRowId);

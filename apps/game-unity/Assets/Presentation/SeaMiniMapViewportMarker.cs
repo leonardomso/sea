@@ -15,6 +15,9 @@ namespace Sea.Client
 
         private readonly LineRenderer outline;
         private readonly Vector3[] corners = new Vector3[4];
+        private bool shown;
+        private Vector3 shownCenter;
+        private Vector2 shownHalfExtents;
 
         public SeaMiniMapViewportMarker()
         {
@@ -29,10 +32,20 @@ namespace Sea.Client
             outline.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
-        public void Show(Vector3 center, Vector2 halfExtents)
+        /// <summary>Redraws the outline; false when the footprint has not moved.</summary>
+        public bool Show(Vector3 center, Vector2 halfExtents)
         {
+            if (shown && center == shownCenter && halfExtents == shownHalfExtents)
+            {
+                return false;
+            }
+
+            shown = true;
+            shownCenter = center;
+            shownHalfExtents = halfExtents;
             SeaMiniMapRules.ViewportCorners(new Vector3(center.x, Height, center.z), halfExtents, corners);
             outline.SetPositions(corners);
+            return true;
         }
     }
 }

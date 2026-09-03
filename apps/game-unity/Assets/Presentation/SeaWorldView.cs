@@ -67,6 +67,7 @@ namespace Sea.Client
         private ulong playerEntityId;
         private ulong worldTick;
         private Ship localShip;
+        private Transform chartCameraTransform;
         private Vector3 previousVisibilityOrigin = new(float.PositiveInfinity, 0f, 0f);
         private bool visibilityDirty = true;
         private LineRenderer courseLine;
@@ -92,10 +93,25 @@ namespace Sea.Client
             fogShader = shader;
         }
 
-        public void ConfigureDependencies(SeaConnectionController connectionController)
+        public void ConfigureDependencies(
+            SeaConnectionController connectionController,
+            Camera chartCamera)
         {
             connection = connectionController;
+            chartCameraTransform = chartCamera != null ? chartCamera.transform : null;
             BindInterestCallbacks(connectionController);
+        }
+
+        // Camera.main tags-searches the scene on every call, so the composer hands the
+        // chart camera over and the search only runs when nothing was wired.
+        private Transform ChartCameraTransform()
+        {
+            if (chartCameraTransform == null && Camera.main != null)
+            {
+                chartCameraTransform = Camera.main.transform;
+            }
+
+            return chartCameraTransform;
         }
 
         private void Awake()

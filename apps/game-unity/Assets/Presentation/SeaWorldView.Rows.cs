@@ -162,7 +162,7 @@ namespace Sea.Client
                 return;
             }
 
-            var cameraTransform = Camera.main != null ? Camera.main.transform : null;
+            var cameraTransform = ChartCameraTransform();
             var origin = cameraTransform != null
                 ? new Vector3(cameraTransform.position.x, 0f, cameraTransform.position.z)
                 : localShip == null

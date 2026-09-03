@@ -105,7 +105,13 @@ namespace Sea.Client
         private void NotifyShipChanged(Ship ship)
         {
             ShipChanged?.Invoke(ship);
-            NotifyHudStateChanged();
+            if (SeaHudViewModel.DependsOnShip(
+                    ship.EntityId,
+                    subscribedPlayerEntityId,
+                    selectedTargetEntityId))
+            {
+                NotifyHudStateChanged();
+            }
         }
 
         private void HandleShipMovementInserted(EventContext _context, ShipMovement movement) =>

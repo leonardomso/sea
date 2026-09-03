@@ -49,6 +49,17 @@ namespace Sea.Client
 
     public sealed class SeaHudViewModel
     {
+        /// <summary>
+        /// The HUD reads only the player's ship and the ship it targets, so other ship rows
+        /// can change without forcing a rebuild.
+        /// </summary>
+        public static bool DependsOnShip(
+            ulong shipEntityId,
+            ulong localShipEntityId,
+            ulong targetEntityId) =>
+            shipEntityId != 0 &&
+            (shipEntityId == localShipEntityId || shipEntityId == targetEntityId);
+
         private static readonly CultureInfo DisplayCulture = CultureInfo.InvariantCulture;
 
         public bool IsReady { get; private set; }

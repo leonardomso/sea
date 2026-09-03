@@ -16,8 +16,8 @@ namespace Sea.Client
                 var viewportX = 0.04f + 0.74f * index / (topCoordinateLabels.Length - 1);
                 if (TryChartPoint(new Vector2(viewportX, 0.96f), out var point))
                 {
-                    topCoordinateLabels[index].text = SeaChartCoordinates.LabelAt(point.x, point.z)
-                        .Split(' ')[1];
+                    topCoordinateLabels[index].text =
+                        SeaChartCoordinates.RowLabelAt(SeaChartCoordinates.RowIndexAt(point.x));
                 }
             }
 
@@ -27,7 +27,7 @@ namespace Sea.Client
                 if (TryChartPoint(new Vector2(0.03f, viewportY), out var point))
                 {
                     leftCoordinateLabels[leftCoordinateLabels.Length - 1 - index].text =
-                        SeaChartCoordinates.LabelAt(point.x, point.z).Split(' ')[0];
+                        SeaChartCoordinates.ColumnLabelAt(SeaChartCoordinates.ColumnIndexAt(point.z));
                 }
             }
         }

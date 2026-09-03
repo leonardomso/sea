@@ -13,7 +13,7 @@ namespace Sea.Client
 
         internal void SeedSyntheticPerformanceFleet(int count)
         {
-            var cameraTransform = Camera.main != null ? Camera.main.transform : null;
+            var cameraTransform = ChartCameraTransform();
             var center = cameraTransform == null
                 ? Vector2.zero
                 : new Vector2(cameraTransform.position.x, cameraTransform.position.z);

@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using UnityEngine;
 
 namespace Sea.Client
@@ -55,18 +56,20 @@ namespace Sea.Client
             return true;
         }
 
-        public static string LabelAt(float x, float y)
-        {
-            var column = Math.Clamp(
-                (int)Math.Floor((MapMaximum - y) / CellHeight),
-                0,
-                ColumnCount - 1);
-            var row = Math.Clamp(
-                (int)Math.Floor((x - MapMinimum) / CellWidth),
-                0,
-                RowCount - 1);
-            return $"{ColumnLabel(column)} {row}";
-        }
+        public static string LabelAt(float x, float y) =>
+            $"{ColumnLabelAt(ColumnIndexAt(y))} {RowLabelAt(RowIndexAt(x))}";
+
+        public static int ColumnIndexAt(float y) =>
+            Math.Clamp((int)Math.Floor((MapMaximum - y) / CellHeight), 0, ColumnCount - 1);
+
+        public static int RowIndexAt(float x) =>
+            Math.Clamp((int)Math.Floor((x - MapMinimum) / CellWidth), 0, RowCount - 1);
+
+        // The chart rulers relabel whenever the camera moves, so the fixed label set is
+        // built once and shared instead of being formatted on every frame.
+        public static string ColumnLabelAt(int column) => ColumnLabels[column];
+
+        public static string RowLabelAt(int row) => RowLabels[row];
 
         public static Vector2 ClampToMap(Vector2 position) => new(
             Mathf.Clamp(position.x, MapMinimum, MapMaximum),
@@ -117,5 +120,30 @@ namespace Sea.Client
 
             return label;
         }
+
+        private static string[] BuildColumnLabels()
+        {
+            var labels = new string[ColumnCount];
+            for (var column = 0; column < labels.Length; column++)
+            {
+                labels[column] = ColumnLabel(column);
+            }
+
+            return labels;
+        }
+
+        private static string[] BuildRowLabels()
+        {
+            var labels = new string[RowCount];
+            for (var row = 0; row < labels.Length; row++)
+            {
+                labels[row] = row.ToString(CultureInfo.InvariantCulture);
+            }
+
+            return labels;
+        }
+
+        private static readonly string[] ColumnLabels = BuildColumnLabels();
+        private static readonly string[] RowLabels = BuildRowLabels();
     }
 }
