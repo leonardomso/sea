@@ -190,7 +190,7 @@ Speed is recomputed every tick. The UI shows the server's number rounded to 0.1 
 
 ```mermaid
 flowchart LR
-    B[Base speed<br/>by hull] --> C[× bonus<br/>add-then-cap 20%]
+    B[Base speed<br/>by hull] --> C[× bonus<br/>add-then-cap 25%]
     C --> D[× HP state<br/>1.00 · 0.92 · 0.85]
     D --> E[× wind<br/>0.90 … 1.10]
     E --> F[× storm<br/>0.85 or 1]
