@@ -37,10 +37,12 @@ namespace Sea.Tests
         }
 
         [Test]
-        public void Runtime_frame_policy_caps_foreground_and_background_work()
+        public void Runtime_frame_policy_follows_the_display_and_rests_in_the_background()
         {
-            Assert.That(SeaFrameRatePolicy.TargetForFocus(true), Is.EqualTo(60));
+            Assert.That(SeaFrameRatePolicy.TargetForFocus(true), Is.EqualTo(-1));
+            Assert.That(SeaFrameRatePolicy.VerticalSyncForFocus(true), Is.EqualTo(1));
             Assert.That(SeaFrameRatePolicy.TargetForFocus(false), Is.EqualTo(15));
+            Assert.That(SeaFrameRatePolicy.VerticalSyncForFocus(false), Is.EqualTo(0));
         }
 
         [Test]

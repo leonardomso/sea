@@ -20,6 +20,9 @@ namespace Sea.Client
             var requiredShipCount = Application.platform == RuntimePlatform.WebGLPlayer
                 ? 100
                 : 250;
+            // The probe measures what a frame costs, not what the panel allows, so it runs
+            // off the display's beat however the focused player is set.
+            QualitySettings.vSyncCount = 0;
             Application.targetFrameRate = 1_000;
             ReportPresentationProgress(requiredShipCount);
             if (worldView == null)
