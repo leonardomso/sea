@@ -322,7 +322,7 @@ sequenceDiagram
 
 | Rule |
 |---|
-| **9.1** Board is available when: target HP ≤ your Boarding Threshold, distance ≤ **4 sq**, your boarding cooldown is over, and neither ship is in a no-PvP zone. |
+| **9.1** Board is available when: target HP ≤ `BOARD_THRESHOLD` (50% of the target's Max HP), distance ≤ **4 sq**, your boarding cooldown is over, and neither ship is in a no-PvP zone. |
 | **9.2** Boarding never stops, slows or locks either ship. It is one instant check; the fight continues. |
 | **9.3** Cooldown **60 s** vs players, **15 s** vs NPCs. |
 
