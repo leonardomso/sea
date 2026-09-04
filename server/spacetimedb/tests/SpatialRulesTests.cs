@@ -45,9 +45,18 @@ public sealed class SpatialRulesTests
             new ChunkBounds(0, 7, 0, 7),
             SpatialRules.BoundsForSegment(-50f, -50f, 450f, 450f, 20f));
 
-        // Non-finite input is rejected rather than silently clamped; several callers
-        // (SectorRules, GeometryRules) rely on that guard to skip their own finite
-        // checks on the hot path.
+        // A course sailed north-west, so both spans run backwards. The bounds are
+        // normalized rather than handed over inverted, and this is the only case that
+        // says so: every other segment here ascends, and dropping the Min/Max would
+        // still clamp to the same grid corners and stay green.
+        Assert.Equal(
+            new ChunkBounds(1, 6, 1, 6),
+            SpatialRules.BoundsForSegment(340f, 340f, 60f, 60f, 0f));
+
+        // Non-finite input is rejected rather than silently clamped. Every Simulation
+        // call site -- SailingSystem, RespawnSystem, SimulationTick, WorldSeed -- feeds
+        // a raw ship position straight in, and (int)MathF.Floor(NaN) would answer chunk
+        // 0 without a word.
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             SpatialRules.BoundsAround(0f, 0f, float.NaN));
         Assert.Throws<ArgumentOutOfRangeException>(() =>

@@ -18,11 +18,19 @@ public static class SpatialRules
     /// <summary>
     /// The widest a current zone reaches. SEA_5 §5.2 only bounds current DRIFT (at
     /// most 0.3 sq/s); it says nothing about how wide a current zone itself is
-    /// allowed to be. This gate keeps its pre-migration value rather than adopting
-    /// the storm radius: 28 squares is the largest current zone Havenmere's own
-    /// content authors today (<c>maps.json</c> zone 1). Raise it only once a map
-    /// actually needs a wider current zone.
+    /// allowed to be. This gate therefore keeps its pre-migration value rather than
+    /// borrowing the storm radius, which would raise a publish gate on a number no
+    /// specification backs.
     /// </summary>
+    /// <remarks>
+    /// The 28 is not yet a number of squares, whatever the name says. It came across
+    /// unchanged from the world-unit scale, where Havenmere's widest current zone
+    /// (<c>maps.json</c> zone 1) reads 28 units on a 200-unit chart -- 2.8 squares.
+    /// Task 1.6 doubles that radius to 56 when it rescales the content, which this
+    /// gate rejects and the storm radius of 40 would reject too. Task 1.6 has to
+    /// settle the real ceiling; until it does, this number is a placeholder in the
+    /// right place rather than a measurement.
+    /// </remarks>
     public const float MaximumCurrentRadiusSquares = 28f;
 
     public static int ChunkCoordinate(float position)

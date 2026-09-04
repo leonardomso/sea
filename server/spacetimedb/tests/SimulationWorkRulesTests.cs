@@ -186,9 +186,11 @@ public sealed class SimulationWorkRulesTests
     [Fact]
     public void Course_bounds_cover_the_whole_route_with_obstacle_padding()
     {
-        // A route that spans past both edges of the 400-square map, plus padding,
-        // still clamps to the full 0-7 chunk grid rather than overshooting it.
-        var bounds = SpatialRules.BoundsForSegment(-50f, -50f, 450f, 450f, 20f);
+        // The route itself runs from chunk 1 to chunk 6. Only the padding carries the
+        // bounds out to the edges of the grid, so this fails if the padding is dropped.
+        // A route that already overshot the map would clamp to 0-7 with no padding at
+        // all and the name of this test would be a lie.
+        var bounds = SpatialRules.BoundsForSegment(60f, 60f, 340f, 340f, 20f);
 
         Assert.Equal(new ChunkBounds(0, 7, 0, 7), bounds);
     }
