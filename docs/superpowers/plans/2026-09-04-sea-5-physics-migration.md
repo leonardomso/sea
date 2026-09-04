@@ -1017,8 +1017,17 @@ it does not say, each verified against the tree:
    parses by splitting on whitespace and requires exactly two parts, so given
    `"M12"` it produces one part and returns `false`. "TryCellCenter inverts
    that" badly understates the work: the parser has to be rewritten to split
-   letters from digits. The format is user-visible --
-   `SeaHudSnapshotReader.cs:41` puts it on the HUD.
+   letters from digits.
+
+   **Corrected after the fact.** This said "the format is user-visible --
+   `SeaHudSnapshotReader.cs:41` puts it on the HUD." That line calls the
+   *client* class `SeaChartCoordinates`, not the server's `ChartCoordinates`,
+   and the two had entirely different schemes: the server's letters had no
+   production caller at all, while the client answered `"13-12"`. Commit
+   `0a76469` made the client speak the server's letters, which is what makes
+   the format user-visible. Do not repeat the conflation: on anything
+   chart-related there are two files, and the Unity one is the one a player
+   sees.
 
 3. **The test above will not compile.** The real signature is
    `TryCellCenter(string?, out ChartCell cell)`, and `CellCenter` returns a
