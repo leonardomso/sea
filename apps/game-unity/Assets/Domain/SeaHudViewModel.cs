@@ -175,12 +175,12 @@ namespace Sea.Client
         {
             if (!source.RespawnChosen)
             {
-                return "PORT LOWELL HAS A BERTH WAITING.";
+                return "START AGAIN AT PORT LOWELL.";
             }
 
             return string.Format(
                 DisplayCulture,
-                "PUTTING OUT FROM PORT LOWELL  •  {0:0}s",
+                "BACK ON THE WATER IN {0:0}s",
                 Mathf.Max(0f, source.RespawnRemainingSeconds));
         }
 

@@ -114,7 +114,7 @@ namespace Sea.Tests
 
             Assert.That(unchosen.IsSunk, Is.True);
             Assert.That(unchosen.CanChooseBerth, Is.True);
-            Assert.That(unchosen.WreckText, Is.EqualTo("PORT LOWELL HAS A BERTH WAITING."));
+            Assert.That(unchosen.WreckText, Is.EqualTo("START AGAIN AT PORT LOWELL."));
 
             var chosen = SeaHudViewModel.From(new SeaHudSnapshot
             {
@@ -124,7 +124,7 @@ namespace Sea.Tests
             });
 
             Assert.That(chosen.CanChooseBerth, Is.False);
-            Assert.That(chosen.WreckText, Is.EqualTo("PUTTING OUT FROM PORT LOWELL  •  5s"));
+            Assert.That(chosen.WreckText, Is.EqualTo("BACK ON THE WATER IN 5s"));
             Assert.That(SeaHudViewModel.From(new SeaHudSnapshot()).IsSunk, Is.False);
         }
 
