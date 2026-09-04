@@ -35,7 +35,7 @@ public static partial class Module
                 seed,
                 harbor.PositionX,
                 harbor.PositionY,
-                WorldRules.HarborSafeRadius,
+                WorldRules.HarborSafeRadiusSquares,
                 blockers,
                 out var point))
         {

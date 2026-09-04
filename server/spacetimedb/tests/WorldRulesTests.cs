@@ -83,23 +83,6 @@ public sealed class WorldRulesTests
         Assert.True(step.Arrived);
     }
 
-    [Theory]
-    [InlineData("island", 35f, 20f, 12f, 35f, 20f)]
-    [InlineData("reef", -30f, -25f, 10f, -39f, -25f)]
-    public void IsBlocked_rejects_points_inside_blocking_geometry(string kind, float entityX, float entityY, float radius, float x, float y)
-    {
-        Assert.True(WorldRules.IsBlocked(kind, entityX, entityY, radius, x, y));
-    }
-
-    [Theory]
-    [InlineData("harbor", 0f, 0f, 8f, 0f, 0f)]
-    [InlineData("training_target", 45f, -10f, 15f, 45f, -10f)]
-    [InlineData("island", 35f, 20f, 12f, 48f, 20f)]
-    public void IsBlocked_allows_non_blocking_or_distant_points(string kind, float entityX, float entityY, float radius, float x, float y)
-    {
-        Assert.False(WorldRules.IsBlocked(kind, entityX, entityY, radius, x, y));
-    }
-
     [Fact]
     public void IsInRange_uses_inclusive_distance()
     {
@@ -145,17 +128,6 @@ public sealed class WorldRulesTests
         Assert.Equal(4, content.Ammunition.Count);
         Assert.Equal(4, content.Npcs.Count);
         Assert.Empty(ContentCatalog.Validate(content));
-    }
-
-    [Theory]
-    [InlineData(WorldObjectCode.Island, true)]
-    [InlineData(WorldObjectCode.Reef, true)]
-    [InlineData(WorldObjectCode.Harbor, false)]
-    [InlineData(WorldObjectCode.Shoal, false)]
-    [InlineData(WorldObjectCode.Storm, false)]
-    public void TypedWorldObjectsOwnCollisionBehavior(WorldObjectCode kind, bool expected)
-    {
-        Assert.Equal(expected, WorldRules.IsBlocked(kind, 0, 0, 5, 0, 0));
     }
 
     [Theory]

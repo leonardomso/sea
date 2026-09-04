@@ -4,12 +4,11 @@ using SpacetimeDB;
 public static partial class Module
 {
     // Everything a transaction reads about the world at large: the tick it runs at,
-    // the navigation field, the harbor, wind and currents, whether any loot is afloat,
-    // and world objects by chunk. Each is read at most once per transaction. Nothing
-    // here outlives the transaction; module statics are undefined across reducer calls.
+    // the navigation field, the harbor, wind and currents, and whether any loot is
+    // afloat. Each is read at most once per transaction. Nothing here outlives the
+    // transaction; module statics are undefined across reducer calls.
     private sealed class TickWorld
     {
-        private readonly Dictionary<int, List<WorldObject>> worldObjects = new();
         private readonly Dictionary<byte, MovementShardState> movementShards = new();
         private List<ShipMovement>? activePlayers;
         private List<NavigationBlocker>? blockers;
@@ -53,7 +52,7 @@ public static partial class Module
             if (Harbor(ctx) is WorldObject harbor)
             {
                 patrolBlockers.Add(new NavigationBlocker(
-                    harbor.PositionX, harbor.PositionY, WorldRules.HarborSafeRadius));
+                    harbor.PositionX, harbor.PositionY, WorldRules.HarborSafeRadiusSquares));
             }
 
             return patrolBlockers;
@@ -135,30 +134,5 @@ public static partial class Module
                         harbor.PositionY)
                     : float.PositiveInfinity);
 
-        public IEnumerable<WorldObject> WorldObjectsIn(ReducerContext ctx, ChunkBounds bounds)
-        {
-            for (var chunkX = bounds.MinX; chunkX <= bounds.MaxX; chunkX++)
-            {
-                for (var chunkY = bounds.MinY; chunkY <= bounds.MaxY; chunkY++)
-                {
-                    foreach (var worldObject in WorldObjectsInChunk(ctx, chunkX, chunkY))
-                    {
-                        yield return worldObject;
-                    }
-                }
-            }
-        }
-
-        private List<WorldObject> WorldObjectsInChunk(ReducerContext ctx, int chunkX, int chunkY)
-        {
-            var key = chunkY * SpatialRules.ChunkCountPerAxis + chunkX;
-            if (!worldObjects.TryGetValue(key, out var cached))
-            {
-                cached = [.. ctx.Db.WorldObject.ByChunk.Filter((chunkX, chunkY))];
-                worldObjects[key] = cached;
-            }
-
-            return cached;
-        }
     }
 }

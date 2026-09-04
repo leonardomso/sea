@@ -23,10 +23,12 @@ namespace Sea.Client
         public const string RuntimeMovementSubscriptionQuery =
             "SELECT * FROM ship_movement WHERE is_active = true";
 
-        private const float SeededStormX = -72f;
-        private const float SeededStormY = 3f;
+        // The storm entity 13 carries in maps.json. The probe sails to where the module will
+        // have put it, so all four have to match that row; change one and change the other.
+        private const float SeededStormX = 56f;
+        private const float SeededStormY = 206f;
         private const float SeededStormDirectionDegrees = 72f;
-        private const float SeededStormSpeed = 1.5f;
+        private const float SeededStormSpeed = 0.5f;
         private const float SimulationTicksPerSecond = 10f;
         /// <summary>
         /// There is no firing arc left: the magazine bears in every direction, so the only thing
@@ -129,11 +131,14 @@ namespace Sea.Client
         {
             var elapsedSeconds = worldTick / SimulationTicksPerSecond;
             var radians = SeededStormDirectionDegrees * Mathf.Deg2Rad;
+            // Mirrors the module's TacticalRules.MoveStorm. Y is subtracted because a bearing is
+            // a compass bearing and north is -y on a chart whose origin is the top-left corner;
+            // adding cos here drove the predicted storm the opposite way to the real one.
             return new Vector2(
                 WrapMapCoordinate(
                     SeededStormX + Mathf.Sin(radians) * SeededStormSpeed * elapsedSeconds),
                 WrapMapCoordinate(
-                    SeededStormY + Mathf.Cos(radians) * SeededStormSpeed * elapsedSeconds));
+                    SeededStormY - Mathf.Cos(radians) * SeededStormSpeed * elapsedSeconds));
         }
 
         private static float WrapMapCoordinate(float value)

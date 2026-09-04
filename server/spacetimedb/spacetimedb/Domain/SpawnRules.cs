@@ -41,7 +41,7 @@ public static class SpawnRules
 
         var random = seed == 0 ? 0x9E3779B97F4A7C15UL : seed;
         var minimum = WorldRules.MapMin + EdgeMargin;
-        var span = WorldRules.MapMax - WorldRules.MapMin - EdgeMargin * 2f;
+        const float span = WorldRules.MapSizeSquares - EdgeMargin * 2f;
         for (var attempt = 0; attempt < MaximumAttempts; attempt++)
         {
             var x = minimum + NextUnit(ref random) * span;

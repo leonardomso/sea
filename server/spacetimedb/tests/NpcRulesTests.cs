@@ -28,25 +28,27 @@ public sealed partial class NpcRulesTests
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 40f,
-            TargetX = 40f,
+            TargetX = ShipX + 40f,
         });
         var gunner = NpcRules.Decide(Snapshot() with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 12f,
-            TargetX = 12f,
+            TargetX = ShipX + 12f,
         });
 
+        // The boarder wants eighteen and has forty, so she runs twenty-two squares in; the
+        // gunner wants forty-eight and has twelve, so she backs thirty-six squares out.
         Assert.Equal(NpcActionKind.SetCourse, boarder.Action);
-        Assert.Equal(22f, boarder.DestinationX, 3);
+        Assert.Equal(ShipX + 22f, boarder.DestinationX, 3);
         Assert.Equal(NpcActionKind.SetCourse, gunner.Action);
-        Assert.Equal(-36f, gunner.DestinationX, 3);
+        Assert.Equal(ShipX - 36f, gunner.DestinationX, 3);
     }
 
     [Theory]
-    [InlineData(22f, NpcActionKind.Hold)]
-    [InlineData(10f, NpcActionKind.SetCourse)]
+    [InlineData(ShipX + 22f, NpcActionKind.Hold)]
+    [InlineData(ShipX + 10f, NpcActionKind.SetCourse)]
     public void Npc_keeps_a_course_that_already_ends_at_its_holding_point(
         float courseX,
         NpcActionKind expected)
@@ -56,7 +58,7 @@ public sealed partial class NpcRulesTests
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 40f,
-            TargetX = 40f,
+            TargetX = ShipX + 40f,
             HasCourse = true,
             CourseX = courseX,
         });
@@ -72,7 +74,7 @@ public sealed partial class NpcRulesTests
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 45f,
-            TargetX = 45f,
+            TargetX = ShipX + 45f,
             HasCourse = true,
             CanFire = false,
         });
@@ -114,7 +116,7 @@ public sealed partial class NpcRulesTests
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 48f,
-            TargetX = -48f,
+            TargetX = ShipX - 48f,
             HeadingDegrees = 0f,
             SelectedAmmunition = AmmunitionCode.Incendiary,
             CanFire = true,
@@ -171,7 +173,7 @@ public sealed partial class NpcRulesTests
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 48,
-            TargetX = -48,
+            TargetX = ShipX - 48f,
             SelectedAmmunition = AmmunitionCode.Round,
         });
 
@@ -187,7 +189,7 @@ public sealed partial class NpcRulesTests
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 45,
-            TargetX = 45,
+            TargetX = ShipX + 45f,
             SelectedAmmunition = AmmunitionCode.Round,
             CanFire = true,
         };
@@ -200,14 +202,15 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void Hold_range_point_inside_an_island_is_steered_to_open_water()
     {
-        // A boarder at the origin, target 40 east, island squarely on the 22-unit hold point.
-        var island = new NavigationBlocker(22f, 0f, 10f);
+        // A boarder mid-chart, target 40 squares east, island squarely on the 22-square
+        // hold point.
+        var island = new NavigationBlocker(ShipX + 22f, ShipY, 10f);
         var decision = NpcRules.Decide(Snapshot(BoardingRange) with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 40f,
-            TargetX = 40f,
+            TargetX = ShipX + 40f,
             Blockers = [island],
         });
 
@@ -226,7 +229,7 @@ public sealed partial class NpcRulesTests
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = NpcRules.DisengageRange + 1f,
-            TargetX = NpcRules.DisengageRange + 1f,
+            TargetX = ShipX + NpcRules.DisengageRange + 1f,
         };
 
         Assert.Equal(NpcActionKind.ClearTarget, NpcRules.Decide(chasing).Action);
@@ -235,7 +238,7 @@ public sealed partial class NpcRulesTests
             NpcRules.Decide(chasing with
             {
                 DistanceToTarget = NpcRules.DisengageRange,
-                TargetX = NpcRules.DisengageRange,
+                TargetX = ShipX + NpcRules.DisengageRange,
             }).Action);
     }
 
@@ -248,6 +251,16 @@ public sealed partial class NpcRulesTests
         Assert.False(NpcRules.ShouldSearchForTarget(true, 40f));
         Assert.False(NpcRules.ShouldSearchForTarget(false, 0f));
     }
+
+    /// <summary>
+    /// Where the fixture hull lies: the middle of the chart. She used to lie at (0,0), which
+    /// was the middle of the old centre-origin world and is now its north-west corner, so
+    /// every hold-range point that fell west or north of her was silently pulled back to the
+    /// edge by <c>NpcRules.Clamp</c> and the test read the clamp rather than the rule. From
+    /// the middle there is room on all four sides for the longest leg any of these cases plots.
+    /// </summary>
+    internal const float ShipX = (WorldRules.MapMin + WorldRules.MapMax) / 2f;
+    internal const float ShipY = ShipX;
 
     /// <summary>The range a hull that wants to be alongside holds.</summary>
     internal const float BoardingRange = 18f;
@@ -263,8 +276,17 @@ public sealed partial class NpcRulesTests
         {
             Active = true,
             Mode = ShipMode.Operational,
-            X = 0f,
-            Y = 0f,
+            X = ShipX,
+            Y = ShipY,
+            // The mark and the standing course both start on top of her, so a case that sets
+            // only an X puts them due east or west of her the way it did when the hull and
+            // both of them lay on the origin together. A bare 0 here is now a corner of the
+            // chart two hundred squares away, which is how three of these cases came to read
+            // the edge clamp instead of the rule they were written for.
+            TargetX = ShipX,
+            TargetY = ShipY,
+            CourseX = ShipX,
+            CourseY = ShipY,
             Hull = 100,
             MaximumHull = 100,
             DesiredRange = desiredRange,
@@ -301,12 +323,16 @@ public sealed partial class NpcRulesTests
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 20f,
-            TargetX = 20f,
+            TargetX = ShipX + 20f,
         });
 
         Assert.Equal(NpcActionKind.SetCourse, decision.Action);
         Assert.True(
-            CombatRules.Distance(decision.DestinationX, decision.DestinationY, 20f, 0f) >
+            CombatRules.Distance(
+                decision.DestinationX,
+                decision.DestinationY,
+                ShipX + 20f,
+                ShipY) >
             NpcRules.DisengageRange);
     }
 

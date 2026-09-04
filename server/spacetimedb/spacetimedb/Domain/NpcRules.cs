@@ -118,9 +118,10 @@ public static class NpcRules
     // Respawns scatter this far around a ship's home, and hostile homes are seeded this far
     // clear of the harbor so nothing spawns on top of the players' waters.
     public const float HomeAnchorRadius = 40f;
-    public const float HostileHomeClearance = HomeAnchorRadius + WorldRules.HarborSafeRadius;
+    public const float HostileHomeClearance = HomeAnchorRadius + WorldRules.HarborSafeRadiusSquares;
 
-    private const float MapHalfSpan = (WorldRules.MapMax - WorldRules.MapMin) / 2f;
+    private const float MapHalfSpan = WorldRules.MapSizeSquares / 2f;
+    private const float MapCentre = WorldRules.MapMin + MapHalfSpan;
 
     // Spawn shields and harbor waters keep fresh players out of NPC gunsights; a
     // protected target is dropped and no NPC picks it up again until it sails out.
@@ -128,7 +129,7 @@ public static class NpcRules
         ulong invulnerableUntilTick,
         ulong tick,
         float distanceFromHarbor) =>
-        invulnerableUntilTick > tick || distanceFromHarbor <= WorldRules.HarborSafeRadius;
+        invulnerableUntilTick > tick || distanceFromHarbor <= WorldRules.HarborSafeRadiusSquares;
 
     public static bool HasAutomaticAggroCapacity(int currentAttackers) =>
         currentAttackers < MaximumAutomaticAttackersPerPlayer;
@@ -289,11 +290,14 @@ public static class NpcRules
             NextUnit(ref state) * (MaximumRouteRadius - MinimumRouteRadius);
 
         // The centre is held back far enough that the whole ring stays on the chart; a ring
-        // clipped by the edge would flatten into a ship sliding along the border.
+        // clipped by the edge would flatten into a ship sliding along the border. `reach` is a
+        // half-width and is origin-free; what moved is where the middle is. Scattering about
+        // zero put three quarters of every fleet's routes off the north-west corner of a chart
+        // that no longer has its origin in the middle.
         var reach = MathF.Max(0f, MapHalfSpan - SpawnRules.EdgeMargin - radius);
         return new PatrolRoute(
-            (NextUnit(ref state) * 2f - 1f) * reach,
-            (NextUnit(ref state) * 2f - 1f) * reach,
+            MapCentre + (NextUnit(ref state) * 2f - 1f) * reach,
+            MapCentre + (NextUnit(ref state) * 2f - 1f) * reach,
             radius);
     }
 

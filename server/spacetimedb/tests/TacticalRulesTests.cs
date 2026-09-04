@@ -68,17 +68,20 @@ public sealed class TacticalRulesTests
         Assert.Equal(0.75f, modifiers.WeaponEffectiveness);
     }
 
+    // Mid-chart on purpose. The old fixture stood at (0,0), which was the middle of the
+    // world and is now its north-west corner, so three of the four bearings ran off the
+    // edge and came back wrapped rather than testing the heading at all.
     [Theory]
-    [InlineData(0f, 0f, 10f)]
-    [InlineData(90f, 10f, 0f)]
-    [InlineData(180f, 0f, -10f)]
-    [InlineData(270f, -10f, 0f)]
+    [InlineData(0f, 200f, 190f)]     // north is up the screen
+    [InlineData(90f, 210f, 200f)]
+    [InlineData(180f, 200f, 210f)]
+    [InlineData(270f, 190f, 200f)]
     public void MoveStorm_SailsAlongItsHeading(
         float directionDegrees,
         float expectedX,
         float expectedY)
     {
-        var moved = TacticalRules.MoveStorm(0f, 0f, directionDegrees, 10f, 1f);
+        var moved = TacticalRules.MoveStorm(200f, 200f, directionDegrees, 10f, 1f);
 
         Assert.Equal(expectedX, moved.X, 3);
         Assert.Equal(expectedY, moved.Y, 3);

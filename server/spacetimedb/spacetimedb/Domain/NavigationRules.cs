@@ -25,7 +25,7 @@ public static class NavigationRules
         float y,
         IReadOnlyCollection<NavigationBlocker> blockers) => blockers.Any(blocker =>
         Distance(x, y, blocker.X, blocker.Y) <=
-        blocker.Radius + WorldRules.CollisionPadding);
+        blocker.Radius + WorldRules.LandHazardPadding);
 
     public static bool TryFindDetour(
         float startX,
@@ -61,7 +61,7 @@ public static class NavigationRules
 
         var perpendicularX = -directionY;
         var perpendicularY = directionX;
-        var offset = nearest.Radius + WorldRules.CollisionPadding + DetourClearance;
+        var offset = nearest.Radius + WorldRules.LandHazardPadding + DetourClearance;
         var first = new SpawnPoint(
             nearest.X + perpendicularX * offset,
             nearest.Y + perpendicularY * offset);
@@ -100,7 +100,7 @@ public static class NavigationRules
                 var deltaX = point.X - blocker.X;
                 var deltaY = point.Y - blocker.Y;
                 var distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
-                if (distance > blocker.Radius + WorldRules.CollisionPadding)
+                if (distance > blocker.Radius + WorldRules.LandHazardPadding)
                 {
                     continue;
                 }
@@ -112,7 +112,7 @@ public static class NavigationRules
                     distance = 1f;
                 }
 
-                var clearance = blocker.Radius + WorldRules.CollisionPadding + DetourClearance;
+                var clearance = blocker.Radius + WorldRules.LandHazardPadding + DetourClearance;
                 point = new SpawnPoint(
                     blocker.X + deltaX / distance * clearance,
                     blocker.Y + deltaY / distance * clearance);
@@ -127,7 +127,7 @@ public static class NavigationRules
 
         // Overlapping blockers can bounce the nudge between them; widen a ring
         // around the original point until open water turns up.
-        for (var radius = DetourClearance; radius <= WorldRules.MapMax - WorldRules.MapMin; radius += DetourClearance)
+        for (var radius = DetourClearance; radius <= WorldRules.MapSizeSquares; radius += DetourClearance)
         {
             for (var step = 0; step < RingSamples; step++)
             {
@@ -158,7 +158,7 @@ public static class NavigationRules
         var nearestProjection = float.MaxValue;
         foreach (var blocker in blockers)
         {
-            var collisionRadius = blocker.Radius + WorldRules.CollisionPadding;
+            var collisionRadius = blocker.Radius + WorldRules.LandHazardPadding;
             if (!SailingRules.SegmentIntersectsCircle(
                     startX, startY, destinationX, destinationY,
                     blocker.X, blocker.Y, collisionRadius))
@@ -227,5 +227,5 @@ public static class NavigationRules
             endY,
             blocker.X,
             blocker.Y,
-            blocker.Radius + WorldRules.CollisionPadding));
+            blocker.Radius + WorldRules.LandHazardPadding));
 }

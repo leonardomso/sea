@@ -19,7 +19,7 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void Fixed_seed_roaming_replays_and_stays_inside_the_chart()
     {
-        var snapshot = Snapshot() with { X = 30f, Y = -20f };
+        var snapshot = Snapshot() with { X = ShipX + 30f, Y = ShipY - 20f };
 
         var first = NpcRules.RoamDestination(snapshot);
         var replay = NpcRules.RoamDestination(snapshot);
@@ -66,11 +66,12 @@ public sealed partial class NpcRulesTests
             .ToArray();
 
         // A fleet whose routes all sat in one corner would leave most of the sea empty, so the
-        // seeded centres have to reach both halves of the chart on both axes.
-        Assert.Contains(centers, route => route.CenterX > 20f);
-        Assert.Contains(centers, route => route.CenterX < -20f);
-        Assert.Contains(centers, route => route.CenterY > 20f);
-        Assert.Contains(centers, route => route.CenterY < -20f);
+        // seeded centres have to reach both halves of the chart on both axes. The halves are
+        // measured from the middle of the chart, which is no longer the origin.
+        Assert.Contains(centers, route => route.CenterX > ShipX + 20f);
+        Assert.Contains(centers, route => route.CenterX < ShipX - 20f);
+        Assert.Contains(centers, route => route.CenterY > ShipY + 20f);
+        Assert.Contains(centers, route => route.CenterY < ShipY - 20f);
     }
 
     [Theory]
@@ -119,7 +120,7 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void Idle_npc_sets_course_for_a_roam_waypoint()
     {
-        var snapshot = Snapshot() with { X = 30f, Y = -20f };
+        var snapshot = Snapshot() with { X = ShipX + 30f, Y = ShipY - 20f };
 
         var decision = NpcRules.Decide(snapshot);
         var waypoint = NpcRules.RoamDestination(snapshot);
@@ -220,7 +221,7 @@ public sealed partial class NpcRulesTests
     public void Hostile_homes_sit_clear_of_the_harbor_waters()
     {
         Assert.Equal(
-            NpcRules.HomeAnchorRadius + WorldRules.HarborSafeRadius,
+            NpcRules.HomeAnchorRadius + WorldRules.HarborSafeRadiusSquares,
             NpcRules.HostileHomeClearance);
     }
 
@@ -275,7 +276,11 @@ public sealed partial class NpcRulesTests
     /// grown to the radius inside which nobody's guns answer.
     /// </summary>
     private static NavigationBlocker ShelteredWater =>
-        new(0f, 0f, WorldRules.HarborSafeRadius);
+        new(HarborX, HarborY, WorldRules.HarborSafeRadiusSquares);
+
+    /// <summary>Where Port Lowell stands in <c>maps.json</c>: the middle of the chart.</summary>
+    private const float HarborX = 200f;
+    private const float HarborY = 200f;
 
     [Fact]
     public void No_patrol_leg_ends_in_the_harbour_s_sheltered_water()
@@ -310,13 +315,13 @@ public sealed partial class NpcRulesTests
     {
         var destination = NpcRules.RoamDestination(Snapshot() with
         {
-            X = 4f,
-            Y = -3f,
+            X = HarborX + 4f,
+            Y = HarborY - 3f,
             Blockers = [ShelteredWater],
         });
 
         Assert.True(
-            NavigationRules.Distance(destination.X, destination.Y, 0f, 0f) >=
-            WorldRules.HarborSafeRadius);
+            NavigationRules.Distance(destination.X, destination.Y, HarborX, HarborY) >=
+            WorldRules.HarborSafeRadiusSquares);
     }
 }

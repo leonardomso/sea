@@ -193,10 +193,10 @@ public sealed class SailingRulesTests
             -40f, 0f, 40f, 0f, blockers, out var waypoint));
         Assert.False(SailingRules.SegmentIntersectsCircle(
             -40f, 0f, waypoint.X, waypoint.Y, 0f, 0f,
-            10f + WorldRules.CollisionPadding));
+            10f + WorldRules.LandHazardPadding));
         Assert.False(SailingRules.SegmentIntersectsCircle(
             waypoint.X, waypoint.Y, 40f, 0f, 0f, 0f,
-            10f + WorldRules.CollisionPadding));
+            10f + WorldRules.LandHazardPadding));
     }
 
     [Fact]
@@ -229,7 +229,7 @@ public sealed class SailingRulesTests
 
             Assert.True(NavigationRules.Distance(
                     step.PositionX, step.PositionY, 0f, 0f) >
-                10f + WorldRules.CollisionPadding);
+                10f + WorldRules.LandHazardPadding);
             state = new SailingState(
                 step.PositionX,
                 step.PositionY,
@@ -298,8 +298,12 @@ public sealed class SailingRulesTests
     [Fact]
     public void Safe_spawn_gives_up_when_every_attempt_is_blocked()
     {
-        // One blocker wider than the map leaves no candidate free for any of the attempts.
-        var blockers = new[] { new SpawnBlocker(0f, 0f, 400f) };
+        // One blocker centred on the chart and wide enough to reach past its corners, so no
+        // candidate anywhere is free. It used to sit at (0,0) with the same radius, which
+        // covered the whole of the old centre-origin world and now covers a quarter of this
+        // one. A whole side as the radius clears the half-diagonal with room to spare.
+        var centre = (WorldRules.MapMin + WorldRules.MapMax) / 2f;
+        var blockers = new[] { new SpawnBlocker(centre, centre, WorldRules.MapSizeSquares) };
 
         Assert.False(SpawnRules.TryFindSafePosition(7, blockers, out var point));
         Assert.Equal(0f, point.X);
@@ -341,6 +345,22 @@ public sealed class SailingRulesTests
 
         Assert.True(tailwind > 1f);
         Assert.True(headwind < 1f);
+    }
+
+    [Theory]
+    [InlineData(0f, 0f, -1f)]      // a northward set carries her up the screen
+    [InlineData(90f, 1f, 0f)]
+    [InlineData(180f, 0f, 1f)]
+    [InlineData(270f, -1f, 0f)]
+    public void ACurrentSetsTheWayItsBearingSays(
+        float directionDegrees,
+        float expectedX,
+        float expectedY)
+    {
+        var (x, y) = EnvironmentRules.DirectionalVelocity(directionDegrees, strength: 1f);
+
+        Assert.Equal(expectedX, x, 3);
+        Assert.Equal(expectedY, y, 3);
     }
 
     [Theory]

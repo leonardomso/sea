@@ -36,13 +36,23 @@ public static class EnvironmentRules
             Math.Clamp(windStrength, 0f, 1f) * 0.15f;
     }
 
+    /// <summary>
+    /// The velocity a set of <paramref name="strength"/> squares per second on
+    /// bearing <paramref name="directionDegrees"/> imparts. A northward set carries
+    /// a hull up the screen, so its Y component is negative (SEA_5 §3.3).
+    /// </summary>
+    /// <remarks>
+    /// This is <see cref="GeometryRules.Direction"/> scaled, and it has to stay that
+    /// way: the second component used to be a bare <c>CosDegrees</c>, which is
+    /// north-positive, so every current zone pushed south where the content said
+    /// north. One place turns a bearing into a vector.
+    /// </remarks>
     public static (float X, float Y) DirectionalVelocity(
         float directionDegrees,
         float strength)
     {
-        return (
-            TrigonometryRules.SinDegrees(directionDegrees) * strength,
-            TrigonometryRules.CosDegrees(directionDegrees) * strength);
+        var (x, y) = GeometryRules.Direction(directionDegrees);
+        return (x * strength, y * strength);
     }
 
     private static ulong Mix(ulong value)

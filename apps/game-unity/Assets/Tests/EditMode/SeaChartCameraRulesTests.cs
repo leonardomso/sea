@@ -55,36 +55,50 @@ namespace Sea.Tests
         [Test]
         public void Clamp_center_keeps_the_footprint_inside_the_drawn_water()
         {
-            // Half-extents of 60 by 80 leave a reach of 80 on x and 60 on z: the view may carry
-            // one margin past the map edge, but never past the water the world draws.
+            // The chart runs 0..400 with its middle at 200, so a reach is read out from 200
+            // rather than from zero. Half-extents of 60 by 80 leave a reach of 180 on x and
+            // 160 on z: the view may carry one margin past the map edge, but never past the
+            // water the world draws.
             var extents = new Vector2(60f, 80f);
 
             Assert.That(
-                SeaChartCameraRules.ClampCenter(new Vector3(-150f, 0f, 150f), extents),
-                Is.EqualTo(new Vector3(-80f, 0f, 60f)));
+                SeaChartCameraRules.ClampCenter(new Vector3(-150f, 0f, 550f), extents),
+                Is.EqualTo(new Vector3(20f, 0f, 360f)));
             Assert.That(
-                SeaChartCameraRules.ClampCenter(new Vector3(10f, 3f, -20f), extents),
-                Is.EqualTo(new Vector3(10f, 3f, -20f)),
+                SeaChartCameraRules.ClampCenter(new Vector3(210f, 3f, 180f), extents),
+                Is.EqualTo(new Vector3(210f, 3f, 180f)),
                 "A center well inside the water is untouched.");
             Assert.That(
-                SeaChartCameraRules.ClampCenter(new Vector3(80f, 0f, -60f), extents),
-                Is.EqualTo(new Vector3(80f, 0f, -60f)),
+                SeaChartCameraRules.ClampCenter(new Vector3(380f, 0f, 40f), extents),
+                Is.EqualTo(new Vector3(380f, 0f, 40f)),
                 "A footprint that exactly touches the drawn edge is allowed.");
             Assert.That(
-                SeaChartCameraRules.ClampCenter(new Vector3(100f, 0f, -100f), new Vector2(35f, 25f)),
-                Is.EqualTo(new Vector3(100f, 0f, -100f)),
+                SeaChartCameraRules.ClampCenter(new Vector3(400f, 0f, 0f), new Vector2(35f, 25f)),
+                Is.EqualTo(new Vector3(400f, 0f, 0f)),
                 "At the default zoom the camera reaches the map corner itself.");
         }
 
         [Test]
         public void Mini_map_positions_map_panel_corners_to_the_map_corners()
         {
-            Assert.That(SeaMiniMapRules.ToWorldPosition(Vector2.zero), Is.EqualTo(new Vector3(-100f, 0f, 100f)));
-            Assert.That(SeaMiniMapRules.ToWorldPosition(Vector2.one), Is.EqualTo(new Vector3(100f, 0f, -100f)));
-            Assert.That(SeaMiniMapRules.ToWorldPosition(new Vector2(0.5f, 0.5f)), Is.EqualTo(Vector3.zero));
+            // The top of the panel is the north edge, and north is the *minimum* y now that
+            // the origin is the north-west corner. So the panel and the chart run the same
+            // way on both axes and neither lerp flips: panel (0,0) is chart (0,0).
+            Assert.That(
+                SeaMiniMapRules.ToWorldPosition(Vector2.zero),
+                Is.EqualTo(new Vector3(0f, 0f, 0f)),
+                "The top-left of the panel is the north-west corner of the chart.");
+            Assert.That(
+                SeaMiniMapRules.ToWorldPosition(Vector2.one),
+                Is.EqualTo(new Vector3(400f, 0f, 400f)),
+                "The bottom-right of the panel is the south-east corner.");
+            Assert.That(
+                SeaMiniMapRules.ToWorldPosition(new Vector2(0.5f, 0.5f)),
+                Is.EqualTo(new Vector3(200f, 0f, 200f)),
+                "The middle of the panel is the middle of the chart, which is no longer zero.");
             Assert.That(
                 SeaMiniMapRules.ToWorldPosition(new Vector2(2f, -1f)),
-                Is.EqualTo(new Vector3(100f, 0f, 100f)),
+                Is.EqualTo(new Vector3(400f, 0f, 0f)),
                 "Positions past the panel are clamped to the map.");
         }
 
@@ -99,12 +113,14 @@ namespace Sea.Tests
             Assert.That(
                 SeaMiniMapRules.TryScreenToWorldPosition(new Vector2(1616f, 712f), panel, out var center),
                 Is.True);
-            Assert.That(center.x, Is.EqualTo(0f).Within(0.001f));
-            Assert.That(center.z, Is.EqualTo(0f).Within(0.001f));
+            Assert.That(center.x, Is.EqualTo(200f).Within(0.001f));
+            Assert.That(center.z, Is.EqualTo(200f).Within(0.001f));
             Assert.That(
                 SeaMiniMapRules.TryScreenToWorldPosition(new Vector2(1400f, 496f), panel, out var bottomLeft),
                 Is.True);
-            Assert.That(bottomLeft, Is.EqualTo(new Vector3(-100f, 0f, -100f)));
+            // Screen pixels count up from the bottom, so the panel's own origin is its
+            // south-west corner: minimum x and, with south now the maximum y, maximum z.
+            Assert.That(bottomLeft, Is.EqualTo(new Vector3(0f, 0f, 400f)));
             Assert.That(
                 SeaMiniMapRules.TryScreenToWorldPosition(Vector2.zero, new Rect(0f, 0f, 0f, 0f), out _),
                 Is.False,

@@ -12,9 +12,13 @@ namespace Sea.Client
                 SeaChartCoordinates.MapMaximum,
                 Mathf.Clamp01(normalizedPosition.x)),
             0f,
+            // The top of the minimap is the north edge of the chart, and north is now the
+            // *minimum* y: the world's origin moved to the top-left corner and +y grows south,
+            // so the flip this lerp used to carry -- normalised 0 meaning maximum world y --
+            // is gone. Same flip ChartCoordinates dropped, living in a second file.
             Mathf.Lerp(
-                SeaChartCoordinates.MapMaximum,
                 SeaChartCoordinates.MapMinimum,
+                SeaChartCoordinates.MapMaximum,
                 Mathf.Clamp01(normalizedPosition.y)));
 
         public static bool TryScreenToWorldPosition(
@@ -67,8 +71,8 @@ namespace Sea.Client
     public static class SeaChartCameraRules
     {
         // A ship camera, not a chart camera. At the default zoom a 16:9 screen shows roughly
-        // 71 by 49 units of a 200 by 200 map, close enough that sailing reads as motion past the
-        // water instead of a marker creeping over a chart.
+        // 71 by 49 squares of a 400 by 400 map, close enough that sailing reads as motion past
+        // the water instead of a marker creeping over a chart.
         public const float DefaultZoom = 20f;
         public const float MinimumZoom = 12f;
         public const float MaximumZoom = 45f;
@@ -81,6 +85,8 @@ namespace Sea.Client
 
         private const float MapHalfSize =
             (SeaChartCoordinates.MapMaximum - SeaChartCoordinates.MapMinimum) / 2f;
+
+        private const float MapCentre = SeaChartCoordinates.MapMinimum + MapHalfSize;
 
         private const float ReachHalfSize = MapHalfSize + MapMargin;
 
@@ -113,8 +119,10 @@ namespace Sea.Client
         // It stops only where the view would run past the water the world actually draws.
         private static float ClampAxis(float value, float halfExtent)
         {
+            // `reach` is a half-width and is origin-free; the clamp is what had zero baked into
+            // it, from when zero was the middle of the map rather than its north-west corner.
             var reach = Mathf.Min(MapHalfSize, Mathf.Max(0f, ReachHalfSize - halfExtent));
-            return Mathf.Clamp(value, -reach, reach);
+            return Mathf.Clamp(value, MapCentre - reach, MapCentre + reach);
         }
     }
 

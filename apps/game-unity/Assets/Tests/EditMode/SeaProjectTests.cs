@@ -75,10 +75,14 @@ namespace Sea.Tests
             var topLeft = SeaMiniMapRules.ToWorldPosition(new Vector2(0f, 0f));
             var bottomRight = SeaMiniMapRules.ToWorldPosition(new Vector2(1f, 1f));
 
+            // Both corners read the same way on both axes: the chart's origin is its
+            // north-west corner and y grows south, so the top of the panel is the minimum
+            // and the bottom is the maximum. The z expectations used to be the other way
+            // round because the world's north used to be its maximum y.
             Assert.That(topLeft.x, Is.EqualTo(SeaChartCoordinates.MapMinimum));
-            Assert.That(topLeft.z, Is.EqualTo(SeaChartCoordinates.MapMaximum));
+            Assert.That(topLeft.z, Is.EqualTo(SeaChartCoordinates.MapMinimum));
             Assert.That(bottomRight.x, Is.EqualTo(SeaChartCoordinates.MapMaximum));
-            Assert.That(bottomRight.z, Is.EqualTo(SeaChartCoordinates.MapMinimum));
+            Assert.That(bottomRight.z, Is.EqualTo(SeaChartCoordinates.MapMaximum));
         }
 
         [Test]
@@ -88,8 +92,11 @@ namespace Sea.Tests
 
             Assert.That(SeaMiniMapRules.TryScreenToWorldPosition(
                 new Vector2(800.1f, 749.9f), pixelRect, out var topLeft), Is.True);
-            Assert.That(topLeft.x, Is.EqualTo(SeaChartCoordinates.MapMinimum).Within(0.2f));
-            Assert.That(topLeft.z, Is.EqualTo(SeaChartCoordinates.MapMaximum).Within(0.2f));
+            // A tenth of a pixel inside the corner of a 200 by 150 panel is a third of a
+            // square once it is stretched over a chart four hundred squares wide, so the
+            // tolerance is the click's own offset rather than slack in the rule.
+            Assert.That(topLeft.x, Is.EqualTo(SeaChartCoordinates.MapMinimum).Within(0.3f));
+            Assert.That(topLeft.z, Is.EqualTo(SeaChartCoordinates.MapMinimum).Within(0.3f));
             Assert.That(SeaMiniMapRules.TryScreenToWorldPosition(
                 new Vector2(799f, 750f), pixelRect, out _), Is.False);
         }
@@ -286,7 +293,11 @@ namespace Sea.Tests
             cameraObject.transform.rotation = Quaternion.Euler(55f, 0f, 0f);
             var controller = cameraObject.AddComponent<SeaChartCameraController>();
             controller.Configure(chartCamera);
-            var destination = new Vector3(-30f, 0f, 40f);
+            // Thirty squares west and forty south of the middle of the chart, which is the
+            // offset this case has always used; what moved is where the middle is. A bare
+            // (-30, 40) is off the chart now and the clamp, not the navigation, would have
+            // decided where the camera ended up.
+            var destination = new Vector3(170f, 0f, 240f);
 
             controller.ShowChartPosition(destination);
 

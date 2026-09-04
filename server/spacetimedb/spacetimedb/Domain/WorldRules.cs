@@ -25,6 +25,8 @@ public static class WorldRules
 
     // Ships never collide with each other (SEA_5 §4.1.6); this only keeps a hull from
     // clipping the drawn edge of land, so a reef with radius 10 still blocks a touch at 10.
+    // NavigationRules is its only reader now that the two IsBlocked overloads are gone, and
+    // Phase 2's land mask replaces that reader in turn.
     public const float LandHazardPadding = 0.5f;
 
     public const uint InitialCannonDamage = 25;
@@ -115,35 +117,6 @@ public static class WorldRules
 
         var scale = maximumDistance / distance;
         return new SailingStep(currentX + deltaX * scale, currentY + deltaY * scale, false);
-    }
-
-    public static bool IsBlocked(string kind, float entityX, float entityY, float radius, float x, float y)
-    {
-        if (!string.Equals(kind, "island", StringComparison.Ordinal) &&
-            !string.Equals(kind, "reef", StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        var collisionRadius = radius + LandHazardPadding;
-        return GeometryRules.DistanceSquared(entityX, entityY, x, y) < collisionRadius * collisionRadius;
-    }
-
-    public static bool IsBlocked(
-        WorldObjectCode kind,
-        float entityX,
-        float entityY,
-        float radius,
-        float x,
-        float y)
-    {
-        if (!HotPathCodes.BlocksMovement(kind))
-        {
-            return false;
-        }
-
-        var collisionRadius = radius + LandHazardPadding;
-        return GeometryRules.DistanceSquared(entityX, entityY, x, y) < collisionRadius * collisionRadius;
     }
 
     public static bool IsInRange(float fromX, float fromY, float toX, float toY, float range) =>

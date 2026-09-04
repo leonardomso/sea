@@ -244,10 +244,12 @@ namespace Sea.Tests
             var initial = SeaRuntimeValidationRules.SeededStormPosition(worldTick: 0);
             var afterTenSeconds = SeaRuntimeValidationRules.SeededStormPosition(worldTick: 100);
 
-            Assert.That(initial.x, Is.EqualTo(-72f).Within(0.001f));
-            Assert.That(initial.y, Is.EqualTo(3f).Within(0.001f));
-            Assert.That(afterTenSeconds.x, Is.EqualTo(-57.734f).Within(0.001f));
-            Assert.That(afterTenSeconds.y, Is.EqualTo(7.635f).Within(0.001f));
+            // Where maps.json stands the storm, and where a bearing of 72 carries it in ten
+            // seconds at half a square a second: east and a little north, so y falls.
+            Assert.That(initial.x, Is.EqualTo(56f).Within(0.001f));
+            Assert.That(initial.y, Is.EqualTo(206f).Within(0.001f));
+            Assert.That(afterTenSeconds.x, Is.EqualTo(60.755f).Within(0.001f));
+            Assert.That(afterTenSeconds.y, Is.EqualTo(204.455f).Within(0.001f));
         }
 
         [TestCase(true, true, 0, true)]

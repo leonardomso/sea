@@ -148,17 +148,22 @@ namespace Sea.Tests.EditMode
             Assert.That(extents.x, Is.EqualTo(35.556f).Within(0.01f));
             Assert.That(extents.y, Is.EqualTo(24.416f).Within(0.01f));
 
+            // The south-east corner of a chart that runs 0..400 on both axes. It used to be
+            // (100, -100), which was the same corner of a world whose middle was the origin.
             Assert.That(
-                SeaChartCameraRules.ClampCenter(new Vector3(100f, 5f, -100f), extents),
-                Is.EqualTo(new Vector3(100f, 5f, -100f)),
+                SeaChartCameraRules.ClampCenter(new Vector3(400f, 5f, 400f), extents),
+                Is.EqualTo(new Vector3(400f, 5f, 400f)),
                 "A ship in the map corner still gets the camera centred on it.");
             Assert.That(
-                SeaChartCameraRules.ClampCenter(new Vector3(90f, 5f, -90f), new Vector2(60f, 80f)),
-                Is.EqualTo(new Vector3(80f, 5f, -60f)),
+                SeaChartCameraRules.ClampCenter(new Vector3(390f, 5f, 390f), new Vector2(60f, 80f)),
+                Is.EqualTo(new Vector3(380f, 5f, 360f)),
                 "A zoomed-out view stops where the drawn water would run out.");
+            // Wider than the water means wider than the map plus its margin, and the margin
+            // did not grow when the map doubled: a view 200 across no longer overflows a
+            // chart 400 across, so this case takes a view a whole chart wide instead.
             Assert.That(
-                SeaChartCameraRules.ClampCenter(new Vector3(50f, 0f, 50f), new Vector2(200f, 200f)),
-                Is.EqualTo(Vector3.zero),
+                SeaChartCameraRules.ClampCenter(new Vector3(250f, 0f, 150f), new Vector2(400f, 400f)),
+                Is.EqualTo(new Vector3(200f, 0f, 200f)),
                 "A view wider than the water centers on the map.");
         }
 
