@@ -186,6 +186,19 @@ Sub-phases:
 - Update `README.md`, `CONTEXT.md`, and `AGENTS.md` so they describe the
   Milestone 1 build.
 
+Measured, recorded in `docs/validation/milestone-1.md`. Passing: every suite in
+`pnpm verify` (683 server, 21 integration, 175 EditMode), the idle cost, both
+presentation gates (macOS 250 hulls at p95 3.87 ms, WebGL 100 at p95 5 ms), the
+four-captain shared world, command acknowledgement at 100 clients (p95 27.50 ms
+against 150 ms), and 5,000 of 5,000 clients connected with no failures at 23.9 %
+CPU. Missed and not papered over: the world tick at 100 clients is p95 25.64 ms
+against a 10 ms gate, so `pnpm runtime:test:scale-isolated` exits non-zero with
+`PerformanceBudget.cs` unweakened; and a 5,000 ship simulation holds only 1,357
+hulls moving. Both have the same cause and the same fix, a per-chunk
+replication blob, which is not Milestone 1 work. Still owed by hand: the played
+session, the two review passes, and the `README.md` / `CONTEXT.md` / `AGENTS.md`
+refresh.
+
 ### Milestone 2: progress and safety (Gull Rocks 1/2, Brine Fields 1/3)
 
 - `SpawnPoint` table, damage-share `OnNpcKilled` replacing the 30/70 split,

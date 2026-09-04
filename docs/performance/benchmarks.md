@@ -117,3 +117,31 @@ This is a budget miss, not a playability one. The tick fires at 10 Hz, so 20 ms 
 a 100 ms budget with room to spare, the host is at 1.4 % CPU, and a command is acknowledged in
 22.65 ms p95 against a 150 ms gate. Record the number honestly and revisit the gate when the row
 layout changes.
+
+### Re-measured in isolation (2026-09-04)
+
+`pnpm runtime:test:scale-isolated` publishes its own database into a container of its own rather
+than sharing the development stack, so it is the number to quote. Two runs at 100 clients, the
+second sampling only after a ten second warm-up:
+
+| Measure | Run A | Run B (10 s warm-up) | Gate |
+| --- | ---: | ---: | ---: |
+| dispatch p95 | 27.68 ms | 25.64 ms | 10 ms |
+| dispatch p99 | 58.10 ms | 40.48 ms | 20 ms |
+| command ack p95 | 35.21 ms | 27.50 ms | 150 ms |
+| command ack p99 | 43.06 ms | 40.12 ms | -- |
+| server CPU | 1.07 % | 0.58 % | 85 % |
+| memory growth | 0 % | 0 % | 5 % |
+| failed clients | 0 | 0 | 0 |
+
+A cold module is worth about two milliseconds of p95 and nearly twenty of p99, which is why the
+warm-up is worth setting; past that the two runs agree with the shared-stack number above to within
+the run-to-run spread. The conclusion does not move: the tick is over its gate, everything else in
+the budget passes with room, and the remaining distance is rows touched per tick rather than rule
+cost.
+
+The harness itself learned one thing from the five thousand client attempt. Its control plane reads
+-- the metrics scrape and the SQL counts that decide readiness -- had two and five second budgets,
+and a `SELECT` that returns a row per client is slower the more clients there are, so the run died
+on `curl` exit 28 with no diagnostics rather than on a verdict about the server. They now wait
+`SEA_CONTROL_PLANE_TIMEOUT` seconds (30 by default) and treat a timeout as a missing sample.

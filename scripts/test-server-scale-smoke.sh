@@ -28,6 +28,11 @@ sample_interval="${SEA_TICK_SAMPLE_INTERVAL_SECONDS:-0.1}"
 load_evidence_output="${SEA_LOAD_EVIDENCE_OUTPUT:-}"
 server_evidence_output="${SEA_SERVER_EVIDENCE_OUTPUT:-}"
 spacetime_container="${SEA_SPACETIME_CONTAINER:-}"
+# The control plane answers over the same host the load is pounding, and a query that
+# returns a row per client is slower the more clients there are. A slow answer is not a
+# verdict on the server, so these reads wait longer and treat a timeout as a missing
+# sample rather than as the end of the run.
+control_timeout="${SEA_CONTROL_PLANE_TIMEOUT:-30}"
 load_server="$SEA_SPACETIME_DOCKER_URL"
 if [ -n "${SEA_DOCKER_NETWORK:-}" ]; then
   load_server="http://$spacetime_container:3000" # container network: internal port
@@ -82,12 +87,13 @@ metric_value() {
 }
 
 metrics_snapshot() {
-  curl --fail --silent --max-time 3 "$SEA_SPACETIME_LOCAL_URL/v1/metrics"
+  curl --fail --silent --max-time "$control_timeout" \
+    "$SEA_SPACETIME_LOCAL_URL/v1/metrics" || true
 }
 
 active_ship_count() {
   local response
-  if ! response="$(curl --fail --silent --max-time 5 \
+  if ! response="$(curl --fail --silent --max-time "$control_timeout" \
     --request POST \
     --header "content-type: text/plain" \
     --data "SELECT * FROM ship WHERE is_moving = true" \
@@ -100,7 +106,7 @@ active_ship_count() {
 }
 
 simulation_telemetry() {
-  curl --fail --silent --max-time 3 \
+  curl --fail --silent --max-time "$control_timeout" \
     --request POST \
     --header "content-type: text/plain" \
     --data "SELECT * FROM simulation_telemetry WHERE id = 1" \
@@ -109,12 +115,17 @@ simulation_telemetry() {
 
 table_count() {
   local table_name="$1"
-  curl --fail --silent --max-time 5 \
+  local response
+  if ! response="$(curl --fail --silent --max-time "$control_timeout" \
     --request POST \
     --header "content-type: text/plain" \
     --data "SELECT * FROM $table_name" \
-    "$SEA_SPACETIME_LOCAL_URL/v1/database/$database_name/sql" |
-    node "$project_root/scripts/lib/sql-result.mjs"
+    "$SEA_SPACETIME_LOCAL_URL/v1/database/$database_name/sql")"; then
+    echo 0
+    return
+  fi
+
+  printf '%s' "$response" | node "$project_root/scripts/lib/sql-result.mjs"
 }
 
 print_load_diagnostics() {
@@ -140,7 +151,7 @@ SPACETIME_STATE_RELATIVE="$state_relative" \
     --yes \
     --module-path server/spacetimedb/spacetimedb >/dev/null
 
-database_identity="$(curl --fail --silent --max-time 3 \
+database_identity="$(curl --fail --silent --max-time "$control_timeout" \
   "$SEA_SPACETIME_LOCAL_URL/v1/database/$database_name/identity")"
 "$project_root/scripts/dotnet10.sh" build \
   tests/load/Sea.LoadTests/Sea.LoadTests.csproj >/dev/null
