@@ -1354,6 +1354,13 @@ here only so the tree builds; Phase 8 replaces every map by hand."
 
 ### Task 1.7: Get the tree green again
 
+**Also delete or wire up `server/spacetimedb/spacetimedb/Simulation/SpatialQueries.cs`.**
+All three helpers -- `WorldObjectsIn`, `CurrentZonesNear`, `ActiveShipsIn` -- have
+no caller anywhere in the repo, and neither does `TickWorld.cs:138 WorldObjectsIn`.
+Task 1.4 renamed a constant inside that file without noticing it was editing dead
+code, which is how a chunk query nobody runs came to be reviewed twice. Decide it
+once here: delete it, or give it the caller it was written for.
+
 **Files:**
 - Modify: whatever the hand-built inventory from Task 1.2 Step 4 lists. It is a
   grep plus two things grep misses; re-read that step rather than trusting a file.
@@ -3116,6 +3123,23 @@ NO_PATH rather than half-obeyed."
 
 ### Task 4.3: Sail the route on the tick
 
+**Deleting `SailingRules` is not a textual swap onto `GeometryRules`.** Three of
+the four private helpers differ in behaviour, so each needs its own test:
+
+- `SegmentIntersectsCircle` -- equivalent bit for bit. Safe to drop.
+- `NormalizeSignedAngle` -- equivalent apart from the base below.
+- `NormalizeAngle` -- **not equivalent, and a determinism hazard.**
+  `SailingRules` returns `-0f` for `-0f` and exactly `360f` for a tiny negative
+  angle; `GeometryRules` guards both on purpose, and `ReplayRules.cs:64` hashes
+  heading through `SingleToUInt32Bits`, so those are different states.
+  `SailingRules.DesiredHeading` is live at `Navigation/NavigationState.cs:217`,
+  `Simulation/MovementShardStateSystem.cs:246` and `Simulation/SailingSystem.cs:194`.
+- `DesiredHeading` -- **actively wrong.** It is `Atan2(deltaX, deltaY)` where
+  `GeometryRules.HeadingTo` is `Atan2(deltaX, -deltaY)`. The negation is the entire
+  point of the new file, and `SailingRules` is one of the files whose private copy
+  caused the Y-down map to put 0 degrees at south. It also returns a bare `0f` for
+  coincident points where `HeadingTo` requires an explicit fallback.
+
 **Files:**
 - Modify: `server/spacetimedb/spacetimedb/Simulation/SailingSystem.cs`
 - Delete: `server/spacetimedb/spacetimedb/Domain/SailingRules.cs`
@@ -4213,6 +4237,31 @@ degree arc means."
 ```
 
 ### Task 6.2: `RangeRules` in squares
+
+**Revisit `ChunkSizeSquares`, and settle it with a measurement rather than
+arithmetic.** Task 1.4 doubled the chunk to 50 squares and held the count at 8.
+The stated reason -- that holding the count preserves existing chunk indices and
+subscription shapes -- does not survive checking: `Schema/Tables.cs` declares
+`ChunkX`/`ChunkY` as plain `int` with BTree indexes that work at any range, and
+there are no chunk-based client subscriptions yet at all. So the count is free.
+
+Against a 65-square subscription radius, 50/8 gives a 3x3 to 4x4 window covering
+up to 2.4x the bounding box; 25/16 gives 6x6 to 7x7 covering up to 1.8x, at a cost
+of 36-49 index probes instead of 9-16 and a 256-entry `CellMasks` list instead of
+64. The stronger argument is the tick path: `Simulation/SailingSystem.cs:293-300`
+uses the chunk as the prefilter granularity for current zones, and `WorldSeed.cs:285`
+sets a zone's bit on every chunk its disc touches -- so doubling the chunk side
+quadruples the area behind one mask bit and roughly quadruples the `IsInRange`
+calls per ship per tick. Task 1.4 made that filter four times coarser as a side
+effect and nobody measured it. Use `tests/performance` and the 100-client gate.
+
+**Also fix the bound in `Simulation/SpatialQueries.cs:27`** if that file survives
+Task 1.7: `CurrentZonesNear` bounds a *current zone* query by the *world object*
+constant. Zones are indexed by their centre chunk, so the query radius must be at
+least the largest zone radius. At 16 it was under the 28-square current ceiling --
+a real under-bound that would have missed zones had the method ever been called.
+Raising it to 40 hid that by accident, and Task 1.6 taking content zones to 56
+brings it back. The correct bound is `MaximumCurrentRadiusSquares`.
 
 **Files:**
 - Modify: `server/spacetimedb/spacetimedb/Domain/RangeRules.cs`
