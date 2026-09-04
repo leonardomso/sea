@@ -2,10 +2,28 @@ namespace Sea.Server;
 
 public static class SpatialRules
 {
-    public const float ChunkSize = 25f;
+    /// <summary>
+    /// The map is cut into an 8 x 8 grid of chunks, so one chunk is 50 squares on a
+    /// side. Keeping the count at eight keeps every chunk index and every
+    /// subscription shape the module already has; only the size changes to cover
+    /// the 400-square map (SEA_5 §3.1).
+    /// </summary>
+    public const float ChunkSizeSquares = 50f;
+
     public const int ChunkCountPerAxis = 8;
-    public const float MaximumWorldInfluenceRadius = 16f;
-    public const float MaximumCurrentRadius = 28f;
+
+    /// <summary>The widest a storm reaches, so a chunk query can bound it (SEA_5 §5.2).</summary>
+    public const float MaximumWorldInfluenceRadiusSquares = 40f;
+
+    /// <summary>
+    /// The widest a current zone reaches. SEA_5 §5.2 only bounds current DRIFT (at
+    /// most 0.3 sq/s); it says nothing about how wide a current zone itself is
+    /// allowed to be. This gate keeps its pre-migration value rather than adopting
+    /// the storm radius: 28 squares is the largest current zone Havenmere's own
+    /// content authors today (<c>maps.json</c> zone 1). Raise it only once a map
+    /// actually needs a wider current zone.
+    /// </summary>
+    public const float MaximumCurrentRadiusSquares = 28f;
 
     public static int ChunkCoordinate(float position)
     {
@@ -14,7 +32,7 @@ public static class SpatialRules
             throw new ArgumentOutOfRangeException(nameof(position));
         }
 
-        var coordinate = (int)MathF.Floor((position - WorldRules.MapMin) / ChunkSize);
+        var coordinate = (int)MathF.Floor(position / ChunkSizeSquares);
         return Math.Clamp(coordinate, 0, ChunkCountPerAxis - 1);
     }
 

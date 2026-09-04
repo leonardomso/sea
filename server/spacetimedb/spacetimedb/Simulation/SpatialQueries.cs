@@ -27,7 +27,7 @@ public static partial class Module
         var bounds = SpatialRules.BoundsAround(
             x,
             y,
-            SpatialRules.MaximumWorldInfluenceRadius);
+            SpatialRules.MaximumWorldInfluenceRadiusSquares);
         for (var chunkX = bounds.MinX; chunkX <= bounds.MaxX; chunkX++)
         {
             for (var chunkY = bounds.MinY; chunkY <= bounds.MaxY; chunkY++)

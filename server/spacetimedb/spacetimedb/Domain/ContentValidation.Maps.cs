@@ -170,7 +170,7 @@ public static partial class ContentCatalog
                 errors.Add($"{label}: duplicate object entity id {item.EntityId}.");
             }
 
-            PositiveAtMost(subject, "radius", item.Radius, SpatialRules.MaximumWorldInfluenceRadius, errors);
+            PositiveAtMost(subject, "radius", item.Radius, SpatialRules.MaximumWorldInfluenceRadiusSquares, errors);
             Between(subject, "direction", item.DirectionDegrees, 0f, 360f, errors);
             NotNegative(subject, "movement speed", item.MovementSpeed, errors);
             NotNegative(subject, "intensity", item.Intensity, errors);
@@ -214,7 +214,7 @@ public static partial class ContentCatalog
                 errors.Add($"{label}: duplicate current zone id {current.ZoneId}.");
             }
 
-            PositiveAtMost(subject, "radius", current.Radius, SpatialRules.MaximumCurrentRadius, errors);
+            PositiveAtMost(subject, "radius", current.Radius, SpatialRules.MaximumCurrentRadiusSquares, errors);
             Between(subject, "direction", current.DirectionDegrees, 0f, 360f, errors);
             Positive(subject, "strength", current.Strength, errors);
         }

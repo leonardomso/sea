@@ -170,10 +170,12 @@ public sealed class SimulationWorkRulesTests
     [Fact]
     public void Spatial_bounds_include_neighboring_chunks_for_large_hazards()
     {
+        // 200,200 sits on a chunk boundary in the middle of the map, so a query
+        // radius that crosses it has to include the chunk on both sides.
         var bounds = SpatialRules.BoundsAround(
-            0f,
-            0f,
-            SpatialRules.MaximumWorldInfluenceRadius);
+            200f,
+            200f,
+            SpatialRules.MaximumWorldInfluenceRadiusSquares);
 
         Assert.Equal(3, bounds.MinX);
         Assert.Equal(4, bounds.MaxX);
@@ -184,7 +186,9 @@ public sealed class SimulationWorkRulesTests
     [Fact]
     public void Course_bounds_cover_the_whole_route_with_obstacle_padding()
     {
-        var bounds = SpatialRules.BoundsForSegment(-80f, -80f, 80f, 80f, 20f);
+        // A route that spans past both edges of the 400-square map, plus padding,
+        // still clamps to the full 0-7 chunk grid rather than overshooting it.
+        var bounds = SpatialRules.BoundsForSegment(-50f, -50f, 450f, 450f, 20f);
 
         Assert.Equal(new ChunkBounds(0, 7, 0, 7), bounds);
     }

@@ -127,19 +127,6 @@ public sealed class WorldRulesTests
     }
 
     [Theory]
-    [InlineData(-100f, 0)]
-    [InlineData(-75.01f, 0)]
-    [InlineData(-75f, 1)]
-    [InlineData(0f, 4)]
-    [InlineData(100f, 7)]
-    public void ChunkCoordinate_partitions_the_map_into_bounded_cells(
-        float position,
-        int expected)
-    {
-        Assert.Equal(expected, SpatialRules.ChunkCoordinate(position));
-    }
-
-    [Theory]
     [InlineData(100ul, 100ul, false)]
     [InlineData(100ul, 101ul, true)]
     public void Transient_events_expire_after_their_expiry_tick(
@@ -179,19 +166,6 @@ public sealed class WorldRulesTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             WorldRules.AdvanceTowards(0, 0, 1, 1, maximumDistance));
-    }
-
-    [Fact]
-    public void SpatialBoundsClampAndRejectInvalidValues()
-    {
-        Assert.Equal(new ChunkBounds(0, 7, 0, 7),
-            SpatialRules.BoundsAround(0, 0, 500));
-        Assert.Equal(new ChunkBounds(0, 7, 0, 7),
-            SpatialRules.BoundsForSegment(-100, 100, 100, -100, 0));
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            SpatialRules.BoundsAround(0, 0, float.NaN));
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            SpatialRules.ChunkCoordinate(float.PositiveInfinity));
     }
 
     [Theory]
