@@ -164,11 +164,11 @@ Boarding is its own small game: your fighting hands against theirs.
 - **Hands**: every hull carries fighting sailors (10 to 50 by tier) plus 2 per crew member on board.
 - **Arms Locker**: one weapon type and one guard type equip all your hands (Cutlass → Boarding Axe → Pistol → Musket → Blunderbuss; None → Leather → Buff Coat → Breastplate). Bought or crafted in port, gated by Map Rank, kept per ship. Not part of the Combat Power budget.
 - **Boarding Score**: attack = hands × weapon × your HP factor × bonuses; defence = hands × weapon × guard × their HP factor × bonuses. Your chance is attack ÷ (attack + defence), clamped between 5% and 90% (Math §5.7). The Ship window shows your attack and defence scores, and when you select a target the target frame shows your **estimated boarding chance**.
-- **How**: within 1 square of a valid attack target, press E. 2-second channel (1 s with Quick Hands, −1 s with a Master-at-Arms), cancelled by any hit; you cannot fire during it. Any HP is allowed; low HP on either side shifts the odds.
+- **How**: within 4 squares of a valid attack target that is at or below half its Max HP, press E. 2-second channel (1 s with Quick Hands, −1 s with a Master-at-Arms), cancelled by any hit; you cannot fire during it. The distance and the hit-point gate are SEA_5_PHYSICS §9.1; below that gate, low HP on either side further shifts the odds.
 - **Success**: you receive a **Boarding Haul** paid by the game (gold based on the map and multiplied by how much stronger your score was, 0.5× to 2×, plus an item roll). The victim loses nothing to you. The target's cannons are silenced 3 s, it loses 10% of Max HP and 10% of its hands, and it is not sunk. You lose 5% of your hands; a fight always costs sailors. Against an NPC you get a bonus loot roll and the NPC keeps its HP.
-- **Fail**: boarding is a gamble with a price. You lose **10% of Max HP**, you **pay gold** (25 × the map's base gold drop, capped at 5% of what you carry), and **some of your hands die**: 30% × (1 − your chance), so a long shot that fails costs more sailors than a fair one. You cannot board again for 60 s.
+- **Fail**: boarding is a gamble with a price. You lose **10% of Max HP**, you **pay gold** (25 × the map's base gold drop, capped at 5% of what you carry), and **some of your hands die**: 30% × (1 − your chance), so a long shot that fails costs more sailors than a fair one. You cannot board again until the cooldown for that target type is over (SEA_5_PHYSICS §9.3).
 - **Hands recover** 1 per minute at sea and fully in any port or guild fort. Under 50% hands you cannot board at all, so a boarder who keeps failing has to go home.
-- Cooldowns: 30 s after a success, 60 s after a fail. A player can be boarded at most once every 5 minutes.
+- Cooldowns: 60 s after boarding a player, 15 s after boarding an NPC (SEA_5_PHYSICS §9.3, which replaces the old 30 s success / 60 s fail pair). A player can be boarded at most once every 5 minutes; that is a separate timer on the victim and still applies.
 - The Ship window shows current hands ("34/40") next to the boarding scores.
 - Boarding is allowed in open sea, island war, and Guild Arena. Not in duels or ranked arena.
 
@@ -714,6 +714,8 @@ Pings are rate-limited to 3 per 5 seconds. Raid and party leaders also place num
 ## 25. Time bands
 
 One global server. Three bands each day: **00:00–04:00, 08:00–12:00, 16:00–20:00 UTC**.
+These schedule what people turn up for. The weather bands that rotate wind and
+storms are a different thing on a different clock; see SEA_5_PHYSICS §12.5.
 - A guild chooses a home band at creation (changeable once per 30 days). Its island can only be attacked inside that band, and its Guild Arena weekly matches are usually played there (queues are open in all bands).
 - Ghost Tide, Convoy, and Kraken Rising rotate through the bands day by day so every band sees each event at least twice a week.
 - Daily resets stay at 06:00 UTC; weekly at Sunday 23:00 UTC.

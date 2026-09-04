@@ -269,9 +269,9 @@ Success: attacker receives a Boarding Haul from the game: gold = 15 × G(map) ×
 Fail:    attacker loses 0.10 × MaxHP,
          loses gold = min( 25 × G(MapRank) , 0.05 × attacker_gold ),
          loses hands = round( Hands_A × 0.30 × (1 − P) )      (a long shot that fails kills more sailors: 27% of hands at P = 0.10, 15% at P = 0.50),
-         and cannot board for 60 s.
+         and cannot board again until the SEA_5_PHYSICS §9.3 cooldown for the target type is over.
 Hands recover 1 per minute at sea and to full instantly in any port or guild fort. A ship with fewer than 50% of its hands cannot board.
-Cooldowns: attacker 30 s after success, 60 s after a fail. A player can be boarded at most once per 5 min.
+Cooldowns: attacker 60 s after boarding a player, 15 s after boarding an NPC (SEA_5_PHYSICS §9.3 replaces the old 30 s success / 60 s fail pair). A player can be boarded at most once per 5 min.
 ```
 Fail-cost examples: Frigate at Map Rank 7, 100,000 gold on hand → loses 2,000 HP, 5,000 gold (25 × 503 = 12,575 capped by 5% = 5,000), and 6 of 40 hands at P = 0.50.
 
@@ -662,6 +662,10 @@ Effects:
 Pace: a guild of 30 that turns in materials, sinks Elites, and does Garrison dailies makes +40 to +80 a day against −10 and stays near 100; a guild that stops playing is neutral in 13 days.
 
 ### 10.9 Time bands
+
+These are wall-clock scheduling bands, not the tick-derived weather bands of
+SEA_5_PHYSICS §12.5. The two are unrelated and must not share code.
+
 ```
 Bands: 00:00–04:00, 08:00–12:00, 16:00–20:00 UTC
 Guild home band: chosen at creation; changeable once per 30 days.
@@ -866,7 +870,7 @@ for t in range(5):
 | WIND_EFFECT / STORM_MULT / CURRENT_MAX / SEA_SPEED_CAP | ±0.10 / 0.85 / 0.30 sq/s / ±0.25 | 5.6 |
 | HANDS T1–T5 / HANDS_PER_CREW | 10 20 30 40 50 / 2 | 5.7 |
 | BOARD_P_MIN / MAX / LOOT_MIN / MAX | 0.05 / 0.90 / 0.5 / 2.0 | 5.7 |
-| BOARD_CD_SUCCESS / FAIL / VICTIM_LOCK | 30 s / 60 s / 5 min | 5.7 |
+| BOARD_CD_PLAYER / NPC / VICTIM_LOCK | 60 s / 15 s / 5 min | 5.7, and SEA_5_PHYSICS §9.3 for the attacker pair |
 | BOARD_FAIL_HP / FAIL_GOLD / FAIL_GOLD_CAP / FAIL_HANDS | 0.10 / 25·G / 0.05 / 0.30·(1−P) | 5.7 |
 | HANDS_REGEN_SEA / BOARD_MIN_HANDS | 1 per min / 0.50 | 5.7 |
 | DUEL_TIME / DUEL_HONOR_CAP | 180 s / 10 wins per day | Mechanics |

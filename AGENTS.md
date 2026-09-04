@@ -6,9 +6,10 @@ truth for scope, milestone order, acceptance gates, and commit boundaries.
 half-built, and what has not been started; read it before planning work.
 `docs/validation/milestone-1.md` holds the measured numbers behind it.
 `docs/SEA_1_KNOWLEDGE.md`, `docs/SEA_2_MATH.md`, `docs/SEA_3_MECHANICS.md`,
-and `docs/SEA_4_TECHNICAL.md` are the design of record: where they and the
-code disagree, the docs win, and `docs/SEA_5_GAP_ANALYSIS.md` records how each
-difference is resolved.
+`docs/SEA_4_TECHNICAL.md`, and `docs/SEA_5_PHYSICS.md` are the design of
+record: where they and the code disagree, the docs win, and
+`docs/SEA_5_GAP_ANALYSIS.md` records how each difference is resolved. When two
+of them disagree with each other, the next section settles it.
 
 ### Which design document wins
 

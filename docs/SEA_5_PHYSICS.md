@@ -331,9 +331,16 @@ What a successful or failed boarding *does* — the haul, the hands lost, the
 This section only decides when boarding is physically allowed: within 4 sq,
 off cooldown, target below the boarding threshold.
 
-Cooldowns: 60 s after boarding a player, 15 s after boarding an NPC. SEA_3's
-rule that a given player can be boarded at most once every 5 minutes still
-applies and is a separate timer on the victim.
+Cooldowns: 60 s after boarding a player, 15 s after boarding an NPC. This
+replaces SEA_3_MECHANICS §4.3 and SEA_2_MATH §5.7's attacker cooldown, which
+was 30 s after a success and 60 s after a failure. The two schemes measure
+different things — who you boarded, rather than how it went — so they cannot
+both hold, and this document wins. Note what that costs: the old pair charged
+more for a failed boarding than a successful one, and this pair does not, so
+failure is now punished only by the HP, gold and hands in SEA_2_MATH §5.7.
+
+SEA_3's rule that a given player can be boarded at most once every 5 minutes
+still applies and is a separate timer on the victim.
 
 ---
 
@@ -393,7 +400,7 @@ stateDiagram-v2
 | **12.2** The server is the only authority on position, heading, speed and route. Clients never send positions. Clients send: `MoveTo`, `Stop`, `SetTarget`, `FireHeld(bool)`, `Board`, `Repair`. | |
 | **12.3** Clients interpolate between ticks from the route and speed they received, and snap to the server value when the error is more than **1.0 sq**. | Straight-line movement makes snaps rare: only packet loss or a course change. |
 | **12.4** Each `MoveTo` is validated: inside the map, not more than 8 per second, reachable. Anything else is dropped and counted for the trust score. Perfectly regular `MoveTo` timing and targets that sit at exactly `range − 0.5` are bot signals; because every event is server-stamped, they are measurable. | |
-| **12.5** Time bands (every 288000 ticks, which is 8 hours at 10 Hz) rotate wind and respawn storms. The change is applied at the boundary and broadcast once. | |
+| **12.5** Weather bands (every 288000 ticks, which is 8 hours at 10 Hz) rotate wind and respawn storms. The change is applied at the boundary and broadcast once. These are not the wall-clock "time bands" of SEA_2_MATH §10.9 and SEA_3_MECHANICS §25, which schedule guild wars, arena queues and events: those stay on UTC because they exist to suit the hours people play. Weather is on the tick counter because a replay has to reproduce it. | |
 
 ```mermaid
 flowchart TB
@@ -456,7 +463,8 @@ Reopening any of these means re-running the tests in §13 and re-checking the fi
 
 ## 15. All constants in one place
 
-These are copied into SEA_2_MATH under "Physics constants". This document wins on any disagreement.
+These live here and nowhere else. Where a constant below also appears in
+SEA_2_MATH §13.2, this document wins and SEA_2_MATH must be fixed.
 
 | Constant | Value |
 |---|---|
