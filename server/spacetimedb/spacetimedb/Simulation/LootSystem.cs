@@ -3,7 +3,7 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    private static void ProcessLootClaimsForMovingShip(
+    private static void ProcessLootClaims(
         ReducerContext ctx,
         ShipKinematics mover,
         ulong tick)
@@ -74,11 +74,12 @@ public static partial class Module
         }
 
         ctx.Db.Loot.LootId.Delete(loot.LootId);
-        if (string.Equals(loot.LootType, "gold", StringComparison.Ordinal))
+        var award = LootRules.GoldFromClaim(loot.LootType, loot.Quantity);
+        if (award > 0)
         {
             var ownership = ctx.Db.PlayerOwnership.ShipEntityId.Find(claimant) ??
                 throw new InvalidOperationException("Loot claimant ownership is missing.");
-            AwardGold(ctx, ownership.Owner, loot.Quantity);
+            AwardGold(ctx, ownership.Owner, award);
         }
 
         AppendEvent(

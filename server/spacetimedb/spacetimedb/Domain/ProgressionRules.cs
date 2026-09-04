@@ -19,6 +19,18 @@ public static class LootRules
     public const float PickupRadius = 3.5f;
     public const ulong LifetimeTicks = 600;
 
+    /// <summary>
+    /// What a claimed crate is worth in the purse. Section 5's reward split pays a kill through
+    /// encounter settlement; sail-over salvage is the separate small bonus on top of it, and it
+    /// is paid the same way gold is because a captain who sails over a wreck and is given a log
+    /// line has not been given anything. A type the hold will carry one day pays nothing yet.
+    /// </summary>
+    public static uint GoldFromClaim(string lootType, uint quantity) =>
+        string.Equals(lootType, "gold", StringComparison.Ordinal) ||
+        string.Equals(lootType, "salvage", StringComparison.Ordinal)
+            ? quantity
+            : 0;
+
     public static ulong SelectClaimant(IEnumerable<LootCandidate> candidates)
     {
         var selection = new LootClaimSelection(0, float.PositiveInfinity);

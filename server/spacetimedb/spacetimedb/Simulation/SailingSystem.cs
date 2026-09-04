@@ -69,6 +69,13 @@ public static partial class Module
             }
 
             UpdatePortState(ctx, world, ref ship);
+            if (!ship.IsMoving && world.HasActiveLoot(ctx))
+            {
+                // She sails out of the shard this tick, so this is her last chance to pick
+                // up what she has come to rest on: a captain who steers onto a floating
+                // crate and stops there has collected it, not parked beside it.
+                ProcessLootClaims(ctx, ship, lastTick);
+            }
 
             // A ship holding her course is already drawn where she is, so only the ones whose
             // reckoning has drifted, crossed into another chunk or come to rest cost a row.
@@ -160,7 +167,7 @@ public static partial class Module
         if (SimulationWorkRules.ShouldProcessLootPickup(ship.EntityId, tick) &&
             world.HasActiveLoot(ctx))
         {
-            ProcessLootClaimsForMovingShip(ctx, ship, tick);
+            ProcessLootClaims(ctx, ship, tick);
         }
     }
 

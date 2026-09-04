@@ -17,6 +17,19 @@ public sealed class ProgressionRulesTests
     }
 
     [Fact]
+    public void Both_kinds_of_crate_pay_their_quantity_into_the_purse()
+    {
+        // The kill itself is paid by encounter settlement; this is the sail-over bonus on
+        // top of it, and salvage is the only thing a Havenmere wreck actually leaves.
+        Assert.Equal(12u, LootRules.GoldFromClaim("gold", 12));
+        Assert.Equal(7u, LootRules.GoldFromClaim("salvage", 7));
+
+        // A type the hold will carry one day is not gold, and quietly minting it would be.
+        Assert.Equal(0u, LootRules.GoldFromClaim("powder", 9));
+        Assert.Equal(0u, LootRules.GoldFromClaim("Gold", 9));
+    }
+
+    [Fact]
     public void Contribution_addition_saturates()
     {
         Assert.Equal(30ul, ProgressionRules.AddSaturating(10, 20));
