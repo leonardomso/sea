@@ -13,8 +13,8 @@ public static partial class Module
         public string Name;
         public string Biome;
         public byte MapRank;
-        public byte Width;
-        public byte Height;
+        public ushort Width;
+        public ushort Height;
         public string PvpMode;
         public string MaterialId;
         public string PortName;
@@ -47,8 +47,8 @@ public static partial class Module
         [PrimaryKey]
         public ulong SectorId;
         public byte MapId;
-        public byte X;
-        public byte Y;
+        public ushort X;
+        public ushort Y;
         public byte TerrainCode;
     }
 

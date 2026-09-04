@@ -67,16 +67,16 @@ public sealed class ContentCatalogTests
         var map = Catalog.Maps[0];
         var errors = ContentCatalog.Validate(Catalog with
         {
-            Maps = [map with { TerrainRows = [.. map.TerrainRows.Take(19), "..................."] }],
+            Maps = [map with { TerrainRows = [.. map.TerrainRows.Take(399), new string('.', 399)] }],
         });
-        Assert.Contains("Map 1/1: terrain row 19 has 19 columns, expected 20.", errors, StringComparer.Ordinal);
+        Assert.Contains("Map 1/1: terrain row 399 has 399 columns, expected 400.", errors, StringComparer.Ordinal);
     }
 
     [Fact]
     public void Port_on_land_is_rejected()
     {
-        var errors = ContentCatalog.Validate(Catalog with { Maps = [Catalog.Maps[0] with { PortX = 35f, PortY = 20f }] });
-        Assert.Contains("Map 1/1: the port sector (13, 12) must be water.", errors, StringComparer.Ordinal);
+        var errors = ContentCatalog.Validate(Catalog with { Maps = [Catalog.Maps[0] with { PortX = 270f, PortY = 250f }] });
+        Assert.Contains("Map 1/1: the port sector (270, 250) must be water.", errors, StringComparer.Ordinal);
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public sealed class ContentCatalogTests
         var moved = map.Objects.Select(item => item.EntityId == 2 ? item with { X = 0f, Y = 0f } : item).ToList();
         var errors = ContentCatalog.Validate(Catalog with { Maps = [map with { Objects = moved }] });
         Assert.Contains(
-            "Map 1/1: object 2 blocks movement but its sector (10, 10) is not land.",
+            "Map 1/1: object 2 blocks movement but its sector (0, 0) is not land.",
             errors,
             StringComparer.Ordinal);
     }
@@ -164,7 +164,7 @@ public sealed class ContentCatalogTests
         {
             Maps = [map with { Currents = [map.Currents[0] with { Radius = 100f }] }],
         });
-        Assert.Contains("Map 1/1: current zone 1: radius must be between 0 and 28.", errors, StringComparer.Ordinal);
+        Assert.Contains("Map 1/1: current zone 1: radius must be between 0 and 56.", errors, StringComparer.Ordinal);
     }
 
     [Fact]

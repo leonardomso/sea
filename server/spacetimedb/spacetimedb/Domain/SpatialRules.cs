@@ -21,13 +21,15 @@ public static class SpatialRules
     public const float MaximumWorldInfluenceRadiusSquares = 40f;
 
     /// <summary>
-    /// The widest an authored current zone may be. SEA_5 bounds current drift and
-    /// never a zone's size, and the 28 came across unchanged from the world-unit
-    /// scale, where it is 2.8 squares -- so this is a placeholder in the right
-    /// place, not a measurement. Task 1.6 rescales the content to 56 and settles
-    /// the real ceiling.
+    /// The widest an authored current zone may be. SEA_5 bounds current drift and never a
+    /// zone's size, so this stays a placeholder rather than a specified figure: it is set to
+    /// Havenmere's widest zone (current zone 1, rescaled to 56 squares) rather than to the
+    /// 40-square storm bound, because a current is drift, not a hazard, and there is no
+    /// reason yet to believe it needs the same ceiling. No specification backs 56 -- it is
+    /// the widest zone the content happens to author today. Phase 8 sets the real ceiling
+    /// when the maps are drawn by hand instead of bridged from the old chart.
     /// </summary>
-    public const float MaximumCurrentRadiusSquares = 28f;
+    public const float MaximumCurrentRadiusSquares = 56f;
 
     public static int ChunkCoordinate(float position)
     {

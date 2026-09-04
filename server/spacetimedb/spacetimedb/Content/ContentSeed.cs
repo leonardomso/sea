@@ -52,8 +52,8 @@ public static partial class Module
                 {
                     SectorId = SectorRules.SectorId(map.MapId, x, y),
                     MapId = map.MapId,
-                    X = (byte)x,
-                    Y = (byte)y,
+                    X = checked((ushort)x),
+                    Y = checked((ushort)y),
                     TerrainCode = (byte)SectorRules.TerrainAt(map, x, y),
                 });
             }

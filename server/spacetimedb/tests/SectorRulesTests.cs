@@ -49,7 +49,7 @@ public sealed class SectorRulesTests
     [InlineData(19.9f, 19.9f, 19, 19)]
     [InlineData(13.5f, 12.5f, 13, 12)]
     [InlineData(-5f, -5f, 0, 0)]
-    [InlineData(25f, 25f, 19, 19)]
+    [InlineData(425f, 425f, 399, 399)]
     public void World_positions_map_to_their_containing_sector(float x, float y, int column, int row)
     {
         Assert.Equal(new SectorCoordinate(column, row), SectorRules.SectorOf(Havenmere(), x, y));
@@ -57,9 +57,9 @@ public sealed class SectorRulesTests
 
     [Theory]
     [InlineData(0f, 0f, true)]
-    [InlineData(20f, 0f, false)]
+    [InlineData(400f, 0f, false)]
     [InlineData(0f, -0.01f, false)]
-    [InlineData(19.99f, 19.99f, true)]
+    [InlineData(399.99f, 399.99f, true)]
     public void Contains_uses_a_half_open_map_extent(float x, float y, bool expected)
     {
         Assert.Equal(expected, SectorRules.Contains(Havenmere(), x, y));
@@ -85,8 +85,8 @@ public sealed class SectorRulesTests
     public void Havenmere_port_sits_on_water_and_the_first_island_on_land()
     {
         var map = Havenmere();
-        Assert.Equal(TerrainCode.Water, SectorRules.TerrainAt(map, 10, 10));
-        Assert.Equal(TerrainCode.Land, SectorRules.TerrainAt(map, 13, 12));
+        Assert.Equal(TerrainCode.Water, SectorRules.TerrainAt(map, 210, 210));
+        Assert.Equal(TerrainCode.Land, SectorRules.TerrainAt(map, 270, 250));
     }
 
     [Fact]

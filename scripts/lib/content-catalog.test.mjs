@@ -199,13 +199,14 @@ test("validation reports missing, mistyped, unknown, and duplicate entries", () 
   assert.ok(errors.includes(`statCaps.npcArmorByTier[1]: expected float, got "x"`), errors.join("\n"));
 });
 
-test("validation rejects a byte out of range and a non-finite float", () => {
+test("validation rejects a byte out of range, a ushort out of range, and a non-finite float", () => {
   const errors = validateContent({
     ...FIXTURE,
-    maps: [{ ...FIXTURE.maps[0], width: 300 }],
+    maps: [{ ...FIXTURE.maps[0], mapRank: 300, width: 70000 }],
     cannons: [{ ...FIXTURE.cannons[0], reloadSeconds: Number.NaN }],
   });
-  assert.ok(errors.includes("maps[0].width: expected byte, got 300"), errors.join("\n"));
+  assert.ok(errors.includes("maps[0].mapRank: expected byte, got 300"), errors.join("\n"));
+  assert.ok(errors.includes("maps[0].width: expected ushort, got 70000"), errors.join("\n"));
   assert.ok(errors.includes("cannons[0].reloadSeconds: expected float, got NaN"), errors.join("\n"));
 });
 

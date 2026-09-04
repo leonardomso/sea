@@ -30,8 +30,10 @@ public sealed record MapContent
     public required string Name { get; init; }
     public required string Biome { get; init; }
     public required byte MapRank { get; init; }
-    public required byte Width { get; init; }
-    public required byte Height { get; init; }
+    /// <summary>Squares across. SEA_5 §3.1 fixes this at 400 for every map.</summary>
+    public required ushort Width { get; init; }
+    /// <summary>Squares down.</summary>
+    public required ushort Height { get; init; }
     public required string PvpMode { get; init; }
     public required string MaterialId { get; init; }
     public required string PortName { get; init; }
@@ -43,11 +45,9 @@ public sealed record MapContent
     /// south, the same way the ruler and the world's own y axis run. There is no flip left
     /// between any of the three.
     ///
-    /// A row index is NOT a y yet. The authored grid is still 20 x 20 over a world that is
-    /// now 400 squares on a side, so one row spans twenty squares and
-    /// <see cref="SectorRules.TerrainAt"/> takes a scaled index, not a position. Feeding it
-    /// <c>floor(y)</c> throws once y passes 20. Task 1.6 expands the grid to one row per
-    /// square; only then does <c>TerrainRows[y][x]</c> read straight.
+    /// A row index is a y. The grid is one row per square over the 400-square world, so
+    /// <see cref="SectorRules.TerrainAt"/> takes a position directly: <c>TerrainRows[y][x]</c>
+    /// reads straight off <c>floor(y)</c> and <c>floor(x)</c>.
     /// </summary>
     public required IReadOnlyList<string> TerrainRows { get; init; }
     public required IReadOnlyList<WorldObjectContent> Objects { get; init; }

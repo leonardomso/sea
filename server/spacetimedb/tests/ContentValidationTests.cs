@@ -116,6 +116,43 @@ public sealed class ContentValidationTests
     }
 
     [Fact]
+    public void EveryMapIsFourHundredSquaresOnASide()
+    {
+        foreach (var map in Catalog.Maps)
+        {
+            Assert.Equal(400, map.Width);
+            Assert.Equal(400, map.Height);
+        }
+    }
+
+    [Fact]
+    public void NoWorldObjectSitsOutsideItsMap()
+    {
+        foreach (var map in Catalog.Maps)
+        {
+            foreach (var worldObject in map.Objects)
+            {
+                Assert.True(
+                    WorldRules.IsInsideMap(worldObject.X, worldObject.Y),
+                    $"{map.Code} object {worldObject.EntityId} ({worldObject.Kind}) at " +
+                    $"({worldObject.X}, {worldObject.Y}) is off the map");
+            }
+        }
+    }
+
+    [Fact]
+    public void TheTerrainGridIsAsWideAndTallAsTheMapSaysItIs()
+    {
+        // The expansion in Step 4 is mechanical, so the way it goes wrong is off-by-a-block
+        // rather than subtly wrong: one short row, or four hundred rows of twenty characters.
+        foreach (var map in Catalog.Maps)
+        {
+            Assert.Equal(map.Height, map.TerrainRows.Count);
+            Assert.All(map.TerrainRows, row => Assert.Equal(map.Width, row.Length));
+        }
+    }
+
+    [Fact]
     public void A_negative_object_radius_reports_only_the_positivity_rule()
     {
         var errors = ContentCatalog.Validate(WorldObject(item => item with { Radius = -1f }));

@@ -31,8 +31,8 @@ const MAP_FIELDS = [
   field("name", "string"),
   field("biome", "string"),
   field("mapRank", "byte"),
-  field("width", "byte"),
-  field("height", "byte"),
+  field("width", "ushort"),
+  field("height", "ushort"),
   field("pvpMode", "string"),
   field("materialId", "string"),
   field("portName", "string"),
@@ -196,6 +196,9 @@ function checkScalar(kind, value, location, errors) {
     case "byte":
       if (!isInteger(value, 255)) errors.push(`${location}: expected byte, got ${describe(value)}`);
       return;
+    case "ushort":
+      if (!isInteger(value, 65535)) errors.push(`${location}: expected ushort, got ${describe(value)}`);
+      return;
     case "uint":
       if (!isInteger(value, 4294967295)) errors.push(`${location}: expected uint, got ${describe(value)}`);
       return;
@@ -295,6 +298,7 @@ const SCALARS = {
   string: (value) => JSON.stringify(value),
   bool: (value) => (value ? "true" : "false"),
   byte: (value) => `(byte)${value}`,
+  ushort: (value) => `(ushort)${value}`,
   uint: (value) => `${value}u`,
   ulong: (value) => `${value}UL`,
   float: (value) => floatLiteral(value),
