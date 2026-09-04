@@ -311,12 +311,22 @@ namespace Sea.Client
                 : SeaSnapshotClock.DefaultTickRate;
             var elapsed = (float)Math.Max(0d, (serverTick - movement.SnapshotTick) / tickRate);
             var predicted = SeaLocalShipPrediction.Predict(
-                ToWorld(movement.PositionX, movement.PositionY, ShipRootHeight),
-                movement.HeadingDegrees,
-                movement.IsMoving ? movement.Speed : 0f,
+                new SeaSailingState(
+                    ToWorld(movement.PositionX, movement.PositionY, ShipRootHeight),
+                    movement.HeadingDegrees,
+                    movement.Speed),
                 ToWorld(localShip.DestinationX, localShip.DestinationY, ShipRootHeight),
-                localShip.HasCourse && !localShip.IsStopping,
-                localShip.TurnRateDegrees,
+                localShip.HasCourse,
+                localShip.IsStopping,
+                // The row carries the ship's rated figures, not the tactical ones the server
+                // sails her with under wind and effects. That difference is small and the
+                // reconcile absorbs it; refusing to reckon at all is what did not get absorbed.
+                new SeaSailingParameters(
+                    localShip.MaximumSpeed,
+                    localShip.Acceleration,
+                    localShip.Deceleration,
+                    localShip.TurnRateDegrees),
+                1f / tickRate,
                 elapsed);
             motion = new SeaPredictedMotion(
                 SeaLocalShipPrediction.Reconcile(rendered, predicted.Position, deltaSeconds),

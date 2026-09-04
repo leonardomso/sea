@@ -11,11 +11,11 @@ namespace Sea.Client
     {
         // Mirrors the server WorldRules.TickRateHz until the world contract module owns it.
         public const uint DefaultTickRate = 10;
-        // The server sails half the fleet each tick, so a remote ship publishes every two
-        // ticks and the delay has to be two as well: any less and rendering runs past the
-        // newest sample and guesses instead of drawing what actually happened. The local ship
-        // does not pay it at all - it is dead reckoned forward.
-        public const double RenderDelayTicks = 2d;
+        // Every ship now sails on every tick, so one tick of delay is enough to have the
+        // bracketing samples in hand. This is the whole of what a captain waits to see a
+        // hostile move, so it is bought back as soon as the server can afford it. The local
+        // ship does not pay it at all - it is dead reckoned forward.
+        public const double RenderDelayTicks = 1d;
         public const double ForwardSnapTicks = 1d;
         public const double BackwardSnapTicks = 20d;
         public const double SlewTicksPerSecond = 0.5d;

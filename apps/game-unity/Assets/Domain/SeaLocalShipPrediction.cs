@@ -17,11 +17,16 @@ namespace Sea.Client
     }
 
     /// <summary>
-    /// Dead reckoning for the ship the player steers. Remote ships are interpolated a render
-    /// delay behind the server, which is right for them and wrong for the local ship: it turns
-    /// every click into a visible wait. The local ship is instead carried forward from its newest
-    /// snapshot along the course the server already agreed to, and the difference against the
-    /// next snapshot is absorbed rather than snapped.
+    /// Dead reckoning for the ship the player steers. Remote ships are interpolated a render delay
+    /// behind the server, which is right for them and wrong for the local ship: it turns every
+    /// click into a visible wait. The local ship is instead sailed forward from her newest
+    /// snapshot by the same rule the server sails her with, one server tick at a time, and the
+    /// difference against the next snapshot is absorbed rather than snapped.
+    ///
+    /// Running the real rule rather than an approximation of it is the whole point. A simpler
+    /// model - constant speed, no braking, nothing from rest - does not fail by being slightly
+    /// off; it fails by disagreeing with the server about what the ship is doing, so the
+    /// correction never settles and the hull is permanently being tugged.
     /// </summary>
     public static class SeaLocalShipPrediction
     {
@@ -37,13 +42,19 @@ namespace Sea.Client
         // Easing across it would sail the hull through the map.
         public const float SnapDistance = 15f;
 
+        // The server advances a ship in whole ticks, so the reckoning matches it best when it
+        // does the same and spends only the remainder on a partial step.
+        public const float DefaultStepSeconds = 0.1f;
+
+        private const float ShortestStepSeconds = 1f / 120f;
+
         public static SeaPredictedMotion Predict(
-            Vector3 position,
-            float headingDegrees,
-            float speed,
+            SeaSailingState state,
             Vector3 destination,
             bool hasCourse,
-            float turnRateDegrees,
+            bool isStopping,
+            SeaSailingParameters parameters,
+            float secondsPerStep,
             float seconds)
         {
             if (!float.IsFinite(seconds) || seconds < 0f)
@@ -51,29 +62,42 @@ namespace Sea.Client
                 throw new ArgumentOutOfRangeException(nameof(seconds));
             }
 
-            var elapsed = Mathf.Min(seconds, MaximumPredictionSeconds);
-            var remaining = new Vector3(destination.x - position.x, 0f, destination.z - position.z);
-            var distance = remaining.magnitude;
-            if (!hasCourse || speed <= 0f || distance <= 0.001f || elapsed <= 0f)
+            var remaining = Mathf.Min(seconds, MaximumPredictionSeconds);
+
+            // A ship with no course and no way to shed is where the server left her. Note that a
+            // stopping ship still reckons: she is carrying way off, and freezing her there is the
+            // stutter at the end of every voyage.
+            if (remaining <= 0f || (!hasCourse && !isStopping))
             {
-                return new SeaPredictedMotion(position, headingDegrees);
+                return new SeaPredictedMotion(state.Position, state.HeadingDegrees);
             }
 
-            var desiredHeading = Mathf.Atan2(remaining.x, remaining.z) * Mathf.Rad2Deg;
-            var heading = Mathf.MoveTowardsAngle(
-                headingDegrees,
-                desiredHeading,
-                Mathf.Max(0f, turnRateDegrees) * elapsed);
+            var step = float.IsFinite(secondsPerStep)
+                ? Mathf.Max(ShortestStepSeconds, secondsPerStep)
+                : DefaultStepSeconds;
+            var position = state.Position;
+            var heading = state.HeadingDegrees;
+            var speed = state.Speed;
+            while (remaining > 0f)
+            {
+                var slice = Mathf.Min(step, remaining);
+                var advanced = SeaSailingRules.Step(
+                    new SeaSailingState(position, heading, speed),
+                    destination,
+                    isStopping,
+                    parameters,
+                    slice);
+                position = advanced.Position;
+                heading = advanced.HeadingDegrees;
+                speed = advanced.Speed;
+                remaining -= slice;
+                if (advanced.Arrived || !advanced.IsMoving)
+                {
+                    break;
+                }
+            }
 
-            // Never sail past the destination the server is steering to: overshooting it would
-            // be corrected backwards on the very next snapshot, which reads as a stutter.
-            var travel = Mathf.Min(speed * elapsed, distance);
-            var radians = heading * Mathf.Deg2Rad;
-            var predicted = new Vector3(
-                position.x + (Mathf.Sin(radians) * travel),
-                position.y,
-                position.z + (Mathf.Cos(radians) * travel));
-            return new SeaPredictedMotion(predicted, heading);
+            return new SeaPredictedMotion(position, heading);
         }
 
         public static Vector3 Reconcile(Vector3 rendered, Vector3 predicted, float deltaSeconds)

@@ -18,10 +18,10 @@ namespace Sea.Tests.EditMode
 
             Assert.That(clock.IsRunning, Is.True);
             Assert.That(clock.ServerTick(0d), Is.EqualTo(100d).Within(0.001d));
-            Assert.That(clock.RenderTick(0d), Is.EqualTo(98d).Within(0.001d));
+            Assert.That(clock.RenderTick(0d), Is.EqualTo(99d).Within(0.001d));
             Assert.That(
                 SeaSnapshotClock.RenderTickFrom(100d),
-                Is.EqualTo(98d).Within(0.001d),
+                Is.EqualTo(99d).Within(0.001d),
                 "Converting a tick already read must not advance the estimate a second time.");
             Assert.That(clock.ServerTick(0.5d), Is.EqualTo(105d).Within(0.001d));
         }
@@ -76,22 +76,23 @@ namespace Sea.Tests.EditMode
         }
 
         [Test]
-        public void Render_delay_keeps_a_ship_sailed_every_other_tick_inside_her_samples()
+        public void Render_delay_keeps_a_ship_sailed_every_tick_inside_her_samples()
         {
             var timeline = new SeaMotionTimeline();
             timeline.Push(10, new Vector3(0f, 0f, 0f), 0f);
-            timeline.Push(12, new Vector3(20f, 0f, 0f), 0f);
+            timeline.Push(11, new Vector3(10f, 0f, 0f), 0f);
 
-            // A tick sails half the fleet, so tick 12 is the newest a remote ship can be while
-            // the server is on tick 12. Trailing by the stride leaves rendering between two
-            // samples it already holds instead of guessing past the last one.
-            Assert.That(SeaSnapshotClock.RenderTickFrom(12d), Is.EqualTo(10d).Within(0.001d));
+            // Every ship now sails on every tick, so while the server is on tick 11 the newest
+            // sample a remote ship can have is tick 11. Trailing by one leaves rendering between
+            // two samples it already holds instead of guessing past the last one, and it is a
+            // tenth of a second rather than a fifth of one before a hostile's turn is on screen.
+            Assert.That(SeaSnapshotClock.RenderTickFrom(11d), Is.EqualTo(10d).Within(0.001d));
             Assert.That(
-                timeline.Sample(SeaSnapshotClock.RenderTickFrom(12d)).Position.x,
+                timeline.Sample(SeaSnapshotClock.RenderTickFrom(11d)).Position.x,
                 Is.EqualTo(0f).Within(0.001f));
             Assert.That(
-                timeline.Sample(SeaSnapshotClock.RenderTickFrom(13d)).Position.x,
-                Is.EqualTo(10f).Within(0.001f));
+                timeline.Sample(SeaSnapshotClock.RenderTickFrom(11.5d)).Position.x,
+                Is.EqualTo(5f).Within(0.001f));
         }
 
         [Test]
