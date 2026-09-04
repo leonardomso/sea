@@ -30,6 +30,11 @@ public static partial class ContentCatalog
             Positive(label, "height", map.Height, errors);
 
             var sized = map.Width > 0 && map.Height > 0;
+            if (sized)
+            {
+                ValidateWorldExtent(map, label, errors);
+            }
+
             var terrainValid = sized && ValidateTerrain(map, label, errors);
             if (terrainValid)
             {
@@ -39,6 +44,27 @@ public static partial class ContentCatalog
             ValidateObjects(map, label, terrainValid, errors);
             ValidateHarbor(map, label, errors);
             ValidateCurrents(map, label, errors);
+        }
+    }
+
+    /// <summary>
+    /// The grid a map declares has to be the world it is played on. This used to compare a
+    /// per-map origin against the world bounds; there is no per-map origin any more, so it
+    /// compares the extent directly.
+    /// </summary>
+    /// <remarks>
+    /// This is a publish-time gate, not a test: <c>SeedContent</c> throws on any validation
+    /// error, so a map that disagrees with <see cref="WorldRules.MapSizeSquares"/> never
+    /// reaches the database. It fails for Havenmere until Task 1.6 rescales the content,
+    /// which is the point -- the alternative was deleting the only thing that would notice.
+    /// </remarks>
+    private static void ValidateWorldExtent(MapContent map, string label, List<string> errors)
+    {
+        if (map.Width != (int)WorldRules.MapSizeSquares || map.Height != (int)WorldRules.MapSizeSquares)
+        {
+            errors.Add(
+                $"{label}: the {map.Width}x{map.Height} sector grid does not cover the "
+                + $"{Format(WorldRules.MapSizeSquares)}x{Format(WorldRules.MapSizeSquares)} world.");
         }
     }
 

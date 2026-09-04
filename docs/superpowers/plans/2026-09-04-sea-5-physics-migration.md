@@ -1096,10 +1096,34 @@ already calls a chart square."
 
 **Files:**
 - Modify: `server/spacetimedb/spacetimedb/Domain/ContentDefinitions.cs`
+- Modify: `server/spacetimedb/spacetimedb/Schema/ContentTables.cs`
+- Modify: `server/spacetimedb/spacetimedb/Content/ContentSeed.cs`
 - Modify: `server/spacetimedb/spacetimedb/Content/Data/maps.json`
 - Modify: `scripts/generate-content.mjs`
 
 `MapContent.Width` and `Height` are `byte`. 400 does not fit in a byte.
+
+**The schema has the same problem, and one instance of it fails silently.**
+`Schema/ContentTables.cs` declares `MapDef.Width`/`Height` and `Sector.X`/`Y` as
+`byte` too, and `ContentSeed.cs` writes the sector columns through a plain
+`(byte)x` cast. An unchecked cast does not throw: on a 400-wide map, column 256
+is stored as column 0, silently, and two squares share a row. Widen all four
+columns with the domain types, and make the casts `checked` so a future overflow
+is loud. Widening a column changes the generated bindings, so regenerate rather
+than hand-editing them.
+
+**Restore the extent gate as part of this task.** Task 1.3 could not keep
+`ContentValidation.Maps.cs`'s `ValidateWorldExtent` in its original form, because
+it compared a per-map origin that no longer exists. It was rewritten to compare
+`map.Width`/`Height` against `WorldRules.MapSizeSquares` and is deliberately red
+until this task rescales Havenmere. It is a publish-time gate -- `SeedContent`
+throws on any validation error -- so confirm it passes here rather than assuming
+the new unit tests cover it. They do not; they are CI, it is the deploy check.
+
+**Watch the seed cost.** A 400 x 400 map is 160,000 `Sector` rows, up from 400,
+and Init seeds every map. Measure it before moving on; if it is slow, say so in
+the commit body, because Phase 2's land mask may make most of this table dead
+weight and it is better to know that here than after three maps exist.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1255,6 +1279,15 @@ the test meant and write that.
 ```sh
 pnpm server:test
 ```
+
+**Do not publish this phase incrementally.** `Sector.SectorId` is a `[PrimaryKey]`
+whose bit layout changed in Task 1.3, and the `Sector.X`/`Y` columns widen in Task
+1.6. Rows seeded under the old packing are indistinguishable from new ones -- the
+column type never changed, only the meaning of the bits -- so an ordinary
+`server:publish` against a persistent world leaves both formats in one table and
+nothing notices. `SeedContent` only runs on first publish or on a cleared
+database, so this phase needs `scripts/reset-spacetime.sh` and a reseed, not an
+incremental publish.
 
 Expected: `Passed! - Failed: 0`.
 
@@ -4189,6 +4222,14 @@ reducer, `TargetingRules` and the NPC rules with
 `RangeRules.IsWithinRange(GeometryRules.Distance(...), ...)`.
 
 - [ ] **Step 5: Replace `VisionRadius` with `ViewDistanceSquares`**
+
+While here, settle `RangeUnits`. `ShipStatsSystem.cs` writes `ship.RangeUnits`
+from `sheet.RangeSquares`, and `CombatRules.FireRequest` carries the same name;
+Task 1.3 removed the conversion but left the names, which now say units for a
+value in squares. The wire field is generated, so renaming it means regenerating
+bindings and touching the client. Rename them here or write down why not -- the
+plan had never assigned this anywhere, and Task 1.3 deferred it to this task on
+an assumption rather than a step.
 
 `WorldRules.VisionRadius` was deleted in Task 1.2. Every caller now reads
 `RangeRules.ViewDistanceSquares`, and the subscription query in
