@@ -68,6 +68,12 @@ public sealed class GeometryRulesTests
         Assert.Equal(expectedY, y, 3);
     }
 
+    // This is a consistency check, not an orientation one: atan2(sin h, cos h) recovers h under
+    // the old south-pointing convention too, as long as both halves share it. What it does catch
+    // is a half-migrated pair, where one of the two is flipped and the other is not, which is the
+    // likeliest bug in the phases that follow. DirectionPointsWhereTheBearingSays above is what
+    // pins the sign, so do not delete that on the grounds that this covers it.
+    //
     // The two are inverses, but only to the sharpness of the table Direction reads. It samples
     // every quarter degree and rounds to the nearest, so a bearing off that grid comes back up to
     // half a step -- 0.125 degrees -- from where it went in. Asserting on decimal places instead
@@ -80,15 +86,34 @@ public sealed class GeometryRulesTests
     [InlineData(137.5f)]
     [InlineData(210.25f)]
     [InlineData(300.75f)]
+    [InlineData(359.9f)]     // just short of the wrap, where HeadingTo answers just past 0
     public void DirectionAndHeadingToAgreeOffTheAxes(float headingDegrees)
     {
         var (x, y) = GeometryRules.Direction(headingDegrees);
         var recovered = GeometryRules.HeadingTo(
             0f, 0f, x * 10f, y * 10f, fallbackHeadingDegrees: 0f);
 
+        // Signed, not a plain subtraction: HeadingTo answers in [0, 360), so a bearing just
+        // short of north comes back just past it and a subtraction would call that 359.9 out.
+        var error = GeometryRules.NormalizeSignedAngle(recovered - headingDegrees);
+
         Assert.True(
-            MathF.Abs(recovered - headingDegrees) <= 0.125f,
+            MathF.Abs(error) <= 0.125f,
             $"expected a bearing within a quarter degree step of {headingDegrees}, got {recovered}");
+    }
+
+    [Fact]
+    public void DirectionNeverHandsBackANegativeZero()
+    {
+        // Due west reads a sine table entry of exactly +0 for its Y, and negating that would give
+        // -0. Nothing hashes a direction vector today; this holds the door shut before it does.
+        foreach (var headingDegrees in new[] { 0f, 90f, 180f, 270f, 360f })
+        {
+            var (x, y) = GeometryRules.Direction(headingDegrees);
+
+            Assert.NotEqual(BitConverter.SingleToUInt32Bits(-0f), BitConverter.SingleToUInt32Bits(x));
+            Assert.NotEqual(BitConverter.SingleToUInt32Bits(-0f), BitConverter.SingleToUInt32Bits(y));
+        }
     }
 
     [Theory]

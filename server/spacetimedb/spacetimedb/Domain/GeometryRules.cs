@@ -86,14 +86,23 @@ public static class GeometryRules
     /// Y is negated because the chart grows downwards, so north is -Y.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// This reads <see cref="TrigonometryRules"/>, which samples a quarter of a
     /// degree at a time, so the vector points at the nearest quarter degree and
     /// can sit up to 0.125 degrees off the bearing <see cref="HeadingTo"/> would
     /// give for the same vector. At 400 squares that is well under a square at
     /// any range, but the mixed precision surprises people.
+    /// </para>
+    /// <para>
+    /// Y is subtracted from zero rather than negated. Due west reads a table entry
+    /// of exactly +0, and negating that gives -0, which is a different number to
+    /// anything that hashes a vector. Subtracting costs the same instruction and
+    /// keeps this file's promise that no zero it hands out is negative.
+    /// </para>
     /// </remarks>
     public static (float X, float Y) Direction(float headingDegrees) =>
-        (TrigonometryRules.SinDegrees(headingDegrees), -TrigonometryRules.CosDegrees(headingDegrees));
+        (TrigonometryRules.SinDegrees(headingDegrees),
+            0f - TrigonometryRules.CosDegrees(headingDegrees));
 
     /// <summary>Maps any angle onto [0, 360): 0 and 360 are both 0, and there is no negative zero.</summary>
     public static float NormalizeAngle(float angleDegrees)
@@ -129,7 +138,9 @@ public static class GeometryRules
     /// <summary>
     /// Whether a course from start to end passes through a circle. Touching is not
     /// passing through: a course exactly tangent to the circle is a miss. A
-    /// zero-length segment is treated as the point it starts at.
+    /// zero-length segment is treated as the point it starts at. The radius is
+    /// taken as given and squared, so a negative one behaves as its own magnitude
+    /// rather than as an empty circle.
     /// </summary>
     public static bool SegmentIntersectsCircle(
         float startX,
