@@ -30,12 +30,10 @@ namespace Sea.Client
             }
 
             CaptureProgressionBaseline(target);
-            if (!target.IsActive || !target.IsAlive)
+            if (!progressionSunkObserved && (!target.IsActive || !target.IsAlive))
             {
                 progressionSunkObserved = true;
                 progressionSinkPosition = LivePosition(target);
-                SailToProgressionLoot(player);
-                return true;
             }
 
             if (!progressionSunkObserved)
@@ -43,8 +41,16 @@ namespace Sea.Client
                 return false;
             }
 
-            if (progressionLootObserved &&
-                target.EncounterId != progressionInitialEncounterId)
+            // A common is back on the water thirty seconds after she goes down, which is
+            // less time than a wreck site takes to comb. Sailing for the loot has to
+            // outlive the respawn or the run waits for a purse that nobody is sailing to.
+            if (!progressionLootObserved)
+            {
+                SailToProgressionLoot(player);
+                return true;
+            }
+
+            if (target.EncounterId != progressionInitialEncounterId)
             {
                 progressionEnabledForThisRun = false;
                 combatEnabledForThisRun = false;

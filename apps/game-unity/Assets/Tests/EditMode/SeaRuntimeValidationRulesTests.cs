@@ -48,6 +48,28 @@ namespace Sea.Tests
             Assert.That(decision.DesiredHeadingDegrees, Is.EqualTo(37f));
         }
 
+        [Test]
+        public void The_runtime_probe_reads_a_launched_volley_from_the_magazine()
+        {
+            // Milestone 1 hands out unlimited ammunition, so a spent round is no longer evidence.
+            Assert.That(
+                SeaRuntimeValidationRules.HasLaunchedVolley(3, 2, 100, 100),
+                Is.True,
+                "a ready volley left the racks");
+            Assert.That(
+                SeaRuntimeValidationRules.HasLaunchedVolley(3, 3, 100, 140),
+                Is.True,
+                "the module stamped a newer shot tick");
+            Assert.That(
+                SeaRuntimeValidationRules.HasLaunchedVolley(3, 3, 100, 100),
+                Is.False,
+                "nothing on the hull moved, so nothing was fired");
+            Assert.That(
+                SeaRuntimeValidationRules.HasLaunchedVolley(2, 3, 100, 100),
+                Is.False,
+                "a reload finishing is not a shot");
+        }
+
         [TestCase(0, 100, true)]
         [TestCase(1, 100, true)]
         [TestCase(99, 100, true)]

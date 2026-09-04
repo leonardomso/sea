@@ -47,6 +47,18 @@ namespace Sea.Client
             return new RuntimeFirePlan(true, bearing);
         }
 
+        /// <summary>
+        /// Proof that a volley actually left the racks. Ammunition is unlimited in Milestone 1, so
+        /// the magazine is the only thing a fired shot moves on the ship row: either a ready volley
+        /// is gone or the module stamped a newer shot tick on the hull.
+        /// </summary>
+        public static bool HasLaunchedVolley(
+            uint volleysBeforeFiring,
+            uint volleysNow,
+            ulong shotTickBeforeFiring,
+            ulong shotTickNow) =>
+            volleysNow < volleysBeforeFiring || shotTickNow > shotTickBeforeFiring;
+
         public static bool ShouldRestoreSyntheticFleet(
             int visibleCount,
             int requiredCount) =>

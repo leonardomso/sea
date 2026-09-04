@@ -64,11 +64,15 @@ defaults write "$preference_domain" "$token_key" -string "invalid-local-runtime-
   -logFile "$runtime_log" >/dev/null 2>&1 &
 game_pid=$!
 
+# The run sails four scenarios end to end: out of the harbour, onto a hostile, over her
+# wreck for the loot, then out to a storm and home again on a repair. A common is back on
+# the water thirty seconds after she sinks, and the probe waits that out, so the ceiling is
+# generous; a healthy run breaks out of this loop in about two minutes.
 validated=false
-for _ in {1..180}; do
+for _ in {1..420}; do
   if rg -q "Sea client ready\." "$runtime_log" 2>/dev/null \
     && rg -q "Sea runtime observed progressive sailing\." "$runtime_log" 2>/dev/null \
-    && rg -q "Sea runtime observed authoritative manual broadside combat\." "$runtime_log" 2>/dev/null \
+    && rg -q "Sea runtime observed authoritative manual magazine combat\." "$runtime_log" 2>/dev/null \
     && rg -q "Sea runtime observed NPC sinking, atomic loot, gold, and NPC respawn\." "$runtime_log" 2>/dev/null \
     && rg -q "Sea runtime observed tactical ability, storm damage, and progressive repair\." "$runtime_log" 2>/dev/null; then
     validated=true
@@ -83,7 +87,7 @@ for _ in {1..180}; do
 done
 
 if [ "$validated" != true ] || [ ! -s "$runtime_evidence" ]; then
-  echo "Unity runtime did not demonstrate sailing, broadside combat, and tactical recovery." >&2
+  echo "Unity runtime did not demonstrate sailing, magazine combat, and tactical recovery." >&2
   rg -n "Sea runtime|Rejected|Reducer|Exception|Fatal" "$runtime_log" >&2 || true
   tail -n 120 "$runtime_log" >&2 || true
   exit 1
@@ -92,7 +96,7 @@ fi
 rg -q "Cached identity rejected; retrying anonymously\." "$runtime_log"
 rg -q "Sea client ready\." "$runtime_log"
 rg -q "Sea runtime observed progressive sailing\." "$runtime_log"
-rg -q "Sea runtime observed authoritative manual broadside combat\." "$runtime_log"
+rg -q "Sea runtime observed authoritative manual magazine combat\." "$runtime_log"
 rg -q "Sea runtime observed NPC sinking, atomic loot, gold, and NPC respawn\." "$runtime_log"
 rg -q "Sea runtime observed tactical ability, storm damage, and progressive repair\." "$runtime_log"
 node - "$runtime_evidence" <<'NODE'
