@@ -147,11 +147,20 @@ Both are measured, both are written down, and neither has been hidden by
 lowering a gate.
 
 **The world tick is too slow at a hundred clients.** The gate asks for p95 at
-or under 10 ms. We measure 25.6 ms. `PerformanceBudget.cs` still holds the
-original numbers, so `pnpm runtime:test:scale-isolated` exits non-zero on
-purpose. Nothing about this is felt by a player today: the tick fires every
-100 ms, so 25 ms of work fits easily, the host stays under 1 percent of a core,
-and a command is answered in about 27 ms against a 150 ms gate.
+or under 10 ms. We measure 37.7 ms, and p99 is 56.8 ms against a 20 ms gate.
+`PerformanceBudget.cs` still holds the original numbers, so `pnpm
+runtime:test:scale-isolated` exits non-zero on purpose. It was 25.6 ms before
+the sailing pass: every hull is now integrated on the tick it moves rather than
+on every second tick, which doubled the shard rows a tick writes. The trade was
+taken on purpose, because the old way published a hull's position up to 200 ms
+after it happened and a captain feels that on every click.
+
+Nothing about this is felt by a player today: the tick fires every 100 ms, so
+38 ms of work still fits, the host stays under 2 percent of a core, and a
+command is answered in about 40 ms against a 150 ms gate. It is measured in
+`docs/performance/benchmarks.md` down to which phase spends what, and the
+answer is not a constant anyone can tune -- it is that a movement shard carries
+every hull it sails in one blob, so moving anything rewrites the whole blob.
 
 **Five thousand ships cannot sail at once.** Five thousand clients connect and
 stay connected with no failures on about a quarter of one core, which is what

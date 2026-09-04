@@ -145,3 +145,56 @@ The harness itself learned one thing from the five thousand client attempt. Its 
 and a `SELECT` that returns a row per client is slower the more clients there are, so the run died
 on `curl` exit 28 with no diagnostics rather than on a verdict about the server. They now wait
 `SEA_CONTROL_PLANE_TIMEOUT` seconds (30 by default) and treat a timeout as a missing sample.
+
+## Re-measured after the sailing pass (2026-09-04, 100 clients)
+
+The sailing pass gave the ships back their fresh positions: `MovementShardStride` went from 2 to 1
+so every hull is integrated on the tick it moves rather than up to 200 ms later. That undid the
+"half the fleet per tick" saving above, and the tick is dearer for it. `pnpm
+runtime:test:scale-isolated`, same harness as the section before:
+
+| Measure | Stride 2 (previous) | Stride 1 (now) | Gate |
+| --- | ---: | ---: | ---: |
+| dispatch p95 | 25.64 ms | 37.66 ms | 10 ms |
+| dispatch p99 | 40.48 ms | 56.80 ms | 20 ms |
+| command ack p95 | 27.50 ms | 39.64 ms | 150 ms |
+| command ack p99 | 40.12 ms | 136.60 ms | -- |
+| server CPU | 0.58 % | 1.44 % | 85 % |
+| memory growth | 0 % | 0 % | 5 % |
+| failed clients | 0 | 0 | 0 |
+
+Everything but the tick still passes with room. The tick was already over its gate at stride 2 and
+is further over now, so this is a worse miss of a gate that was never met, not a newly broken one.
+
+### Where the tick actually goes
+
+Measured with `ProfileDispatchPhases` on, 100 clients, 496 sampled ticks, milliseconds per tick.
+The sub-lines are the sum across every hull the phase handled in that tick, so they add up to the
+phase above them:
+
+| Phase | mean | p95 |
+| --- | ---: | ---: |
+| everything before the fleet | 5.15 | -- |
+| npc, total | 10.30 | 13.59 |
+| -- hydrate the deciding hull | 1.85 | 4.42 |
+| -- read her target | 1.11 | 2.75 |
+| -- hunt for a new one | 1.30 | 5.10 |
+| -- carry out the decision | 0.94 | 3.69 |
+| -- loop and index overhead | 5.10 | -- |
+| movement, total | 15.30 | 18.40 |
+| -- read the shard row | 0.58 | 1.45 |
+| -- apply pending commands | 0.67 | 2.07 |
+| -- sail and publish | 3.23 | 8.66 |
+| -- write the shard row back | 3.56 | 8.50 |
+| whole tick | 30.75 | 41.64 |
+
+Two things stand out. Writing the eight movement shard rows back costs 3.56 ms a tick on its own,
+and that is the price of stride 1 outright: at stride 2 only four of them were written. And the NPC
+phase costs 10 ms to make roughly seven decisions, which is 1.4 ms a hostile against a fleet of
+fifteen -- the hostiles are dearer per hull than the hundred players are.
+
+Neither is rule cost. A shard row carries every hull it is sailing in one blob, so a tick reads and
+rewrites the whole blob to move anything in it, and a hostile pays a fat `Ship` row read plus a
+linear scan of that blob before it can decide anything. Closing the remaining distance means
+changing that layout, not tuning constants, which is a job for the architecture pass rather than
+this one.
