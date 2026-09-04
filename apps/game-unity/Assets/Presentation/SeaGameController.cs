@@ -121,12 +121,28 @@ namespace Sea.Client
                 return;
             }
 
-            enemies.Sort((left, right) => left.EntityId.CompareTo(right.EntityId));
+            // Tab takes the nearest hostile first and works outwards, which is the order a
+            // captain would pick them in; ties fall back to the entity id so the ring is stable.
+            var origin = TryGetLocalShip(out var self)
+                ? new Vector2(self.PositionX, self.PositionY)
+                : Vector2.zero;
+            enemies.Sort((left, right) =>
+            {
+                var comparison = SquaredRange(left, origin).CompareTo(SquaredRange(right, origin));
+                return comparison != 0 ? comparison : left.EntityId.CompareTo(right.EntityId);
+            });
             var current = enemies.FindIndex(enemy => enemy.EntityId == SelectedTargetId);
             var next = current < 0
                 ? direction < 0 ? enemies.Count - 1 : 0
                 : (current + (direction < 0 ? -1 : 1) + enemies.Count) % enemies.Count;
             SelectTarget(enemies[next].EntityId);
+        }
+
+        private static float SquaredRange(Ship ship, Vector2 origin)
+        {
+            var dx = ship.PositionX - origin.x;
+            var dy = ship.PositionY - origin.y;
+            return (dx * dx) + (dy * dy);
         }
 
         public void SelectTarget(ulong entityId)
@@ -206,6 +222,21 @@ namespace Sea.Client
 
             Issue(new ShipCommand.Fire(new FireCommand()), "Fire");
         }
+
+        /// <summary>
+        /// Whether a held fire key has anything to send: a volley in the racks and something to
+        /// send it at. Asking here keeps the repeat off the wire when the server would refuse it.
+        /// </summary>
+        public bool CanFireNow =>
+            IsReady &&
+            TryGetLocalShip(out var ship) &&
+            ship.IsAlive &&
+            ship.ReadyVolleys > 0 &&
+            ship.TargetEntityId != 0;
+
+        /// <summary>A key the mechanics sheet reserves but Milestone 1 does not answer yet.</summary>
+        public void ReportUnavailable(string feature) =>
+            localAction = SeaCommandResultText.NotAvailableYet(feature);
 
         public void ToggleRepair()
         {

@@ -28,8 +28,13 @@ namespace Sea.Client
         private Camera chartCamera;
         private SeaChartCameraController chartCameraController;
         private bool recenterOffered;
-        private readonly Label[] topCoordinateLabels = new Label[9];
-        private readonly Label[] leftCoordinateLabels = new Label[7];
+        // One slot per square of the map on each edge, so a chart pulled out reads 1 to 20.
+        private readonly Label[] topCoordinateLabels = new Label[SeaChartCoordinates.ColumnCount];
+        private readonly Label[] leftCoordinateLabels = new Label[SeaChartCoordinates.RowCount];
+
+        // The racks never hold more than the hull's magazine plus the rigging bonus.
+        private readonly VisualElement[] magazineDots = new VisualElement[6];
+        private Label windArrow;
 
         // Apply() touches ~26 named elements per rebuild; memoising the query results
         // keeps the HUD off the visual-tree walk once the document is built.
@@ -213,6 +218,13 @@ namespace Sea.Client
                 leftCoordinateLabels[index] = root.Q<Label>($"left-coordinate-{index}");
             }
 
+            for (var index = 0; index < magazineDots.Length; index++)
+            {
+                magazineDots[index] = root.Q($"magazine-dot-{index}");
+            }
+
+            windArrow = root.Q<Label>("wind-arrow");
+
             HookButton("recenter-button", () => chartCameraController?.Recenter());
             HookButton("navigator-button", OpenCoordinateNavigator);
             HookButton("menu-button", () => input?.SetMenuOpen(true));
@@ -259,6 +271,8 @@ namespace Sea.Client
             SetProgress("reload-gauge", model.ReloadProgress);
             SetText("reload-text", model.ReloadText);
             SetText("magazine-text", model.MagazineText);
+            ApplyMagazineDots(model);
+            ApplyWind(model);
             fireControl?.EnableInClassList("ready", model.IsLoaded);
             SetText("ammo-count", $"{model.SelectedAmmoLabel} • {model.AmmoQuantity}");
             SelectButton("ammo-round", model.SelectedAmmo == "ROUND");
@@ -275,6 +289,35 @@ namespace Sea.Client
             wreckPrompt?.EnableInClassList("hidden", !model.IsSunk);
             SetText("wreck-text", model.WreckText);
             ButtonFor("respawn-button")?.EnableInClassList("hidden", !model.CanChooseBerth);
+        }
+
+        /// <summary>
+        /// A dot per volley the racks hold, filled while that volley can leave. Counting dots is
+        /// faster in a fight than reading "2 / 3", so the pair stays only as the exact figure.
+        /// </summary>
+        private void ApplyMagazineDots(SeaHudViewModel model)
+        {
+            for (var index = 0; index < magazineDots.Length; index++)
+            {
+                var dot = magazineDots[index];
+                if (dot == null)
+                {
+                    continue;
+                }
+
+                dot.EnableInClassList("hidden", index >= model.MagazineSize);
+                dot.EnableInClassList("loaded", index < model.ReadyVolleys);
+            }
+        }
+
+        private void ApplyWind(SeaHudViewModel model)
+        {
+            SetText("wind-text", model.WindText);
+            if (windArrow != null)
+            {
+                windArrow.style.rotate = new StyleRotate(
+                    new Rotate(new Angle(model.WindRotationDegrees, AngleUnit.Degree)));
+            }
         }
 
         private void SetAbilityCooldown(string name, string binding, float seconds)

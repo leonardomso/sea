@@ -10,9 +10,15 @@ namespace Sea.Tests.EditMode
         [Test]
         public void Chart_ruler_labels_are_shared_and_agree_with_full_labels()
         {
-            Assert.That(SeaChartCoordinates.ColumnLabelAt(0), Is.EqualTo("AA"));
-            Assert.That(SeaChartCoordinates.ColumnLabelAt(SeaChartCoordinates.ColumnCount - 1), Is.EqualTo("CZ"));
-            Assert.That(SeaChartCoordinates.RowLabelAt(59), Is.EqualTo("59"));
+            // The ruler counts the map's own squares: 1 at each of the north and west edges,
+            // 20 at each of the south and east ones.
+            Assert.That(SeaChartCoordinates.ColumnLabelAt(0), Is.EqualTo("1"));
+            Assert.That(
+                SeaChartCoordinates.ColumnLabelAt(SeaChartCoordinates.ColumnCount - 1),
+                Is.EqualTo("20"));
+            Assert.That(
+                SeaChartCoordinates.RowLabelAt(SeaChartCoordinates.RowCount - 1),
+                Is.EqualTo("20"));
             Assert.That(
                 SeaChartCoordinates.ColumnLabelAt(5),
                 Is.SameAs(SeaChartCoordinates.ColumnLabelAt(5)),
@@ -22,15 +28,19 @@ namespace Sea.Tests.EditMode
             foreach (var (x, y) in new[] { (-99.9f, 99.9f), (0f, 0f), (99.9f, -99.9f), (12.3f, -45.6f) })
             {
                 var expected =
-                    SeaChartCoordinates.ColumnLabelAt(SeaChartCoordinates.ColumnIndexAt(y)) + " " +
-                    SeaChartCoordinates.RowLabelAt(SeaChartCoordinates.RowIndexAt(x));
+                    SeaChartCoordinates.ColumnLabelAt(SeaChartCoordinates.ColumnIndexAt(x)) + "-" +
+                    SeaChartCoordinates.RowLabelAt(SeaChartCoordinates.RowIndexAt(y));
                 Assert.That(SeaChartCoordinates.LabelAt(x, y), Is.EqualTo(expected));
             }
 
-            Assert.That(SeaChartCoordinates.ColumnIndexAt(1000f), Is.EqualTo(0));
-            Assert.That(SeaChartCoordinates.ColumnIndexAt(-1000f), Is.EqualTo(SeaChartCoordinates.ColumnCount - 1));
-            Assert.That(SeaChartCoordinates.RowIndexAt(-1000f), Is.EqualTo(0));
-            Assert.That(SeaChartCoordinates.RowIndexAt(1000f), Is.EqualTo(SeaChartCoordinates.RowCount - 1));
+            Assert.That(SeaChartCoordinates.ColumnIndexAt(-1000f), Is.EqualTo(0));
+            Assert.That(
+                SeaChartCoordinates.ColumnIndexAt(1000f),
+                Is.EqualTo(SeaChartCoordinates.ColumnCount - 1));
+            Assert.That(SeaChartCoordinates.RowIndexAt(1000f), Is.EqualTo(0));
+            Assert.That(
+                SeaChartCoordinates.RowIndexAt(-1000f),
+                Is.EqualTo(SeaChartCoordinates.RowCount - 1));
         }
 
         [Test]

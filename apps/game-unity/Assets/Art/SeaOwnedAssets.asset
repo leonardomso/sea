@@ -22,7 +22,7 @@ MonoBehaviour:
       m_SubObjectType: 
       m_SubObjectGUID: 
       m_EditorAssetChanged: 0
-  - slotId: ship.patrol
+  - slotId: ship.skiff
     required: 1
     fallback: 0
     reference:
@@ -31,7 +31,7 @@ MonoBehaviour:
       m_SubObjectType: 
       m_SubObjectGUID: 
       m_EditorAssetChanged: 0
-  - slotId: ship.raider
+  - slotId: ship.reef_crab
     required: 1
     fallback: 0
     reference:
@@ -40,7 +40,16 @@ MonoBehaviour:
       m_SubObjectType: 
       m_SubObjectGUID: 
       m_EditorAssetChanged: 0
-  - slotId: ship.gunship
+  - slotId: ship.fancy
+    required: 1
+    fallback: 0
+    reference:
+      m_AssetGUID: 054a4a3c81be348078b868e0f7b9c1ce
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
+  - slotId: ship.red_mary
     required: 1
     fallback: 0
     reference:

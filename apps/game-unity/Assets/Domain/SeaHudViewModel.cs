@@ -20,6 +20,8 @@ namespace Sea.Client
         public uint VolleyDamage { get; set; }
         public uint ReloadMilliseconds { get; set; }
         public uint MagazineSize { get; set; }
+        public float WindDirectionDegrees { get; set; }
+        public float WindStrength { get; set; }
         public float CombatPowerUsed { get; set; }
         public float CombatPowerBudget { get; set; }
         public string SelectedAmmoName { get; set; } = string.Empty;
@@ -83,6 +85,16 @@ namespace Sea.Client
         public bool IsLoaded { get; private set; }
         public string ReloadText { get; private set; }
         public string MagazineText { get; private set; }
+
+        /// <summary>Volleys the racks hold, and how many of them can leave now.</summary>
+        public int MagazineSize { get; private set; }
+
+        public int ReadyVolleys { get; private set; }
+
+        /// <summary>Degrees clockwise from north: the heading the wind blows towards.</summary>
+        public float WindRotationDegrees { get; private set; }
+
+        public string WindText { get; private set; }
         public string StatusText { get; private set; }
         public string ProgressText { get; private set; }
         public float Progress { get; private set; }
@@ -139,6 +151,10 @@ namespace Sea.Client
                 IsLoaded = source.ReadyVolleys > 0,
                 ReloadText = ReadinessText(source),
                 MagazineText = Pair(source.ReadyVolleys, source.MagazineSize),
+                MagazineSize = (int)source.MagazineSize,
+                ReadyVolleys = (int)source.ReadyVolleys,
+                WindRotationDegrees = NormalizeHeading(source.WindDirectionDegrees),
+                WindText = WindLabel(source),
                 StatusText = source.StatusText,
                 ProgressText = source.ProgressText,
                 Progress = Mathf.Clamp01(source.Progress),
@@ -167,6 +183,25 @@ namespace Sea.Client
                 "PUTTING OUT FROM PORT LOWELL  •  {0:0}s",
                 Mathf.Max(0f, source.RespawnRemainingSeconds));
         }
+
+        /// <summary>
+        /// The wind reads the way a captain calls it: the point of the compass it blows towards
+        /// and the strength that decides how much of it the sails keep.
+        /// </summary>
+        private static string WindLabel(SeaHudSnapshot source) => string.Format(
+            DisplayCulture,
+            "{0}  •  {1:0.0}",
+            CompassPoint(NormalizeHeading(source.WindDirectionDegrees)),
+            source.WindStrength);
+
+        public static string CompassPoint(float bearingDegrees)
+        {
+            var index = Mathf.RoundToInt(NormalizeHeading(bearingDegrees) / 45f) % CompassPoints.Length;
+            return CompassPoints[index];
+        }
+
+        private static readonly string[] CompassPoints =
+            { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
 
         private static string ShipLabel(SeaHudSnapshot source)
         {

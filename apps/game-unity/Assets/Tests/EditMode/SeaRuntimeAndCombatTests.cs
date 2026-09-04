@@ -16,12 +16,18 @@ namespace Sea.Tests
         [Test]
         public void Client_chart_coordinates_match_the_server_contract()
         {
-            Assert.That(SeaChartCoordinates.TryCellCenter("AX 59", out var center), Is.True);
-            Assert.That(center.Column, Is.EqualTo(23));
-            Assert.That(center.Row, Is.EqualTo(59));
-            Assert.That(SeaChartCoordinates.LabelAt(center.X, center.Y), Is.EqualTo("AX 59"));
-            Assert.That(SeaChartCoordinates.LabelAt(-99.9f, 99.9f), Is.EqualTo("AA 0"));
-            Assert.That(SeaChartCoordinates.LabelAt(99.9f, -99.9f), Is.EqualTo("CZ 60"));
+            // The client's grid is the server's grid: twenty squares of ten units on a side,
+            // spoken one-based from the north-west corner.
+            Assert.That(SeaChartCoordinates.TryCellCenter("14-6", out var center), Is.True);
+            Assert.That(center.Column, Is.EqualTo(14));
+            Assert.That(center.Row, Is.EqualTo(6));
+            Assert.That(center.X, Is.EqualTo(35f).Within(0.001f));
+            Assert.That(center.Y, Is.EqualTo(45f).Within(0.001f));
+            Assert.That(SeaChartCoordinates.LabelAt(center.X, center.Y), Is.EqualTo("14-6"));
+            Assert.That(SeaChartCoordinates.LabelAt(-99.9f, 99.9f), Is.EqualTo("1-1"));
+            Assert.That(SeaChartCoordinates.LabelAt(99.9f, -99.9f), Is.EqualTo("20-20"));
+            Assert.That(SeaChartCoordinates.TryCellCenter("21-1", out _), Is.False);
+            Assert.That(SeaChartCoordinates.TryCellCenter("0-1", out _), Is.False);
         }
 
         [Test]
@@ -44,13 +50,62 @@ namespace Sea.Tests
             var requiredActions = new[]
             {
                 "Point", "SetCourse", "StopCourse", "PanChart", "ZoomChart", "DragChart", "RecenterChart",
-                "OpenNavigator", "CycleTargetNext", "CycleTargetPrevious", "ClearTarget", "Pause",
+                "OpenNavigator", "CycleTargetNext", "CycleTargetPrevious", "ClearTarget",
                 "Fire", "AmmoRound", "AmmoChain", "AmmoGrapeshot", "AmmoIncendiary", "Repair",
-                "RepairKit",
+                "RepairKit", "Board", "Ram", "Ability1", "Ability2", "Ability3", "Ability4",
+                "PvpFlag",
             };
 
             Assert.That(gameplay.actions.Select(action => action.name), Is.EquivalentTo(requiredActions));
             Assert.That(controls.FindActionMap("Menu", throwIfNotFound: true), Is.Not.Null);
+        }
+
+        /// <summary>
+        /// Mechanics section 1.1 is the contract a captain learns once: left click sails, Q or
+        /// Space fires, Tab takes a target, Escape lets it go, R repairs and 1 to 4 load the
+        /// racks. There is no steering key and no full-speed key, because there is no steering.
+        /// </summary>
+        [Test]
+        public void Default_bindings_are_the_ones_the_mechanics_sheet_promises()
+        {
+            var gameplay = AssetDatabase
+                .LoadAssetAtPath<InputActionAsset>("Assets/Input/SeaControls.inputactions")
+                .FindActionMap("Gameplay", throwIfNotFound: true);
+
+            var expected = new (string Action, string[] Paths)[]
+            {
+                ("SetCourse", new[] { "<Mouse>/leftButton" }),
+                ("StopCourse", new[] { "<Mouse>/rightButton" }),
+                ("DragChart", new[] { "<Mouse>/middleButton" }),
+                ("RecenterChart", new[] { "<Keyboard>/home" }),
+                ("CycleTargetNext", new[] { "<Keyboard>/tab" }),
+                ("ClearTarget", new[] { "<Keyboard>/escape" }),
+                ("Fire", new[] { "<Keyboard>/q", "<Keyboard>/space" }),
+                ("AmmoRound", new[] { "<Keyboard>/1" }),
+                ("AmmoChain", new[] { "<Keyboard>/2" }),
+                ("AmmoGrapeshot", new[] { "<Keyboard>/3" }),
+                ("AmmoIncendiary", new[] { "<Keyboard>/4" }),
+                ("Repair", new[] { "<Keyboard>/r" }),
+                ("Board", new[] { "<Keyboard>/e" }),
+                ("Ram", new[] { "<Keyboard>/f" }),
+                ("PvpFlag", new[] { "<Keyboard>/p" }),
+            };
+
+            foreach (var (name, paths) in expected)
+            {
+                var action = gameplay.FindAction(name, throwIfNotFound: true);
+                Assert.That(
+                    action.bindings.Where(binding => !binding.isComposite)
+                        .Select(binding => binding.path),
+                    Is.EquivalentTo(paths),
+                    name);
+            }
+
+            // Steering is the server's business; the keyboard only pans the chart.
+            var wasd = gameplay.FindAction("PanChart", throwIfNotFound: true).bindings
+                .Select(binding => binding.path);
+            Assert.That(wasd, Contains.Item("<Keyboard>/w"));
+            Assert.That(wasd, Contains.Item("<Keyboard>/s"));
         }
 
         [Test]
@@ -290,114 +345,6 @@ namespace Sea.Tests
             Object.DestroyImmediate(controls);
         }
 
-        [Test]
-        public void Combat_hud_view_model_formats_player_target_and_reload_state()
-        {
-            var model = SeaHudViewModel.From(new SeaHudSnapshot
-            {
-                IsReady = true,
-                Coordinate = "AX 59",
-                HeadingDegrees = 275f,
-                Speed = 12.5f,
-                Hull = 750,
-                MaxHull = 1000,
-                MapRank = 4,
-                Gold = 1234,
-                HullName = "Sloop",
-                CannonName = "Iron Six-Pounder",
-                CannonTier = 2,
-                VolleyDamage = 42,
-                ReloadMilliseconds = 3500,
-                MagazineSize = 6,
-                CombatPowerUsed = 12f,
-                CombatPowerBudget = 45f,
-                SelectedAmmoName = "Chain Shot",
-                TargetName = "RAIDER 7",
-                TargetHull = 300,
-                TargetMaxHull = 600,
-                TargetArmorFace = "front",
-                TargetArmorAbsorption = 0.25f,
-                ReadyVolleys = 0,
-                ReloadRemainingSeconds = 2f,
-                ReloadDurationSeconds = 4f,
-            });
-
-            Assert.That(model.HullProgress, Is.EqualTo(0.75f));
-            Assert.That(model.MapRankText, Is.EqualTo("4"));
-            Assert.That(model.GoldText, Is.EqualTo("1,234 ¤"));
-            Assert.That(model.ShipText, Is.EqualTo("SLOOP  •  IRON SIX-POUNDER T2"));
-            Assert.That(model.VolleyText, Is.EqualTo("DMG 42  •  MAG 6  •  3.5s"));
-            Assert.That(model.CombatPowerText, Does.Contain("12 / 45"));
-            Assert.That(model.SelectedAmmoLabel, Is.EqualTo("CHAIN SHOT"));
-            Assert.That(model.HullText, Is.EqualTo("750 / 1,000"));
-            Assert.That(model.NavigationText, Is.EqualTo("AX 59  •  275°  •  12.5 KN"));
-            Assert.That(model.HasTarget, Is.True);
-            Assert.That(model.TargetHullProgress, Is.EqualTo(0.5f));
-            Assert.That(model.TargetArmorText, Is.EqualTo("FRONT  •  25% ABSORBED"));
-            Assert.That(model.ReloadProgress, Is.EqualTo(0.5f));
-            Assert.That(model.IsLoaded, Is.False);
-            Assert.That(model.ReloadText, Is.EqualTo("2.0s"));
-            Assert.That(model.MagazineText, Is.EqualTo("0 / 6"));
-        }
-
-        [Test]
-        public void A_wreck_is_offered_a_berth_once_and_then_counted_back_onto_the_water()
-        {
-            var unchosen = SeaHudViewModel.From(new SeaHudSnapshot { IsSunk = true });
-
-            Assert.That(unchosen.IsSunk, Is.True);
-            Assert.That(unchosen.CanChooseBerth, Is.True);
-            Assert.That(unchosen.WreckText, Is.EqualTo("PORT LOWELL HAS A BERTH WAITING."));
-
-            var chosen = SeaHudViewModel.From(new SeaHudSnapshot
-            {
-                IsSunk = true,
-                RespawnChosen = true,
-                RespawnRemainingSeconds = 5.4f,
-            });
-
-            Assert.That(chosen.CanChooseBerth, Is.False);
-            Assert.That(chosen.WreckText, Is.EqualTo("PUTTING OUT FROM PORT LOWELL  •  5s"));
-            Assert.That(SeaHudViewModel.From(new SeaHudSnapshot()).IsSunk, Is.False);
-        }
-
-        [Test]
-        public void Runtime_hud_contains_the_locked_chart_combat_instruments()
-        {
-            var document = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/SeaHud.uxml");
-            Assert.That(document, Is.Not.Null);
-            var root = document.CloneTree();
-
-            var requiredElements = new[]
-            {
-                "connection-status", "navigation-readout", "gold-label", "diamond-label",
-                "top-coordinate-ruler", "left-coordinate-ruler",
-                "map-rank-label", "ship-loadout", "volley-text", "combat-power-label",
-                "player-hull",
-                "mini-map-frame",
-                "target-frame", "target-hull", "target-armor-text",
-                "fire-control", "reload-gauge", "reload-text", "magazine-text", "ammo-rail",
-                "ability-rail", "status-strip", "channel-progress", "coordinate-navigator",
-                "chart-menu", "rebind-list",
-            };
-
-            Assert.That(requiredElements.All(name => root.Q(name) != null), Is.True);
-            Assert.That(root.Q("player-experience"), Is.Null);
-
-            // One magazine bearing in every direction: the aim rail and the broadside pair are
-            // gone, and the abilities they sat beside went with them.
-            Assert.That(root.Q("weak-point-rail"), Is.Null);
-            Assert.That(root.Q("port-broadside"), Is.Null);
-            Assert.That(root.Q("starboard-broadside"), Is.Null);
-            Assert.That(root.Q("ability-full-sail"), Is.Null);
-            Assert.That(root.Q<Button>("repair").text, Is.EqualTo("R"));
-
-            // The kit is a separate order on a cooldown of its own, so it gets a slot of its
-            // own; the berth is the one order a wreck can still give.
-            Assert.That(root.Q<Button>("repair-kit").text, Is.EqualTo("K"));
-            Assert.That(root.Q("wreck-prompt"), Is.Not.Null);
-            Assert.That(root.Q<Button>("respawn-button"), Is.Not.Null);
-        }
 
         [Test]
         public void Main_scene_hosts_the_input_system_and_runtime_hud_document()

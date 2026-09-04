@@ -161,6 +161,41 @@
     letter-spacing: 1.2px;
 }
 
+/* The wind is read at a glance: the arrow points where it blows, the number says how hard. */
+.wind-dial {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 2px;
+}
+
+.wind-arrow {
+    width: 14px;
+    color: var(--sea-glass);
+    font-size: 13px;
+    -unity-text-align: middle-center;
+    margin-right: 6px;
+}
+
+/* One dot per volley the racks hold; a filled dot is a volley that can leave now. */
+.magazine-dots {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 3px;
+}
+
+.magazine-dot {
+    width: 6px;
+    height: 6px;
+    margin-left: 2px;
+    margin-right: 2px;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: var(--line-strong);
+    background-color: var(--tar);
+}
+
+.magazine-dot.loaded { background-color: var(--sea-glass); }
+
 .coordinate-ruler {
     position: absolute;
     color: #d2ac72aa;

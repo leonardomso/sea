@@ -18,6 +18,11 @@ namespace Sea.Client
         private InputActionRebindingExtensions.RebindingOperation rebindOperation;
         private Vector2 pointerPosition;
 
+        // The fire key is held far more often than it is tapped, so the repeat is driven from
+        // Update rather than from an input interaction: the racks decide, not the keyboard.
+        private bool fireHeld;
+        private float secondsSinceFireRequest = SeaFireRepeatRules.MinimumIntervalSeconds;
+
         public bool IsMenuOpen { get; private set; }
         public InputActionAsset Actions => actions;
 
@@ -57,6 +62,7 @@ namespace Sea.Client
         public void SetMenuOpen(bool isOpen)
         {
             IsMenuOpen = isOpen;
+            fireHeld = false;
             if (actions != null)
             {
                 actions.Disable();
@@ -188,19 +194,69 @@ namespace Sea.Client
                 }
             });
             Bind("CycleTargetPrevious", _ => game?.SelectNextEnemy(-1));
-            Bind("ClearTarget", _ => game?.ClearTarget());
-            Bind("Pause", _ => SetMenuOpen(true));
+            // Escape drops the aim first and only opens the menu once there is no aim to drop,
+            // so a captain in a fight never has the menu thrown over the chart.
+            Bind("ClearTarget", _ => ClearTargetOrOpenMenu());
             BindMenu("CloseMenu", _ => SetMenuOpen(false));
 
             // Guns bear in every direction: one key, one magazine, no aim point.
-            Bind("Fire", _ => game?.Fire());
+            Bind("Fire", _ => RequestFire());
+            Bind("Fire", _ => fireHeld = false, canceled: true);
             Bind("AmmoRound", _ => game?.SetSelectedAmmo("round"));
             Bind("AmmoChain", _ => game?.SetSelectedAmmo("chain"));
             Bind("AmmoGrapeshot", _ => game?.SetSelectedAmmo("grapeshot"));
             Bind("AmmoIncendiary", _ => game?.SetSelectedAmmo("incendiary"));
             Bind("Repair", _ => game?.ToggleRepair());
             Bind("RepairKit", _ => game?.UseRepairKit());
+
+            // Section 1.1 keeps these keys bound so they appear in the rebinder and answer when
+            // pressed; the answer, for now, is that the milestone has not reached them.
+            BindUnavailable("Board", "Boarding");
+            BindUnavailable("Ram", "Ramming");
+            BindUnavailable("Ability1", "Abilities");
+            BindUnavailable("Ability2", "Abilities");
+            BindUnavailable("Ability3", "Abilities");
+            BindUnavailable("Ability4", "Abilities");
+            BindUnavailable("PvpFlag", "The PvP flag");
         }
+
+        private void ClearTargetOrOpenMenu()
+        {
+            if (game != null && game.SelectedTargetId != 0)
+            {
+                game.ClearTarget();
+                return;
+            }
+
+            SetMenuOpen(true);
+        }
+
+        private void RequestFire()
+        {
+            fireHeld = true;
+            secondsSinceFireRequest = 0f;
+            game?.Fire();
+        }
+
+        /// <summary>
+        /// A held key is a request to keep firing, not a stream of commands: the repeat waits for
+        /// the racks to reload and for the module's own minimum interval to pass.
+        /// </summary>
+        private void Update()
+        {
+            secondsSinceFireRequest += Time.unscaledDeltaTime;
+            if (SeaFireRepeatRules.ShouldRepeat(
+                    fireHeld && !IsMenuOpen,
+                    game != null && game.CanFireNow,
+                    secondsSinceFireRequest))
+            {
+                secondsSinceFireRequest = 0f;
+                game.Fire();
+            }
+        }
+
+        private void BindUnavailable(string actionName, string feature) =>
+            Bind(actionName, _ => game?.ReportUnavailable(feature));
 
         private void Bind(string actionName, Action<InputAction.CallbackContext> callback, bool canceled = false)
         {

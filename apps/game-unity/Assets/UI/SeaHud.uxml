@@ -13,7 +13,7 @@
             </ui:VisualElement>
 
             <ui:VisualElement class="header-tools">
-                <ui:Button name="recenter-button" text="◎" tooltip="Center on ship (Space)" class="header-tool" />
+                <ui:Button name="recenter-button" text="◎" tooltip="Center on ship (Home)" class="header-tool" />
                 <ui:Button name="navigator-button" text="N" tooltip="Coordinate navigator" class="header-tool" />
                 <ui:Button text="□" tooltip="Quests" class="header-tool" />
                 <ui:Button text="□" tooltip="Inventory" class="header-tool" />
@@ -27,29 +27,57 @@
                     <ui:Label name="connection-status" text="CONNECTING…" class="micro-label" />
                 </ui:VisualElement>
                 <ui:Label name="navigation-readout" text="—  •  000°  •  0.0 KN" class="navigation-readout" />
+                <ui:VisualElement name="wind-dial" class="wind-dial">
+                    <ui:Label name="wind-arrow" text="↑" class="wind-arrow" />
+                    <ui:Label name="wind-text" text="—" class="micro-label" />
+                </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
 
         <ui:VisualElement name="top-coordinate-ruler" class="coordinate-ruler top-coordinate-ruler">
-            <ui:Label name="top-coordinate-0" text="—" />
-            <ui:Label name="top-coordinate-1" text="—" />
-            <ui:Label name="top-coordinate-2" text="—" />
-            <ui:Label name="top-coordinate-3" text="—" />
-            <ui:Label name="top-coordinate-4" text="—" />
-            <ui:Label name="top-coordinate-5" text="—" />
-            <ui:Label name="top-coordinate-6" text="—" />
-            <ui:Label name="top-coordinate-7" text="—" />
-            <ui:Label name="top-coordinate-8" text="—" />
+            <ui:Label name="top-coordinate-0" text="" />
+            <ui:Label name="top-coordinate-1" text="" />
+            <ui:Label name="top-coordinate-2" text="" />
+            <ui:Label name="top-coordinate-3" text="" />
+            <ui:Label name="top-coordinate-4" text="" />
+            <ui:Label name="top-coordinate-5" text="" />
+            <ui:Label name="top-coordinate-6" text="" />
+            <ui:Label name="top-coordinate-7" text="" />
+            <ui:Label name="top-coordinate-8" text="" />
+            <ui:Label name="top-coordinate-9" text="" />
+            <ui:Label name="top-coordinate-10" text="" />
+            <ui:Label name="top-coordinate-11" text="" />
+            <ui:Label name="top-coordinate-12" text="" />
+            <ui:Label name="top-coordinate-13" text="" />
+            <ui:Label name="top-coordinate-14" text="" />
+            <ui:Label name="top-coordinate-15" text="" />
+            <ui:Label name="top-coordinate-16" text="" />
+            <ui:Label name="top-coordinate-17" text="" />
+            <ui:Label name="top-coordinate-18" text="" />
+            <ui:Label name="top-coordinate-19" text="" />
         </ui:VisualElement>
 
         <ui:VisualElement name="left-coordinate-ruler" class="coordinate-ruler left-coordinate-ruler">
-            <ui:Label name="left-coordinate-0" text="—" />
-            <ui:Label name="left-coordinate-1" text="—" />
-            <ui:Label name="left-coordinate-2" text="—" />
-            <ui:Label name="left-coordinate-3" text="—" />
-            <ui:Label name="left-coordinate-4" text="—" />
-            <ui:Label name="left-coordinate-5" text="—" />
-            <ui:Label name="left-coordinate-6" text="—" />
+            <ui:Label name="left-coordinate-0" text="" />
+            <ui:Label name="left-coordinate-1" text="" />
+            <ui:Label name="left-coordinate-2" text="" />
+            <ui:Label name="left-coordinate-3" text="" />
+            <ui:Label name="left-coordinate-4" text="" />
+            <ui:Label name="left-coordinate-5" text="" />
+            <ui:Label name="left-coordinate-6" text="" />
+            <ui:Label name="left-coordinate-7" text="" />
+            <ui:Label name="left-coordinate-8" text="" />
+            <ui:Label name="left-coordinate-9" text="" />
+            <ui:Label name="left-coordinate-10" text="" />
+            <ui:Label name="left-coordinate-11" text="" />
+            <ui:Label name="left-coordinate-12" text="" />
+            <ui:Label name="left-coordinate-13" text="" />
+            <ui:Label name="left-coordinate-14" text="" />
+            <ui:Label name="left-coordinate-15" text="" />
+            <ui:Label name="left-coordinate-16" text="" />
+            <ui:Label name="left-coordinate-17" text="" />
+            <ui:Label name="left-coordinate-18" text="" />
+            <ui:Label name="left-coordinate-19" text="" />
         </ui:VisualElement>
 
         <ui:VisualElement name="mini-map-frame" class="mini-map-frame">
@@ -81,11 +109,19 @@
             </ui:VisualElement>
 
             <ui:Button name="fire-control" class="broadside-side fire-control">
-                <ui:Label text="Q" class="key-cap" />
+                <ui:Label text="Q / SPACE" class="key-cap" />
                 <ui:Label text="FIRE" class="broadside-name" />
                 <ui:ProgressBar name="reload-gauge" low-value="0" high-value="1" value="1" class="reload-gauge" />
                 <ui:Label name="reload-text" text="READY" class="readiness" />
                 <ui:Label name="magazine-text" text="—" class="readiness" />
+                <ui:VisualElement name="magazine-dots" class="magazine-dots">
+                    <ui:VisualElement name="magazine-dot-0" class="magazine-dot" />
+                    <ui:VisualElement name="magazine-dot-1" class="magazine-dot" />
+                    <ui:VisualElement name="magazine-dot-2" class="magazine-dot" />
+                    <ui:VisualElement name="magazine-dot-3" class="magazine-dot" />
+                    <ui:VisualElement name="magazine-dot-4" class="magazine-dot" />
+                    <ui:VisualElement name="magazine-dot-5" class="magazine-dot" />
+                </ui:VisualElement>
             </ui:Button>
         </ui:VisualElement>
 
@@ -116,10 +152,10 @@
                 </ui:VisualElement>
                 <ui:VisualElement name="ammo-rail" class="command-rail">
                     <ui:Label text="SHOT" class="rail-label" />
-                    <ui:Button name="ammo-round" text="4" tooltip="Round shot" class="command-slot selected" />
-                    <ui:Button name="ammo-chain" text="5" tooltip="Chain shot" class="command-slot" />
-                    <ui:Button name="ammo-grapeshot" text="6" tooltip="Grapeshot" class="command-slot" />
-                    <ui:Button name="ammo-incendiary" text="7" tooltip="Incendiary shot" class="command-slot" />
+                    <ui:Button name="ammo-round" text="1" tooltip="Round shot" class="command-slot selected" />
+                    <ui:Button name="ammo-chain" text="2" tooltip="Chain shot" class="command-slot" />
+                    <ui:Button name="ammo-grapeshot" text="3" tooltip="Grapeshot" class="command-slot" />
+                    <ui:Button name="ammo-incendiary" text="4" tooltip="Incendiary shot" class="command-slot" />
                 </ui:VisualElement>
                 <ui:VisualElement name="ability-rail" class="command-rail ability-rail">
                     <ui:Button name="repair" text="R" tooltip="Repair" class="command-slot ability-slot" />

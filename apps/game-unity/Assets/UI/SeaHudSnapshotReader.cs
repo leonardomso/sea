@@ -10,6 +10,7 @@ namespace Sea.Client
     public sealed partial class SeaHudController
     {
         private const byte StatCapsRowId = 1;
+        private const uint EnvironmentRowId = 1;
 
         // Indexed by AmmunitionCode minus one.
         private static readonly string[] AmmoSlotNames =
@@ -68,6 +69,14 @@ namespace Sea.Client
                 : (float)ship.ReloadTicks / tickRate;
             snapshot.ReadyVolleys = ship.ReadyVolleys;
             snapshot.MagazineSize = ship.MagazineSize;
+
+            // One wind blows over the whole map, so the dial reads the world's own row.
+            var weather = db.EnvironmentState.Id.Find(EnvironmentRowId);
+            if (weather != null)
+            {
+                snapshot.WindDirectionDegrees = weather.WindDirectionDegrees;
+                snapshot.WindStrength = weather.WindStrength;
+            }
 
             var world = db.WorldState.Id.Find(1);
             if (world != null)

@@ -33,6 +33,8 @@ test -f "$unity_root/Assets/Domain/SeaKeyedBoundedPool.cs"
 test -f "$unity_root/Assets/Editor/SeaOwnedAssetEditorLifecycle.cs"
 test -f "$unity_root/Assets/Editor/SeaOwnedAssetValidator.cs"
 test -f "$unity_root/Assets/Domain/SeaChartCoordinates.cs"
+test -f "$unity_root/Assets/Domain/SeaFireRepeatRules.cs"
+test -f "$unity_root/Assets/Domain/SeaFocusTargetSet.cs"
 test -f "$unity_root/Assets/Presentation/SeaChartCameraController.cs"
 test -f "$unity_root/Assets/Input/SeaInputController.cs"
 test -f "$unity_root/Assets/UI/SeaHudController.cs"
@@ -77,6 +79,14 @@ if grep -R -q --include='*.cs' -E 'Reducers\.(SetCourse|StopCourse|SelectTarget|
 fi
 grep -q 'FindActionMap("Gameplay"' "$unity_root/Assets/Input/SeaInputController.cs"
 grep -q 'name="fire-control"' "$unity_root/Assets/UI/SeaHud.uxml"
+# Section 1.2 instruments: the racks are counted, and the wind is drawn rather than read.
+grep -q 'name="magazine-dots"' "$unity_root/Assets/UI/SeaHud.uxml"
+grep -q 'name="wind-arrow"' "$unity_root/Assets/UI/SeaHud.uxml"
+# The chart rulers count the squares of the map, so both edges carry twenty slots.
+for square in $(seq 0 19); do
+  grep -q "name=\"top-coordinate-$square\"" "$unity_root/Assets/UI/SeaHud.uxml"
+  grep -q "name=\"left-coordinate-$square\"" "$unity_root/Assets/UI/SeaHud.uxml"
+done
 
 if grep -R -q --include='*.cs' 'SubscribeToAllTables' \
   "$unity_root/Assets/Networking" "$unity_root/Assets/Presentation"; then

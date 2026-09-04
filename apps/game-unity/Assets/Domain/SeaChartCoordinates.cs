@@ -14,21 +14,30 @@ namespace Sea.Client
             Y = y;
         }
 
+        /// <summary>One-based, counted east from the western edge.</summary>
         public int Column { get; }
+
+        /// <summary>One-based, counted south from the northern edge.</summary>
         public int Row { get; }
+
         public float X { get; }
         public float Y { get; }
     }
 
+    /// <summary>
+    /// The chart grid a captain reads. It is the map's own square grid and nothing else:
+    /// Havenmere is twenty squares on a side and a square is ten world units, so a coordinate
+    /// spoken on the sea means the same square the server measures ranges in.
+    /// </summary>
     public static class SeaChartCoordinates
     {
-        private const int FirstLetterValue = 27;
-        public const int ColumnCount = 78;
-        public const int RowCount = 61;
+        public const int ColumnCount = 20;
+        public const int RowCount = 20;
         public const float MapMinimum = -100f;
         public const float MapMaximum = 100f;
-        public const float CellWidth = (MapMaximum - MapMinimum) / RowCount;
-        public const float CellHeight = (MapMaximum - MapMinimum) / ColumnCount;
+        public const float SquareSize = (MapMaximum - MapMinimum) / ColumnCount;
+
+        private static readonly char[] Separators = { ' ', '-', ',', ':' };
 
         public static bool TryCellCenter(string coordinate, out SeaChartCell cell)
         {
@@ -38,38 +47,38 @@ namespace Sea.Client
                 return false;
             }
 
-            var parts = coordinate.Split((char[])null, StringSplitOptions.RemoveEmptyEntries);
+            var parts = coordinate.Split(Separators, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length != 2 ||
-                !TryColumn(parts[0], out var column) ||
-                !int.TryParse(parts[1], out var row) ||
-                row < 0 ||
-                row >= RowCount)
+                !TryIndex(parts[0], ColumnCount, out var column) ||
+                !TryIndex(parts[1], RowCount, out var row))
             {
                 return false;
             }
 
             cell = new SeaChartCell(
-                column,
-                row,
-                MapMinimum + (row + 0.5f) * CellWidth,
-                MapMaximum - (column + 0.5f) * CellHeight);
+                column + 1,
+                row + 1,
+                MapMinimum + (column + 0.5f) * SquareSize,
+                MapMaximum - (row + 0.5f) * SquareSize);
             return true;
         }
 
         public static string LabelAt(float x, float y) =>
-            $"{ColumnLabelAt(ColumnIndexAt(y))} {RowLabelAt(RowIndexAt(x))}";
+            $"{ColumnLabelAt(ColumnIndexAt(x))}-{RowLabelAt(RowIndexAt(y))}";
 
-        public static int ColumnIndexAt(float y) =>
-            Math.Clamp((int)Math.Floor((MapMaximum - y) / CellHeight), 0, ColumnCount - 1);
+        /// <summary>Zero-based column index, counted east from the western edge.</summary>
+        public static int ColumnIndexAt(float x) =>
+            Math.Clamp((int)Math.Floor((x - MapMinimum) / SquareSize), 0, ColumnCount - 1);
 
-        public static int RowIndexAt(float x) =>
-            Math.Clamp((int)Math.Floor((x - MapMinimum) / CellWidth), 0, RowCount - 1);
+        /// <summary>Zero-based row index, counted south from the northern edge.</summary>
+        public static int RowIndexAt(float y) =>
+            Math.Clamp((int)Math.Floor((MapMaximum - y) / SquareSize), 0, RowCount - 1);
 
         // The chart rulers relabel whenever the camera moves, so the fixed label set is
         // built once and shared instead of being formatted on every frame.
-        public static string ColumnLabelAt(int column) => ColumnLabels[column];
+        public static string ColumnLabelAt(int column) => Labels[column];
 
-        public static string RowLabelAt(int row) => RowLabels[row];
+        public static string RowLabelAt(int row) => Labels[row];
 
         public static Vector2 ClampToMap(Vector2 position) => new(
             Mathf.Clamp(position.x, MapMinimum, MapMaximum),
@@ -84,66 +93,35 @@ namespace Sea.Client
             return (position - blockerCenter).sqrMagnitude <= radius * radius;
         }
 
-        private static bool TryColumn(string label, out int column)
+        private static bool TryIndex(string label, int count, out int index)
         {
-            column = -1;
-            if (string.IsNullOrWhiteSpace(label) || label.Length > 2)
+            index = -1;
+            if (!int.TryParse(
+                    label,
+                    NumberStyles.None,
+                    CultureInfo.InvariantCulture,
+                    out var spoken) ||
+                spoken < 1 ||
+                spoken > count)
             {
                 return false;
             }
 
-            var value = 0;
-            foreach (var character in label.ToUpperInvariant())
-            {
-                if (character < 'A' || character > 'Z')
-                {
-                    return false;
-                }
-
-                value = value * 26 + character - 'A' + 1;
-            }
-
-            column = value - FirstLetterValue;
-            return column >= 0 && column < ColumnCount;
+            index = spoken - 1;
+            return true;
         }
 
-        private static string ColumnLabel(int column)
+        private static string[] BuildLabels()
         {
-            var value = column + FirstLetterValue;
-            var label = string.Empty;
-            while (value > 0)
+            var labels = new string[Math.Max(ColumnCount, RowCount)];
+            for (var index = 0; index < labels.Length; index++)
             {
-                value--;
-                label = (char)('A' + value % 26) + label;
-                value /= 26;
-            }
-
-            return label;
-        }
-
-        private static string[] BuildColumnLabels()
-        {
-            var labels = new string[ColumnCount];
-            for (var column = 0; column < labels.Length; column++)
-            {
-                labels[column] = ColumnLabel(column);
+                labels[index] = (index + 1).ToString(CultureInfo.InvariantCulture);
             }
 
             return labels;
         }
 
-        private static string[] BuildRowLabels()
-        {
-            var labels = new string[RowCount];
-            for (var row = 0; row < labels.Length; row++)
-            {
-                labels[row] = row.ToString(CultureInfo.InvariantCulture);
-            }
-
-            return labels;
-        }
-
-        private static readonly string[] ColumnLabels = BuildColumnLabels();
-        private static readonly string[] RowLabels = BuildRowLabels();
+        private static readonly string[] Labels = BuildLabels();
     }
 }

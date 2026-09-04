@@ -32,5 +32,13 @@ namespace Sea.Client
             21 => "not available yet",
             _ => $"rejection code {code}",
         };
+
+        /// <summary>
+        /// The keys the mechanics sheet reserves for boarding, ramming, abilities and the PvP
+        /// flag stay bound through Milestone 1 so the rebinder lists them; pressing one says so
+        /// rather than doing nothing, which reads as a broken key.
+        /// </summary>
+        public static string NotAvailableYet(string feature) =>
+            $"{feature} is not available yet.";
     }
 }

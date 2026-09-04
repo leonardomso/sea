@@ -72,12 +72,6 @@
                     "expectedControlType": "Button"
                 },
                 {
-                    "name": "Pause",
-                    "type": "Button",
-                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0111",
-                    "expectedControlType": "Button"
-                },
-                {
                     "name": "Fire",
                     "type": "Button",
                     "id": "81e26081-8c68-4ac4-8fe8-c401835a0112",
@@ -117,6 +111,48 @@
                     "name": "RepairKit",
                     "type": "Button",
                     "id": "81e26081-8c68-4ac4-8fe8-c401835a0126",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "Board",
+                    "type": "Button",
+                    "id": "0585fe6a-6716-5a22-9792-e89c81eecb3d",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "Ram",
+                    "type": "Button",
+                    "id": "a53c7096-3625-5f69-8662-070541babc5c",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "Ability1",
+                    "type": "Button",
+                    "id": "b427a209-17cc-529a-940b-da8eef563a23",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "Ability2",
+                    "type": "Button",
+                    "id": "52e711b5-7d49-5208-b383-3907c0caf283",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "Ability3",
+                    "type": "Button",
+                    "id": "befde266-3deb-57aa-ad92-1dd6f488df42",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "Ability4",
+                    "type": "Button",
+                    "id": "658ef8fc-a887-57ac-988a-2db0f8b3344e",
+                    "expectedControlType": "Button"
+                },
+                {
+                    "name": "PvpFlag",
+                    "type": "Button",
+                    "id": "918bda82-3cd7-537b-8ddb-5131320031d9",
                     "expectedControlType": "Button"
                 }
             ],
@@ -192,7 +228,7 @@
                 },
                 {
                     "id": "91e26081-8c68-4ac4-8fe8-c401835a0010",
-                    "path": "<Keyboard>/space",
+                    "path": "<Keyboard>/home",
                     "action": "RecenterChart",
                     "groups": "KeyboardMouse"
                 },
@@ -233,14 +269,8 @@
                 },
                 {
                     "id": "91e26081-8c68-4ac4-8fe8-c401835a0016",
-                    "path": "<Keyboard>/t",
-                    "action": "ClearTarget",
-                    "groups": "KeyboardMouse"
-                },
-                {
-                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0017",
                     "path": "<Keyboard>/escape",
-                    "action": "Pause",
+                    "action": "ClearTarget",
                     "groups": "KeyboardMouse"
                 },
                 {
@@ -250,26 +280,32 @@
                     "groups": "KeyboardMouse"
                 },
                 {
+                    "id": "ef6e3126-76ac-5c7f-9117-b07aea71b68b",
+                    "path": "<Keyboard>/space",
+                    "action": "Fire",
+                    "groups": "KeyboardMouse"
+                },
+                {
                     "id": "91e26081-8c68-4ac4-8fe8-c401835a0023",
-                    "path": "<Keyboard>/4",
+                    "path": "<Keyboard>/1",
                     "action": "AmmoRound",
                     "groups": "KeyboardMouse"
                 },
                 {
                     "id": "91e26081-8c68-4ac4-8fe8-c401835a0024",
-                    "path": "<Keyboard>/5",
+                    "path": "<Keyboard>/2",
                     "action": "AmmoChain",
                     "groups": "KeyboardMouse"
                 },
                 {
                     "id": "91e26081-8c68-4ac4-8fe8-c401835a0025",
-                    "path": "<Keyboard>/6",
+                    "path": "<Keyboard>/3",
                     "action": "AmmoGrapeshot",
                     "groups": "KeyboardMouse"
                 },
                 {
                     "id": "91e26081-8c68-4ac4-8fe8-c401835a0026",
-                    "path": "<Keyboard>/7",
+                    "path": "<Keyboard>/4",
                     "action": "AmmoIncendiary",
                     "groups": "KeyboardMouse"
                 },
@@ -283,6 +319,48 @@
                     "id": "91e26081-8c68-4ac4-8fe8-c401835a0032",
                     "path": "<Keyboard>/k",
                     "action": "RepairKit",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "100e79d5-0677-5597-a2d0-f587fe85442e",
+                    "path": "<Keyboard>/e",
+                    "action": "Board",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "1f59c167-62af-5b1f-9a03-793f3bb346ce",
+                    "path": "<Keyboard>/f",
+                    "action": "Ram",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "66274253-0b58-5512-b848-d0f337228ed5",
+                    "path": "<Keyboard>/z",
+                    "action": "Ability1",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "e9c60f66-6905-5c77-a94e-f0411854bb94",
+                    "path": "<Keyboard>/x",
+                    "action": "Ability2",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "46159246-8ce6-505c-b5e6-e6dfa2f1101e",
+                    "path": "<Keyboard>/c",
+                    "action": "Ability3",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "b3b9a9b7-8f67-532d-9196-f0eec7a95034",
+                    "path": "<Keyboard>/v",
+                    "action": "Ability4",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "5ef25ac4-ec35-59fb-908e-e43523a488e8",
+                    "path": "<Keyboard>/p",
+                    "action": "PvpFlag",
                     "groups": "KeyboardMouse"
                 }
             ]
