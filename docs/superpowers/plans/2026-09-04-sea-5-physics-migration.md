@@ -1451,12 +1451,17 @@ once here: delete it, or give it the caller it was written for.
 **Files:**
 - Modify: whatever the hand-built inventory from Task 1.2 Step 4 lists. It is a
   grep plus two things grep misses; re-read that step rather than trusting a file.
-- Also fold in: `WorldRules.IsBlocked(string kind, ...)`, whose hardcoded
-  `"island"`/`"reef"` pair restates `HotPathCodes.BlocksMovement` by hand. It has no
-  production caller left -- only its own tests -- and when Task 9.3 adds shoals the
-  copy that nobody updates fails silently, by answering "not blocked" and sailing a
-  hull through. Delete it and its tests, or make it parse and delegate to the typed
-  overload.
+- Also fold in: `WorldRules.IsBlocked`. **Both** overloads are dead, not just the
+  string one -- verified by grep across the module, which finds callers only in
+  `tests/WorldRulesTests.cs`. So "delegate to the typed overload" is not a way out:
+  it would keep a second method nobody calls. The live collision path is
+  `Navigation/NavigationState.cs:177` -> `HotPathCodes.BlocksMovement` -> a
+  `NavigationBlocker` list -> `NavigationRules.TryFindDetour`, and Phase 2's land
+  mask replaces that list wholesale. The string overload is the worse of the two
+  regardless: its hardcoded `"island"`/`"reef"` pair restates
+  `HotPathCodes.BlocksMovement` by hand, so when Task 9.3 adds shoals the copy
+  nobody updates fails silently, by answering "not blocked" and sailing a hull
+  through. Delete both and their tests.
 
 **What Task 1.3's review already settled (commit `5e2ae0e`), so do not redo it:**
 
@@ -1474,9 +1479,28 @@ once here: delete it, or give it the caller it was written for.
   claimed its two cases were already red and unfixable in this phase; that was
   wrong, and `5e2ae0e` corrects the record and rescales the fixture. Do not skip
   them, and do not "restore" the old numbers.
-- Baseline to work down from, measured at `5e2ae0e` with those four renames
-  patched in temporarily: **720 passed, 30 failed**. If you see 31 or more after
-  the renames, something regressed rather than being left over.
+- Baseline to work down from, with those four renames patched in temporarily.
+  It has moved as this phase landed, so use the latest and check it yourself
+  before trusting it:
+  - `5e2ae0e` (end of Task 1.3): 720 passed / 30 failed / 750 total
+  - `efe93a0` (end of Task 1.4): 730 / 24 / 754
+  - `afa31e4` (end of Task 1.5): **734 / 23 / 757**
+
+  The total rises because tasks add tests; only the failure count should fall. If
+  failures go **up** after the renames, something regressed rather than being left
+  over. Note that Task 1.6 lands between this measurement and this task, and will
+  move all three numbers again.
+- **One measured failure is a host difference, not a bug to fix.** The Task 1.4
+  implementer twice reported a count one lower than the same tree measured under
+  `./scripts/dotnet.sh`, with the totals agreeing -- so one test answers
+  differently on the Docker .NET 8 host than on the local .NET 10 one.
+  `ReplayRulesTests.Recorded_command_log_replays_to_a_pinned_hash` is the
+  suspect, and `Domain/GeometryRules.cs:24-28` predicts exactly this: `MathF.Atan2`
+  is the one libm call in the geometry layer and is not guaranteed to be
+  bit-identical across hosts. **Confirm which test it is under
+  `./scripts/dotnet.sh` before this task declares zero**, and if it is the replay
+  hash, say so in the commit body rather than repinning the hash to whatever the
+  local host prints.
 
 - [ ] **Step 1: Work the list**
 
@@ -1548,7 +1572,47 @@ it, so there is one place where a bearing becomes a vector; check first that the
 quarter-degree sampling is acceptable to this caller, which it is, because the
 same table already backs both halves of the expression being replaced.
 
-- [ ] **Step 3: Run the whole suite**
+- [ ] **Step 3: Put the chart camera and the minimap on the new origin**
+
+Task 1.5 moved `SeaChartCoordinates.MapMinimum`/`MapMaximum` from -100/100 to
+0/400, as its brief required, and that left **six Unity EditMode tests red**.
+The implementer reported them rather than papering over them, and was right that
+they are not a chart-ruler problem: two client rules have the centre origin baked
+into their arithmetic, not merely read from a constant.
+
+- `Chart_camera_footprint_follows_the_ship_to_the_map_edge`
+- `Clamp_center_keeps_the_footprint_inside_the_drawn_water`
+- `Mini_map_positions_map_panel_corners_to_the_map_corners`
+- `Mini_map_screen_clicks_only_count_inside_the_panel`
+- `Mini_map_screen_hit_testing_uses_the_camera_pixel_rectangle`
+- `Tactical_probe_can_find_the_seeded_storm_before_it_enters_interest`
+
+Two fixes, both small, both in
+`apps/game-unity/Assets/Presentation/SeaChartCameraController.cs`:
+
+1. `SeaChartCameraRules.ClampAxis` (line 116) ends
+   `Mathf.Clamp(value, -reach, reach)` -- symmetric about zero, which was the map
+   centre and is now the north-west corner. Clamp about the map's actual centre
+   instead: `var centre = (MapMinimum + MapMaximum) / 2f;` then
+   `Mathf.Clamp(value, centre - reach, centre + reach)`. Keep `reach` exactly as
+   it is; it is a half-width and is already origin-free. This preserves the
+   existing behaviour precisely and only moves where the middle is.
+2. `SeaMiniMapRules.ToWorldPosition` (line 9) lerps its second axis
+   `Lerp(MapMaximum, MapMinimum, y)` -- a Y-flip, because normalised y = 0 was the
+   top of a north-up chart and therefore the *maximum* world Y. Under the top-left
+   origin, +Y grows south, so the top of the minimap is now `MapMinimum`. Swap the
+   two bounds. This is the same flip Task 1.5 deleted from `ChartCoordinates`; it
+   simply lives in a second file.
+
+The storm-probe failure in `SeaRuntimeValidationRulesTests.cs` is a fixture
+position, not a rule: move it onto the 0..400 chart like any other.
+
+**Do not defer these to Phase 13.** Phase 13 rewrites the client movement rules
+and is twelve phases away; leaving the camera and the minimap pointing at a
+world that no longer exists for that long means every client change in between is
+made against a broken view.
+
+- [ ] **Step 4: Run the whole suite**
 
 ```sh
 pnpm server:test
@@ -1565,15 +1629,21 @@ incremental publish.
 
 Expected: `Passed! - Failed: 0`.
 
-- [ ] **Step 4: Run the static gates**
+- [ ] **Step 5: Run the static gates**
 
 ```sh
 pnpm ci:fast
+pnpm unity:test
 ```
 
-Expected: exit 0.
+Expected: exit 0 from both.
 
-- [ ] **Step 5: Commit**
+**`pnpm ci:fast` does not run the Unity EditMode suite**, so it alone cannot tell
+you this phase is green -- it would have passed with all six failures above still
+red. Run `unity:test` explicitly here. Unity is installed on this machine; Task
+1.5 ran the suite successfully, so a briefing that says otherwise is out of date.
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add -A
