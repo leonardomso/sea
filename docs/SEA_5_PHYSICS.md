@@ -1,5 +1,9 @@
 # SEA_5_PHYSICS — How ships move, shoot and see
 
+> Authoritative for movement, speed, environment, ranges, view, edges and rate
+> limits. SEA_2_MATH stays authoritative where this document is silent. See
+> "Which design document wins" in `AGENTS.md`.
+
 Version 1.1 · Decisions locked 2026-09-04 · Companion to SEA_1_KNOWLEDGE, SEA_2_MATH, SEA_3_MECHANICS, SEA_4_TECHNICAL
 
 This document explains the physics of Sea: how a ship moves, how far it can see and shoot, what wind and storms do, and how the server keeps everyone honest. It is written so that a new team member can read it once and understand the game, and so that every rule can be turned into a test.

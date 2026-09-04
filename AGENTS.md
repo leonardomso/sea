@@ -10,6 +10,22 @@ and `docs/SEA_4_TECHNICAL.md` are the design of record: where they and the
 code disagree, the docs win, and `docs/SEA_5_GAP_ANALYSIS.md` records how each
 difference is resolved.
 
+### Which design document wins
+
+- `docs/SEA_5_PHYSICS.md` is authoritative for everything it covers: movement,
+  effective speed, wind, storms, currents, heading and armour faces, ranges,
+  view distance, boarding distance, map edges, NPC distances and the client
+  rate limits.
+- `docs/SEA_2_MATH.md` is authoritative wherever SEA_5 is silent: damage,
+  reload, magazine, hit points, armour values, the Combat Power budget,
+  boarding scores and haul, enemy multipliers and the economy.
+- `docs/SEA_3_MECHANICS.md` is authoritative for what an action *does* once
+  the physics have allowed it.
+- One exception: the speed bonus cap is 0.25, from `stat_caps.json`.
+
+If a number appears in two documents and this list does not settle it, the
+code does not get written until a person settles it.
+
 ## Project boundaries
 
 - Development and validation are local-only until the roadmap says otherwise.

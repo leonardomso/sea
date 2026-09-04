@@ -1,5 +1,8 @@
 # Sea — Gap analysis: design docs versus the current build
 
+> This is a resolution log, not a design document. It records gaps that were
+> found and how they were closed. Nothing here overrides `SEA_5_PHYSICS.md`.
+
 Written: 2026-09-02. Updated: 2026-09-04, after Milestone 1 landed.
 Sources: `docs/SEA_1_KNOWLEDGE.md`, `docs/SEA_2_MATH.md`,
 `docs/SEA_3_MECHANICS.md`, `docs/SEA_4_TECHNICAL.md`, `PLAN.md`, `CONTEXT.md`,
