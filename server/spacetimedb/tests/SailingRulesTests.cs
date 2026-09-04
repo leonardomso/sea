@@ -281,9 +281,13 @@ public sealed class SailingRulesTests
             arrived = !hasDetour && step.Arrived;
         }
 
+        // She rests on the mark or inside the arrival radius of it, never short of the last
+        // leg and never orbiting it, which is the whole of what the detour has to deliver.
         Assert.True(arrived);
-        Assert.InRange(state.PositionX, destinationX - 0.01f, destinationX + 0.01f);
-        Assert.InRange(state.PositionY, destinationY - 0.01f, destinationY + 0.01f);
+        Assert.True(
+            NavigationRules.Distance(
+                state.PositionX, state.PositionY, destinationX, destinationY) <=
+            SailingRules.ArrivalRadius + 0.01f);
     }
 
     [Fact]

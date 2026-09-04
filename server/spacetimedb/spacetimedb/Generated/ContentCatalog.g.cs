@@ -232,7 +232,7 @@ public static partial class ContentCatalog
                 ArmorBack = 0.03f,
                 CannonSlots = (byte)8,
                 SpeedSquaresPerSecond = 2.4f,
-                TurnDegreesPerSecond = 60f,
+                TurnDegreesPerSecond = 150f,
                 Magazine = (byte)3,
                 CostGold = 0u,
                 MapRankRequired = (byte)1,

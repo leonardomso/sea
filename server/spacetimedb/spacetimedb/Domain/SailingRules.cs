@@ -62,8 +62,40 @@ public readonly struct AuthoritativeSailingStep
     public bool Arrived { get; }
 }
 
+/// <summary>
+/// What every hull can do with her way, as opposed to how fast she can go, which is her own.
+/// </summary>
+/// <remarks>
+/// These are set against the chart rather than against a ship: a captain clicks a square and
+/// expects the answer inside it, so a hull stops and comes about within roughly one square.
+/// </remarks>
+public static class HandlingRules
+{
+    public const float Acceleration = 10f;
+    public const float Deceleration = 30f;
+
+    /// <summary>How much sea a hull needs to come to rest from <paramref name="speed"/>.</summary>
+    public static float StoppingDistance(float speed) => speed * speed / (2f * Deceleration);
+
+    /// <summary>The radius of the circle a hull turns through at <paramref name="speed"/>.</summary>
+    public static float TurningRadius(float speed, float turnRateDegrees) =>
+        speed / (turnRateDegrees * (MathF.PI / 180f));
+}
+
 public static class SailingRules
 {
+    /// <summary>
+    /// How near the mark a ship has to be before she has arrived at it, in world units:
+    /// roughly a seventh of a chart square.
+    /// </summary>
+    /// <remarks>
+    /// Without this a ship could only finish a course by pointing at the mark, and a hull
+    /// whose turning circle is wider than her distance to it can never point at it. Clicking
+    /// a few units off the bow used to put her into a circle she orbited forever. Being close
+    /// enough is arriving.
+    /// </remarks>
+    public const float ArrivalRadius = 1.5f;
+
     public static AuthoritativeSailingStep Step(
         SailingState state,
         float destinationX,
@@ -120,18 +152,21 @@ public static class SailingRules
         var directionX = TrigonometryRules.SinDegrees(heading);
         var directionY = TrigonometryRules.CosDegrees(heading);
 
-        if (!stopping &&
-            ((remainingSquared <= Square(MathF.Max(0.05f, travel)) &&
-              speed <= parameters.Deceleration * deltaSeconds) ||
-             (travel * travel >= remainingSquared && thrustAlignment >= 0.95f)))
+        if (!stopping && LastStrideCoversTheMark(
+                remainingSquared,
+                travel,
+                speed,
+                parameters.Deceleration * deltaSeconds,
+                thrustAlignment))
         {
             return new AuthoritativeSailingStep(
-                destinationX,
-                destinationY,
-                heading,
-                0f,
-                false,
-                true);
+                destinationX, destinationY, heading, 0f, false, true);
+        }
+
+        if (!stopping && remainingSquared <= Square(ArrivalRadius))
+        {
+            return new AuthoritativeSailingStep(
+                state.PositionX, state.PositionY, heading, 0f, false, true);
         }
 
         var positionX = state.PositionX + directionX * travel;
@@ -145,6 +180,21 @@ public static class SailingRules
             moving,
             false);
     }
+
+    /// <summary>
+    /// Whether this tick's way carries her onto the mark, in which case she is put on it
+    /// exactly. A ship inside <see cref="ArrivalRadius"/> but further off than one stride
+    /// has still arrived, but she comes to rest where she swims: pulling her onto the mark
+    /// from there would read as a jump.
+    /// </summary>
+    private static bool LastStrideCoversTheMark(
+        float remainingSquared,
+        float travel,
+        float speed,
+        float decelerationStep,
+        float thrustAlignment) =>
+        (remainingSquared <= Square(MathF.Max(0.05f, travel)) && speed <= decelerationStep) ||
+        (travel * travel >= remainingSquared && thrustAlignment >= 0.95f);
 
     private static void ValidateDeltaSeconds(float deltaSeconds)
     {

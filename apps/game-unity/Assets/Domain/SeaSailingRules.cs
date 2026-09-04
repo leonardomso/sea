@@ -79,6 +79,11 @@ namespace Sea.Client
     /// </summary>
     public static class SeaSailingRules
     {
+        /// <summary>
+        /// Mirrors <c>SailingRules.ArrivalRadius</c> on the server. The two must move together.
+        /// </summary>
+        public const float ArrivalRadius = 1.5f;
+
         public static SeaSailingStep Step(
             SeaSailingState state,
             Vector3 destination,
@@ -127,12 +132,20 @@ namespace Sea.Client
                   speed <= parameters.Deceleration * deltaSeconds) ||
                  ((travel * travel) >= remainingSquared && thrustAlignment >= 0.95f)))
             {
+                // Her last stride carries her onto the mark, so she is put on it exactly.
                 return new SeaSailingStep(
                     new Vector3(destination.x, state.Position.y, destination.z),
                     heading,
                     0f,
                     false,
                     true);
+            }
+
+            if (!stopping && remainingSquared <= Square(ArrivalRadius))
+            {
+                // She is inside the mark but further off it than one stride. She comes to
+                // rest where she swims; see SailingRules.ArrivalRadius on the server for why.
+                return new SeaSailingStep(state.Position, heading, 0f, false, true);
             }
 
             var position = new Vector3(

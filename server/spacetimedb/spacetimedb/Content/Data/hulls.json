@@ -10,7 +10,7 @@
       "armorBack": 0.03,
       "cannonSlots": 8,
       "speedSquaresPerSecond": 2.4,
-      "turnDegreesPerSecond": 60,
+      "turnDegreesPerSecond": 150,
       "magazine": 3,
       "costGold": 0,
       "mapRankRequired": 1
