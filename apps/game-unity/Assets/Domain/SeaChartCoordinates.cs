@@ -25,16 +25,18 @@ namespace Sea.Client
     }
 
     /// <summary>
-    /// The chart grid a captain reads. It is the map's own square grid and nothing else:
-    /// Havenmere is twenty squares on a side and a square is ten world units, so a coordinate
-    /// spoken on the sea means the same square the server measures ranges in.
+    /// The chart grid a captain reads. It is the map's own square grid and nothing else: the
+    /// world is four hundred squares on a side and a square is one world unit, grouped ten
+    /// squares to a ruler label, so a coordinate spoken on the sea means the same ground the
+    /// server measures ranges in. The origin is the top-left corner; x grows east and y grows
+    /// south, so there is no flip between a ruler row and the world's own y axis.
     /// </summary>
     public static class SeaChartCoordinates
     {
-        public const int ColumnCount = 20;
-        public const int RowCount = 20;
-        public const float MapMinimum = -100f;
-        public const float MapMaximum = 100f;
+        public const int ColumnCount = 40;
+        public const int RowCount = 40;
+        public const float MapMinimum = 0f;
+        public const float MapMaximum = 400f;
         public const float SquareSize = (MapMaximum - MapMinimum) / ColumnCount;
 
         private static readonly char[] Separators = { ' ', '-', ',', ':' };
@@ -59,7 +61,7 @@ namespace Sea.Client
                 column + 1,
                 row + 1,
                 MapMinimum + (column + 0.5f) * SquareSize,
-                MapMaximum - (row + 0.5f) * SquareSize);
+                MapMinimum + (row + 0.5f) * SquareSize);
             return true;
         }
 
@@ -72,7 +74,7 @@ namespace Sea.Client
 
         /// <summary>Zero-based row index, counted south from the northern edge.</summary>
         public static int RowIndexAt(float y) =>
-            Math.Clamp((int)Math.Floor((MapMaximum - y) / SquareSize), 0, RowCount - 1);
+            Math.Clamp((int)Math.Floor((y - MapMinimum) / SquareSize), 0, RowCount - 1);
 
         // The chart rulers relabel whenever the camera moves, so the fixed label set is
         // built once and shared instead of being formatted on every frame.

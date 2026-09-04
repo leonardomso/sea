@@ -18,14 +18,24 @@ public readonly struct ChartCell
     public float Y { get; }
 }
 
+/// <summary>
+/// The chart ruler: forty columns lettered A..Z, AA..AN, forty rows numbered
+/// 1..40, so one ruler cell is ten squares. Columns run east from the left-hand
+/// edge and rows run south from the top, which is the same way the map is
+/// stored (SEA_5 §3.3) -- there is no Y-flip here, because the map has no
+/// north-up centre-origin left to flip against.
+/// </summary>
 public static class ChartCoordinates
 {
-    private const int FirstLetterValue = 27;
-    public const int ColumnCount = 78;
-    public const int RowCount = 61;
+    private const int FirstLetterValue = 1;
+    public const int ColumnCount = 40;
+    public const int RowCount = 40;
+
+    /// <summary>The highest 0-based row index. A parsed 1-based row label is valid from 1 to
+    /// <see cref="RowCount"/>, which is this bound plus one.</summary>
     public const int MaximumRow = RowCount - 1;
-    public const float CellWidth = (WorldRules.MapMax - WorldRules.MapMin) / RowCount;
-    public const float CellHeight = (WorldRules.MapMax - WorldRules.MapMin) / ColumnCount;
+    public const float CellWidthSquares = WorldRules.MapSizeSquares / ColumnCount;
+    public const float CellHeightSquares = WorldRules.MapSizeSquares / RowCount;
 
     public static string ColumnLabel(int column)
     {
@@ -70,6 +80,11 @@ public static class ChartCoordinates
         return column >= 0 && column < ColumnCount;
     }
 
+    /// <summary>
+    /// Parses a label such as "M12": a bijective-base-26 column letter run
+    /// immediately followed by a 1-based row number, with no separator. Rejects
+    /// anything else, including the old "M 12" space-separated, 0-based form.
+    /// </summary>
     public static bool TryCellCenter(string? coordinate, out ChartCell cell)
     {
         cell = default;
@@ -78,19 +93,29 @@ public static class ChartCoordinates
             return false;
         }
 
-        var parts = coordinate.Split(
-            (char[]?)null,
-            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length != 2 ||
-            !TryColumnIndex(parts[0], out var column) ||
-            !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var row) ||
-            row < 0 ||
-            row > MaximumRow)
+        var trimmed = coordinate.Trim();
+        var splitIndex = 0;
+        while (splitIndex < trimmed.Length && char.IsLetter(trimmed[splitIndex]))
+        {
+            splitIndex++;
+        }
+
+        if (splitIndex == 0 || splitIndex == trimmed.Length)
         {
             return false;
         }
 
-        cell = CellCenter(column, row);
+        var letters = trimmed[..splitIndex];
+        var digits = trimmed[splitIndex..];
+        if (!TryColumnIndex(letters, out var column) ||
+            !int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var rowNumber) ||
+            rowNumber < 1 ||
+            rowNumber - 1 > MaximumRow)
+        {
+            return false;
+        }
+
+        cell = CellCenter(column, rowNumber - 1);
         return true;
     }
 
@@ -109,8 +134,8 @@ public static class ChartCoordinates
         return new ChartCell(
             column,
             row,
-            WorldRules.MapMin + (row + 0.5f) * CellWidth,
-            WorldRules.MapMax - (column + 0.5f) * CellHeight);
+            WorldRules.MapMin + (column + 0.5f) * CellWidthSquares,
+            WorldRules.MapMin + (row + 0.5f) * CellHeightSquares);
     }
 
     public static string LabelAt(float x, float y)
@@ -121,13 +146,13 @@ public static class ChartCoordinates
         }
 
         var column = Math.Clamp(
-            (int)MathF.Floor((WorldRules.MapMax - y) / CellHeight),
+            (int)MathF.Floor((x - WorldRules.MapMin) / CellWidthSquares),
             0,
             ColumnCount - 1);
         var row = Math.Clamp(
-            (int)MathF.Floor((x - WorldRules.MapMin) / CellWidth),
+            (int)MathF.Floor((y - WorldRules.MapMin) / CellHeightSquares),
             0,
             MaximumRow);
-        return $"{ColumnLabel(column)} {row}";
+        return $"{ColumnLabel(column)}{row + 1}";
     }
 }

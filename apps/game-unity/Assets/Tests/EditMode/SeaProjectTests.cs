@@ -54,7 +54,7 @@ namespace Sea.Tests
         [Test]
         public void Chart_clicks_outside_the_projected_map_are_clamped_to_valid_water()
         {
-            var clamped = SeaChartCoordinates.ClampToMap(new Vector2(-180f, 245f));
+            var clamped = SeaChartCoordinates.ClampToMap(new Vector2(-180f, 645f));
 
             Assert.That(clamped.x, Is.EqualTo(SeaChartCoordinates.MapMinimum));
             Assert.That(clamped.y, Is.EqualTo(SeaChartCoordinates.MapMaximum));

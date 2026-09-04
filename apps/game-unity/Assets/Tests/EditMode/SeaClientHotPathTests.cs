@@ -11,14 +11,14 @@ namespace Sea.Tests.EditMode
         public void Chart_ruler_labels_are_shared_and_agree_with_full_labels()
         {
             // The ruler counts the map's own squares: 1 at each of the north and west edges,
-            // 20 at each of the south and east ones.
+            // 40 at each of the south and east ones.
             Assert.That(SeaChartCoordinates.ColumnLabelAt(0), Is.EqualTo("1"));
             Assert.That(
                 SeaChartCoordinates.ColumnLabelAt(SeaChartCoordinates.ColumnCount - 1),
-                Is.EqualTo("20"));
+                Is.EqualTo("40"));
             Assert.That(
                 SeaChartCoordinates.RowLabelAt(SeaChartCoordinates.RowCount - 1),
-                Is.EqualTo("20"));
+                Is.EqualTo("40"));
             Assert.That(
                 SeaChartCoordinates.ColumnLabelAt(5),
                 Is.SameAs(SeaChartCoordinates.ColumnLabelAt(5)),
@@ -37,10 +37,12 @@ namespace Sea.Tests.EditMode
             Assert.That(
                 SeaChartCoordinates.ColumnIndexAt(1000f),
                 Is.EqualTo(SeaChartCoordinates.ColumnCount - 1));
-            Assert.That(SeaChartCoordinates.RowIndexAt(1000f), Is.EqualTo(0));
+            // Y grows south from a top-left origin now, so a large y clamps to the last row and
+            // a negative one clamps to the first -- there is no flip left to invert that.
             Assert.That(
-                SeaChartCoordinates.RowIndexAt(-1000f),
+                SeaChartCoordinates.RowIndexAt(1000f),
                 Is.EqualTo(SeaChartCoordinates.RowCount - 1));
+            Assert.That(SeaChartCoordinates.RowIndexAt(-1000f), Is.EqualTo(0));
         }
 
         [Test]

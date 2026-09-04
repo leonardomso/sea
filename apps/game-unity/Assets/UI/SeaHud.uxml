@@ -55,6 +55,26 @@
             <ui:Label name="top-coordinate-17" text="" />
             <ui:Label name="top-coordinate-18" text="" />
             <ui:Label name="top-coordinate-19" text="" />
+            <ui:Label name="top-coordinate-20" text="" />
+            <ui:Label name="top-coordinate-21" text="" />
+            <ui:Label name="top-coordinate-22" text="" />
+            <ui:Label name="top-coordinate-23" text="" />
+            <ui:Label name="top-coordinate-24" text="" />
+            <ui:Label name="top-coordinate-25" text="" />
+            <ui:Label name="top-coordinate-26" text="" />
+            <ui:Label name="top-coordinate-27" text="" />
+            <ui:Label name="top-coordinate-28" text="" />
+            <ui:Label name="top-coordinate-29" text="" />
+            <ui:Label name="top-coordinate-30" text="" />
+            <ui:Label name="top-coordinate-31" text="" />
+            <ui:Label name="top-coordinate-32" text="" />
+            <ui:Label name="top-coordinate-33" text="" />
+            <ui:Label name="top-coordinate-34" text="" />
+            <ui:Label name="top-coordinate-35" text="" />
+            <ui:Label name="top-coordinate-36" text="" />
+            <ui:Label name="top-coordinate-37" text="" />
+            <ui:Label name="top-coordinate-38" text="" />
+            <ui:Label name="top-coordinate-39" text="" />
         </ui:VisualElement>
 
         <ui:VisualElement name="left-coordinate-ruler" class="coordinate-ruler left-coordinate-ruler">
@@ -78,6 +98,26 @@
             <ui:Label name="left-coordinate-17" text="" />
             <ui:Label name="left-coordinate-18" text="" />
             <ui:Label name="left-coordinate-19" text="" />
+            <ui:Label name="left-coordinate-20" text="" />
+            <ui:Label name="left-coordinate-21" text="" />
+            <ui:Label name="left-coordinate-22" text="" />
+            <ui:Label name="left-coordinate-23" text="" />
+            <ui:Label name="left-coordinate-24" text="" />
+            <ui:Label name="left-coordinate-25" text="" />
+            <ui:Label name="left-coordinate-26" text="" />
+            <ui:Label name="left-coordinate-27" text="" />
+            <ui:Label name="left-coordinate-28" text="" />
+            <ui:Label name="left-coordinate-29" text="" />
+            <ui:Label name="left-coordinate-30" text="" />
+            <ui:Label name="left-coordinate-31" text="" />
+            <ui:Label name="left-coordinate-32" text="" />
+            <ui:Label name="left-coordinate-33" text="" />
+            <ui:Label name="left-coordinate-34" text="" />
+            <ui:Label name="left-coordinate-35" text="" />
+            <ui:Label name="left-coordinate-36" text="" />
+            <ui:Label name="left-coordinate-37" text="" />
+            <ui:Label name="left-coordinate-38" text="" />
+            <ui:Label name="left-coordinate-39" text="" />
         </ui:VisualElement>
 
         <ui:VisualElement name="mini-map-frame" class="mini-map-frame">

@@ -7,7 +7,7 @@ namespace Sea.Client
     public static class SeaSubscriptionPlan
     {
         // Mirrors the server SpatialRules.ChunkSize until the world contract module owns it.
-        public const float ChunkSize = 25f;
+        public const float ChunkSize = 50f;
 
         // The window has to guarantee radius * ChunkSize units of coverage around the local ship
         // wherever it sits inside its chunk, and that has to clear the fog vision radius: a ship
@@ -16,7 +16,7 @@ namespace Sea.Client
         public const int SpatialRadius = 5;
 
         // The chunk window earns its cost on a map too large to hold at once. Havenmere is not
-        // that map: 200x200 units is 64 chunks, and at sailing speed the player crosses a chunk
+        // that map: 400x400 units is 64 chunks, and at sailing speed the player crosses a chunk
         // border every couple of seconds. Each crossing resubscribed, which destroyed and
         // rebuilt terrain meshes on the main thread and threw away the motion history of every
         // ship in view - the freeze. Under this budget the client takes the whole map in one

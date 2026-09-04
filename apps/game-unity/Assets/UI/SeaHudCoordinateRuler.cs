@@ -7,7 +7,7 @@ namespace Sea.Client
     {
         /// <summary>
         /// The rulers carry one slot per square of the map, so a chart pulled all the way out
-        /// reads 1 to 20 on both edges. Closer in, several slots fall inside the same square;
+        /// reads 1 to 40 on both edges. Closer in, several slots fall inside the same square;
         /// only the first of them is written, which puts the number at the square's own edge
         /// instead of repeating it across the view.
         /// </summary>

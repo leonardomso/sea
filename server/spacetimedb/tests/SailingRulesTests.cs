@@ -5,49 +5,6 @@ namespace Sea.Server.Tests;
 
 public sealed class SailingRulesTests
 {
-    [Theory]
-    [InlineData(0, "AA")]
-    [InlineData(23, "AX")]
-    [InlineData(25, "AZ")]
-    [InlineData(26, "BA")]
-    [InlineData(51, "BZ")]
-    [InlineData(52, "CA")]
-    [InlineData(77, "CZ")]
-    public void Y_axis_labels_start_at_AA_and_continue_after_AZ(int column, string expected)
-    {
-        Assert.Equal(expected, ChartCoordinates.ColumnLabel(column));
-        Assert.True(ChartCoordinates.TryColumnIndex(expected, out var parsed));
-        Assert.Equal(column, parsed);
-    }
-
-    [Fact]
-    public void AX_59_resolves_to_the_center_of_its_chart_cell()
-    {
-        Assert.True(ChartCoordinates.TryCellCenter("AX 59", out var center));
-
-        Assert.Equal(23, center.Column);
-        Assert.Equal(59, center.Row);
-        Assert.Equal("AX 59", ChartCoordinates.LabelAt(center.X, center.Y));
-    }
-
-    [Fact]
-    public void Chart_axes_run_AA_to_CZ_top_to_bottom_and_zero_to_sixty_left_to_right()
-    {
-        Assert.Equal("AA 0", ChartCoordinates.LabelAt(-99.9f, 99.9f));
-        Assert.Equal("CZ 60", ChartCoordinates.LabelAt(99.9f, -99.9f));
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("A -1")]
-    [InlineData("DA 2")]
-    [InlineData("AX 61")]
-    [InlineData("59 AX")]
-    public void Invalid_chart_coordinates_are_rejected(string value)
-    {
-        Assert.False(ChartCoordinates.TryCellCenter(value, out _));
-    }
-
     [Fact]
     public void Sailing_accelerates_without_teleporting()
     {

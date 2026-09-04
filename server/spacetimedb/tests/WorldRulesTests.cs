@@ -170,7 +170,7 @@ public sealed class WorldRulesTests
 
     [Theory]
     [InlineData(-1)]
-    [InlineData(78)]
+    [InlineData(40)]
     public void CoordinateColumnsRejectOutOfRangeIndexes(int column)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
@@ -182,7 +182,7 @@ public sealed class WorldRulesTests
     [Theory]
     [InlineData(null)]
     [InlineData("")]
-    [InlineData("A")]
+    [InlineData("AO")]
     [InlineData("AAA")]
     [InlineData("A!")]
     [InlineData("ZZ")]
@@ -196,7 +196,8 @@ public sealed class WorldRulesTests
     [InlineData("AA")]
     [InlineData("AA nope")]
     [InlineData("AA -1")]
-    [InlineData("AA 61")]
+    [InlineData("AA41")]
+    [InlineData("A0")]
     public void InvalidCoordinateCellsAreRejected(string coordinate)
     {
         Assert.False(ChartCoordinates.TryCellCenter(coordinate, out _));
