@@ -61,14 +61,61 @@ public static class DomainBenchmarks
         public int HullsById() => ContentIndex.ById(Content.Hulls, hull => hull.Id, "hull").Count;
     }
 
+    /// <summary>
+    /// One volley, resolved the way the tick loop resolves it: the face the shot lands on, the
+    /// armour that face carries, and the damage left after both. Every hit in the world runs this.
+    /// </summary>
     [MemoryDiagnoser]
     public class VolleyBenchmark
     {
-        [Benchmark]
-        public CombatDamage DamageProfile() =>
-            CombatRules.DamageProfile(Round, WeakPoint.Hull, WorldRules.InitialCannonDamage, Hull.CannonSlots, Hull.CannonSlots);
+        private readonly ShipStatSheet sheet = ShipStatRules.Compute(
+            new ShipLoadout(Hull, Cannon, Hull.CannonSlots, Round.DamageMultiplier, Round.ReloadMultiplier),
+            [],
+            Content.StatCaps);
+
+        // Mutable fields, not literals: a shot written out in constants is folded away by the JIT
+        // and the benchmark then measures nothing at all.
+        private float sourceX = 35f;
+
+        private float sourceY = 120f;
+
+        private float targetHeading = 90f;
+
+        [Benchmark(Baseline = true)]
+        public ArmorFace ResolveFacing() =>
+            CombatRules.ResolveFacing(sourceX, sourceY, targetHeading, 100f, 60f);
 
         [Benchmark]
-        public bool StatusRoll() => TacticalRules.ShouldApplyStatus(0x9E3779B97F4A7C15UL, 35);
+        public uint ResolveVolley()
+        {
+            var face = CombatRules.ResolveFacing(sourceX, sourceY, targetHeading, 100f, 60f);
+            var armor = CombatRules.ArmorOn(face, Hull.ArmorFront, Hull.ArmorSides, Hull.ArmorBack);
+            return CombatRules.ResolveDamage(sheet.VolleyDamage, Round.DamageMultiplier, armor);
+        }
+    }
+
+    /// <summary>
+    /// The magazine is advanced once per ship per tick whether or not anyone is firing, so it is
+    /// the most-run piece of combat code in the module.
+    /// </summary>
+    [MemoryDiagnoser]
+    public class MagazineBenchmark
+    {
+        private static readonly uint ReloadTicks = CombatRules.ReloadTicks(3_000);
+
+        private readonly MagazineState reloading = new(1, 4);
+
+        private readonly MagazineState full = new(3, 0);
+
+        [Benchmark(Baseline = true)]
+        public MagazineState AdvanceWhileReloading() =>
+            CombatRules.Advance(reloading, 3, ReloadTicks, 0);
+
+        [Benchmark]
+        public MagazineState AdvanceWhileFull() =>
+            CombatRules.Advance(full, 3, ReloadTicks, 0);
+
+        [Benchmark]
+        public MagazineState SpendVolley() => CombatRules.Spend(full);
     }
 }
