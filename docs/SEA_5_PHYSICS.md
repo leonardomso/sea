@@ -160,13 +160,13 @@ sequenceDiagram
 
 ### 4.4 Base speed by hull
 
-| Hull | Base speed (sq/s) | Time to cross 400 sq | Max with +20% cap |
+| Hull | Base speed (sq/s) | Time to cross 400 sq | Max with +25% cap |
 |---|---|---|---|
-| Skiff | 5.6 | 71 s | 6.72 |
-| Sloop | 5.3 | 75 s | 6.36 |
-| Brig | 5.0 | 80 s | 6.00 |
-| Frigate | 4.7 | 85 s | 5.64 |
-| Galleon | 4.4 | 91 s | 5.28 |
+| Skiff | 5.6 | 71 s | 7.00 |
+| Sloop | 5.3 | 75 s | 6.63 |
+| Brig | 5.0 | 80 s | 6.25 |
+| Frigate | 4.7 | 85 s | 5.88 |
+| Galleon | 4.4 | 91 s | 5.50 |
 
 Why these values: Seafight's base hull moves ~4 sq/s and a normal PvP build 6–13 sq/s on a ~418-sq map. Sea sits at the lower end on purpose. Fights are meant to last 33–38 s; at 5 sq/s a ship closes a full tier-5 range (30 sq) in 6 s, which is enough time to reposition twice in a fight but not to run laps. Bigger hull = slower. The Skiff→Galleon gap is 27%: a Galleon cannot chase down a Skiff, but it can hold a Skiff in range for most of a fight if the Skiff commits.
 
@@ -178,7 +178,7 @@ Why these values: Seafight's base hull moves ~4 sq/s and a normal PvP build 6–
 
 ```
 speed = SPEED_BASE(hull)
-        × (1 + min(0.20, sum of speed bonuses))     add, then cap
+        × (1 + min(0.25, sum of speed bonuses))     add, then cap
         × HP_STATE_MULT                              1.00 / 0.92 / 0.85
         × WIND_MULT                                  1 + 0.10 × cos(heading − wind)
         × STORM_MULT                                 0.85 inside a storm, else 1
@@ -204,7 +204,7 @@ flowchart LR
 
 | Part | Rule |
 |---|---|
-| **Bonuses** | Speed bonuses from skills, crew and gear are summed and capped at **+20%**. They spend the same 45-point Combat Power budget as everything else. |
+| **Bonuses** | Speed bonuses from skills, crew and gear are summed and capped at **+25%** (this is the one number Sea keeps from SEA_2_MATH; see `stat_caps.json.speedBonusCap`). They spend the same 45-point Combat Power budget as everything else. |
 | **HP state** | HP > 50% → ×1.00. 25% < HP ≤ 50% → ×0.92. HP ≤ 25% → ×0.85. Checked every tick; repairing above a line restores speed on the next tick. This is Seafight's three-state idea, made gentler. It lets the winner finish and stops "everyone escapes at 20%". |
 | **Wind** | Each map has one wind direction per time band (00:00 / 08:00 / 16:00 UTC), sent to clients. Straight downwind +10%, straight upwind −10%, side wind 0. A stopped ship feels no wind. Wind never bends a route; it only changes how fast you move along it. |
 | **Storm** | A storm is a circle of radius **40 sq** that drifts at **0.5 sq/s**, lives 10–20 min, 0–2 per map. Inside it speed is ×0.85. Stacks with wind (worst case 0.85 × 0.90 = 0.765). |
@@ -226,7 +226,7 @@ stateDiagram-v2
 
 ### 5.3 The extremes (checked)
 
-- Fastest possible ship: Skiff 5.6 × 1.20 × 1.10 = **7.39 sq/s**, plus up to 0.3 sq/s of current.
+- Fastest possible ship: Skiff 5.6 × 1.25 × 1.10 = **7.70 sq/s**, plus up to 0.3 sq/s of current.
 - Slowest possible ship: Galleon at ≤ 25% HP, in a storm, sailing upwind: 4.4 × 0.85 × 0.85 × 0.90 = **2.86 sq/s**.
 
 ---
@@ -413,7 +413,7 @@ Scripted tests against the SpacetimeDB module, in the same spirit as the balance
 | 7 | Same route downwind / upwind / crosswind | time × 1/1.10 · × 1/0.90 · unchanged |
 | 8 | Inside a storm, sailing upwind | speed = base × 0.85 × 0.90 within 0.1% |
 | 9 | HP 60% → 40%, then repair above 50% | speed × 0.92 next tick; back to × 1.00 next tick after repair |
-| 10 | Build with +35% speed bonuses | moves at exactly base × 1.20 |
+| 10 | Build with +35% speed bonuses | moves at exactly base × 1.25 |
 | 11 | Tier-5 cannon, target at 30.4 sq and at 30.6 sq | hit at 30.4; no volley at 30.6 |
 | 12 | Target leaves range 10 ms after a volley fires | full damage applied; server HP reduced before flight time elapses |
 | 13 | Attacker at 44° / 46° / 135° from defender heading | FRONT / SIDE / BACK |
@@ -456,7 +456,7 @@ These are copied in SEA_2_MATH under "Physics constants". SEA_2_MATH wins on any
 | MOVE_MAX_PER_SEC | 8 |
 | HEADING_ANIM_MS | 400 (client only) |
 | SPEED_BASE Skiff / Sloop / Brig / Frigate / Galleon | 5.6 / 5.3 / 5.0 / 4.7 / 4.4 sq/s |
-| SPEED_BONUS_CAP | 0.20 |
+| SPEED_BONUS_CAP | 0.25 |
 | HP_STATE_MULT (>50% / 25–50% / ≤25%) | 1.00 / 0.92 / 0.85 |
 | WIND_STRENGTH | 0.10 |
 | STORM_MULT / STORM_RADIUS / STORM_DRIFT | 0.85 / 40 sq / 0.5 sq/s |
