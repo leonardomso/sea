@@ -618,17 +618,18 @@ Add to `WorldRulesTests.cs`:
 
 ```csharp
 [Fact]
-public void TheMapIsFourHundredSquaresFromTheTopLeft()
+public void TheMapIsFourHundredSquaresOnASide()
 {
-    Assert.Equal(0f, WorldRules.MapMin);
-    Assert.Equal(400f, WorldRules.MapMax);
+    // A tripwire, not a behaviour test: 400 is a number SEA_5 §3.1 picked and nothing
+    // reads MapSizeSquares yet. MapMin and MapMax are not asserted here because the
+    // bounds theory below fails the moment either of them moves.
     Assert.Equal(400f, WorldRules.MapSizeSquares);
 }
 
 [Fact]
 public void ATickIsATenthOfASecond()
 {
-    Assert.Equal(0.1f, WorldRules.SecondsPerTick, 6);
+    Assert.Equal(0.1f, WorldRules.SecondsPerTick);
 }
 
 [Theory]
@@ -648,8 +649,10 @@ public void ClampToMapPullsAPointBackInside()
 {
     var (x, y) = WorldRules.ClampToMap(-5f, 900f);
 
-    Assert.Equal(0f, x, 4);
-    Assert.Equal(400f, y, 4);
+    // Math.Clamp hands back the bound itself, so these are exact. Replay hashes floats
+    // bit for bit, and a tolerance is the one thing that would hide drift.
+    Assert.Equal(0f, x);
+    Assert.Equal(400f, y);
 }
 ```
 
@@ -731,13 +734,29 @@ change the other.
 pnpm server:test 2>&1 | tail -60
 ```
 
-Expected: a long list of failures. That list is the work for the rest of this
-phase. Save it:
+Expected: **not** a list of failing tests. The tree no longer compiles, so no test
+runs at all, and Roslyn stops at the first `const` initializer it cannot resolve --
+so even the compiler errors arrive one file at a time rather than all at once. A
+test run cannot produce the inventory this phase needs. Build it by hand instead,
+and keep it in the session scratchpad rather than `/tmp`:
 
 ```sh
-pnpm server:test 2>&1 | grep -E "^\s+(Failed|X) " | sort -u > /tmp/phase1-failures.txt
-wc -l /tmp/phase1-failures.txt
+grep -rn "CollisionPadding\|VisionRadius\|HarborSafeRadius\b" server --include='*.cs'
 ```
+
+Two things that grep will not tell you, both of which have to go in the list:
+
+- `Simulation/*.cs` and `Navigation/NavigationState.cs` are not compiled by
+  `Sea.Server.Domain.csproj`, so nothing about them shows up in a domain build.
+  They break too.
+- Some tests break on **behaviour**, not on a rename, and no grep for a deleted
+  member finds them. `SpatialRules.ChunkCoordinate` divides by `ChunkSize` after
+  subtracting `MapMin`, so moving the origin silently re-answers it, and
+  `ChunkSize` 25 x `ChunkCountPerAxis` 8 covers 200 squares of a 400 square map --
+  everything past x = 200 collapses into the last chunk. That makes the spatial
+  index half blind until Task 1.4 widens it. The known casualties are
+  `SpatialRules_maps_positions_to_chunks` and the segment-bounds test in
+  `WorldRulesTests.cs`.
 
 - [ ] **Step 5: Commit the constant change on its own**
 
@@ -1206,7 +1225,14 @@ here only so the tree builds; Phase 8 replaces every map by hand."
 ### Task 1.7: Get the tree green again
 
 **Files:**
-- Modify: whatever `/tmp/phase1-failures.txt` from Task 1.2 Step 4 lists.
+- Modify: whatever the hand-built inventory from Task 1.2 Step 4 lists. It is a
+  grep plus two things grep misses; re-read that step rather than trusting a file.
+- Also fold in: `WorldRules.IsBlocked(string kind, ...)`, whose hardcoded
+  `"island"`/`"reef"` pair restates `HotPathCodes.BlocksMovement` by hand. It has no
+  production caller left -- only its own tests -- and when Task 9.3 adds shoals the
+  copy that nobody updates fails silently, by answering "not blocked" and sailing a
+  hull through. Delete it and its tests, or make it parse and delegate to the typed
+  overload.
 
 - [ ] **Step 1: Work the list**
 
@@ -1216,6 +1242,9 @@ Almost every failure is one of four shapes:
    that used to read 90 now reads 90 only if it goes east; check the direction
    the test means and use the compass bearing.
 3. A radius or range written in units. Divide by ten.
+3a. A hand-written map span. `MapMax - MapMin` now has a name; `ChartCoordinates.cs`,
+   `NpcRules.cs`, `SpawnRules.cs`, `TacticalRules.cs` and `NavigationRules.cs` all
+   still spell it out longhand. Tasks 1.4 and 1.5 own most of these.
 4. A call to a deleted member. Replace with the `GeometryRules` equivalent.
 
 Do not change an assertion to match whatever the code now prints. Work out what
@@ -5842,7 +5871,19 @@ Expected: FAIL, the radius is in world units and `CanCrossShoal` does not exist.
     /// </summary>
     public static bool IsSafeWater(float x, float y, float harborX, float harborY) =>
         WorldRules.IsInRange(x, y, harborX, harborY, WorldRules.HarborSafeRadiusSquares);
+```
 
+Settle the radius before writing this. As drafted it puts two radii from two
+sources in one class: `PortRules.IsInside` already takes `portRadius` from the
+caller, and this would read a global constant instead. SEA_5 §10.3 says the zones
+are circles baked per map, which argues that safe water is content and this
+constant is the thing that should go. Note also that the harbor object in
+`maps.json` already carries a `radius` of its own, which is the drawn extent of
+the port and not the safe zone, so "the harbor radius" means two different numbers
+before you start. Pick one, say which in the commit body, and make
+`WorldRules.HarborSafeRadiusSquares` follow it.
+
+```csharp
     /// <summary>
     /// Shallow water. A small hull crosses it slowly (TacticalRules.ShoalMultiplier);
     /// a fourth or fifth rate draws too much and is turned back.

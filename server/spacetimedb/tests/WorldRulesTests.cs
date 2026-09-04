@@ -6,17 +6,18 @@ namespace Sea.Server.Tests;
 public sealed class WorldRulesTests
 {
     [Fact]
-    public void TheMapIsFourHundredSquaresFromTheTopLeft()
+    public void TheMapIsFourHundredSquaresOnASide()
     {
-        Assert.Equal(0f, WorldRules.MapMin);
-        Assert.Equal(400f, WorldRules.MapMax);
+        // A tripwire, not a behaviour test: 400 is a number SEA_5 §3.1 picked and nothing
+        // reads MapSizeSquares yet. MapMin and MapMax are not asserted here because
+        // InsideTheMapIsZeroToFourHundredOnBothAxes below fails the moment either moves.
         Assert.Equal(400f, WorldRules.MapSizeSquares);
     }
 
     [Fact]
     public void ATickIsATenthOfASecond()
     {
-        Assert.Equal(0.1f, WorldRules.SecondsPerTick, 6);
+        Assert.Equal(0.1f, WorldRules.SecondsPerTick);
     }
 
     [Theory]
@@ -36,8 +37,10 @@ public sealed class WorldRulesTests
     {
         var (x, y) = WorldRules.ClampToMap(-5f, 900f);
 
-        Assert.Equal(0f, x, 4);
-        Assert.Equal(400f, y, 4);
+        // Math.Clamp hands back the bound itself, so these are exact. Replay hashes
+        // floats bit for bit, and a tolerance is the one thing that would hide drift.
+        Assert.Equal(0f, x);
+        Assert.Equal(400f, y);
     }
 
     [Theory]
