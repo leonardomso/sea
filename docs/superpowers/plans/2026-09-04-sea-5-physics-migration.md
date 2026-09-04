@@ -1630,6 +1630,14 @@ incremental publish.
 
 Expected: `Passed! - Failed: 0`.
 
+Run it through `./scripts/dotnet.sh`, which is the .NET 8 SDK in Docker and is
+what CI runs. The machine's own `dotnet` is version 10 and disagrees by exactly
+one test: measured at `a3f781c` with the four pending renames patched in, Docker
+gives 735 passed / 22 failed of 757 and the host gives 734 / 23. Declare zero
+against Docker. If the host still shows one red after this task, name the test
+in the commit body rather than leaving the two numbers quietly disagreeing --
+it is the deferred `MathF.Atan2` question and it is not this task's to fix.
+
 - [ ] **Step 5: Run the static gates**
 
 ```sh
