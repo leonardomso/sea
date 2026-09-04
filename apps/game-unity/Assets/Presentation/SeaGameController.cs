@@ -172,7 +172,7 @@ namespace Sea.Client
             error = string.Empty;
             if (!SeaChartCoordinates.TryCellCenter(coordinate, out var cell))
             {
-                error = "Enter AA 0 through CZ 60.";
+                error = "Enter A1 through AN40.";
                 return false;
             }
 

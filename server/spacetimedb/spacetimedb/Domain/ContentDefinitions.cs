@@ -39,11 +39,15 @@ public sealed record MapContent
     public required float PortY { get; init; }
     public required float PortRadius { get; init; }
     /// <summary>
-    /// Row 0 is the northern row at world y = <see cref="WorldRules.MapMin"/> and rows run south,
-    /// so a row index is a y and <c>TerrainRows[y][x]</c> reads straight
-    /// (<see cref="SectorRules.TerrainAt"/>). This used to warn that
-    /// <see cref="ChartCoordinates"/> disagreed; it no longer does -- the ruler counts its
-    /// vertical axis by row from y as well, and the flip between them is gone.
+    /// Row 0 is the northern row at world y = <see cref="WorldRules.MapMin"/> and rows run
+    /// south, the same way the ruler and the world's own y axis run. There is no flip left
+    /// between any of the three.
+    ///
+    /// A row index is NOT a y yet. The authored grid is still 20 x 20 over a world that is
+    /// now 400 squares on a side, so one row spans twenty squares and
+    /// <see cref="SectorRules.TerrainAt"/> takes a scaled index, not a position. Feeding it
+    /// <c>floor(y)</c> throws once y passes 20. Task 1.6 expands the grid to one row per
+    /// square; only then does <c>TerrainRows[y][x]</c> read straight.
     /// </summary>
     public required IReadOnlyList<string> TerrainRows { get; init; }
     public required IReadOnlyList<WorldObjectContent> Objects { get; init; }

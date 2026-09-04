@@ -37,6 +37,14 @@ public static class ChartCoordinates
     public const float CellWidthSquares = WorldRules.MapSizeSquares / ColumnCount;
     public const float CellHeightSquares = WorldRules.MapSizeSquares / RowCount;
 
+    /// <summary>
+    /// How many letters a column label may run to, which caps <see cref="ColumnCount"/> at
+    /// 26 + 26*26 = 702. Past that <see cref="ColumnLabel"/> would walk off the front of its
+    /// buffer and throw an index error rather than say what was actually wrong, so raise this
+    /// first if the ruler ever grows.
+    /// </summary>
+    private const int MaxColumnLetters = 2;
+
     public static string ColumnLabel(int column)
     {
         if (column < 0 || column >= ColumnCount)
@@ -45,7 +53,7 @@ public static class ChartCoordinates
         }
 
         var value = column + FirstLetterValue;
-        Span<char> characters = stackalloc char[2];
+        Span<char> characters = stackalloc char[MaxColumnLetters];
         var index = characters.Length;
         while (value > 0)
         {
@@ -60,7 +68,7 @@ public static class ChartCoordinates
     public static bool TryColumnIndex(string? label, out int column)
     {
         column = -1;
-        if (string.IsNullOrWhiteSpace(label) || label.Length > 2)
+        if (string.IsNullOrWhiteSpace(label) || label.Length > MaxColumnLetters)
         {
             return false;
         }
@@ -142,9 +150,15 @@ public static class ChartCoordinates
     {
         if (!WorldRules.IsInsideMap(x, y))
         {
-            throw new ArgumentOutOfRangeException(nameof(x));
+            throw new ArgumentOutOfRangeException(
+                WorldRules.IsInsideMap(x, WorldRules.MapMin) ? nameof(y) : nameof(x),
+                $"({x}, {y}) is off the map.");
         }
 
+        // The clamps are not defensive. IsInsideMap is inclusive of MapMax, so the far corner
+        // is a legal position, and floor(400 / 10) is 40 -- one past the last cell. Each clamp
+        // catches exactly that one input per axis. Deleting them as redundant under the guard
+        // above breaks the map edge and nothing else, which is the hardest kind to notice.
         var column = Math.Clamp(
             (int)MathF.Floor((x - WorldRules.MapMin) / CellWidthSquares),
             0,

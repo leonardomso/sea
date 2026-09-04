@@ -16,19 +16,21 @@ namespace Sea.Tests
         [Test]
         public void Client_chart_coordinates_match_the_server_contract()
         {
-            // The client's grid is the server's grid: forty squares of ten units on a side,
-            // spoken one-based from the north-west corner, with no flip against the world's
-            // own top-left-origin, south-growing y axis.
-            Assert.That(SeaChartCoordinates.TryCellCenter("14-6", out var center), Is.True);
-            Assert.That(center.Column, Is.EqualTo(14));
-            Assert.That(center.Row, Is.EqualTo(6));
+            // The client's grid is the server's grid: forty ruler cells of ten squares on a
+            // side, columns lettered from A and rows spoken from 1, counted from the
+            // north-west corner, with no flip against the world's own top-left-origin,
+            // south-growing y axis. Indices are zero-based on both sides; only the spoken
+            // row number is offset.
+            Assert.That(SeaChartCoordinates.TryCellCenter("N6", out var center), Is.True);
+            Assert.That(center.Column, Is.EqualTo(13));
+            Assert.That(center.Row, Is.EqualTo(5));
             Assert.That(center.X, Is.EqualTo(135f).Within(0.001f));
             Assert.That(center.Y, Is.EqualTo(55f).Within(0.001f));
-            Assert.That(SeaChartCoordinates.LabelAt(center.X, center.Y), Is.EqualTo("14-6"));
-            Assert.That(SeaChartCoordinates.LabelAt(0.1f, 0.1f), Is.EqualTo("1-1"));
-            Assert.That(SeaChartCoordinates.LabelAt(399.9f, 399.9f), Is.EqualTo("40-40"));
-            Assert.That(SeaChartCoordinates.TryCellCenter("41-1", out _), Is.False);
-            Assert.That(SeaChartCoordinates.TryCellCenter("0-1", out _), Is.False);
+            Assert.That(SeaChartCoordinates.LabelAt(center.X, center.Y), Is.EqualTo("N6"));
+            Assert.That(SeaChartCoordinates.LabelAt(0.1f, 0.1f), Is.EqualTo("A1"));
+            Assert.That(SeaChartCoordinates.LabelAt(399.9f, 399.9f), Is.EqualTo("AN40"));
+            Assert.That(SeaChartCoordinates.TryCellCenter("AO1", out _), Is.False);
+            Assert.That(SeaChartCoordinates.TryCellCenter("A0", out _), Is.False);
         }
 
         [Test]

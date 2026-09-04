@@ -152,11 +152,11 @@ namespace Sea.Tests
             Assert.That(requiredElements.All(name => root.Q(name) != null), Is.True);
             Assert.That(root.Q("player-experience"), Is.Null);
 
-            // The ruler carries one slot per square of the map on each edge.
-            for (var square = 0; square < SeaChartCoordinates.ColumnCount; square++)
+            // The ruler carries one slot per ruler cell -- ten squares to a cell -- on each edge.
+            for (var cell = 0; cell < SeaChartCoordinates.ColumnCount; cell++)
             {
-                Assert.That(root.Q($"top-coordinate-{square}"), Is.Not.Null);
-                Assert.That(root.Q($"left-coordinate-{square}"), Is.Not.Null);
+                Assert.That(root.Q($"top-coordinate-{cell}"), Is.Not.Null);
+                Assert.That(root.Q($"left-coordinate-{cell}"), Is.Not.Null);
             }
 
             // The magazine never holds more than the hull's racks plus the rigging bonus.

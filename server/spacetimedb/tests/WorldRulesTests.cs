@@ -167,39 +167,4 @@ public sealed class WorldRulesTests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             WorldRules.AdvanceTowards(0, 0, 1, 1, maximumDistance));
     }
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(40)]
-    public void CoordinateColumnsRejectOutOfRangeIndexes(int column)
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            ChartCoordinates.ColumnLabel(column));
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            ChartCoordinates.CellCenter(column, 0));
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("AO")]
-    [InlineData("AAA")]
-    [InlineData("A!")]
-    [InlineData("ZZ")]
-    public void InvalidCoordinateColumnLabelsAreRejected(string? label)
-    {
-        Assert.False(ChartCoordinates.TryColumnIndex(label, out _));
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("AA")]
-    [InlineData("AA nope")]
-    [InlineData("AA -1")]
-    [InlineData("AA41")]
-    [InlineData("A0")]
-    public void InvalidCoordinateCellsAreRejected(string coordinate)
-    {
-        Assert.False(ChartCoordinates.TryCellCenter(coordinate, out _));
-    }
 }

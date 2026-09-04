@@ -44,7 +44,7 @@ namespace Sea.Client
         private static void Write(
             Label label,
             System.Func<int, string> labelAt,
-            int square,
+            int cell,
             int previous)
         {
             if (label == null)
@@ -52,7 +52,7 @@ namespace Sea.Client
                 return;
             }
 
-            label.text = square >= 0 && square != previous ? labelAt(square) : string.Empty;
+            label.text = cell >= 0 && cell != previous ? labelAt(cell) : string.Empty;
         }
 
         private bool TryChartPoint(Vector2 viewportPosition, out Vector3 point)
