@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadContent } from "./lib/content-catalog.mjs";
-import { NPC_SHIPS_PER_DEFINITION, readWorldContract, seededRowCounts } from "./lib/world-contract.mjs";
+import { readWorldContract, seededNpcRoster, seededRowCounts } from "./lib/world-contract.mjs";
 
 const [sqlUrl, schemaPath] = process.argv.slice(2);
 if (!sqlUrl || !schemaPath) {
@@ -98,10 +98,15 @@ const archetypes = new Set(npcShips.map((ship) => ship.archetype_code));
 if (archetypes.size !== content.npcs.length) {
   fail(`Expected ${content.npcs.length} NPC archetypes afloat, found ${archetypes.size}.`);
 }
-for (const archetype of archetypes) {
+// The roster is not uniform: the patrol favours the commons, and the veteran is also the
+// hull the named captain calls, so each archetype is counted against the seed's own arithmetic.
+const roster = seededNpcRoster(content);
+const codeOf = new Map(rows("npc_def").map((npc) => [npc.npc_id, npc.archetype_code]));
+for (const [npcId, expected] of roster) {
+  const archetype = codeOf.get(npcId);
   const count = npcShips.filter((ship) => ship.archetype_code === archetype).length;
-  if (count !== NPC_SHIPS_PER_DEFINITION) {
-    fail(`Expected ${NPC_SHIPS_PER_DEFINITION} ships of NPC archetype ${archetype}, found ${count}.`);
+  if (count !== expected) {
+    fail(`Expected ${expected} ships of NPC ${npcId} (archetype ${archetype}), found ${count}.`);
   }
 }
 

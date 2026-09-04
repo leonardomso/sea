@@ -6,8 +6,56 @@ const REDUCER = /__reducerSchema\("([a-z0-9_]+)"/g;
 const ROW_FIELD = /^\s+(\w+): __t\.(.*)$/gm;
 const SQL_NAME = /\.name\("([a-z0-9_]+)"\)/;
 
-/** WorldSeed.cs spawns this many ships for every NPC definition in the content catalog. */
-export const NPC_SHIPS_PER_DEFINITION = 4;
+/** WorldSeed.cs keeps this many hostiles patrolling before the named captain is seeded. */
+export const COMMON_SPAWN_SLOTS = 12;
+
+/** Section 5.3's cadence: one sail in five is a veteran rather than a common. */
+export const VETERAN_EVERY_SLOTS = 5;
+
+/** NpcRules.CallHelpCount: the hulls the named captain keeps moored beside her. */
+export const NAMED_ESCORT_COUNT = 2;
+
+const COMMON_TIER = 1;
+const VETERAN_TIER = 2;
+
+/**
+ * The roster WorldSeed.cs puts on the water, keyed by NPC id: the patrol slots with their
+ * veteran cadence, the named captain, and the escorts seeded with her. The map does not carry
+ * the same number of every archetype, so the count has to be derived the way the seed derives it.
+ */
+export function seededNpcRoster(content) {
+  const commons = content.npcs.filter((npc) => npc.tier === COMMON_TIER);
+  const veterans = content.npcs.filter((npc) => npc.tier === VETERAN_TIER);
+  const named = content.npcs.find((npc) => npc.callsForHelp);
+  if (commons.length === 0) {
+    throw new Error("world contract: the catalog has no common enemy to patrol with");
+  }
+
+  const roster = new Map();
+  const add = (npc, count) => roster.set(npc.id, (roster.get(npc.id) ?? 0) + count);
+  for (let slot = 0; slot < COMMON_SPAWN_SLOTS; slot++) {
+    const isVeteranSlot =
+      veterans.length > 0 && slot % VETERAN_EVERY_SLOTS === VETERAN_EVERY_SLOTS - 1;
+    add(isVeteranSlot ? veterans[0] : commons[slot % commons.length], 1);
+  }
+
+  if (named && veterans.length > 0) {
+    add(named, 1);
+    add(veterans[0], NAMED_ESCORT_COUNT);
+  }
+
+  return roster;
+}
+
+/** How many hostile hulls the seed leaves afloat in total. */
+export function seededNpcShipCount(content) {
+  let total = 0;
+  for (const count of seededNpcRoster(content).values()) {
+    total += count;
+  }
+
+  return total;
+}
 
 /**
  * The public world schema as `spacetime generate` emitted it: every public table with its SQL
@@ -53,7 +101,7 @@ export function seededRowCounts(content) {
     cannon_def: content.cannons.length,
     ammo_def: content.ammunition.length,
     npc_def: content.npcs.length,
-    npc_ai: content.npcs.length * NPC_SHIPS_PER_DEFINITION,
+    npc_ai: seededNpcShipCount(content),
     stat_caps: 1,
     environment_state: 1,
   };
