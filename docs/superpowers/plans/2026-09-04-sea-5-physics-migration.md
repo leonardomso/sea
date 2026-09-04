@@ -1181,7 +1181,62 @@ already calls a chart square."
 - Modify: `server/spacetimedb/spacetimedb/Schema/ContentTables.cs`
 - Modify: `server/spacetimedb/spacetimedb/Content/ContentSeed.cs`
 - Modify: `server/spacetimedb/spacetimedb/Content/Data/maps.json`
-- Modify: `scripts/generate-content.mjs`
+- Modify: `server/spacetimedb/spacetimedb/Generated/ContentCatalog.g.cs` (regenerate, never by hand)
+- Modify: `server/spacetimedb/tests/ContentValidationTests.cs`
+- Read first: `scripts/lib/content-catalog.mjs` -- the field list lives here, not in
+  `scripts/generate-content.mjs`, which the earlier draft of this task named.
+
+**Verified against the tree before dispatch. Take these as facts, not hints.**
+
+1. **The Step 1 test below will not compile as first written, and has been
+   corrected in place.** `WorldObjectContent` has `X`, `Y`, `EntityId` and
+   `Kind`; there is no `PositionX` and no `Code`. This is the third task in this
+   phase whose sample test named an API that does not exist. Fix a sample test to
+   the real API; never widen the API to match a sample test.
+2. **The Step 3 record below has been corrected to keep every field.** An earlier
+   draft printed `MapContent` with ten members and no `Biome`, `MapRank`,
+   `PvpMode`, `MaterialId` or `PortName`. All five are `required` and all five are
+   read by `MapDef.From` in `Schema/ContentTables.cs`. Change only `Width` and
+   `Height`. Leave the rest alone.
+3. **The Step 4 script has been corrected to the real JSON field names.**
+   `maps.json` spells object and current positions `x` and `y`, not `positionX`
+   and `positionY`. The earlier draft would have left every position at its old
+   centre-origin value and written junk `"positionX": null` fields beside them,
+   because `move(undefined)` is `NaN` and `JSON.stringify` writes `NaN` as `null`.
+4. **`Strength` is a speed, so it is scaled before it is clamped.**
+   `WorldSeed.cs:274` hands it to `EnvironmentRules.DirectionalVelocity`, which
+   returns a velocity vector scaled by it. It is in old world units per second and
+   has to pass through `grow` like every other length before it is compared
+   against SEA_5's 0.3 sq/s ceiling. Havenmere's two zones clamp to 0.3 either
+   way, so nothing is visibly broken today -- but Phase 8 authors three maps using
+   this reasoning, so it is corrected here.
+5. **`SectorRules.SectorId` is already safe and needs no change.** It packs
+   sixteen bits per axis behind `checked` casts and documents 400 x 400
+   explicitly. Do not touch it.
+
+**Keep `TerrainRows`. Do not delete it here.** An earlier draft of this task said
+to delete it as though it were one line in one record. It has eight call sites and
+carries **three publish gates**:
+
+- `Domain/SectorRules.cs:72` `TerrainAt`, the accessor itself
+- `Content/ContentSeed.cs:57`, every seeded sector's terrain code
+- `Domain/ContentValidation.Maps.cs:38,130-141` -- terrain row and column sizing
+- `Domain/ContentValidation.Maps.cs:88` -- **the port must stand on water**
+- `Domain/ContentValidation.Maps.cs:198` -- **a blocking object must stand on land**
+- `tests/SectorRulesTests.cs:88,89,125` and `tests/ContentCatalogTests.cs:70`
+- `scripts/lib/content-catalog.mjs:42` and `scripts/lib/content-catalog.test.mjs:31`
+
+`SeedContent` throws on any validation error, so those middle two are deploy
+checks, not unit tests. Phase 2 replaces them with the land bitmask -- but Phase 2
+comes *after* this task, so deleting the field here leaves the gates gone for the
+whole rest of Phase 1, and AGENTS.md says not to lower a gate. Instead the rescale
+script **expands the grid mechanically**: each of the twenty authored cells on a
+side becomes a twenty-square block of the same symbol. That is a pure data
+expansion, it keeps all three gates green, and Phase 2 deletes the field when the
+bitmask exists to replace it. It adds four hundred lines and roughly 165 KB to
+`Generated/ContentCatalog.g.cs`, which is exempt from the 500-line size gate
+(`scripts/check-csharp-size.sh` skips `*/Generated/*`). Say the size in the commit
+body so the next reader knows it is deliberate and temporary.
 
 `MapContent.Width` and `Height` are `byte`. 400 does not fit in a byte.
 
@@ -1212,6 +1267,17 @@ and Init seeds every map. Measure it before moving on; if it is slow, say so in
 the commit body, because Phase 2's land mask may make most of this table dead
 weight and it is better to know that here than after three maps exist.
 
+**One finding this task uncovers but does not own.**
+`Domain/EnvironmentRules.cs` computes `DirectionalVelocity` as
+`(SinDegrees(d), +CosDegrees(d))`. Under the compass convention Task 1.1
+established, north is `-Y`, so the second component must be `0f - CosDegrees(d)`
+the way `GeometryRules.Direction` does it. As written, every current zone pushes
+ships due south where the content says north. It is live on the tick path:
+`WorldSeed.cs:274` -> `CurrentFieldZone.VelocityX/Y` -> `ship.CurrentVelocityX/Y`.
+**Task 1.7 owns the fix** -- see its Step 2 -- because 1.7 is where this phase
+squares the tree with the new convention. Do not fix it here; do not leave it
+unfixed at the end of the phase either.
+
 - [ ] **Step 1: Write the failing test**
 
 Add to `server/spacetimedb/tests/ContentValidationTests.cs`:
@@ -1235,10 +1301,22 @@ public void NoWorldObjectSitsOutsideItsMap()
         foreach (var worldObject in map.Objects)
         {
             Assert.True(
-                WorldRules.IsInsideMap(worldObject.PositionX, worldObject.PositionY),
-                $"{map.Code} object {worldObject.Code} at " +
-                $"({worldObject.PositionX}, {worldObject.PositionY}) is off the map");
+                WorldRules.IsInsideMap(worldObject.X, worldObject.Y),
+                $"{map.Code} object {worldObject.EntityId} ({worldObject.Kind}) at " +
+                $"({worldObject.X}, {worldObject.Y}) is off the map");
         }
+    }
+}
+
+[Fact]
+public void TheTerrainGridIsAsWideAndTallAsTheMapSaysItIs()
+{
+    // The expansion in Step 4 is mechanical, so the way it goes wrong is off-by-a-block
+    // rather than subtly wrong: one short row, or four hundred rows of twenty characters.
+    foreach (var map in ContentCatalog.Content.Maps)
+    {
+        Assert.Equal(map.Height, map.TerrainRows.Count);
+        Assert.All(map.TerrainRows, row => Assert.Equal(map.Width, row.Length));
     }
 }
 ```
@@ -1251,65 +1329,64 @@ public void NoWorldObjectSitsOutsideItsMap()
 
 Expected: FAIL, `Expected 400, Actual 20`.
 
-- [ ] **Step 3: Widen the type**
+- [ ] **Step 3: Widen the two type members that need it**
 
-In `Domain/ContentDefinitions.cs`:
+In `Domain/ContentDefinitions.cs`, change **only** these two members of
+`MapContent` and leave every other member of the record exactly as it is:
 
 ```csharp
-public sealed record MapContent
-{
-    public required byte MapId { get; init; }
-    public required string Code { get; init; }
-    public required string Name { get; init; }
-
     /// <summary>Squares across. SEA_5 §3.1 fixes this at 400 for every map.</summary>
     public required ushort Width { get; init; }
 
     /// <summary>Squares down.</summary>
     public required ushort Height { get; init; }
-
-    public required float PortX { get; init; }
-    public required float PortY { get; init; }
-    public required float PortRadius { get; init; }
-    public required IReadOnlyList<WorldObjectContent> Objects { get; init; }
-    public required IReadOnlyList<CurrentContent> Currents { get; init; }
-}
 ```
 
-Delete `TerrainRows` from the record. The per-square grid is not authored any
-more; Phase 2 generates it from the shapes and stores it as a bitmask.
+Then widen the matching columns in `Schema/ContentTables.cs` -- `MapDef.Width`,
+`MapDef.Height`, `Sector.X`, `Sector.Y` -- from `byte` to `ushort`, and make the
+casts in `Content/ContentSeed.cs` `checked((ushort)x)`.
 
-- [ ] **Step 4: Scale the existing map by twenty as a bridge**
+- [ ] **Step 4: Scale the existing map by two as a bridge**
 
 ```sh
 node -e '
 const fs = require("fs");
 const path = "server/spacetimedb/spacetimedb/Content/Data/maps.json";
 const data = JSON.parse(fs.readFileSync(path, "utf8"));
-const move = v => Math.round((v + 100) * 2 * 100) / 100;   // -100..100 -> 0..400
-const grow = v => Math.round(v * 2 * 100) / 100;           // units -> squares, x2
+const round = v => Math.round(v * 100) / 100;
+const move = v => round((v + 100) * 2);   // -100..100 -> 0..400
+const grow = v => round(v * 2);           // world units -> squares
 for (const map of data.maps) {
+  const scale = 400 / map.width;          // 20 authored cells -> 20 squares each
+  map.terrainRows = map.terrainRows.flatMap(
+    row => Array.from({ length: scale }, () =>
+      [...row].map(symbol => symbol.repeat(scale)).join("")));
   map.width = 400;
   map.height = 400;
-  delete map.terrainRows;
   map.portX = move(map.portX);
   map.portY = move(map.portY);
   map.portRadius = grow(map.portRadius);
   for (const object of map.objects ?? []) {
-    object.positionX = move(object.positionX);
-    object.positionY = move(object.positionY);
+    object.x = move(object.x);
+    object.y = move(object.y);
     object.radius = grow(object.radius);
   }
   for (const current of map.currents ?? []) {
-    current.positionX = move(current.positionX);
-    current.positionY = move(current.positionY);
+    current.x = move(current.x);
+    current.y = move(current.y);
     current.radius = grow(current.radius);
-    current.strength = Math.min(current.strength, 0.3);
+    // Strength is a speed in old world units per second, so it is scaled like every
+    // other length before it meets SEA_5 §5.1's 0.3 sq/s ceiling.
+    current.strength = Math.min(grow(current.strength), 0.3);
   }
 }
 fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
 '
 ```
+
+The terrain expansion assumes the authored grid is square and divides 400 evenly.
+It does today -- Havenmere is 20 x 20. If a later map is not, this script is the
+wrong tool and the failing test in Step 1 will say so.
 
 This is a bridge, not the answer. Phase 8 deletes `maps.json` and writes three
 maps by hand. Note in the commit body that it is temporary.
@@ -1333,6 +1410,10 @@ choice has to be visible in the diff. The remark on the constant in
 `Domain/SpatialRules.cs` already records that the 28 is a pre-migration figure in
 the wrong unit and points here.
 
+Whichever is chosen, `tests/ContentCatalogTests.cs`'s
+`Oversized_current_radius_is_rejected` hard-codes the string `"between 0 and 28"`.
+It is red the moment the constant moves. Update it; do not delete it.
+
 - [ ] **Step 5: Regenerate and run**
 
 ```sh
@@ -1345,10 +1426,16 @@ Expected: PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add server/spacetimedb/spacetimedb/Domain/ContentDefinitions.cs server/spacetimedb/spacetimedb/Content/Data/maps.json server/spacetimedb/spacetimedb/Content/ContentCatalog.g.cs scripts/generate-content.mjs server/spacetimedb/tests/ContentValidationTests.cs
+git add server/spacetimedb/spacetimedb/Domain/ContentDefinitions.cs \
+  server/spacetimedb/spacetimedb/Schema/ContentTables.cs \
+  server/spacetimedb/spacetimedb/Content/ContentSeed.cs \
+  server/spacetimedb/spacetimedb/Content/Data/maps.json \
+  server/spacetimedb/spacetimedb/Generated/ContentCatalog.g.cs \
+  server/spacetimedb/tests/ContentValidationTests.cs \
+  server/spacetimedb/tests/ContentCatalogTests.cs
 git commit -m "feat(content): widen a map to 400 squares on a side
 
-Width and height were bytes, which cannot hold 400. Havenmere is scaled x20
+Width and height were bytes, which cannot hold 400. Havenmere is scaled x2
 here only so the tree builds; Phase 8 replaces every map by hand."
 ```
 
@@ -1409,7 +1496,59 @@ Almost every failure is one of four shapes:
 Do not change an assertion to match whatever the code now prints. Work out what
 the test meant and write that.
 
-- [ ] **Step 2: Run the whole suite**
+- [ ] **Step 2: Turn the current zones the right way round**
+
+`Domain/EnvironmentRules.cs` computes
+
+```csharp
+    return (
+        TrigonometryRules.SinDegrees(directionDegrees) * strength,
+        TrigonometryRules.CosDegrees(directionDegrees) * strength);
+```
+
+Under the compass convention Task 1.1 established, north is `-Y`, so the second
+component is wrong by a sign and every current zone pushes ships due south where
+the content says north. It is live on the tick path -- `Content/WorldSeed.cs:274`
+-> `CurrentFieldZone.VelocityX`/`VelocityY` -> `ship.CurrentVelocityX`/`Y` -- and
+no test in the suite reads the sign, which is why the heading flip in Task 1.1
+went straight past it.
+
+This is the last unclaimed casualty of the flip, found while verifying Task 1.6.
+Fix it here rather than in 1.6, because this is the task that squares the tree
+with the new convention.
+
+Write the failing test first. There is no `EnvironmentRulesTests.cs`; the two
+existing `EnvironmentRules` cases live in `server/spacetimedb/tests/SailingRulesTests.cs`
+around lines 320-345, so put it beside them rather than opening a new file for one
+test. Phase 5 rewrites wind and storms and can split the file out then.
+`DirectionalVelocity` has no test at all today.
+
+```csharp
+[Theory]
+[InlineData(0f, 0f, -1f)]      // a northward set carries her up the screen
+[InlineData(90f, 1f, 0f)]
+[InlineData(180f, 0f, 1f)]
+[InlineData(270f, -1f, 0f)]
+public void ACurrentSetsTheWayItsBearingSays(
+    float directionDegrees,
+    float expectedX,
+    float expectedY)
+{
+    var (x, y) = EnvironmentRules.DirectionalVelocity(directionDegrees, strength: 1f);
+
+    Assert.Equal(expectedX, x, 3);
+    Assert.Equal(expectedY, y, 3);
+}
+```
+
+Then make the second component `0f - TrigonometryRules.CosDegrees(...)`, matching
+`GeometryRules.Direction` -- subtracted rather than negated, so due west does not
+hand back a negative zero. Better still, call `GeometryRules.Direction` and scale
+it, so there is one place where a bearing becomes a vector; check first that the
+quarter-degree sampling is acceptable to this caller, which it is, because the
+same table already backs both halves of the expression being replaced.
+
+- [ ] **Step 3: Run the whole suite**
 
 ```sh
 pnpm server:test
@@ -1426,7 +1565,7 @@ incremental publish.
 
 Expected: `Passed! - Failed: 0`.
 
-- [ ] **Step 3: Run the static gates**
+- [ ] **Step 4: Run the static gates**
 
 ```sh
 pnpm ci:fast
@@ -1434,7 +1573,7 @@ pnpm ci:fast
 
 Expected: exit 0.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
 git add -A
