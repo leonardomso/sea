@@ -60,7 +60,7 @@ public static partial class Module
         }
 
         var orders = EscortOrders(ctx, world, ai);
-        var aggroRange = SectorRules.UnitsFromSquares(stats.AggroRangeSquares);
+        var aggroRange = stats.AggroRangeSquares;
         var candidate = orders.Target ??
             (NpcRules.ShouldSearchForTarget(targetAvailable, aggroRange)
                 ? FindNearestPlayer(ctx, world, ship, aggroRange)
@@ -153,7 +153,7 @@ public static partial class Module
                 target.Value.PositionY)
             : float.PositiveInfinity,
             CandidateTargetId = candidate?.EntityId ?? 0,
-            DesiredRange = SectorRules.UnitsFromSquares(definition.DesiredRangeSquares),
+            DesiredRange = definition.DesiredRangeSquares,
             FleesWhenCrippled = definition.FleesWhenCrippled,
             AwaitingSignal = awaitingSignal,
             PreferredAmmunition = definition.PreferredAmmunition,

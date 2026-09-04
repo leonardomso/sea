@@ -237,7 +237,7 @@ public static partial class ContentCatalog
             PositiveAtMost(
                 npc.Id,
                 "desired range",
-                SectorRules.UnitsFromSquares(npc.DesiredRangeSquares),
+                npc.DesiredRangeSquares,
                 WorldRules.VisionRadius,
                 errors);
             Positive(npc.Id, "experience reward", npc.ExperienceReward, errors);

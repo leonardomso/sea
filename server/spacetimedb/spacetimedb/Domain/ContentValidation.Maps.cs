@@ -30,11 +30,6 @@ public static partial class ContentCatalog
             Positive(label, "height", map.Height, errors);
 
             var sized = map.Width > 0 && map.Height > 0;
-            if (sized)
-            {
-                ValidateWorldExtent(map, label, errors);
-            }
-
             var terrainValid = sized && ValidateTerrain(map, label, errors);
             if (terrainValid)
             {
@@ -44,15 +39,6 @@ public static partial class ContentCatalog
             ValidateObjects(map, label, terrainValid, errors);
             ValidateHarbor(map, label, errors);
             ValidateCurrents(map, label, errors);
-        }
-    }
-
-    private static void ValidateWorldExtent(MapContent map, string label, List<string> errors)
-    {
-        if (SectorRules.OriginX(map) != WorldRules.MapMin || SectorRules.OriginY(map) != WorldRules.MapMin)
-        {
-            errors.Add(
-                $"{label}: the {map.Width}x{map.Height} sector grid does not cover the world extent [{Format(WorldRules.MapMin)}, {Format(WorldRules.MapMax)}].");
         }
     }
 

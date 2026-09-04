@@ -12,25 +12,49 @@ public sealed class SectorRulesTests
     [Fact]
     public void Sector_id_packs_map_row_and_column()
     {
-        Assert.Equal(0x01_0C_0DUL, SectorRules.SectorId(1, 13, 12));
-        Assert.Equal(0x01_00_00UL, SectorRules.SectorId(1, 0, 0));
+        Assert.Equal(0x01_000C_000DUL, SectorRules.SectorId(1, 13, 12));
+        Assert.Equal(0x01_0000_0000UL, SectorRules.SectorId(1, 0, 0));
     }
 
     [Theory]
-    [InlineData(0f, 0f, 10, 10)]
-    [InlineData(-100f, -100f, 0, 0)]
-    [InlineData(99.9f, 99.9f, 19, 19)]
-    [InlineData(35f, 20f, 13, 12)]
-    [InlineData(-30f, -25f, 7, 7)]
-    public void World_positions_map_to_ten_unit_sectors(float x, float y, int column, int row)
+    [InlineData(0f, 0f, 0, 0)]
+    [InlineData(0.9f, 0.9f, 0, 0)]
+    [InlineData(1f, 1f, 1, 1)]
+    [InlineData(399.9f, 399.9f, 399, 399)]
+    public void AChartSquareIsJustTheWholePartOfAPosition(float x, float y, int column, int row)
+    {
+        Assert.Equal(column, SectorRules.Column(x));
+        Assert.Equal(row, SectorRules.Row(y));
+    }
+
+    [Fact]
+    public void ThereIsNoConversionLeftToGetWrong()
+    {
+        var conversions = typeof(SectorRules)
+            .GetMembers()
+            .Select(member => member.Name)
+            .Where(name => name.Contains("Units", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.Empty(conversions);
+    }
+
+    [Theory]
+    [InlineData(0f, 0f, 0, 0)]
+    [InlineData(19.9f, 19.9f, 19, 19)]
+    [InlineData(13.5f, 12.5f, 13, 12)]
+    [InlineData(-5f, -5f, 0, 0)]
+    [InlineData(25f, 25f, 19, 19)]
+    public void World_positions_map_to_their_containing_sector(float x, float y, int column, int row)
     {
         Assert.Equal(new SectorCoordinate(column, row), SectorRules.SectorOf(Havenmere(), x, y));
     }
 
     [Theory]
-    [InlineData(-100f, 0f, true)]
-    [InlineData(100f, 0f, false)]
-    [InlineData(0f, -100.01f, false)]
+    [InlineData(0f, 0f, true)]
+    [InlineData(20f, 0f, false)]
+    [InlineData(0f, -0.01f, false)]
+    [InlineData(19.99f, 19.99f, true)]
     public void Contains_uses_a_half_open_map_extent(float x, float y, bool expected)
     {
         Assert.Equal(expected, SectorRules.Contains(Havenmere(), x, y));
@@ -63,7 +87,7 @@ public sealed class SectorRulesTests
     [Fact]
     public void Sector_id_rejects_coordinates_that_would_alias()
     {
-        Assert.Throws<OverflowException>(() => SectorRules.SectorId(1, 256, 0));
+        Assert.Throws<OverflowException>(() => SectorRules.SectorId(1, 65536, 0));
         Assert.Throws<OverflowException>(() => SectorRules.SectorId(1, 0, -1));
     }
 
@@ -103,7 +127,7 @@ public sealed class SectorRulesTests
     {
         Assert.False(SectorRules.TrySectorOf(Havenmere(), 500f, 0f, out _));
         Assert.False(SectorRules.TrySectorOf(Havenmere(), 0f, float.NaN, out _));
-        Assert.True(SectorRules.TrySectorOf(Havenmere(), 35f, 20f, out var sector));
+        Assert.True(SectorRules.TrySectorOf(Havenmere(), 13.5f, 12.5f, out var sector));
         Assert.Equal(new SectorCoordinate(13, 12), sector);
     }
 }

@@ -95,20 +95,20 @@ public sealed class ShipStopsAtTheMarkTests
     }
 
     /// <summary>
-    /// The whole chart is 200 units across and a square is 10. A hull that needs seven squares
-    /// to stop cannot answer a click, however the arrival test is written.
+    /// The whole chart is 400 squares across and a square is the unit; there is no conversion
+    /// left to apply. A hull that needs seven squares to stop cannot answer a click, however the
+    /// arrival test is written.
     /// </summary>
     [Fact]
     public void A_ship_stops_and_comes_about_inside_one_chart_square()
     {
         Assert.True(
-            HandlingRules.StoppingDistance(MaximumSpeed) <= SectorRules.UnitsFromSquares(1f),
-            $"She needs {HandlingRules.StoppingDistance(MaximumSpeed)} units to stop.");
+            HandlingRules.StoppingDistance(MaximumSpeed) <= 1f,
+            $"She needs {HandlingRules.StoppingDistance(MaximumSpeed)} squares to stop.");
         Assert.True(
-            HandlingRules.TurningRadius(MaximumSpeed, TurnRateDegrees) <=
-                SectorRules.UnitsFromSquares(1f),
+            HandlingRules.TurningRadius(MaximumSpeed, TurnRateDegrees) <= 1f,
             $"Her turning circle is {HandlingRules.TurningRadius(MaximumSpeed, TurnRateDegrees)} " +
-            "units across the radius.");
+            "squares across the radius.");
     }
 
     [Fact]
@@ -117,6 +117,6 @@ public sealed class ShipStopsAtTheMarkTests
         var sloop = ContentCatalog.CreateDefault().Hulls[0];
 
         Assert.Equal(TurnRateDegrees, sloop.TurnDegreesPerSecond);
-        Assert.Equal(MaximumSpeed, SectorRules.UnitsFromSquares(sloop.SpeedSquaresPerSecond));
+        Assert.Equal(MaximumSpeed, sloop.SpeedSquaresPerSecond);
     }
 }

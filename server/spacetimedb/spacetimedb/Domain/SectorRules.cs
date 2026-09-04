@@ -4,23 +4,17 @@ public readonly record struct SectorCoordinate(int X, int Y);
 
 public static class SectorRules
 {
-    public const float SquareSizeUnits = 10f;
-
     /// <summary>
-    /// Content states every distance in squares because the design sheets do; the simulation
-    /// runs in world units. Every crossing between the two goes through here so a raw square
-    /// can never reach a distance check again.
+    /// Packs a sector into one key: map id in bits 32-39, row in bits 16-31, column in bits
+    /// 0-15. Sixteen bits per axis is far more than the 400 x 400 world needs (nine bits would
+    /// do), but the packing costs the same three shifts and one or, and the headroom means a
+    /// bigger map never has to touch this again. <c>checked</c> still guards the cast, so a
+    /// coordinate that would alias throws instead of silently wrapping.
     /// </summary>
-    public static float UnitsFromSquares(float squares) => squares * SquareSizeUnits;
-
     public static ulong SectorId(byte mapId, SectorCoordinate sector) =>
-        ((ulong)mapId << 16) | ((ulong)checked((byte)sector.Y) << 8) | checked((byte)sector.X);
+        ((ulong)mapId << 32) | ((ulong)checked((ushort)sector.Y) << 16) | checked((ushort)sector.X);
 
     public static ulong SectorId(byte mapId, int x, int y) => SectorId(mapId, new SectorCoordinate(x, y));
-
-    public static float OriginX(MapContent map) => -map.Width * SquareSizeUnits / 2f;
-
-    public static float OriginY(MapContent map) => -map.Height * SquareSizeUnits / 2f;
 
     /// <summary>
     /// Half-open sector extent: the far edge belongs to the next map, unlike
@@ -37,8 +31,8 @@ public static class SectorRules
             return false;
         }
 
-        var x = Column(map, worldX);
-        var y = Row(map, worldY);
+        var x = Column(worldX);
+        var y = Row(worldY);
         if (x < 0 || x >= map.Width || y < 0 || y >= map.Height)
         {
             return false;
@@ -65,8 +59,8 @@ public static class SectorRules
         }
 
         return new SectorCoordinate(
-            Math.Clamp(Column(map, worldX), 0, map.Width - 1),
-            Math.Clamp(Row(map, worldY), 0, map.Height - 1));
+            Math.Clamp(Column(worldX), 0, map.Width - 1),
+            Math.Clamp(Row(worldY), 0, map.Height - 1));
     }
 
     public static bool TryParseTerrain(char symbol, out TerrainCode terrain) =>
@@ -81,9 +75,17 @@ public static class SectorRules
                 $"Unknown terrain symbol '{symbol}' at ({x}, {y}) on map {map.Code}.");
     }
 
-    private static int Column(MapContent map, float worldX) =>
-        (int)Math.Floor((worldX - OriginX(map)) / SquareSizeUnits);
+    /// <summary>
+    /// The chart square a position falls in. A position is already in squares,
+    /// so this is only the whole part of it.
+    /// </summary>
+    /// <remarks>
+    /// This class used to be the one documented crossing between world units and
+    /// squares. There is no crossing any more: SEA_5 §3.3 stores positions in
+    /// squares on the server and on the wire, so the conversion has been deleted
+    /// rather than set to 1.0, to stop anyone reintroducing it.
+    /// </remarks>
+    public static int Column(float x) => (int)MathF.Floor(x);
 
-    private static int Row(MapContent map, float worldY) =>
-        (int)Math.Floor((worldY - OriginY(map)) / SquareSizeUnits);
+    public static int Row(float y) => (int)MathF.Floor(y);
 }
