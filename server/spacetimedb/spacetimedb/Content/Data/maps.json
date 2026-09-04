@@ -515,7 +515,7 @@
           "radius": 28,
           "blocksMovement": false,
           "directionDegrees": 72,
-          "movementSpeed": 1.5,
+          "movementSpeed": 0.5,
           "intensity": 1
         }
       ],

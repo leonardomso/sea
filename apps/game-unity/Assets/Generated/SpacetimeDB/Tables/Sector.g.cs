@@ -51,16 +51,16 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.Col<Sector, ulong> SectorId { get; }
         public global::SpacetimeDB.Col<Sector, byte> MapId { get; }
-        public global::SpacetimeDB.Col<Sector, byte> X { get; }
-        public global::SpacetimeDB.Col<Sector, byte> Y { get; }
+        public global::SpacetimeDB.Col<Sector, ushort> X { get; }
+        public global::SpacetimeDB.Col<Sector, ushort> Y { get; }
         public global::SpacetimeDB.Col<Sector, byte> TerrainCode { get; }
 
         public SectorCols(string tableName)
         {
             SectorId = new global::SpacetimeDB.Col<Sector, ulong>(tableName, "sector_id");
             MapId = new global::SpacetimeDB.Col<Sector, byte>(tableName, "map_id");
-            X = new global::SpacetimeDB.Col<Sector, byte>(tableName, "x");
-            Y = new global::SpacetimeDB.Col<Sector, byte>(tableName, "y");
+            X = new global::SpacetimeDB.Col<Sector, ushort>(tableName, "x");
+            Y = new global::SpacetimeDB.Col<Sector, ushort>(tableName, "y");
             TerrainCode = new global::SpacetimeDB.Col<Sector, byte>(tableName, "terrain_code");
         }
     }

@@ -5,8 +5,9 @@ public static class WorldRules
     /// <summary>
     /// The playable world is this many squares on a side (SEA_5 §3.1). One square is
     /// one unit; there is no second unit and no conversion. (0,0) is the top-left
-    /// corner, x grows east, y grows south. Per-map dimensions still live in content
-    /// as <c>MapContent.Width</c>/<c>Height</c>; Task 1.6 reconciles the two.
+    /// corner, x grows east, y grows south. Per-map dimensions also live in content
+    /// as <c>MapContent.Width</c>/<c>Height</c>, and <c>ValidateWorldExtent</c> is what
+    /// holds the two equal: a map that disagrees with this figure fails to publish.
     /// </summary>
     public const float MapSizeSquares = 400f;
 

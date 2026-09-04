@@ -24,9 +24,9 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "map_rank")]
         public byte MapRank;
         [DataMember(Name = "width")]
-        public byte Width;
+        public ushort Width;
         [DataMember(Name = "height")]
-        public byte Height;
+        public ushort Height;
         [DataMember(Name = "pvp_mode")]
         public string PvpMode;
         [DataMember(Name = "material_id")]
@@ -46,8 +46,8 @@ namespace SpacetimeDB.Types
             string Name,
             string Biome,
             byte MapRank,
-            byte Width,
-            byte Height,
+            ushort Width,
+            ushort Height,
             string PvpMode,
             string MaterialId,
             string PortName,

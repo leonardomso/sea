@@ -13,7 +13,7 @@ import {
 export default __t.row({
   sectorId: __t.u64().primaryKey().name("sector_id"),
   mapId: __t.u8().name("map_id"),
-  x: __t.u8(),
-  y: __t.u8(),
+  x: __t.u16(),
+  y: __t.u16(),
   terrainCode: __t.u8().name("terrain_code"),
 });

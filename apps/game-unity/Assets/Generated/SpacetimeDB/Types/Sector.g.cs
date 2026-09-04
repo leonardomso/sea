@@ -18,17 +18,17 @@ namespace SpacetimeDB.Types
         [DataMember(Name = "map_id")]
         public byte MapId;
         [DataMember(Name = "x")]
-        public byte X;
+        public ushort X;
         [DataMember(Name = "y")]
-        public byte Y;
+        public ushort Y;
         [DataMember(Name = "terrain_code")]
         public byte TerrainCode;
 
         public Sector(
             ulong SectorId,
             byte MapId,
-            byte X,
-            byte Y,
+            ushort X,
+            ushort Y,
             byte TerrainCode
         )
         {

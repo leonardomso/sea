@@ -241,8 +241,8 @@ export const MapDef = __t.object("MapDef", {
   name: __t.string(),
   biome: __t.string(),
   mapRank: __t.u8(),
-  width: __t.u8(),
-  height: __t.u8(),
+  width: __t.u16(),
+  height: __t.u16(),
   pvpMode: __t.string(),
   materialId: __t.string(),
   portName: __t.string(),
@@ -368,8 +368,8 @@ export type RespawnWork = __Infer<typeof RespawnWork>;
 export const Sector = __t.object("Sector", {
   sectorId: __t.u64(),
   mapId: __t.u8(),
-  x: __t.u8(),
-  y: __t.u8(),
+  x: __t.u16(),
+  y: __t.u16(),
   terrainCode: __t.u8(),
 });
 export type Sector = __Infer<typeof Sector>;

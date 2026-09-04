@@ -572,7 +572,7 @@ public static partial class ContentCatalog
                         Radius = 28f,
                         BlocksMovement = false,
                         DirectionDegrees = 72f,
-                        MovementSpeed = 1.5f,
+                        MovementSpeed = 0.5f,
                         Intensity = 1f,
                     },
                 },

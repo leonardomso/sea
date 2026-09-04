@@ -128,14 +128,21 @@ public sealed class ContentValidationTests
     [Fact]
     public void NoWorldObjectSitsOutsideItsMap()
     {
+        // Against the map's own grid, not against WorldRules.IsInsideMap. The two agree
+        // only while every map is the full 400 squares, which is true today and is exactly
+        // what makes the weaker assertion look sufficient: a map declaring 200x200 with an
+        // object at (350, 350) would pass IsInsideMap and be off its own chart. They also
+        // disagree at the far edge, where IsInsideMap is closed and the sector grid is
+        // half-open, so IsInsideMap accepts an x of 400 that ValidateObjects rejects.
+        // SectorRules.Contains is what the publish gate actually uses; assert on that.
         foreach (var map in Catalog.Maps)
         {
             foreach (var worldObject in map.Objects)
             {
                 Assert.True(
-                    WorldRules.IsInsideMap(worldObject.X, worldObject.Y),
+                    SectorRules.Contains(map, worldObject.X, worldObject.Y),
                     $"{map.Code} object {worldObject.EntityId} ({worldObject.Kind}) at " +
-                    $"({worldObject.X}, {worldObject.Y}) is off the map");
+                    $"({worldObject.X}, {worldObject.Y}) is off the {map.Width}x{map.Height} map");
             }
         }
     }

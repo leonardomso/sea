@@ -54,8 +54,8 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<MapDef, string> Name { get; }
         public global::SpacetimeDB.Col<MapDef, string> Biome { get; }
         public global::SpacetimeDB.Col<MapDef, byte> MapRank { get; }
-        public global::SpacetimeDB.Col<MapDef, byte> Width { get; }
-        public global::SpacetimeDB.Col<MapDef, byte> Height { get; }
+        public global::SpacetimeDB.Col<MapDef, ushort> Width { get; }
+        public global::SpacetimeDB.Col<MapDef, ushort> Height { get; }
         public global::SpacetimeDB.Col<MapDef, string> PvpMode { get; }
         public global::SpacetimeDB.Col<MapDef, string> MaterialId { get; }
         public global::SpacetimeDB.Col<MapDef, string> PortName { get; }
@@ -70,8 +70,8 @@ namespace SpacetimeDB.Types
             Name = new global::SpacetimeDB.Col<MapDef, string>(tableName, "name");
             Biome = new global::SpacetimeDB.Col<MapDef, string>(tableName, "biome");
             MapRank = new global::SpacetimeDB.Col<MapDef, byte>(tableName, "map_rank");
-            Width = new global::SpacetimeDB.Col<MapDef, byte>(tableName, "width");
-            Height = new global::SpacetimeDB.Col<MapDef, byte>(tableName, "height");
+            Width = new global::SpacetimeDB.Col<MapDef, ushort>(tableName, "width");
+            Height = new global::SpacetimeDB.Col<MapDef, ushort>(tableName, "height");
             PvpMode = new global::SpacetimeDB.Col<MapDef, string>(tableName, "pvp_mode");
             MaterialId = new global::SpacetimeDB.Col<MapDef, string>(tableName, "material_id");
             PortName = new global::SpacetimeDB.Col<MapDef, string>(tableName, "port_name");
