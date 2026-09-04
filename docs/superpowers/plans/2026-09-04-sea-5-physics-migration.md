@@ -1120,6 +1120,11 @@ until this task rescales Havenmere. It is a publish-time gate -- `SeedContent`
 throws on any validation error -- so confirm it passes here rather than assuming
 the new unit tests cover it. They do not; they are CI, it is the deploy check.
 
+Widen the types **before** touching `maps.json`. While `Width` and `Height` are
+`byte` the gate's predicate is true for every map that can be represented, so no
+amount of rescaling content will turn it green and it is easy to conclude the
+gate itself is broken. The type is the blocker; the content is the second half.
+
 **Watch the seed cost.** A 400 x 400 map is 160,000 `Sector` rows, up from 400,
 and Init seeds every map. Measure it before moving on; if it is slow, say so in
 the commit body, because Phase 2's land mask may make most of this table dead
@@ -1258,6 +1263,26 @@ here only so the tree builds; Phase 8 replaces every map by hand."
   hull through. Delete it and its tests, or make it parse and delegate to the typed
   overload.
 
+**What Task 1.3's review already settled (commit `5e2ae0e`), so do not redo it:**
+
+- The only compile errors left in the whole tree are two mechanical renames, in
+  four files: `WorldRules.CollisionPadding` -> `LandHazardPadding` in
+  `NavigationRules.cs` and `SailingRulesTests.cs`, and `WorldRules.HarborSafeRadius`
+  -> `HarborSafeRadiusSquares` in `NpcRules.cs` and `NpcRulesTests.Roaming.cs`.
+  `WorldRules.VisionRadius` was the third and is gone: its one caller, the
+  desired-range gate in `ContentValidation.cs`, now reads a literal `11f`.
+- **Do not apply rule 3 to that gate.** It is already in squares on both sides.
+  The bug it had was being migrated on the left only, which turned an 11-square
+  publish gate into a 110-square one silently. Before dividing anything by ten,
+  check whether the other side of the comparison already moved.
+- `ShipStopsAtTheMarkTests` is green and is not on the list. `88725cd`'s message
+  claimed its two cases were already red and unfixable in this phase; that was
+  wrong, and `5e2ae0e` corrects the record and rescales the fixture. Do not skip
+  them, and do not "restore" the old numbers.
+- Baseline to work down from, measured at `5e2ae0e` with those four renames
+  patched in temporarily: **720 passed, 30 failed**. If you see 31 or more after
+  the renames, something regressed rather than being left over.
+
 - [ ] **Step 1: Work the list**
 
 Almost every failure is one of four shapes:
@@ -1265,7 +1290,9 @@ Almost every failure is one of four shapes:
 2. A test asserting a heading from the old `atan2(dx, dy)` convention. A course
    that used to read 90 now reads 90 only if it goes east; check the direction
    the test means and use the compass bearing.
-3. A radius or range written in units. Divide by ten.
+3. A radius or range written in units. Divide by ten -- but only after checking
+   that the value it is compared against has not already been converted. A
+   comparison migrated on one side only reads as correct and gates nothing.
 3a. A hand-written map span. `MapMax - MapMin` now has a name; `ChartCoordinates.cs`,
    `NpcRules.cs`, `SpawnRules.cs`, `TacticalRules.cs` and `NavigationRules.cs` all
    still spell it out longhand. Tasks 1.4 and 1.5 own most of these.
