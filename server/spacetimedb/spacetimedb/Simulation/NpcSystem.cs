@@ -75,7 +75,7 @@ public static partial class Module
             targetAvailable,
             orders.AwaitingSignal,
             tick,
-            world.Blockers(ctx))));
+            world.PatrolBlockers(ctx))));
         ctx.Db.NpcAi.ShipEntityId.Update(ai);
     }
 

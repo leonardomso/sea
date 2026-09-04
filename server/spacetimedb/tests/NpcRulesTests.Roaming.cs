@@ -269,4 +269,54 @@ public sealed partial class NpcRulesTests
 
         Assert.Equal([60f, 120f, 180f, 240f, 300f, 0f], bearings.Select(bearing => MathF.Round(bearing)));
     }
+
+    /// <summary>
+    /// Port Lowell's sheltered water, as the tick hands it to a hostile: the harbour circle
+    /// grown to the radius inside which nobody's guns answer.
+    /// </summary>
+    private static NavigationBlocker ShelteredWater =>
+        new(0f, 0f, WorldRules.HarborSafeRadius);
+
+    [Fact]
+    public void No_patrol_leg_ends_in_the_harbour_s_sheltered_water()
+    {
+        // A hostile in there can neither shoot nor be shot at, so a ship that stops in it is
+        // out of the game while it sits. Routes are seeded anywhere on the chart, so plenty of
+        // them cross the harbour; none of them may end inside it.
+        for (var seed = 0UL; seed < 128UL; seed++)
+        {
+            var route = NpcRules.RouteFor(seed);
+            for (var bearing = 0f; bearing < 360f; bearing += 30f)
+            {
+                var on = OnRoute(route, bearing);
+                var destination = NpcRules.RoamDestination(Snapshot() with
+                {
+                    X = on.X,
+                    Y = on.Y,
+                    DecisionSeed = seed,
+                    Blockers = [ShelteredWater],
+                });
+
+                Assert.False(
+                    NavigationRules.IsDestinationBlocked(
+                        destination.X, destination.Y, [ShelteredWater]),
+                    $"Seed {seed} at bearing {bearing} plotted a leg into sheltered water.");
+            }
+        }
+    }
+
+    [Fact]
+    public void A_hostile_already_in_sheltered_water_is_given_a_mark_outside_it()
+    {
+        var destination = NpcRules.RoamDestination(Snapshot() with
+        {
+            X = 4f,
+            Y = -3f,
+            Blockers = [ShelteredWater],
+        });
+
+        Assert.True(
+            NavigationRules.Distance(destination.X, destination.Y, 0f, 0f) >=
+            WorldRules.HarborSafeRadius);
+    }
 }

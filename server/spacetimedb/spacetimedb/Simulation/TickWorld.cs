@@ -13,6 +13,7 @@ public static partial class Module
         private readonly Dictionary<byte, MovementShardState> movementShards = new();
         private List<ShipMovement>? activePlayers;
         private List<NavigationBlocker>? blockers;
+        private List<NavigationBlocker>? patrolBlockers;
         private WorldObject? harbor;
         private bool harborRead;
         private EnvironmentState? environment;
@@ -29,6 +30,34 @@ public static partial class Module
 
         public List<NavigationBlocker> Blockers(ReducerContext ctx) =>
             blockers ??= NavigationBlockers(ctx);
+
+        /// <summary>
+        /// The same water, plus Port Lowell's sheltered circle, for the ships that have no
+        /// business in it.
+        /// </summary>
+        /// <remarks>
+        /// A hostile inside the harbour's safe water can neither shoot nor be shot at, so a
+        /// patrol ring that crosses it leaves a ship parked there being neither a threat nor a
+        /// target. Their routes are seeded anywhere on the chart and the harbour was never
+        /// excluded, so this is where it is excluded: a hostile plots no leg that ends in
+        /// sheltered water, and one that finds itself in it is given a mark outside.
+        /// </remarks>
+        public List<NavigationBlocker> PatrolBlockers(ReducerContext ctx)
+        {
+            if (patrolBlockers is not null)
+            {
+                return patrolBlockers;
+            }
+
+            patrolBlockers = new List<NavigationBlocker>(Blockers(ctx));
+            if (Harbor(ctx) is WorldObject harbor)
+            {
+                patrolBlockers.Add(new NavigationBlocker(
+                    harbor.PositionX, harbor.PositionY, WorldRules.HarborSafeRadius));
+            }
+
+            return patrolBlockers;
+        }
 
         public WorldObject? Harbor(ReducerContext ctx)
         {
