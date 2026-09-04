@@ -60,7 +60,10 @@ public readonly record struct NpcDecision(
 
 public static class NpcRules
 {
-    public const ulong DecisionIntervalTicks = 5;
+    // Half a second between decisions reads as a hostile that has not noticed you. Five
+    // times a second is still a fifth of the AI work of a per-tick brain, and it is inside
+    // the window where a captain reads a turn as an answer to what they just did.
+    public const ulong DecisionIntervalTicks = 2;
 
     // How many hulls a captain will look over before giving up on finding a fight this
     // decision. Each one costs a datastore read, and the ones after the third are almost

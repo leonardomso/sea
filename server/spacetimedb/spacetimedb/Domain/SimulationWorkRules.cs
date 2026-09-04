@@ -5,7 +5,11 @@ public static class SimulationWorkRules
     public const bool ShipsBlockMovement = false;
     public const ulong PeriodicEffectIntervalTicks = 5;
     public const byte MovementShardCount = 8;
-    public const byte MovementShardStride = 2;
+    // A ship's motion is recomputed on the tick it happens. Sailing half the fleet per tick
+    // halved the shard rows a tick touched, but it also meant every hull's published position
+    // was up to 200ms old before it left the server, and a captain feels that on every click.
+    // The saving was throughput we do not need at the fleet sizes we actually sail.
+    public const byte MovementShardStride = 1;
     public const byte NpcShardCount = 4;
     public const byte CurrentRefreshBucketCount = 16;
     public const byte LootPickupBucketCount = 10;
