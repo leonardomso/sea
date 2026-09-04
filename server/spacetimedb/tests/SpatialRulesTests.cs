@@ -45,21 +45,23 @@ public sealed class SpatialRulesTests
             new ChunkBounds(0, 7, 0, 7),
             SpatialRules.BoundsForSegment(-50f, -50f, 450f, 450f, 20f));
 
-        // A course sailed north-west, so both spans run backwards. The bounds are
-        // normalized rather than handed over inverted, and this is the only case that
-        // says so: every other segment here ascends, and dropping the Min/Max would
-        // still clamp to the same grid corners and stay green.
-        Assert.Equal(
-            new ChunkBounds(1, 6, 1, 6),
-            SpatialRules.BoundsForSegment(340f, 340f, 60f, 60f, 0f));
-
-        // Non-finite input is rejected rather than silently clamped. Every Simulation
-        // call site -- SailingSystem, RespawnSystem, SimulationTick, WorldSeed -- feeds
-        // a raw ship position straight in, and (int)MathF.Floor(NaN) would answer chunk
-        // 0 without a word.
+        // Non-finite input is rejected rather than silently clamped. Callers hand this
+        // raw positions on the tick path and (int)MathF.Floor(NaN) would answer chunk 0
+        // without a word.
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             SpatialRules.BoundsAround(0f, 0f, float.NaN));
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             SpatialRules.ChunkCoordinate(float.PositiveInfinity));
+    }
+
+    [Fact]
+    public void ABackwardsCourseIsNormalizedBeforeItIsClamped()
+    {
+        // A course sailed north-west, so both spans run backwards. Every other segment
+        // in the suite ascends, and one that overshoots the map clamps to the same grid
+        // corners either way -- so this is the only case that can see the Min/Max go.
+        Assert.Equal(
+            new ChunkBounds(1, 6, 1, 6),
+            SpatialRules.BoundsForSegment(340f, 340f, 60f, 60f, 0f));
     }
 }

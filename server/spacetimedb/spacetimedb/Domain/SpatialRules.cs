@@ -12,25 +12,21 @@ public static class SpatialRules
 
     public const int ChunkCountPerAxis = 8;
 
-    /// <summary>The widest a storm reaches, so a chunk query can bound it (SEA_5 §5.2).</summary>
+    /// <summary>
+    /// The widest radius any authored map object may declare -- island, reef, harbor
+    /// or storm alike, since <c>ValidateObjects</c> applies it to every one of them.
+    /// Sized to the storm, which SEA_5 §5.2 puts at 40 squares and which is the
+    /// largest thing the specification describes.
+    /// </summary>
     public const float MaximumWorldInfluenceRadiusSquares = 40f;
 
     /// <summary>
-    /// The widest a current zone reaches. SEA_5 §5.2 only bounds current DRIFT (at
-    /// most 0.3 sq/s); it says nothing about how wide a current zone itself is
-    /// allowed to be. This gate therefore keeps its pre-migration value rather than
-    /// borrowing the storm radius, which would raise a publish gate on a number no
-    /// specification backs.
+    /// The widest an authored current zone may be. SEA_5 bounds current drift and
+    /// never a zone's size, and the 28 came across unchanged from the world-unit
+    /// scale, where it is 2.8 squares -- so this is a placeholder in the right
+    /// place, not a measurement. Task 1.6 rescales the content to 56 and settles
+    /// the real ceiling.
     /// </summary>
-    /// <remarks>
-    /// The 28 is not yet a number of squares, whatever the name says. It came across
-    /// unchanged from the world-unit scale, where Havenmere's widest current zone
-    /// (<c>maps.json</c> zone 1) reads 28 units on a 200-unit chart -- 2.8 squares.
-    /// Task 1.6 doubles that radius to 56 when it rescales the content, which this
-    /// gate rejects and the storm radius of 40 would reject too. Task 1.6 has to
-    /// settle the real ceiling; until it does, this number is a placeholder in the
-    /// right place rather than a measurement.
-    /// </remarks>
     public const float MaximumCurrentRadiusSquares = 28f;
 
     public static int ChunkCoordinate(float position)

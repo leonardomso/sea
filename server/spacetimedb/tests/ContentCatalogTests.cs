@@ -168,6 +168,23 @@ public sealed class ContentCatalogTests
     }
 
     [Fact]
+    public void Oversized_world_object_radius_is_rejected()
+    {
+        // The one gate this bound actually guards, and it guards every kind of object
+        // rather than only the storm it is sized to. Without this the number could be
+        // moved to anything at all and the whole suite would stay green.
+        var map = Catalog.Maps[0];
+        var errors = ContentCatalog.Validate(Catalog with
+        {
+            Maps = [map with { Objects = [map.Objects[0] with { Radius = 100f }] }],
+        });
+        Assert.Contains(
+            $"Map 1/1: object {map.Objects[0].EntityId}: radius must be between 0 and 40.",
+            errors,
+            StringComparer.Ordinal);
+    }
+
+    [Fact]
     public void Cannon_reload_below_the_floor_is_rejected()
     {
         var errors = ContentCatalog.Validate(Catalog with { Cannons = [Catalog.Cannons[0] with { ReloadSeconds = 1f }] });

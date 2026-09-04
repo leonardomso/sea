@@ -170,16 +170,19 @@ public sealed class SimulationWorkRulesTests
     [Fact]
     public void Spatial_bounds_include_neighboring_chunks_for_large_hazards()
     {
-        // 200,200 sits on a chunk boundary in the middle of the map, so a query
-        // radius that crosses it has to include the chunk on both sides.
+        // 175,175 sits inside chunk 3, not on a boundary, so only a radius that
+        // actually reaches spills into its neighbours: 40 squares covers 135..215
+        // and takes in chunks 2 through 4, where 10 would stay in chunk 3 alone.
+        // Centring this on a boundary instead would give the same answer for any
+        // radius under a chunk, and the name would stop meaning anything.
         var bounds = SpatialRules.BoundsAround(
-            200f,
-            200f,
+            175f,
+            175f,
             SpatialRules.MaximumWorldInfluenceRadiusSquares);
 
-        Assert.Equal(3, bounds.MinX);
+        Assert.Equal(2, bounds.MinX);
         Assert.Equal(4, bounds.MaxX);
-        Assert.Equal(3, bounds.MinY);
+        Assert.Equal(2, bounds.MinY);
         Assert.Equal(4, bounds.MaxY);
     }
 
