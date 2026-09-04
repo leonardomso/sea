@@ -122,7 +122,14 @@ public sealed class CombatIntegrationTests
             client.SubscribeVolleys();
             // Nothing is fired from inside Port Lowell and nothing inside it can be fired at,
             // so the fight is picked with a hostile in open water and the run-in starts by
-            // leaving the harbour.
+            // leaving the harbour. A crab's beat can take every one of them through the
+            // sheltered water at once, so the fight waits for one to come back out of it
+            // rather than failing on where they happened to be at the first look.
+            var fleet = new[] { client };
+            FightScenario.PumpUntil(
+                fleet,
+                () => client.TryClosestNpcClearOfPort(ReefCrabArchetype) is not null,
+                Timeout);
             targetId = client.ClosestNpcClearOfPort(ReefCrabArchetype).EntityId;
             Assert.True(client.SelectTarget(targetId).Accepted);
             var hostile = client.NpcPosition(targetId);

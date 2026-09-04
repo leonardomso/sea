@@ -36,7 +36,7 @@ public sealed class ShipStatsIntegrationTests
         Assert.Equal(0.08f, stats.ArmorSides, 4);
         Assert.Equal(0.03f, stats.ArmorBack, 4);
         Assert.Equal(2.4f, stats.SpeedSquaresPerSecond, 4);
-        Assert.Equal(60f, stats.TurnDegreesPerSecond, 4);
+        Assert.Equal(150f, stats.TurnDegreesPerSecond, 4);
         Assert.Equal(8, stats.RangeSquares);
         Assert.Equal(0.2f, stats.RepairAmount, 4);
         Assert.Equal(3000u, stats.RepairChannelMilliseconds);
