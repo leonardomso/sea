@@ -86,7 +86,7 @@ public sealed class ContentValidationTests
         { "skiff: kind 'kraken' is neither a ship nor a monster.", Npc(npc => npc with { Kind = "kraken" }) },
         { "skiff: family is empty.", Npc(npc => npc with { Family = " " }) },
         { "skiff: behavior is empty.", Npc(npc => npc with { Behavior = "" }) },
-        { "skiff: desired range must be between 0 and 110.", Npc(npc => npc with { DesiredRangeSquares = 12f }) },
+        { "skiff: desired range must be between 0 and 11.", Npc(npc => npc with { DesiredRangeSquares = 12f }) },
         { "skiff: experience reward must be positive.", Npc(npc => npc with { ExperienceReward = 0 }) },
         { "Map 1: map rank must be positive.", Catalog with { Maps = [Map with { Code = "", MapRank = 0 }] } },
         { "Map 2: map rank must be positive.", Catalog with { Maps = [Map, Map with { MapId = 2, MapRank = 0 }] } },

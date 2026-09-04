@@ -71,8 +71,12 @@ public readonly struct AuthoritativeSailingStep
 /// </remarks>
 public static class HandlingRules
 {
-    public const float Acceleration = 10f;
-    public const float Deceleration = 30f;
+    // Squares per second per second. These read 10 and 30 while a square was ten units.
+    // Deleting the conversion moved every position and speed in the simulation to squares,
+    // and these had to move with them: left alone they would give a hull a ten square
+    // stopping distance on a chart four hundred across, and the remark above would be a lie.
+    public const float Acceleration = 1f;
+    public const float Deceleration = 3f;
 
     /// <summary>How much sea a hull needs to come to rest from <paramref name="speed"/>.</summary>
     public static float StoppingDistance(float speed) => speed * speed / (2f * Deceleration);
@@ -85,16 +89,16 @@ public static class HandlingRules
 public static class SailingRules
 {
     /// <summary>
-    /// How near the mark a ship has to be before she has arrived at it, in world units:
-    /// roughly a seventh of a chart square.
+    /// How near the mark a ship has to be before she has arrived at it: roughly a
+    /// seventh of a chart square, which is the only unit there is.
     /// </summary>
     /// <remarks>
     /// Without this a ship could only finish a course by pointing at the mark, and a hull
     /// whose turning circle is wider than her distance to it can never point at it. Clicking
-    /// a few units off the bow used to put her into a circle she orbited forever. Being close
-    /// enough is arriving.
+    /// a fraction of a square off the bow used to put her into a circle she orbited forever.
+    /// Being close enough is arriving.
     /// </remarks>
-    public const float ArrivalRadius = 1.5f;
+    public const float ArrivalRadius = 0.15f;
 
     public static AuthoritativeSailingStep Step(
         SailingState state,

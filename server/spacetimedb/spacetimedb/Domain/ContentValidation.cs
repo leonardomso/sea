@@ -234,12 +234,10 @@ public static partial class ContentCatalog
 
             NotEmpty(npc.Id, "family", npc.Family, errors);
             NotEmpty(npc.Id, "behavior", npc.Behavior, errors);
-            PositiveAtMost(
-                npc.Id,
-                "desired range",
-                npc.DesiredRangeSquares,
-                WorldRules.VisionRadius,
-                errors);
+            // 11 squares is the old WorldRules.VisionRadius of 110 units, unchanged in
+            // strength: the left side moved to squares with the conversion and the bound
+            // had to follow. Phase 6 replaces it with RangeRules.ViewDistanceSquares.
+            PositiveAtMost(npc.Id, "desired range", npc.DesiredRangeSquares, 11f, errors);
             Positive(npc.Id, "experience reward", npc.ExperienceReward, errors);
         }
     }

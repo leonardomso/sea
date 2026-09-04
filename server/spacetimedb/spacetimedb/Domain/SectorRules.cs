@@ -53,7 +53,10 @@ public static class SectorRules
             return sector;
         }
 
-        if (map.Width == 0 || map.Height == 0)
+        // TrySectorOf refuses a non-finite position; without this the clamp below would
+        // turn one into square (0,0), a real sector, one line after it was refused.
+        if (map.Width == 0 || map.Height == 0 ||
+            !float.IsFinite(worldX) || !float.IsFinite(worldY))
         {
             return default;
         }

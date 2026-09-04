@@ -1,3 +1,4 @@
+using System.Reflection;
 using Sea.Server;
 using Xunit;
 
@@ -21,17 +22,21 @@ public sealed class SectorRulesTests
     [InlineData(0.9f, 0.9f, 0, 0)]
     [InlineData(1f, 1f, 1, 1)]
     [InlineData(399.9f, 399.9f, 399, 399)]
-    public void AChartSquareIsJustTheWholePartOfAPosition(float x, float y, int column, int row)
+    public void A_chart_square_is_just_the_whole_part_of_a_position(float x, float y, int column, int row)
     {
         Assert.Equal(column, SectorRules.Column(x));
         Assert.Equal(row, SectorRules.Row(y));
     }
 
     [Fact]
-    public void ThereIsNoConversionLeftToGetWrong()
+    public void There_is_no_conversion_left_to_get_wrong()
     {
+        // DeclaredOnly keeps object's members out, and NonPublic matters: the plausible way
+        // this comes back is a private helper, not the public const that was deleted.
         var conversions = typeof(SectorRules)
-            .GetMembers()
+            .GetMembers(
+                BindingFlags.Public | BindingFlags.NonPublic |
+                BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Select(member => member.Name)
             .Where(name => name.Contains("Units", StringComparison.Ordinal))
             .ToArray();

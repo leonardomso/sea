@@ -55,12 +55,21 @@ public static partial class ContentCatalog
     /// <remarks>
     /// This is a publish-time gate, not a test: <c>SeedContent</c> throws on any validation
     /// error, so a map that disagrees with <see cref="WorldRules.MapSizeSquares"/> never
-    /// reaches the database. It fails for Havenmere until Task 1.6 rescales the content,
-    /// which is the point -- the alternative was deleting the only thing that would notice.
+    /// reaches the database. It fails for Havenmere today, which is the point -- the
+    /// alternative was deleting the only thing that would notice.
+    /// </remarks>
+    /// <remarks>
+    /// Rescaling <c>maps.json</c> on its own cannot make this pass. <c>MapContent.Width</c>
+    /// and <c>Height</c> are <see langword="byte"/>, so 400 is not a width they can hold and
+    /// the comparison is true for every map that can be represented. Task 1.6 has to widen
+    /// those two fields, and the <c>MapDef</c>/<c>Sector</c> columns behind them, before it
+    /// rescales anything; until it does, this stays red on arithmetic rather than on content.
+    /// The comparison is left in float so that <see cref="WorldRules.MapSizeSquares"/> going
+    /// non-integral would not silently truncate here and print a size no map was measured in.
     /// </remarks>
     private static void ValidateWorldExtent(MapContent map, string label, List<string> errors)
     {
-        if (map.Width != (int)WorldRules.MapSizeSquares || map.Height != (int)WorldRules.MapSizeSquares)
+        if (map.Width != WorldRules.MapSizeSquares || map.Height != WorldRules.MapSizeSquares)
         {
             errors.Add(
                 $"{label}: the {map.Width}x{map.Height} sector grid does not cover the "

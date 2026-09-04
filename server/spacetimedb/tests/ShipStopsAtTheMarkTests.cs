@@ -13,7 +13,10 @@ namespace Sea.Server.Tests;
 public sealed class ShipStopsAtTheMarkTests
 {
     private const float DeltaSeconds = 1f / WorldRules.TickRateHz;
-    private const float MaximumSpeed = 24f;
+    // Squares per second, and the same figure the sloop carries in hulls.json. It read 24
+    // while a square was ten units; The_sloop_in_the_catalog_still_sails_by_these_figures
+    // below is what holds the two together.
+    private const float MaximumSpeed = 2.4f;
     private const float TurnRateDegrees = 150f;
 
     private static SailingParameters Sloop => new(
@@ -58,10 +61,14 @@ public sealed class ShipStopsAtTheMarkTests
         return (float.PositiveInfinity, float.PositiveInfinity);
     }
 
+    // Starting speeds in squares per second: dead in the water, half way, and flat out.
+    // They read 0/12/24 while a square was ten units, and 24 would now be ten times the
+    // sloop's top speed. The range runs to 140 squares, better than a third of the chart;
+    // it used to run to 140 units, which was fourteen squares.
     [Theory]
     [InlineData(0f)]
-    [InlineData(12f)]
-    [InlineData(24f)]
+    [InlineData(1.2f)]
+    [InlineData(2.4f)]
     public void A_ship_comes_to_rest_at_the_mark_from_every_bearing_and_range(float startingSpeed)
     {
         for (var distance = 1f; distance <= 140f; distance += 1f)
@@ -72,26 +79,26 @@ public sealed class ShipStopsAtTheMarkTests
 
                 Assert.True(
                     float.IsFinite(seconds),
-                    $"She never stopped: {distance} units off, bearing {bearing}, " +
+                    $"She never stopped: {distance} squares off, bearing {bearing}, " +
                     $"making {startingSpeed}.");
                 Assert.True(
                     missedBy <= SailingRules.ArrivalRadius + 0.001f,
-                    $"She rested {missedBy} units off the mark at bearing {bearing}.");
+                    $"She rested {missedBy} squares off the mark at bearing {bearing}.");
             }
         }
     }
 
     [Theory]
-    [InlineData(3f, 90f)]
-    [InlineData(2f, 120f)]
-    [InlineData(1f, 180f)]
-    [InlineData(5f, 60f)]
+    [InlineData(0.3f, 90f)]
+    [InlineData(0.2f, 120f)]
+    [InlineData(0.1f, 180f)]
+    [InlineData(0.5f, 60f)]
     public void A_short_click_off_the_bow_no_longer_circles(float distance, float bearing)
     {
         var (seconds, _) = SailTo(distance, bearing, startingSpeed: 0f);
 
         Assert.True(float.IsFinite(seconds));
-        Assert.True(seconds <= 4f, $"She took {seconds}s to obey a click {distance} units off.");
+        Assert.True(seconds <= 4f, $"She took {seconds}s to obey a click {distance} squares off.");
     }
 
     /// <summary>
