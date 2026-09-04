@@ -17,6 +17,13 @@ difference is resolved.
 - Expected gameplay rejection returns a typed command result. It must not throw
   an unhandled reducer exception.
 - Ships may pass through one another. Islands and reefs remain blocked.
+- One map is playable: Havenmere (1/1), twenty squares by twenty. Content is
+  authored in squares of ten world units; the server stores world units.
+- Combat is the design's: a selected target, one magazine of volleys, guns that
+  bear in every direction, and armour read from the face a shot lands on. Do
+  not reintroduce broadsides, aim points, or the four damage pools.
+- Boarding, ramming, abilities, and the PvP flag stay bound to their keys and
+  are rejected with `NotAvailable` until their roadmap phase.
 - PostgreSQL, Redis, and MinIO are supporting local services and are not part of
   the combat path.
 - Do not add PvP, parties, chat, cloud deployment, bosses, quests, or economy

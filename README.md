@@ -10,21 +10,32 @@ owns movement, combat, NPC decisions, loot, progression, death, and respawn.
 
 ## Current state
 
-The scalable PvE vertical slice (previous plan, Phases 0 through 17) is
-complete. It includes click-to-sail navigation with island and reef avoidance,
-broadside combat, repairs, boarding, statuses, wind, currents, storms, twelve
-roaming NPCs, loot, respawn, shared rewards, four-client shared-world support,
-and a macOS and WebGL Unity client using the owned Apricum ship asset. The
-camera follows the ship; WASD and middle-mouse drag push the chart anywhere
-inside the map to scout ahead, and Space or the HUD recenter button brings
-it back onto the ship.
+Milestone 1 of [PLAN.md](./PLAN.md) is built: the design in
+`docs/SEA_1_KNOWLEDGE.md` through `docs/SEA_4_TECHNICAL.md` now owns the rules,
+replacing the earlier vertical slice's combat model.
 
-The game is now built to the design in `docs/SEA_1_KNOWLEDGE.md` through
-`docs/SEA_4_TECHNICAL.md`. Milestone 1 of [PLAN.md](./PLAN.md) replaces the
-slice's combat rules with the design's: one map (Havenmere), magazine firing
-at a selected target, facing armor, channelled repair, port rules, and enemies
-derived from the base player ship. `docs/SEA_5_GAP_ANALYSIS.md` lists every
-difference between the slice and the design.
+One map is playable, Havenmere (1/1): twenty by twenty squares of open water,
+islands, reefs, shoals, currents, one wind and roaming storms. Ships are sailed
+by clicking the water; the server plots detours around islands and reefs and
+refuses a course that ends on one.
+
+Combat is the design's. A captain selects a target and the guns bear on it from
+every quarter: one magazine of volleys, a reload behind each, four kinds of
+ammunition, and armour read from the face the shot lands on rather than from an
+aim point. Repair is a channel that holds the ship near station, with a repair
+kit on a cooldown of its own. Port water refuses fire and casting off is its own
+channel. A sunk hull chooses a berth and puts out again from Port Lowell.
+
+Fifteen hostiles hold the map: twelve patrol slots with a veteran every fifth
+sail, and Red Mary with the two hulls moored beside her. Loot, shared rewards
+and map rank are unchanged from the slice. Boarding, ramming, abilities and the
+PvP flag are still bound to their keys and answer "not available yet"; they
+arrive with the damage pools they scale off.
+
+The client is Unity for macOS and WebGL, drawing the owned Apricum ship asset.
+The chart stays where it is pushed — WASD, middle-mouse drag and the mini-map —
+until `Home` or the HUD recenter button brings it back onto the ship. Four local
+clients share one world.
 
 ## Architecture
 

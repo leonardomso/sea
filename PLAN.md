@@ -237,8 +237,10 @@ Approved 2026-09-02. Milestone 1 assumes all of them.
    `PlayerAccount` table with `AccountId` is added in sub-phase 1a so Better
    Auth attaches later without a schema reset.
 3. Click-to-sail is the only ship control. WASD and middle mouse drag pan the
-   chart and the camera stays where it was pushed; Space or the HUD recenter
-   button brings it back onto the ship. Q and E fire.
+   chart and the camera stays where it was pushed; `Home` or the HUD recenter
+   button brings it back onto the ship. Q and Space fire. Sub-phase 1e resolved
+   this against `docs/SEA_3_MECHANICS.md`, which owns the key sheet: Space fires
+   and E is reserved for boarding, so recentering moved to `Home`.
 4. Ship to ship collision waits for `Ram` in Milestone 3. Ships pass through
    each other until then.
 5. Content is embedded JSON validated by `Init` and by unit tests.
