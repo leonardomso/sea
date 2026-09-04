@@ -10,32 +10,41 @@ owns movement, combat, NPC decisions, loot, progression, death, and respawn.
 
 ## Current state
 
-Milestone 1 of [PLAN.md](./PLAN.md) is built: the design in
-`docs/SEA_1_KNOWLEDGE.md` through `docs/SEA_4_TECHNICAL.md` now owns the rules,
-replacing the earlier vertical slice's combat model.
+Milestone 1 of [PLAN.md](./PLAN.md) is built and measured. Milestones 2 to 5
+have not been started. For the full list of what works, what is half-built, and
+what is missing, read [docs/STATUS.md](./docs/STATUS.md); for the numbers behind
+it, read [the Milestone 1 validation record](./docs/validation/milestone-1.md).
 
-One map is playable, Havenmere (1/1): twenty by twenty squares of open water,
-islands, reefs, shoals, currents, one wind and roaming storms. Ships are sailed
-by clicking the water; the server plots detours around islands and reefs and
-refuses a course that ends on one.
+What you can do today:
 
-Combat is the design's. A captain selects a target and the guns bear on it from
-every quarter: one magazine of volleys, a reload behind each, four kinds of
-ammunition, and armour read from the face the shot lands on rather than from an
-aim point. Repair is a channel that holds the ship near station, with a repair
-kit on a cooldown of its own. Port water refuses fire and casting off is its own
-channel. A sunk hull chooses a berth and puts out again from Port Lowell.
+- **Sail one map.** Havenmere (1/1) is twenty squares by twenty, with islands,
+  reefs, shoals, currents, wind, and moving storms. You sail by clicking the
+  water. The server plots the way around land and refuses a course that ends on
+  it.
+- **Fight.** Pick a target and the guns bear on it from any quarter. A ship
+  holds a magazine of ready volleys with a reload always running behind them.
+  Four kinds of ammunition are seeded. Damage is read from the face of the
+  target that the shot lands on, not from an aim point.
+- **Repair, dock, sink, and put out again.** Repair is a channel you can
+  cancel, and the repair kit is a separate item on its own cooldown. Port water
+  refuses fire both ways and leaving it takes a cast-off channel. A sunk ship
+  becomes a wreck, picks a berth, and sails again from Port Lowell.
+- **Hunt fifteen hostiles.** Twelve patrol slots with a veteran on every fifth
+  sail, plus Red Mary and the two hulls moored beside her.
+- **Play with other people.** Four local clients share one world.
 
-Fifteen hostiles hold the map: twelve patrol slots with a veteran every fifth
-sail, and Red Mary with the two hulls moored beside her. Loot, shared rewards
-and map rank are unchanged from the slice. Boarding, ramming, abilities and the
-PvP flag are still bound to their keys and answer "not available yet"; they
-arrive with the damage pools they scale off.
+What is bound but not built yet: boarding, ramming, abilities, and the PvP
+flag. Their keys work and appear in the rebinder; pressing one answers "not
+available yet". They arrive in Milestones 2 and 3.
 
-The client is Unity for macOS and WebGL, drawing the owned Apricum ship asset.
-The chart stays where it is pushed — WASD, middle-mouse drag and the mini-map —
-until `Home` or the HUD recenter button brings it back onto the ship. Four local
-clients share one world.
+Two performance gates are missed and recorded as missed rather than lowered:
+the world tick at a hundred clients, and keeping five thousand ships sailing at
+once. Details are in `docs/STATUS.md` section 4. Neither is felt by a player at
+the sizes we run today.
+
+The client is Unity for macOS and WebGL and draws the owned Apricum ship model.
+The chart stays where it is pushed — WASD, middle-mouse drag, or the mini-map —
+until `Home` or the recenter button brings it back onto the ship.
 
 ## Architecture
 
@@ -73,6 +82,8 @@ remain blocked.
 | `infra` | Pinned Docker Compose services |
 | `scripts` | Build, generation, verification, runtime, and launch entry points |
 | `docs` | Focused development documentation |
+| `docs/STATUS.md` | What works, what is partly done, and what is missing |
+| `docs/validation/milestone-1.md` | The measured numbers behind the Milestone 1 claims |
 | `PLAN.md` | Source of truth for scope, milestones, acceptance gates, and commit boundaries |
 | `AGENTS.md` | Repository rules for AI and human contributors |
 
@@ -133,9 +144,13 @@ pnpm verify                   # complete normal local gate
 ```
 
 `pnpm verify` is intentionally thorough. It builds both Unity players and runs
-real local services. Pull-request CI uses `pnpm ci:fast` plus server unit tests
-so routine reviews remain short. Load, soak, mutation, and 5,000-client checks
-belong to the milestone validation sub-phases and `pnpm verify:full`.
+real local services, and it passes. Pull-request CI uses `pnpm ci:fast` plus
+server unit tests so routine reviews stay short.
+
+`pnpm verify:full` adds the two proofs that need more than one client: a
+four-client shared world and a hundred-client scale run. It currently fails on
+the last step, because the world tick misses its gate and the gate has not been
+lowered. See `docs/STATUS.md` section 4.
 
 ## Changing the server schema
 

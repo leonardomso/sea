@@ -1,6 +1,8 @@
 # Domain model
 
-This file records the game concepts whose meaning must stay stable across the server, Unity client, admin tools, tests, and generated bindings.
+This file records the game concepts whose meaning must stay stable across the server, Unity client, admin tools, tests, and generated bindings. Every concept below is built and running today; `docs/STATUS.md` says what else is and is not.
+
+One section will change: the shared reward is still split 30 percent equally and 70 percent by contribution. The design asks for a pure damage share, and Milestone 2 will swap the rule and rewrite that section.
 
 ## Combat encounter
 

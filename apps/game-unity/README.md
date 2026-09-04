@@ -21,26 +21,31 @@ edited by hand.
 
 ## Controls
 
+Click-to-sail is the only ship control. WASD and middle-mouse drag move the
+chart, and the chart stays where you put it until `Home` or the HUD recenter
+button brings it back to the ship.
+
 | Input | Action |
 |---|---|
 | Left-click water | Set or replace course |
-| Right-click water | Stop sailing |
-| Left-click NPC | Select target |
-| WASD | Pan the chart |
-| Mouse wheel | Zoom |
-| Space | Recenter on the player ship |
-| Tab / Shift+Tab | Cycle NPC targets |
-| T | Clear target |
-| Q / E | Fire port / starboard broadside |
-| 1 / 2 / 3 | Aim at hull / sails / cannons |
-| 4 / 5 / 6 / 7 | Select ammunition |
-| Z / X / C / V | Full Sail / Brace / Emergency Pump / Smoke Screen |
-| R | Start or cancel repair |
-| B | Start or cancel boarding |
+| Left-click a ship | Select it as the target |
+| Right-click | Stop sailing |
+| Q or Space | Fire at the selected target |
+| Tab / Shift+Tab | Next / previous enemy |
+| Escape | Clear the target, then open the local menu |
+| 1 / 2 / 3 / 4 | Round / Chain / Grapeshot / Incendiary |
+| R | Start or cancel the repair channel |
+| K | Use a repair kit |
 | N | Open the coordinate navigator |
-| Escape | Open the local menu |
+| WASD / middle-mouse drag | Pan the chart |
+| Mouse wheel | Zoom |
+| Home | Recenter the chart on the player ship |
+| E / F / P | Board / ram / PvP flag: bound, answer "not available yet" |
+| Ability keys | Bound, answer "not available yet" |
 
-Gameplay bindings use the Unity Input System and remain rebindable.
+Every binding uses the Unity Input System and can be rebound at runtime. The
+keys that answer "not available yet" stay bound on purpose so they appear in
+the rebinder; they start working in Milestones 2 and 3. See `docs/STATUS.md`.
 
 ## Build and test
 

@@ -2,6 +2,9 @@
 
 These instructions apply to the entire repository. `PLAN.md` is the source of
 truth for scope, milestone order, acceptance gates, and commit boundaries.
+`docs/STATUS.md` is the source of truth for what is built right now, what is
+half-built, and what has not been started; read it before planning work.
+`docs/validation/milestone-1.md` holds the measured numbers behind it.
 `docs/SEA_1_KNOWLEDGE.md`, `docs/SEA_2_MATH.md`, `docs/SEA_3_MECHANICS.md`,
 and `docs/SEA_4_TECHNICAL.md` are the design of record: where they and the
 code disagree, the docs win, and `docs/SEA_5_GAP_ANALYSIS.md` records how each
@@ -84,9 +87,12 @@ pnpm server:test
 pnpm verify
 ```
 
-`pnpm verify` is the normal phase gate and requires Docker and Unity. Run
-`pnpm verify:full` only for the roadmap sub-phases that own load, soak, mutation,
-and production performance proof.
+`pnpm verify` is the normal phase gate and requires Docker and Unity. It
+passes today. Run `pnpm verify:full` only for the roadmap sub-phases that own
+load and capacity proof; it adds a four-client shared world and a hundred-client
+scale run, and it currently fails on the second because the world tick misses
+its gate. Do not lower a gate to make it pass. Record the miss instead, the way
+`docs/validation/milestone-1.md` does.
 
 Every roadmap sub-phase receives one conventional commit. Before committing,
 review the diff for unrelated changes, secrets, debug code, generated drift,

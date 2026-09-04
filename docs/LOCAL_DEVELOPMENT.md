@@ -1,5 +1,8 @@
 # Local development
 
+Read `docs/STATUS.md` first if you want to know what the game currently does.
+This file is only about running and testing it.
+
 Sea is developed and validated locally. Docker Compose runs SpacetimeDB,
 PostgreSQL, Redis, MinIO, and the production admin build. Unity runs on the
 macOS host.
@@ -78,20 +81,36 @@ Commit the schema and both generated binding sets together.
 
 ## Validation levels
 
-- `pnpm ci:fast`: static checks, admin/type builds, and repository invariants.
-- `pnpm server:test`: fast pure domain and command tests in pinned .NET.
-- `pnpm server:test:mutation Domain/ShipStatRules.cs`: Stryker on one domain file at a
-  time (whole-domain runs exhaust memory); the file must reach a 90% mutation score with
-  no surviving or uncovered mutant. Survivors are printed with their line and replacement.
-- `pnpm verify`: normal phase gate, including the real module, local services,
-  Unity tests, runtime scenarios, and macOS/WebGL builds.
-- `pnpm verify:full`: Phase 18 and final load, soak, mutation, and performance
-  proof. It is not a routine pull-request check.
+- `pnpm ci:fast`: static checks, admin and type builds, and repository
+  invariants. No Docker, no Unity. This is what pull-request CI runs.
+- `pnpm server:test`: the pure domain, command, and replay tests in pinned
+  .NET. 683 tests, and fast.
+- `pnpm server:test:integration`: 21 tests against a real published module.
+- `pnpm verify`: the normal phase gate. It builds the module, runs every test
+  suite, builds both Unity players, and runs the runtime and presentation
+  probes against real local services. It passes.
+- `pnpm verify:full`: `pnpm verify` plus the two proofs that need more than one
+  client, `pnpm runtime:test:shared-world` (four clients in one world) and
+  `pnpm runtime:test:scale-isolated` (a hundred clients against a private
+  database). It currently exits non-zero on the second, because the world tick
+  misses its gate and the gate has not been lowered. See `docs/STATUS.md`
+  section 4.
+- `pnpm server:test:mutation Domain/ShipStatRules.cs`: Stryker on one domain
+  file at a time; a whole-domain run exhausts memory. Not part of any routine
+  gate. Use it when you want evidence about one specific rule file.
 
 `pnpm unity:test:runtime` publishes against `sea-local`, launches the built
-macOS client, and verifies connection, sailing, combat, NPC sinking, loot, XP,
-respawn, hazards, abilities, and repair. The script restores the original local
+macOS client, and drives a real session: connect, set a course, stop, select a
+target, choose ammunition, fire, sink an NPC, take loot, start and finish a
+repair, sink, and choose a berth. It also checks that a retired command is
+answered with the right rejection code. The script restores the original local
 identity preference when it exits.
+
+`pnpm unity:verify` additionally builds the WebGL player and runs the
+presentation benchmark on both platforms: 250 ships on macOS and 100 in
+headless Chrome, each measured for 300 frames after a 180 frame warm-up. The
+benchmark sails alone, without a live world, because on WebGL the required
+ship count is exactly the platform's ship budget.
 
 Compose images use immutable digests. Update a stable tag and its digest
 together, then run the complete local gate before committing the upgrade.

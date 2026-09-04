@@ -1,12 +1,15 @@
 # Sea roadmap
 
 Date: 2026-09-02
-Status: adopted 2026-09-02. This file is the source of truth for scope,
+Status: adopted 2026-09-02. **Milestone 1 is done and measured; Milestones 2
+to 5 have not been started.** This file is the source of truth for scope,
 milestone order, acceptance gates, and commit boundaries. It supersedes the
 "Sea scalability and PvE completion plan", whose completed phases are listed
 in section 6.
 
-Read `docs/SEA_5_GAP_ANALYSIS.md` first. It explains every difference between
+For what is actually built right now, read `docs/STATUS.md`; for the numbers
+behind it, `docs/validation/milestone-1.md`. Then read
+`docs/SEA_5_GAP_ANALYSIS.md`. It explains every difference between
 the design docs and the build and how each one is resolved. This file only
 orders the work. The four design docs `docs/SEA_1_KNOWLEDGE.md` through
 `docs/SEA_4_TECHNICAL.md` are the design of record.
