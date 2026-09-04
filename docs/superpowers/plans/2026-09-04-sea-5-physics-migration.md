@@ -561,7 +561,9 @@ public static class GeometryRules
 ./scripts/dotnet.sh test server/spacetimedb/tests/Sea.Server.Tests.csproj --filter "FullyQualifiedName~GeometryRulesTests"
 ```
 
-Expected: `Passed! - Failed: 0, Passed: 12`.
+Expected: `Passed! - Failed: 0, Passed: 13`. (Four `InlineData` rows on the
+bearing theory, one each for the arrived-in-place, `Direction`, distance and
+signed-angle facts, three on normalisation, three on distance-squared.)
 
 - [ ] **Step 5: Commit**
 
@@ -6857,6 +6859,27 @@ numbers the tick already has rather than measured with new work."
 
 SEA_5 §12.2 and §12.3. The client's copy of the movement rules is a mirror of a file that
 no longer exists. It has to be replaced, not repaired.
+
+**Coverage this phase must not miss.** The tasks below name `SeaSailingRules`,
+`SeaLocalShipPrediction`, `SeaRouteRules`, `SeaGeometry`, `SeaChartCoordinates`
+and the chart view. Three more client files read or produce a heading with the
+old `atan2(dx, dy)` / `y = cos(h)` convention and are named in no task here:
+
+- `apps/game-unity/Assets/Domain/SeaVolleyPresentationRules.cs` — computes a
+  bearing and states in a comment that it mirrors the server's armour-face
+  read. Task 6.1 renames that server rule to `FaceHit` and flips its bearing,
+  so this file goes 180° out the moment Phase 6 lands.
+- `apps/game-unity/Assets/Domain/SeaRuntimeValidationRules.cs` and
+  `apps/game-unity/Assets/Presentation/SeaRuntimeValidationProbe.cs` — both
+  reconstruct a position from a heading with `y = cos(h)`. Left alone, the
+  probe validates the client against a convention the server no longer uses
+  and will report drift that is not there.
+
+A fourth, `apps/game-unity/Assets/Domain/SeaHudViewModel.cs`, keeps a private
+0..360 normalisation. That is a duplication, not a bug, and can wait.
+
+Whoever writes the tasks for this phase claims those files or states in the
+commit why each is safe to leave.
 
 ### Task 13.1: `SeaRouteRules`
 
