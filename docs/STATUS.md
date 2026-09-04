@@ -24,6 +24,12 @@ started. Two performance gates are missed and written down as missed.
 ### Sailing
 
 - Click the water to sail there. This is the only way to steer a ship.
+- A ship stops where you clicked and stays stopped. She counts as arrived once
+  she is within 1.5 units of the mark, however she is pointing, so a click just
+  off the bow no longer puts her into a circle she orbits forever.
+- A ship stops from full speed in 10 units and turns in a circle 9 units wide,
+  both inside one chart square (10 units), so a click is answered inside the
+  square you clicked. The worst course on the whole chart takes 7.9 seconds.
 - The server plots a course around islands and reefs, and refuses a course that
   ends on one.
 - Ships pass through each other. Only land blocks them.
@@ -91,6 +97,10 @@ started. Two performance gates are missed and written down as missed.
   | WASD, middle-mouse drag, mini-map | Move the chart |
   | `E`, `F`, `P`, ability keys | Bound, answer "not available yet" |
 - Ship presentation is pooled and capped: 250 ships on macOS, 100 on WebGL.
+- While the window is focused the player draws in step with the display rather
+  than at a fixed 60 frames a second, so motion is even on a 120Hz screen.
+  Unfocused it drops to 15 frames a second. Measured with 250 ships on screen:
+  p95 5.9 ms a frame, p99 6.1 ms, nothing allocated per frame.
 
 ### Commands and safety
 
