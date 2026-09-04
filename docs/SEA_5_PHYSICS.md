@@ -210,7 +210,7 @@ flowchart LR
 |---|---|
 | **Bonuses** | Speed bonuses from skills, crew and gear are summed and capped at **+25%** (this is the one number Sea keeps from SEA_2_MATH; see `stat_caps.json.speedBonusCap`). They spend the same 45-point Combat Power budget as everything else. |
 | **HP state** | HP > 50% → ×1.00. 25% < HP ≤ 50% → ×0.92. HP ≤ 25% → ×0.85. Checked every tick; repairing above a line restores speed on the next tick. This is Seafight's three-state idea, made gentler. It lets the winner finish and stops "everyone escapes at 20%". |
-| **Wind** | Each map has one wind direction per time band (00:00 / 08:00 / 16:00 UTC), sent to clients. Straight downwind +10%, straight upwind −10%, side wind 0. A stopped ship feels no wind. Wind never bends a route; it only changes how fast you move along it. |
+| **Wind** | Each map has one wind direction per 8-hour band. The band is derived from the world tick counter, not from the wall clock: band = floor(tick / 288000), which is 8 hours at 10 Hz. Wall-clock time cannot be used because a replay of the same command log has to produce the same wind. Sent to clients. Straight downwind +10%, straight upwind −10%, side wind 0. A stopped ship feels no wind. Wind never bends a route; it only changes how fast you move along it. |
 | **Storm** | A storm is a circle of radius **40 sq** that drifts at **0.5 sq/s**, lives 10–20 min, 0–2 per map. Inside it speed is ×0.85. Stacks with wind (worst case 0.85 × 0.90 = 0.765). |
 | **Currents** | Zones with a fixed vector, at most **0.3 sq/s**. The vector is added to the ship's movement every tick, so a stopped ship drifts. Drift stops at land and at the map edge. |
 | **Debuffs** | Slows multiply together, never below ×0.50. **Freeze** is separate: speed 0, route kept, ship resumes when the freeze ends. |
@@ -287,12 +287,14 @@ flowchart LR
 
 | Rule | What it means |
 |---|---|
-| **8.1** A volley is resolved on the server the moment it fires. For each cannon the server decides critical, armor face and damage right then (numbers in SEA_2_MATH). One `HitEvent` per volley: attacker, defender, damage, crit flag, face, flight time. | |
+| **8.1** A volley is resolved on the server the moment it fires. For each cannon the server decides critical, armor face and damage right then (armor and damage numbers in SEA_2_MATH; critical numbers in §8.7). One `HitEvent` per volley: attacker, defender, damage, crit flag, face, flight time. | |
 | **8.2** Every cannon in range hits. There is no hit-chance roll and no dodge stat. Variance comes from critical hits and armor faces only. | Seafight rolls dice per cannonball; Sea does not. |
 | **8.3** The cannonball flight is visual only. `flight_time = distance / 40 sq/s` (0.45 s at 18 sq, 0.75 s at 30 sq). The client shows the impact and the damage number after the flight; the server applied the damage at fire time. A ship at 0 HP is sunk on the server at once; the client delays the sinking animation by the flight time. | |
 | **8.4** You cannot dodge a fired volley by moving. Positioning matters before the shot (range, face), not after. | This is what keeps fights fair on 100–300 ms browser connections. |
 | **8.5** Shots go in any direction and over anything. Islands, ships, towers and storms never block a shot. | |
 | **8.6** Volleys from a moving ship are identical to volleys from a stopped ship. No accuracy penalty either way. | |
+| **8.7** Critical hits: **10%** chance per volley, damage **×1.5** applied after armor. Players and NPCs alike. | The roll is a pure function of the world seed, the tick, the attacker id and the defender id, so two replays of the same command log crit on the same volleys. |
+| **8.8** The client shows a critical volley with a larger damage number. It never predicts a crit; the number comes from the server with the damage. | |
 
 ```mermaid
 sequenceDiagram
@@ -324,6 +326,15 @@ sequenceDiagram
 | **9.2** Boarding never stops, slows or locks either ship. It is one instant check; the fight continues. |
 | **9.3** Cooldown **60 s** vs players, **15 s** vs NPCs. |
 
+What a successful or failed boarding *does* — the haul, the hands lost, the
+3 s silence, the 10% of Max HP — is SEA_3_MECHANICS §4.3 and SEA_2_MATH §5.7.
+This section only decides when boarding is physically allowed: within 4 sq,
+off cooldown, target below the boarding threshold.
+
+Cooldowns: 60 s after boarding a player, 15 s after boarding an NPC. SEA_3's
+rule that a given player can be boarded at most once every 5 minutes still
+applies and is a separate timer on the victim.
+
 ---
 
 ## 10. Land, edges and zones
@@ -331,7 +342,7 @@ sequenceDiagram
 | Rule |
 |---|
 | **10.1** Land blocks movement and nothing else. A ship whose centre would enter land is held at the boundary. |
-| **10.2** Map edges: within **6 sq** of an edge that has a neighbouring map, the "Change map" prompt appears. On confirm the ship appears **8 sq** inside the opposite edge of the next map, stopped, same heading, with target, route and pending volleys cleared. Edges with no neighbour are walls. Changing into a harbor map uses the countdown in SEA_3. |
+| **10.2** Map edges: within **6 sq** of an edge that has a neighbouring map, the "Change map" prompt appears. On confirm the ship appears **8 sq** inside the opposite edge of the next map, stopped, same heading, with target, route and pending volleys cleared. Edges with no neighbour are walls. Confirming is instant on every map. SEA_3 has no map-change countdown — only the duel countdown and the cast-off channel — so there is nothing to defer to. If one is ever added to SEA_3, it applies here. |
 | **10.3** Harbor, safe and duel zones are circles (centre, radius) baked per map. Zone tests use the ship centre. |
 | **10.4** Island towers use a circle of `TOWER_RANGE` and the same range check and fire-time rules as ships. |
 | **10.5** Storms and currents are zones too. One zone system covers everything. |
@@ -342,10 +353,7 @@ flowchart LR
     B -- no --> W[Edge acts as a wall]
     B -- yes --> P[Show Change-map prompt]
     P --> C[Player confirms]
-    C --> H{Target map is a harbor?}
-    H -- yes --> T[Countdown from SEA_3<br/>cancels on damage or movement]
-    H -- no --> J[Instant]
-    T --> J
+    C --> J[Instant on every map]
     J --> K[Appear 8 sq inside opposite edge<br/>stopped · same heading · no target · no route]
 ```
 
@@ -385,7 +393,7 @@ stateDiagram-v2
 | **12.2** The server is the only authority on position, heading, speed and route. Clients never send positions. Clients send: `MoveTo`, `Stop`, `SetTarget`, `FireHeld(bool)`, `Board`, `Repair`. | |
 | **12.3** Clients interpolate between ticks from the route and speed they received, and snap to the server value when the error is more than **1.0 sq**. | Straight-line movement makes snaps rare: only packet loss or a course change. |
 | **12.4** Each `MoveTo` is validated: inside the map, not more than 8 per second, reachable. Anything else is dropped and counted for the trust score. Perfectly regular `MoveTo` timing and targets that sit at exactly `range − 0.5` are bot signals; because every event is server-stamped, they are measurable. | |
-| **12.5** Time bands (00:00 / 08:00 / 16:00 UTC) rotate wind and respawn storms. The change is applied at the boundary and broadcast once. | |
+| **12.5** Time bands (every 288000 ticks, which is 8 hours at 10 Hz) rotate wind and respawn storms. The change is applied at the boundary and broadcast once. | |
 
 ```mermaid
 flowchart TB
@@ -463,6 +471,7 @@ These are copied into SEA_2_MATH under "Physics constants". This document wins o
 | SPEED_BONUS_CAP | 0.25 |
 | HP_STATE_MULT (>50% / 25–50% / ≤25%) | 1.00 / 0.92 / 0.85 |
 | WIND_STRENGTH | 0.10 |
+| WIND_BAND_TICKS | 288000 (8 hours at 10 Hz) |
 | STORM_MULT / STORM_RADIUS / STORM_DRIFT | 0.85 / 40 sq / 0.5 sq/s |
 | STORM_COUNT / lifetime | 0–2 per map / 10–20 min |
 | CURRENT_MAX | 0.3 sq/s |
@@ -472,6 +481,9 @@ These are copied into SEA_2_MATH under "Physics constants". This document wins o
 | RANGE_GRACE | 0.5 sq |
 | VIEW_DISTANCE | 60 sq (subscription +5, minimap ×2) |
 | PROJECTILE_SPEED | 40 sq/s (visual only) |
+| CRIT_CHANCE | 0.10 |
+| CRIT_MULTIPLIER | 1.5 |
+| BOARD_THRESHOLD | 0.50 (fraction of the target's Max HP) |
 | BOARD_DISTANCE | 4 sq |
 | BOARD_COOLDOWN_PLAYER / NPC | 60 s / 15 s |
 | EDGE_BAND / EDGE_SPAWN_INSET | 6 sq / 8 sq |
