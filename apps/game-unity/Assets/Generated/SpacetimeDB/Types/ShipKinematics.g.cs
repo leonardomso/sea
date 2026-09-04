@@ -63,6 +63,18 @@ namespace SpacetimeDB.Types
         public int ChunkX;
         [DataMember(Name = "chunk_y")]
         public int ChunkY;
+        [DataMember(Name = "published_tick")]
+        public ulong PublishedTick;
+        [DataMember(Name = "published_position_x")]
+        public float PublishedPositionX;
+        [DataMember(Name = "published_position_y")]
+        public float PublishedPositionY;
+        [DataMember(Name = "published_heading_degrees")]
+        public float PublishedHeadingDegrees;
+        [DataMember(Name = "published_velocity_x")]
+        public float PublishedVelocityX;
+        [DataMember(Name = "published_velocity_y")]
+        public float PublishedVelocityY;
 
         public ShipKinematics(
             ulong EntityId,
@@ -89,7 +101,13 @@ namespace SpacetimeDB.Types
             float CurrentVelocityX,
             float CurrentVelocityY,
             int ChunkX,
-            int ChunkY
+            int ChunkY,
+            ulong PublishedTick,
+            float PublishedPositionX,
+            float PublishedPositionY,
+            float PublishedHeadingDegrees,
+            float PublishedVelocityX,
+            float PublishedVelocityY
         )
         {
             this.EntityId = EntityId;
@@ -117,6 +135,12 @@ namespace SpacetimeDB.Types
             this.CurrentVelocityY = CurrentVelocityY;
             this.ChunkX = ChunkX;
             this.ChunkY = ChunkY;
+            this.PublishedTick = PublishedTick;
+            this.PublishedPositionX = PublishedPositionX;
+            this.PublishedPositionY = PublishedPositionY;
+            this.PublishedHeadingDegrees = PublishedHeadingDegrees;
+            this.PublishedVelocityX = PublishedVelocityX;
+            this.PublishedVelocityY = PublishedVelocityY;
         }
 
         public ShipKinematics()

@@ -60,7 +60,7 @@ public static partial class Module
         {
             // The fat row republishes only on a chunk change, so admission has to range the target
             // against its live position or a ship that sailed out would still be shootable.
-            HydrateTrackedKinematics(ctx, ref tracked);
+            HydrateTrackedKinematics(ctx, world, ref tracked);
             target = tracked;
         }
 

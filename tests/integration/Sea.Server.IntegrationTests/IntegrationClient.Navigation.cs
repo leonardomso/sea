@@ -178,12 +178,14 @@ internal sealed partial class IntegrationClient
             $"mode {ship.ModeCode}, in port {ship.IsInPort}, course {ship.HasCourse}");
         var row = FormattableString.Invariant(
             $"row ({ship.PositionX:0.0}, {ship.PositionY:0.0})");
+        var course = FormattableString.Invariant(
+            $"dst ({ship.DestinationX:0.0}, {ship.DestinationY:0.0}), waypoint {ship.HasWaypoint} ({ship.WaypointX:0.0}, {ship.WaypointY:0.0}), speed {ship.Speed:0.00}, moving {ship.IsMoving}, stopping {ship.IsStopping}");
         var live = FormattableString.Invariant(
             $"live ({movement?.PositionX:0.0}, {movement?.PositionY:0.0})");
         var snapshot = FormattableString.Invariant($"movement tick {movement?.SnapshotTick}");
         var work = FormattableString.Invariant(
             $"channel {channel?.ChannelType ?? "none"} due {channel?.CompletesAtTick}");
-        return string.Join(", ", world, hull, mode, row, live, snapshot, work);
+        return string.Join(", ", world, hull, mode, row, course, live, snapshot, work);
     }
 
     /// <summary>

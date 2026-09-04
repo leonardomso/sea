@@ -61,6 +61,11 @@ public readonly record struct NpcDecision(
 public static class NpcRules
 {
     public const ulong DecisionIntervalTicks = 5;
+
+    // How many hulls a captain will look over before giving up on finding a fight this
+    // decision. Each one costs a datastore read, and the ones after the third are almost
+    // always as swarmed or as sheltered as the first three were.
+    public const int MaximumTargetProbes = 3;
     public const int MaximumAutomaticAttackersPerPlayer = 1;
     private const float RangeTolerance = 4f;
     private const float RepairHullRatio = 0.3f;

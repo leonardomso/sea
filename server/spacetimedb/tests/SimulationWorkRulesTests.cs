@@ -246,4 +246,46 @@ public sealed class SimulationWorkRulesTests
 
         Assert.All(counts, count => Assert.Equal(100, count));
     }
+
+    [Fact]
+    public void EveryMovementShardSailsOnceInsideTheStride()
+    {
+        for (byte shard = 0; shard < SimulationWorkRules.MovementShardCount; shard++)
+        {
+            var due = Enumerable
+                .Range(0, SimulationWorkRules.MovementShardStride)
+                .Count(tick => SimulationWorkRules.ShouldAdvanceMovementShard(shard, (ulong)tick));
+
+            Assert.Equal(1, due);
+        }
+    }
+
+    [Fact]
+    public void ATickSailsTheSameShareOfTheFleetEveryTime()
+    {
+        var expected = SimulationWorkRules.MovementShardCount /
+            SimulationWorkRules.MovementShardStride;
+
+        for (var tick = 0UL; tick < 16UL; tick++)
+        {
+            var advanced = Enumerable
+                .Range(0, SimulationWorkRules.MovementShardCount)
+                .Count(shard => SimulationWorkRules.ShouldAdvanceMovementShard((byte)shard, tick));
+
+            Assert.Equal(expected, advanced);
+        }
+    }
+
+    // A shard that sat out the stride replays every tick it missed when its turn comes, so
+    // the water a ship sails through is the same whatever the stride is set to.
+    [Fact]
+    public void AShardThatSatOutTheStrideCatchesUpOnEveryTickItMissed()
+    {
+        var first = SimulationWorkRules.FirstMovementTick(
+            lastSimulatedTick: 10,
+            currentTick: 10 + SimulationWorkRules.MovementShardStride,
+            shardWasIdle: false);
+
+        Assert.Equal(11UL, first);
+    }
 }

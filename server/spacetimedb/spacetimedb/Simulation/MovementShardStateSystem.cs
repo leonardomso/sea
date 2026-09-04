@@ -27,10 +27,22 @@ public static partial class Module
     // on a chunk change or a stop; clients read live kinematics from ShipMovement.
     private static void PublishMovement(
         ReducerContext ctx,
-        ShipKinematics tracked,
+        ref ShipKinematics tracked,
         ulong tick,
         bool changedChunk)
     {
+        var published = ReplicationRules.Publish(
+            PublishedMotionOf(tracked),
+            tracked.PositionX,
+            tracked.PositionY,
+            tracked.HeadingDegrees,
+            tick);
+        tracked.PublishedTick = published.Tick;
+        tracked.PublishedPositionX = published.PositionX;
+        tracked.PublishedPositionY = published.PositionY;
+        tracked.PublishedHeadingDegrees = published.HeadingDegrees;
+        tracked.PublishedVelocityX = published.VelocityX;
+        tracked.PublishedVelocityY = published.VelocityY;
         ctx.Db.ShipMovement.EntityId.Update(ToShipMovement(tracked, tick));
         if (!changedChunk && tracked.IsMoving)
         {
@@ -43,6 +55,16 @@ public static partial class Module
             ctx.Db.Ship.EntityId.Update(stored);
         }
     }
+
+    private static PublishedMotion PublishedMotionOf(ShipKinematics tracked) => new()
+    {
+        Tick = tracked.PublishedTick,
+        PositionX = tracked.PublishedPositionX,
+        PositionY = tracked.PublishedPositionY,
+        HeadingDegrees = tracked.PublishedHeadingDegrees,
+        VelocityX = tracked.PublishedVelocityX,
+        VelocityY = tracked.PublishedVelocityY,
+    };
 
     private static void InsertShipMovement(ReducerContext ctx, Ship ship, ulong tick) =>
         ctx.Db.ShipMovement.Insert(ToShipMovement(ship, tick));
@@ -104,9 +126,12 @@ public static partial class Module
         target.ChunkY = source.ChunkY;
     }
 
-    private static void HydrateTrackedKinematics(ReducerContext ctx, ref Ship ship)
+    private static void HydrateTrackedKinematics(
+        ReducerContext ctx,
+        TickWorld world,
+        ref Ship ship)
     {
-        var shard = FindMovementShard(ctx, ship.MovementShard);
+        var shard = world.MovementShard(ctx, ship.MovementShard);
         var index = FindTrackedShip(shard.Ships, ship.EntityId);
         if (index >= 0)
         {

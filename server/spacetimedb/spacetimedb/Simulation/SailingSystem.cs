@@ -10,6 +10,11 @@ public static partial class Module
         var processed = 0u;
         for (byte shardId = 0; shardId < SimulationWorkRules.MovementShardCount; shardId++)
         {
+            if (!SimulationWorkRules.ShouldAdvanceMovementShard(shardId, world.Tick))
+            {
+                continue;
+            }
+
             processed += AdvanceMovementShard(ctx, world, shardId);
         }
 
@@ -18,7 +23,7 @@ public static partial class Module
 
     private static uint AdvanceMovementShard(ReducerContext ctx, TickWorld world, byte shardId)
     {
-        var shard = FindMovementShard(ctx, shardId);
+        var shard = world.MovementShard(ctx, shardId);
         var wasIdle = shard.Ships.Count == 0;
         ApplyPendingMovementUpdates(ctx, ref shard);
         if (wasIdle && shard.Ships.Count == 0)
@@ -35,6 +40,7 @@ public static partial class Module
             SimulationWorkRules.FirstMovementTick(shard.LastSimulatedTick, world.Tick, wasIdle),
             world.Tick);
         shard.LastSimulatedTick = world.Tick;
+        world.StoreMovementShard(shard);
         ctx.Db.MovementShardState.ShardId.Update(shard);
         return processed;
     }
@@ -64,13 +70,18 @@ public static partial class Module
 
             UpdatePortState(ctx, world, ref ship);
 
-            // Every ship publishes in the transaction that moved it, so clients see the
-            // tick's kinematics together; ships that stopped drop out of the shard.
-            PublishMovement(
-                ctx,
-                ship,
-                lastTick,
-                ship.ChunkX != chunkX || ship.ChunkY != chunkY);
+            // A ship holding her course is already drawn where she is, so only the ones whose
+            // reckoning has drifted, crossed into another chunk or come to rest cost a row.
+            var changedChunk = ship.ChunkX != chunkX || ship.ChunkY != chunkY;
+            if (changedChunk || !ship.IsMoving || ReplicationRules.ShouldPublish(
+                    PublishedMotionOf(ship),
+                    ship.PositionX,
+                    ship.PositionY,
+                    ship.HeadingDegrees,
+                    lastTick))
+            {
+                PublishMovement(ctx, ref ship, lastTick, changedChunk);
+            }
             if (ship.IsMoving)
             {
                 ships[writeIndex++] = ship;

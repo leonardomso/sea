@@ -18,12 +18,15 @@ namespace Sea.Client
 
     /// <summary>
     /// Server movement snapshots keyed by simulation tick. Sampling interpolates between the
-    /// bracketing ticks and extrapolates at most one tick past the newest sample.
+    /// bracketing ticks and extrapolates a little way past the newest sample.
     /// </summary>
     public sealed class SeaMotionTimeline
     {
         public const int Capacity = 8;
-        public const double MaximumExtrapolationTicks = 1d;
+        // The server only sends a ship again once she has strayed from this reckoning, and
+        // on a ten tick heartbeat regardless, so carrying her that far is drawing what the
+        // server knows rather than guessing. Past it she waits where she was last seen.
+        public const double MaximumExtrapolationTicks = 10d;
 
         private readonly ulong[] ticks = new ulong[Capacity];
         private readonly Vector3[] positions = new Vector3[Capacity];

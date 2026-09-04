@@ -5,6 +5,7 @@ public static class SimulationWorkRules
     public const bool ShipsBlockMovement = false;
     public const ulong PeriodicEffectIntervalTicks = 5;
     public const byte MovementShardCount = 8;
+    public const byte MovementShardStride = 2;
     public const byte NpcShardCount = 4;
     public const byte CurrentRefreshBucketCount = 16;
     public const byte LootPickupBucketCount = 10;
@@ -34,6 +35,13 @@ public static class SimulationWorkRules
     // clock: the simulation resumes on the tick the first player connects.
     public static bool ShouldAdvanceWorld(uint connectedPlayerCount) =>
         connectedPlayerCount > 0;
+
+    // A tick sails half the fleet. A shard integrates every tick it sat out when its turn
+    // comes round, so the water is the same either way; what halves is the number of rows a
+    // tick touches, which is the whole of its cost. A course set between a shard's turns
+    // waits out the remainder of the stride, so a command bites within a tick of the ack.
+    public static bool ShouldAdvanceMovementShard(byte shardId, ulong tick) =>
+        (ulong)(shardId % MovementShardStride) == tick % MovementShardStride;
 
     public static bool ShouldApplyHazards(ulong tick) =>
         tick % HazardIntervalTicks == 0;

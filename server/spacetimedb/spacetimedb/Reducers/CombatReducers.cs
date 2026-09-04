@@ -14,7 +14,7 @@ public static partial class Module
             throw new InvalidOperationException("Accepted fire command has no target.");
         // Facing is read off the live course, not the fat row, which only republishes on a
         // chunk change; a stale heading would hand the shooter the wrong armour face.
-        HydrateTrackedKinematics(ctx, ref target);
+        HydrateTrackedKinematics(ctx, world, ref target);
         var ammunition = Catalog.AmmunitionByCode[source.SelectedAmmoCode] ??
             throw new InvalidOperationException("Selected ammunition definition is missing.");
 

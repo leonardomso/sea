@@ -10,6 +10,8 @@ public static partial class Module
     private sealed class TickWorld
     {
         private readonly Dictionary<int, List<WorldObject>> worldObjects = new();
+        private readonly Dictionary<byte, MovementShardState> movementShards = new();
+        private List<ShipMovement>? activePlayers;
         private List<NavigationBlocker>? blockers;
         private WorldObject? harbor;
         private bool harborRead;
@@ -65,6 +67,30 @@ public static partial class Module
         // moving player may have something to pick up.
         public bool HasActiveLoot(ReducerContext ctx) =>
             hasActiveLoot ??= ctx.Db.Loot.Count > 0;
+
+        // A shard row carries every ship it is sailing in one blob, which makes it the
+        // dearest read in the tick. NPC hydration and the movement phase both want the same
+        // eight of them, so they share one copy each and movement writes its edits back.
+        public MovementShardState MovementShard(ReducerContext ctx, byte shardId)
+        {
+            if (!movementShards.TryGetValue(shardId, out var shard))
+            {
+                shard = FindMovementShard(ctx, shardId);
+                movementShards[shardId] = shard;
+            }
+
+            return shard;
+        }
+
+        public void StoreMovementShard(MovementShardState shard) =>
+            movementShards[shard.ShardId] = shard;
+
+        // Every NPC hunts through the same handful of player rows, so the scan is paid once
+        // for the tick rather than once per hull. Players hold still inside this transaction:
+        // every decision is made before the movement phase sails anyone.
+        public List<ShipMovement> ActivePlayers(ReducerContext ctx) =>
+            activePlayers ??= [.. ctx.Db.ShipMovement.ByActiveFaction.Filter(
+                (true, (byte)FactionCode.Player))];
 
         public bool IsAttackablePlayer(ReducerContext ctx, Ship ship) =>
             ship.IsActive && ship.IsAlive &&

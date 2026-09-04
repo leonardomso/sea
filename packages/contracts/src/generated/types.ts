@@ -535,6 +535,12 @@ export const ShipKinematics = __t.object("ShipKinematics", {
   currentVelocityY: __t.f32(),
   chunkX: __t.i32(),
   chunkY: __t.i32(),
+  publishedTick: __t.u64(),
+  publishedPositionX: __t.f32(),
+  publishedPositionY: __t.f32(),
+  publishedHeadingDegrees: __t.f32(),
+  publishedVelocityX: __t.f32(),
+  publishedVelocityY: __t.f32(),
 });
 export type ShipKinematics = __Infer<typeof ShipKinematics>;
 

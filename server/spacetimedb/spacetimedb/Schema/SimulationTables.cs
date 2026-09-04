@@ -134,6 +134,15 @@ public static partial class Module
         public float CurrentVelocityY;
         public int ChunkX;
         public int ChunkY;
+
+        // What the client was last told, so the shard can tell whether its reckoning has
+        // drifted far enough to be worth another row. Server-side only.
+        public ulong PublishedTick;
+        public float PublishedPositionX;
+        public float PublishedPositionY;
+        public float PublishedHeadingDegrees;
+        public float PublishedVelocityX;
+        public float PublishedVelocityY;
     }
 
     [SpacetimeDB.Table(Accessor = "MovementUpdate")]
