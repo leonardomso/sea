@@ -407,7 +407,8 @@ public sealed class GeometryRulesTests
     [InlineData(-10f, 0f, 270f)]   // to the left is west
     public void HeadingToIsACompassBearing(float deltaX, float deltaY, float expected)
     {
-        var heading = GeometryRules.HeadingTo(100f, 100f, 100f + deltaX, 100f + deltaY);
+        var heading = GeometryRules.HeadingTo(
+            100f, 100f, 100f + deltaX, 100f + deltaY, 0f);
 
         Assert.Equal(expected, heading, 3);
     }
@@ -418,13 +419,31 @@ public sealed class GeometryRulesTests
         Assert.Equal(41f, GeometryRules.HeadingTo(5f, 5f, 5f, 5f, 41f), 3);
     }
 
-    [Fact]
-    public void DirectionRoundTripsThroughHeading()
+    [Theory]
+    [InlineData(0f, 0f, -1f)]      // north is up the screen, which on a Y-down chart is -Y
+    [InlineData(90f, 1f, 0f)]
+    [InlineData(180f, 0f, 1f)]
+    [InlineData(270f, -1f, 0f)]
+    public void DirectionPointsTheWayTheCompassSays(
+        float headingDegrees, float expectedX, float expectedY)
     {
-        var (x, y) = GeometryRules.Direction(90f);
+        var (x, y) = GeometryRules.Direction(headingDegrees);
 
-        Assert.Equal(1f, x, 3);
-        Assert.Equal(0f, y, 3);
+        Assert.Equal(expectedX, x, 3);
+        Assert.Equal(expectedY, y, 3);
+    }
+
+    [Theory]
+    [InlineData(30f)]
+    [InlineData(115f)]
+    [InlineData(200f)]
+    [InlineData(345f)]
+    public void DirectionAndHeadingToAreInverses(float headingDegrees)
+    {
+        var (x, y) = GeometryRules.Direction(headingDegrees);
+
+        Assert.Equal(
+            headingDegrees, GeometryRules.HeadingTo(0f, 0f, x * 10f, y * 10f, 0f), 1);
     }
 
     [Theory]
@@ -494,21 +513,26 @@ public static class GeometryRules
 
     /// <summary>
     /// The bearing from one point to another. When the two points are the same
-    /// there is no bearing to give, so the caller's current one is kept: a ship
+    /// there is no bearing to give, so the caller's fallback is returned: a ship
     /// that has arrived keeps pointing the way she came in.
     /// </summary>
+    /// <remarks>
+    /// The fallback is required on purpose. A default would answer north for a
+    /// caller who never thought about the degenerate case, and nothing in the
+    /// signature or the result would say the answer was invented.
+    /// </remarks>
     public static float HeadingTo(
         float fromX,
         float fromY,
         float toX,
         float toY,
-        float currentHeadingDegrees = 0f)
+        float fallbackHeadingDegrees)
     {
         var deltaX = toX - fromX;
         var deltaY = toY - fromY;
         if ((deltaX * deltaX) + (deltaY * deltaY) <= NoMovementSquared)
         {
-            return NormalizeAngle(currentHeadingDegrees);
+            return NormalizeAngle(fallbackHeadingDegrees);
         }
 
         return NormalizeAngle(MathF.Atan2(deltaX, -deltaY) * DegreesPerRadian);
@@ -561,9 +585,15 @@ public static class GeometryRules
 ./scripts/dotnet.sh test server/spacetimedb/tests/Sea.Server.Tests.csproj --filter "FullyQualifiedName~GeometryRulesTests"
 ```
 
-Expected: `Passed! - Failed: 0, Passed: 13`. (Four `InlineData` rows on the
-bearing theory, one each for the arrived-in-place, `Direction`, distance and
-signed-angle facts, three on normalisation, three on distance-squared.)
+Expected: `Passed! - Failed: 0, Passed: 20`. (Four `InlineData` rows on the
+bearing theory, one for the arrived-in-place fact, four on `Direction`'s
+cardinals and four on its round trip through `HeadingTo`, three on
+normalisation, three on the signed angle, one on distance.)
+
+That is the floor, not the ceiling. The code quality gate on this task added
+the negative-zero, epsilon-boundary, exact `-180` and tangency cases and two
+FsCheck properties on top. The committed `GeometryRulesTests.cs` is the
+authority on the exact list.
 
 - [ ] **Step 5: Commit**
 
@@ -3935,9 +3965,17 @@ Each call site must read:
 
 ```csharp
         var bearing = GeometryRules.HeadingTo(
-            defender.PositionX, defender.PositionY, attacker.PositionX, attacker.PositionY);
+            defender.PositionX,
+            defender.PositionY,
+            attacker.PositionX,
+            attacker.PositionY,
+            defender.HeadingDegrees);
         var face = CombatRules.FaceHit(defender.HeadingDegrees, bearing);
 ```
+
+The defender's own heading is the fallback because two hulls on exactly the
+same point have no bearing between them, and the least surprising answer there
+is that the shot landed on the bow.
 
 - [ ] **Step 5: Run**
 
@@ -7026,7 +7064,7 @@ namespace Sea.Client
                     continue;
                 }
 
-                heading = SeaGeometry.HeadingTo(position, target);
+                heading = SeaGeometry.HeadingTo(position, target, heading);
                 if (distance > remaining)
                 {
                     position += toTarget * (remaining / distance);
@@ -7058,12 +7096,17 @@ namespace Sea.Client
     /// </summary>
     public static class SeaGeometry
     {
-        public static float HeadingTo(Vector2 from, Vector2 to)
+        /// <summary>
+        /// The bearing from one point to another, with the caller's fallback for
+        /// when the two are the same point. Required, not defaulted, for the
+        /// reason GeometryRules.HeadingTo gives on the server.
+        /// </summary>
+        public static float HeadingTo(Vector2 from, Vector2 to, float fallbackDegrees)
         {
             var delta = to - from;
             if (delta.sqrMagnitude <= 0.000001f)
             {
-                return 0f;
+                return NormalizeAngle(fallbackDegrees);
             }
 
             return NormalizeAngle(Mathf.Atan2(delta.x, -delta.y) * Mathf.Rad2Deg);
@@ -7084,10 +7127,16 @@ with its own test:
 [Test]
 public void ZeroIsNorthAndNinetyIsEast()
 {
-    Assert.AreEqual(0f, SeaGeometry.HeadingTo(Vector2.zero, new Vector2(0f, -1f)), 0.001f);
-    Assert.AreEqual(90f, SeaGeometry.HeadingTo(Vector2.zero, new Vector2(1f, 0f)), 0.001f);
-    Assert.AreEqual(180f, SeaGeometry.HeadingTo(Vector2.zero, new Vector2(0f, 1f)), 0.001f);
-    Assert.AreEqual(270f, SeaGeometry.HeadingTo(Vector2.zero, new Vector2(-1f, 0f)), 0.001f);
+    Assert.AreEqual(
+        0f, SeaGeometry.HeadingTo(Vector2.zero, new Vector2(0f, -1f), 0f), 0.001f);
+    Assert.AreEqual(
+        90f, SeaGeometry.HeadingTo(Vector2.zero, new Vector2(1f, 0f), 0f), 0.001f);
+    Assert.AreEqual(
+        180f, SeaGeometry.HeadingTo(Vector2.zero, new Vector2(0f, 1f), 0f), 0.001f);
+    Assert.AreEqual(
+        270f, SeaGeometry.HeadingTo(Vector2.zero, new Vector2(-1f, 0f), 0f), 0.001f);
+    Assert.AreEqual(
+        41f, SeaGeometry.HeadingTo(Vector2.one, Vector2.one, 41f), 0.001f);
 }
 ```
 
