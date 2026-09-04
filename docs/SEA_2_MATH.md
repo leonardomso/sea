@@ -7,7 +7,7 @@
 
 **Document 2 of 4** · Version 2.0 · September 2026
 
-Every number and formula in the game. If a number is not here, it does not exist. Every table in this document was produced by running the formulas (§13 has the script that regenerates them).
+Every number and formula in the game, except the movement, speed, environment, range and view numbers SEA_5_PHYSICS owns (see above). If a number is not here or there, it does not exist. Every table in this document was produced by running the formulas (§13 has the script that regenerates them).
 
 ---
 

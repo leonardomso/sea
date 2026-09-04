@@ -8,7 +8,7 @@ Version 1.1 · Decisions locked 2026-09-04 · Companion to SEA_1_KNOWLEDGE, SEA_
 
 This document explains the physics of Sea: how a ship moves, how far it can see and shoot, what wind and storms do, and how the server keeps everyone honest. It is written so that a new team member can read it once and understand the game, and so that every rule can be turned into a test.
 
-The numbers in this document are the approved values. They also live in SEA_2_MATH, which is the single source of truth. If a number here ever disagrees with SEA_2_MATH, SEA_2_MATH wins and this document must be fixed.
+The numbers in this document are the approved values. SEA_2_MATH copies them for reference. If a number here ever disagrees with SEA_2_MATH, this document wins and SEA_2_MATH must be fixed.
 
 ---
 
@@ -448,7 +448,7 @@ Reopening any of these means re-running the tests in §13 and re-checking the fi
 
 ## 15. All constants in one place
 
-These are copied in SEA_2_MATH under "Physics constants". SEA_2_MATH wins on any disagreement.
+These are copied into SEA_2_MATH under "Physics constants". This document wins on any disagreement.
 
 | Constant | Value |
 |---|---|
