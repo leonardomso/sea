@@ -12,9 +12,14 @@ public static partial class Module
         ship.RespawnAtTick = tick + (player
             ? RespawnRules.PlayerDelayTicks
             : RespawnRules.NpcDelayTicks);
+        // An NPC is handed its home berth the moment it sinks. A player has to ask for one, and
+        // only the wrecks that have asked are pending, so a player who never answers -- who closed
+        // the tab on the seabed -- is not sailed back out on their behalf.
+        var option = player ? RespawnOptionCode.Unchosen : RespawnOptionCode.HomePort;
         if (ctx.Db.RespawnWork.ShipEntityId.Find(ship.EntityId) is RespawnWork work)
         {
-            work.IsPending = true;
+            work.IsPending = !player;
+            work.OptionCode = (byte)option;
             work.RespawnAtTick = ship.RespawnAtTick;
             ctx.Db.RespawnWork.ShipEntityId.Update(work);
         }
@@ -23,7 +28,8 @@ public static partial class Module
             ctx.Db.RespawnWork.Insert(new RespawnWork
             {
                 ShipEntityId = ship.EntityId,
-                IsPending = true,
+                IsPending = !player,
+                OptionCode = (byte)option,
                 RespawnAtTick = ship.RespawnAtTick,
             });
         }
@@ -41,6 +47,7 @@ public static partial class Module
 
     private static void ProcessRespawns(
         ReducerContext ctx,
+        TickWorld world,
         ShipTickBuffer ships,
         ulong tick)
     {
@@ -57,7 +64,7 @@ public static partial class Module
                 ctx,
                 ship,
                 ship.EntityId ^ work.RespawnAtTick ^ ship.EncounterId);
-            RestoreShipForRespawn(ctx, ref ship, spawn, tick);
+            RestoreShipForRespawn(ctx, world, ref ship, spawn, tick);
             ships.Stage(ship);
             ctx.Db.RespawnWork.ShipEntityId.Delete(work.ShipEntityId);
             AppendEvent(ctx, tick, ship.EntityId, "ship_respawned", "");
@@ -66,6 +73,7 @@ public static partial class Module
 
     private static void RestoreShipForRespawn(
         ReducerContext ctx,
+        TickWorld world,
         ref Ship ship,
         SpawnPoint spawn,
         ulong tick)
@@ -87,6 +95,12 @@ public static partial class Module
         ship.CurrentVelocityY = 0f;
         ship.ChunkX = SpatialRules.ChunkCoordinate(spawn.X);
         ship.ChunkY = SpatialRules.ChunkCoordinate(spawn.Y);
+        ship.IsInPort = world.Harbor(ctx) is WorldObject harbor && PortRules.IsInside(
+            spawn.X,
+            spawn.Y,
+            harbor.PositionX,
+            harbor.PositionY,
+            harbor.Radius);
         ship.TargetEntityId = 0;
         ship.IsEngaged = false;
         ship.IsActive = true;
@@ -107,6 +121,7 @@ public static partial class Module
         ship.RespawnAtTick = 0;
         ship.InvulnerableUntilTick = restored.InvulnerableUntilTick;
         ClearRespawnState(ctx, ship.EntityId);
+        ClearHealLog(ctx, ship.EntityId);
         if (!player)
         {
             ReopenNpcEncounter(ctx, ref ship, tick);

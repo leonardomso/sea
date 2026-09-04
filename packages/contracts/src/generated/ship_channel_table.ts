@@ -19,5 +19,6 @@ export default __t.row({
   completesAtTick: __t.u64().name("completes_at_tick"),
   nextProcessTick: __t.u64().name("next_process_tick"),
   initialHull: __t.u32().name("initial_hull"),
+  damageTaken: __t.u32().name("damage_taken"),
   isActive: __t.bool().name("is_active"),
 });

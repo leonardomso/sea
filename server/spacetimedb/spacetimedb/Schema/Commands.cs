@@ -46,6 +46,19 @@ public static partial class Module
     public partial struct CancelChannelCommand;
 
     [SpacetimeDB.Type]
+    public partial struct UseRepairKitCommand;
+
+    /// <summary>
+    /// Which berth a wreck comes back at. Havenmere offers one, so the option is a byte rather
+    /// than a name: later ports add values without changing the command.
+    /// </summary>
+    [SpacetimeDB.Type]
+    public partial struct ChooseRespawnCommand
+    {
+        public byte OptionCode;
+    }
+
+    [SpacetimeDB.Type]
     public partial record ShipCommand : TaggedEnum<(
         SetCourseCommand SetCourse,
         StopCourseCommand StopCourse,
@@ -56,7 +69,9 @@ public static partial class Module
         ActivateAbilityCommand ActivateAbility,
         StartRepairCommand StartRepair,
         StartBoardingCommand StartBoarding,
-        CancelChannelCommand CancelChannel)>;
+        CancelChannelCommand CancelChannel,
+        UseRepairKitCommand UseRepairKit,
+        ChooseRespawnCommand ChooseRespawn)>;
 
     [SpacetimeDB.Type]
     public partial struct CommandEnvelope

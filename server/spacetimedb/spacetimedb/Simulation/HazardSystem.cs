@@ -42,7 +42,7 @@ public static partial class Module
                     ref affected,
                     2,
                     tick,
-                    "storm");
+                    DamageSourceCode.Storm);
             }
 
             if (!affected.Equals(ship))

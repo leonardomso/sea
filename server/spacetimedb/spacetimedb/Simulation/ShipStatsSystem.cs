@@ -62,8 +62,8 @@ public static partial class Module
 
     /// <summary>
     /// Copies a stat sheet onto the live hull. The fat <see cref="Ship"/> row carries the combat
-    /// numbers outright so the tick never joins the dock tables to fire a volley; 1c's refit is
-    /// one more call to this.
+    /// numbers outright so the tick never joins the dock tables to fire a volley; a refit is one
+    /// more call to this.
     /// </summary>
     /// <param name="restock">
     /// True on spawn and on respawn, where the ship comes back whole with a full magazine. False
@@ -81,6 +81,8 @@ public static partial class Module
         ship.ArmorSides = sheet.ArmorSides;
         ship.ArmorBack = sheet.ArmorBack;
         ship.MaxHull = sheet.MaxHitPoints;
+        ship.RepairAmount = sheet.RepairAmount;
+        ship.RepairChannelTicks = RepairRules.ChannelTicks(sheet.RepairChannelMilliseconds);
 
         if (restock)
         {

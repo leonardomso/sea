@@ -73,8 +73,8 @@ public static partial class Module
                 SourceAlive = source.IsActive && source.IsAlive,
                 TargetSelected = target.HasValue,
                 TargetAlive = target is Ship selected && selected.IsActive && selected.IsAlive,
-                // Ports arrive in 1c; until then no water is a port.
-                InPort = false,
+                InPort = source.IsInPort,
+                SpawnShielded = world.Tick < source.InvulnerableUntilTick,
                 IsChanneling = snapshot.HasActiveChannel,
                 ReadyVolleys = source.ReadyVolleys,
                 CurrentTick = world.Tick,
@@ -89,19 +89,75 @@ public static partial class Module
         };
     }
 
+    /// <summary>
+    /// The channelled repair. It costs no kit, so what admission has to know is whether the crew
+    /// is free, whether the last repair has finished paying for itself, and whether the hull is
+    /// short of anything at all.
+    /// </summary>
     private static CommandSnapshot RepairSnapshot(
         ReducerContext ctx,
+        TickWorld world,
         Ship ship,
-        CommandSnapshot snapshot)
+        CommandSnapshot snapshot) => snapshot with
+        {
+            RepairRejection = RepairRules.ValidateRepair(BuildRepairRequest(
+                ctx,
+                world,
+                ship,
+                snapshot,
+                CooldownCode.Repair)),
+        };
+
+    /// <summary>
+    /// The kit. It runs on a cooldown of its own and takes no time, so a ship already channelling,
+    /// or already casting off, may still open one.
+    /// </summary>
+    private static CommandSnapshot KitSnapshot(
+        ReducerContext ctx,
+        TickWorld world,
+        Ship ship,
+        CommandSnapshot snapshot) => snapshot with
+        {
+            KitRejection = RepairRules.ValidateKit(BuildRepairRequest(
+                ctx,
+                world,
+                ship,
+                snapshot,
+                CooldownCode.RepairKit)),
+        };
+
+    private static RepairRequest BuildRepairRequest(
+        ReducerContext ctx,
+        TickWorld world,
+        Ship ship,
+        CommandSnapshot snapshot,
+        CooldownCode cooldown)
     {
         var kit = FindInventory(ctx, ship.EntityId, "repair_kit");
-        return snapshot with
-        {
-            RepairRejection = TacticalRules.ValidateRepair(new RepairRequest(
-                ship.IsActive && ship.IsAlive,
-                !snapshot.HasActiveChannel,
-                kit is Inventory item && item.Quantity > 0,
-                ship.Hull < ship.MaxHull)),
-        };
+        return new RepairRequest(
+            ship.IsActive && ship.IsAlive,
+            !snapshot.HasActiveChannel,
+            FindCooldown(ctx, ship.EntityId, cooldown) is not Cooldown pending ||
+                world.Tick >= pending.ReadyAtTick,
+            kit is Inventory item && item.Quantity > 0,
+            ship.Hull < ship.MaxHull);
     }
+
+    /// <summary>
+    /// A wreck may only pick a berth the port actually offers, and only while its own respawn is
+    /// still waiting on the answer.
+    /// </summary>
+    private static CommandSnapshot RespawnSnapshot(
+        ReducerContext ctx,
+        Ship ship,
+        CommandSnapshot snapshot,
+        ChooseRespawnCommand command) => snapshot with
+        {
+            ArgumentRejection = command.OptionCode == (byte)RespawnOptionCode.HomePort
+                ? CommandRejectionCode.None
+                : CommandRejectionCode.NotAvailable,
+            RespawnPending =
+                ctx.Db.RespawnWork.ShipEntityId.Find(ship.EntityId) is RespawnWork work &&
+                work.OptionCode == (byte)RespawnOptionCode.Unchosen,
+        };
 }

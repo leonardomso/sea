@@ -112,6 +112,12 @@
                     "type": "Button",
                     "id": "81e26081-8c68-4ac4-8fe8-c401835a0125",
                     "expectedControlType": "Button"
+                },
+                {
+                    "name": "RepairKit",
+                    "type": "Button",
+                    "id": "81e26081-8c68-4ac4-8fe8-c401835a0126",
+                    "expectedControlType": "Button"
                 }
             ],
             "bindings": [
@@ -271,6 +277,12 @@
                     "id": "91e26081-8c68-4ac4-8fe8-c401835a0031",
                     "path": "<Keyboard>/r",
                     "action": "Repair",
+                    "groups": "KeyboardMouse"
+                },
+                {
+                    "id": "91e26081-8c68-4ac4-8fe8-c401835a0032",
+                    "path": "<Keyboard>/k",
+                    "action": "RepairKit",
                     "groups": "KeyboardMouse"
                 }
             ]

@@ -57,7 +57,7 @@ public static partial class ContentCatalog
                         Kind = "harbor",
                         X = 0f,
                         Y = 0f,
-                        Radius = 8f,
+                        Radius = 10f,
                         BlocksMovement = false,
                         DirectionDegrees = 0f,
                         MovementSpeed = 0f,
@@ -399,6 +399,7 @@ public static partial class ContentCatalog
             KitCooldownSeconds = 45f,
             RespawnSeconds = 8f,
             SpawnShieldSeconds = 10f,
+            PortCastOffSeconds = 3f,
             NpcHitPointMultipliers = new float[]
             {
                 0.5f,

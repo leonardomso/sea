@@ -21,6 +21,7 @@ namespace Sea.Client
         private VisualElement coordinateNavigator;
         private VisualElement chartMenu;
         private VisualElement miniMapFrame;
+        private VisualElement wreckPrompt;
         private ScrollView rebindList;
         private TextField coordinateInput;
         private Label coordinateError;
@@ -191,6 +192,7 @@ namespace Sea.Client
             hudRoot.pickingMode = PickingMode.Ignore;
             connectionBeacon = root.Q("connection-beacon");
             targetFrame = root.Q("target-frame");
+            wreckPrompt = root.Q("wreck-prompt");
             fireControl = root.Q("fire-control");
             coordinateNavigator = root.Q("coordinate-navigator");
             chartMenu = root.Q("chart-menu");
@@ -224,6 +226,8 @@ namespace Sea.Client
             HookButton("ammo-incendiary", () => game?.SetSelectedAmmo("incendiary"));
             HookButton("fire-control", () => game?.Fire());
             HookButton("repair", () => game?.ToggleRepair());
+            HookButton("repair-kit", () => game?.UseRepairKit());
+            HookButton("respawn-button", () => game?.ChooseHomePortRespawn());
             coordinateInput.RegisterCallback<KeyDownEvent>(HandleCoordinateKey);
             hudDirty.Mark();
         }
@@ -265,6 +269,12 @@ namespace Sea.Client
             SetText("channel-label", string.IsNullOrWhiteSpace(model.ProgressText) ? "NO ACTIVE ORDER" : model.ProgressText);
             SetProgress("channel-progress", model.Progress);
             SetAbilityCooldown("repair", "R", model.RepairCooldownSeconds);
+            SetAbilityCooldown("repair-kit", "K", model.RepairKitCooldownSeconds);
+
+            // A wreck has one order left to give, so the chart is covered until it gives it.
+            wreckPrompt?.EnableInClassList("hidden", !model.IsSunk);
+            SetText("wreck-text", model.WreckText);
+            ButtonFor("respawn-button")?.EnableInClassList("hidden", !model.CanChooseBerth);
         }
 
         private void SetAbilityCooldown(string name, string binding, float seconds)

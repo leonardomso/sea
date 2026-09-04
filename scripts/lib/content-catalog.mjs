@@ -133,6 +133,7 @@ const STAT_CAPS_FIELDS = [
   field("kitCooldownSeconds", "float"),
   field("respawnSeconds", "float"),
   field("spawnShieldSeconds", "float"),
+  field("portCastOffSeconds", "float"),
   field("npcHitPointMultipliers", "float[]"),
   field("npcDpsMultipliers", "float[]"),
   field("npcArmorByTier", "float[]"),

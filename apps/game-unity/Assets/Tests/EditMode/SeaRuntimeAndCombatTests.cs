@@ -46,6 +46,7 @@ namespace Sea.Tests
                 "Point", "SetCourse", "StopCourse", "PanChart", "ZoomChart", "DragChart", "RecenterChart",
                 "OpenNavigator", "CycleTargetNext", "CycleTargetPrevious", "ClearTarget", "Pause",
                 "Fire", "AmmoRound", "AmmoChain", "AmmoGrapeshot", "AmmoIncendiary", "Repair",
+                "RepairKit",
             };
 
             Assert.That(gameplay.actions.Select(action => action.name), Is.EquivalentTo(requiredActions));
@@ -77,6 +78,7 @@ namespace Sea.Tests
                 "SetAmmoCommand.g.cs", "FireCommand.g.cs",
                 "ActivateAbilityCommand.g.cs", "StartRepairCommand.g.cs",
                 "StartBoardingCommand.g.cs", "CancelChannelCommand.g.cs",
+                "UseRepairKitCommand.g.cs", "ChooseRespawnCommand.g.cs",
             };
 
             Assert.That(commands.All(file => File.Exists(
@@ -339,6 +341,27 @@ namespace Sea.Tests
         }
 
         [Test]
+        public void A_wreck_is_offered_a_berth_once_and_then_counted_back_onto_the_water()
+        {
+            var unchosen = SeaHudViewModel.From(new SeaHudSnapshot { IsSunk = true });
+
+            Assert.That(unchosen.IsSunk, Is.True);
+            Assert.That(unchosen.CanChooseBerth, Is.True);
+            Assert.That(unchosen.WreckText, Is.EqualTo("PORT LOWELL HAS A BERTH WAITING."));
+
+            var chosen = SeaHudViewModel.From(new SeaHudSnapshot
+            {
+                IsSunk = true,
+                RespawnChosen = true,
+                RespawnRemainingSeconds = 5.4f,
+            });
+
+            Assert.That(chosen.CanChooseBerth, Is.False);
+            Assert.That(chosen.WreckText, Is.EqualTo("PUTTING OUT FROM PORT LOWELL  •  5s"));
+            Assert.That(SeaHudViewModel.From(new SeaHudSnapshot()).IsSunk, Is.False);
+        }
+
+        [Test]
         public void Runtime_hud_contains_the_locked_chart_combat_instruments()
         {
             var document = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/SeaHud.uxml");
@@ -368,6 +391,12 @@ namespace Sea.Tests
             Assert.That(root.Q("starboard-broadside"), Is.Null);
             Assert.That(root.Q("ability-full-sail"), Is.Null);
             Assert.That(root.Q<Button>("repair").text, Is.EqualTo("R"));
+
+            // The kit is a separate order on a cooldown of its own, so it gets a slot of its
+            // own; the berth is the one order a wreck can still give.
+            Assert.That(root.Q<Button>("repair-kit").text, Is.EqualTo("K"));
+            Assert.That(root.Q("wreck-prompt"), Is.Not.Null);
+            Assert.That(root.Q<Button>("respawn-button"), Is.Not.Null);
         }
 
         [Test]

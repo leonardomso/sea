@@ -42,6 +42,7 @@ export default __t.row({
   kitCooldownSeconds: __t.f32().name("kit_cooldown_seconds"),
   respawnSeconds: __t.f32().name("respawn_seconds"),
   spawnShieldSeconds: __t.f32().name("spawn_shield_seconds"),
+  portCastOffSeconds: __t.f32().name("port_cast_off_seconds"),
   npcHitPointMultipliers: __t.array(__t.f32()).name("npc_hit_point_multipliers"),
   npcDpsMultipliers: __t.array(__t.f32()).name("npc_dps_multipliers"),
   npcArmorByTier: __t.array(__t.f32()).name("npc_armor_by_tier"),

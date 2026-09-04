@@ -54,6 +54,10 @@ namespace Sea.Tests
                 "SELECT * FROM ship_movement WHERE entity_id = 42"));
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM combat_event WHERE owner_entity_id = 42"));
+
+            // A wreck cannot be told it may choose a berth by a table it does not stream.
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM respawn_work WHERE ship_entity_id = 42"));
             Assert.That(queries, Has.Some.EqualTo(
                 "SELECT * FROM volley WHERE is_active = true AND " +
                 "(source_entity_id = 42 OR target_entity_id = 42)"));

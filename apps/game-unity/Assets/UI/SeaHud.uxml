@@ -123,6 +123,7 @@
                 </ui:VisualElement>
                 <ui:VisualElement name="ability-rail" class="command-rail ability-rail">
                     <ui:Button name="repair" text="R" tooltip="Repair" class="command-slot ability-slot" />
+                    <ui:Button name="repair-kit" text="K" tooltip="Repair kit" class="command-slot ability-slot" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
@@ -137,6 +138,16 @@
                     <ui:Label text="TAB  CYCLE TARGET" class="micro-label" />
                     <ui:Label text="T  CLEAR TARGET" class="micro-label" />
                     <ui:Label text="SPACE  RECENTER" class="micro-label" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="wreck-prompt" class="modal-scrim hidden">
+            <ui:VisualElement class="wreck-dialog chart-surface">
+                <ui:Label text="SHIP LOST" class="dialog-title" />
+                <ui:Label name="wreck-text" text="PORT LOWELL HAS A BERTH WAITING." class="micro-label" />
+                <ui:VisualElement class="dialog-actions">
+                    <ui:Button name="respawn-button" text="RETURN TO PORT LOWELL" class="primary-button" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>

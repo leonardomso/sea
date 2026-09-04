@@ -356,6 +356,7 @@
 }
 
 .coordinate-dialog { width: 410px; padding: 18px; }
+.wreck-dialog { width: 410px; padding: 18px; }
 .dialog-title { color: var(--sailcloth); font-size: 17px; -unity-font-style: bold; letter-spacing: 1.5px; }
 .chart-input { margin-top: 15px; height: 38px; color: var(--sailcloth); font-size: 15px; -unity-font-style: bold; }
 .chart-input .unity-text-input { background-color: var(--tar); border-width: 1px; border-color: var(--line-soft); padding-left: 10px; }

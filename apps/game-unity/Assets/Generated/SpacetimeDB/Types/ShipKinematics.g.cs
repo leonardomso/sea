@@ -53,6 +53,8 @@ namespace SpacetimeDB.Types
         public bool IsStopping;
         [DataMember(Name = "is_moving")]
         public bool IsMoving;
+        [DataMember(Name = "is_in_port")]
+        public bool IsInPort;
         [DataMember(Name = "current_velocity_x")]
         public float CurrentVelocityX;
         [DataMember(Name = "current_velocity_y")]
@@ -83,6 +85,7 @@ namespace SpacetimeDB.Types
             bool HasCourse,
             bool IsStopping,
             bool IsMoving,
+            bool IsInPort,
             float CurrentVelocityX,
             float CurrentVelocityY,
             int ChunkX,
@@ -109,6 +112,7 @@ namespace SpacetimeDB.Types
             this.HasCourse = HasCourse;
             this.IsStopping = IsStopping;
             this.IsMoving = IsMoving;
+            this.IsInPort = IsInPort;
             this.CurrentVelocityX = CurrentVelocityX;
             this.CurrentVelocityY = CurrentVelocityY;
             this.ChunkX = ChunkX;

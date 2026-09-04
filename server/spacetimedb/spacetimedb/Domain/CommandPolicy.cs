@@ -5,6 +5,12 @@ public enum ShipMode : byte
     Operational = 0,
     Repairing = 1,
     Sunk = 2,
+
+    /// <summary>
+    /// Warping out of the port. The ship holds station for the cast-off channel and only then
+    /// takes up the course that started it.
+    /// </summary>
+    CastingOff = 3,
 }
 
 public enum ShipCommandKind : byte
@@ -19,6 +25,8 @@ public enum ShipCommandKind : byte
     StartRepair = 7,
     StartBoarding = 8,
     CancelChannel = 9,
+    UseRepairKit = 10,
+    ChooseRespawn = 11,
 }
 
 public enum CommandRejectionCode : byte
@@ -45,6 +53,9 @@ public enum CommandRejectionCode : byte
     NotChanneling = 19,
     MissingResource = 20,
     NotAvailable = 21,
+    OnCooldown = 22,
+    SpawnShielded = 23,
+    NotSunk = 24,
 }
 
 [Flags]
@@ -59,6 +70,8 @@ public enum CommandEffect : ushort
     Fire = 1 << 5,
     StartRepair = 1 << 6,
     CancelChannel = 1 << 7,
+    UseRepairKit = 1 << 8,
+    ChooseRespawn = 1 << 9,
 }
 
 public readonly record struct CommandSnapshot
@@ -72,7 +85,9 @@ public readonly record struct CommandSnapshot
     public bool AmmoKnown { get; init; }
     public FireRejection FireRejection { get; init; }
     public RepairRejection RepairRejection { get; init; }
+    public RepairRejection KitRejection { get; init; }
     public bool HasActiveChannel { get; init; }
+    public bool RespawnPending { get; init; }
     public CommandRejectionCode ArgumentRejection { get; init; }
 }
 
@@ -110,7 +125,7 @@ public static class CommandPolicy
         CommandSnapshot snapshot,
         ShipCommandKind command)
     {
-        if ((byte)command > (byte)ShipCommandKind.CancelChannel)
+        if ((byte)command > (byte)ShipCommandKind.ChooseRespawn)
         {
             return Reject(snapshot.Mode, CommandRejectionCode.MissingResource);
         }
@@ -120,6 +135,13 @@ public static class CommandPolicy
         if (command is ShipCommandKind.ActivateAbility or ShipCommandKind.StartBoarding)
         {
             return Reject(snapshot.Mode, CommandRejectionCode.NotAvailable);
+        }
+
+        // Choosing a berth is the one order only a wreck is allowed to give, so it is answered
+        // before the gate that turns every other order away.
+        if (command == ShipCommandKind.ChooseRespawn)
+        {
+            return EvaluateRespawn(snapshot);
         }
 
         if (snapshot.Mode == ShipMode.Sunk)
@@ -150,14 +172,38 @@ public static class CommandPolicy
             EffectFor(command));
     }
 
+    private static CommandDecision EvaluateRespawn(CommandSnapshot snapshot)
+    {
+        if (snapshot.Mode != ShipMode.Sunk)
+        {
+            return Reject(snapshot.Mode, CommandRejectionCode.NotSunk);
+        }
+
+        if (snapshot.ArgumentRejection != CommandRejectionCode.None)
+        {
+            return Reject(snapshot.Mode, snapshot.ArgumentRejection);
+        }
+
+        return snapshot.RespawnPending
+            ? new CommandDecision(
+                true,
+                CommandRejectionCode.None,
+                ShipMode.Sunk,
+                CommandEffect.ChooseRespawn)
+            : Reject(snapshot.Mode, CommandRejectionCode.NotAvailable);
+    }
+
+    // A repair kit is a crate opened on deck, not a manoeuvre, so it is the one order a ship
+    // already busy with a channel can still give.
     private static bool ModeAllows(ShipMode mode, ShipCommandKind command) => mode switch
     {
         ShipMode.Operational => command != ShipCommandKind.CancelChannel,
-        ShipMode.Repairing => command is
+        ShipMode.Repairing or ShipMode.CastingOff => command is
             ShipCommandKind.SetCourse or
             ShipCommandKind.StopCourse or
             ShipCommandKind.SelectTarget or
             ShipCommandKind.ClearTarget or
+            ShipCommandKind.UseRepairKit or
             ShipCommandKind.CancelChannel,
         _ => false,
     };
@@ -175,6 +221,7 @@ public static class CommandPolicy
                 CommandRejectionCode.PlayerTargetForbidden,
             ShipCommandKind.Fire => Map(snapshot.FireRejection),
             ShipCommandKind.StartRepair => Map(snapshot.RepairRejection),
+            ShipCommandKind.UseRepairKit => Map(snapshot.KitRejection),
             ShipCommandKind.CancelChannel when !snapshot.HasActiveChannel =>
                 CommandRejectionCode.NotChanneling,
             _ => CommandRejectionCode.None,
@@ -221,6 +268,8 @@ public static class CommandPolicy
         ShipCommandKind.Fire => CommandEffect.Fire,
         ShipCommandKind.StartRepair => CommandEffect.StartRepair,
         ShipCommandKind.CancelChannel => CommandEffect.CancelChannel,
+        ShipCommandKind.UseRepairKit => CommandEffect.UseRepairKit,
+        ShipCommandKind.ChooseRespawn => CommandEffect.ChooseRespawn,
         _ => CommandEffect.None,
     };
 
@@ -237,6 +286,7 @@ public static class CommandPolicy
         FireRejection.FiringTooFast => CommandRejectionCode.FiringTooFast,
         FireRejection.OutOfRange => CommandRejectionCode.OutOfRange,
         FireRejection.InPort => CommandRejectionCode.InPort,
+        FireRejection.SpawnShielded => CommandRejectionCode.SpawnShielded,
         FireRejection.Busy => CommandRejectionCode.ModeConflict,
         _ => CommandRejectionCode.MissingResource,
     };
@@ -246,6 +296,7 @@ public static class CommandPolicy
         RepairRejection.None => CommandRejectionCode.None,
         RepairRejection.SourceSunk => CommandRejectionCode.Sunk,
         RepairRejection.Busy => CommandRejectionCode.ModeConflict,
+        RepairRejection.OnCooldown => CommandRejectionCode.OnCooldown,
         RepairRejection.NoRepairKit => CommandRejectionCode.NoRepairKit,
         RepairRejection.NothingToRepair => CommandRejectionCode.NothingToRepair,
         _ => CommandRejectionCode.MissingResource,

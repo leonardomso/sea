@@ -83,6 +83,7 @@ namespace Sea.Client
             if (world != null)
             {
                 ReadChannelAndCooldowns(db, ship, snapshot);
+                ReadWreck(db, ship, snapshot);
             }
 
             return snapshot;
@@ -198,31 +199,61 @@ namespace Sea.Client
             var channel = db.ShipChannel.ShipEntityId.Find(ship.EntityId);
             if (channel != null && channel.IsActive)
             {
-                snapshot.ProgressText = channel.ChannelType == "repair"
-                    ? "REPAIRING"
-                    : string.Format(
-                        CultureInfo.InvariantCulture,
-                        "BOARDING  •  TARGET {0}",
-                        channel.TargetEntityId);
+                snapshot.ProgressText = ChannelLabel(channel.ChannelType);
                 snapshot.Progress = SeaTacticalPresentationRules.ChannelProgress(
                     channel.StartedAtTick,
                     channel.CompletesAtTick,
                     connection.CurrentWorldTick);
             }
 
-            // Repair is the only cooldown the module still writes; the ability rail that owned
-            // the rest went out with the abilities.
+            // The channel and the kit are the two cooldowns the module still writes, and they run
+            // separately so that being caught mid-repair still leaves the crate on deck.
             foreach (var cooldown in db.Cooldown.ByShip.Filter(ship.EntityId))
             {
+                var remaining = RemainingSeconds(
+                    cooldown.ReadyAtTick,
+                    connection.CurrentWorldTick,
+                    connection.WorldTickRate);
                 if (cooldown.CooldownType == "repair")
                 {
-                    snapshot.RepairCooldownSeconds = RemainingSeconds(
-                        cooldown.ReadyAtTick,
-                        connection.CurrentWorldTick,
-                        connection.WorldTickRate);
+                    snapshot.RepairCooldownSeconds = remaining;
+                }
+                else if (cooldown.CooldownType == "repair_kit")
+                {
+                    snapshot.RepairKitCooldownSeconds = remaining;
                 }
             }
         }
+
+        /// <summary>
+        /// The seabed. A wreck with no berth chosen is waiting on its captain; one that has chosen
+        /// is only waiting on the clock, and the prompt says which.
+        /// </summary>
+        private void ReadWreck(RemoteTables db, Ship ship, SeaHudSnapshot snapshot)
+        {
+            snapshot.IsSunk = !ship.IsAlive;
+            if (ship.IsAlive)
+            {
+                return;
+            }
+
+            var work = db.RespawnWork.ShipEntityId.Find(ship.EntityId);
+            snapshot.RespawnChosen = work != null && work.OptionCode != 0;
+            if (work != null)
+            {
+                snapshot.RespawnRemainingSeconds = RemainingSeconds(
+                    work.RespawnAtTick,
+                    connection.CurrentWorldTick,
+                    connection.WorldTickRate);
+            }
+        }
+
+        private static string ChannelLabel(string channelType) => channelType switch
+        {
+            "repair" => "REPAIRING",
+            "cast_off" => "CASTING OFF",
+            _ => channelType.ToUpperInvariant(),
+        };
 
         // Slot tooltips are content, not chrome: the ammo rail reads its names from ammo_def
         // once the table arrives.

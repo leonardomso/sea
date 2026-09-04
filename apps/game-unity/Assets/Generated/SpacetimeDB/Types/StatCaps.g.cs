@@ -75,6 +75,8 @@ namespace SpacetimeDB.Types
         public float RespawnSeconds;
         [DataMember(Name = "spawn_shield_seconds")]
         public float SpawnShieldSeconds;
+        [DataMember(Name = "port_cast_off_seconds")]
+        public float PortCastOffSeconds;
         [DataMember(Name = "npc_hit_point_multipliers")]
         public System.Collections.Generic.List<float> NpcHitPointMultipliers;
         [DataMember(Name = "npc_dps_multipliers")]
@@ -118,6 +120,7 @@ namespace SpacetimeDB.Types
             float KitCooldownSeconds,
             float RespawnSeconds,
             float SpawnShieldSeconds,
+            float PortCastOffSeconds,
             System.Collections.Generic.List<float> NpcHitPointMultipliers,
             System.Collections.Generic.List<float> NpcDpsMultipliers,
             System.Collections.Generic.List<float> NpcArmorByTier,
@@ -156,6 +159,7 @@ namespace SpacetimeDB.Types
             this.KitCooldownSeconds = KitCooldownSeconds;
             this.RespawnSeconds = RespawnSeconds;
             this.SpawnShieldSeconds = SpawnShieldSeconds;
+            this.PortCastOffSeconds = PortCastOffSeconds;
             this.NpcHitPointMultipliers = NpcHitPointMultipliers;
             this.NpcDpsMultipliers = NpcDpsMultipliers;
             this.NpcArmorByTier = NpcArmorByTier;

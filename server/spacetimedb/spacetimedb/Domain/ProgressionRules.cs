@@ -46,7 +46,7 @@ public readonly record struct RespawnState(uint Hull, ulong InvulnerableUntilTic
 
 public static class RespawnRules
 {
-    public const ulong PlayerDelayTicks = 50;
+    public const ulong PlayerDelayTicks = 8 * WorldRules.TickRateHz;
     public const ulong NpcDelayTicks = 300;
     public const ulong PlayerProtectionTicks = 10 * WorldRules.TickRateHz;
 
@@ -54,8 +54,8 @@ public static class RespawnRules
     public static ulong PlayerProtectionUntil(ulong currentTick) =>
         currentTick + PlayerProtectionTicks;
 
+    // Every hull comes back whole. A wreck that respawned half-repaired only sent the player
+    // straight back to the port to finish the job, which is a loading screen, not a decision.
     public static RespawnState Restore(bool player, uint maximumHull, ulong currentTick) =>
-        new(
-            player ? Math.Max(1u, maximumHull / 2) : maximumHull,
-            player ? PlayerProtectionUntil(currentTick) : currentTick);
+        new(maximumHull, player ? PlayerProtectionUntil(currentTick) : currentTick);
 }

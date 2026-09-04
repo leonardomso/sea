@@ -14,6 +14,11 @@ public sealed class CombatIntegrationTests
     private const byte FiringTooFastRejection = 14;
     private const byte OutOfRangeRejection = 15;
     private const byte NotAvailableRejection = 21;
+    private const byte InPortRejection = 16;
+
+    /// <summary>A hull that has just put to sea keeps its shield until the tenth second.</summary>
+    private const byte SpawnShieldedRejection = 23;
+    private const byte DestinationBlockedRejection = 6;
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
 
     [Fact]
@@ -108,9 +113,13 @@ public sealed class CombatIntegrationTests
             client.LoadPlayer();
             client.SubscribeNpcWorld();
             client.SubscribeVolleys();
-            var own = client.OwnedShip();
-            targetId = client.ClosestNpcTo(3, own.PositionX, own.PositionY).EntityId;
+            // Nothing is fired from inside Port Lowell and nothing inside it can be fired at,
+            // so the fight is picked with a hostile in open water and the run-in starts by
+            // leaving the harbour.
+            targetId = client.ClosestNpcClearOfPort(3).EntityId;
             Assert.True(client.SelectTarget(targetId).Accepted);
+            var hostile = client.NpcPosition(targetId);
+            client.PutToSea(hostile.X, hostile.Y);
             return client;
         }
         catch
@@ -134,21 +143,36 @@ public sealed class CombatIntegrationTests
         {
             var fire = client.Fire();
             if (fire.Accepted ||
-                fire.RejectionCode is not (FiringTooFastRejection or OutOfRangeRejection))
+                fire.RejectionCode is not (FiringTooFastRejection or OutOfRangeRejection
+                    or InPortRejection or SpawnShieldedRejection))
             {
                 return fire;
             }
 
+            if (fire.RejectionCode == InPortRejection)
+            {
+                // The chase followed the target back inside the harbour, where nothing fires.
+                var berth = client.NpcPosition(targetId);
+                client.PutToSea(berth.X, berth.Y);
+                continue;
+            }
+
             if (fire.RejectionCode == OutOfRangeRejection && stopwatch.Elapsed >= nextCourseAt)
             {
-                var target = client.Npc(targetId);
-                Assert.True(client.SetCourse(target.PositionX, target.PositionY).Accepted);
+                // The live row, not the fat one: a course laid where the target was a chunk ago
+                // can land on an island, and the module answers that with a rejection rather
+                // than a course.
+                var target = client.NpcPosition(targetId);
+                var course = client.SetCourse(target.X, target.Y);
+                Assert.True(
+                    course.Accepted || course.RejectionCode == DestinationBlockedRejection,
+                    $"The run-in was rejected with code {course.RejectionCode}.");
                 nextCourseAt = stopwatch.Elapsed + TimeSpan.FromSeconds(1);
             }
 
             Assert.True(client.Npc(targetId).IsAlive, "The target sank before the shot landed.");
             client.PumpOnce();
-            ThrowIfTimedOut(stopwatch);
+            ThrowIfTimedOut(client, stopwatch);
         }
     }
 
@@ -176,15 +200,16 @@ public sealed class CombatIntegrationTests
         while (!condition())
         {
             client.PumpOnce();
-            ThrowIfTimedOut(stopwatch);
+            ThrowIfTimedOut(client, stopwatch);
         }
     }
 
-    private static void ThrowIfTimedOut(Stopwatch stopwatch)
+    private static void ThrowIfTimedOut(IntegrationClient client, Stopwatch stopwatch)
     {
         if (stopwatch.Elapsed > Timeout)
         {
-            throw new TimeoutException("Combat integration operation timed out.");
+            throw new TimeoutException(
+                $"Combat integration operation timed out: {client.Describe()}");
         }
     }
 }

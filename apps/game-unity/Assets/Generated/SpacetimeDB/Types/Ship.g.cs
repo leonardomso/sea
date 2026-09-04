@@ -101,6 +101,10 @@ namespace SpacetimeDB.Types
         public uint ReadyVolleys;
         [DataMember(Name = "reload_progress_ticks")]
         public uint ReloadProgressTicks;
+        [DataMember(Name = "repair_amount")]
+        public float RepairAmount;
+        [DataMember(Name = "repair_channel_ticks")]
+        public uint RepairChannelTicks;
         [DataMember(Name = "is_reloading")]
         public bool IsReloading;
         [DataMember(Name = "has_fired")]
@@ -115,6 +119,8 @@ namespace SpacetimeDB.Types
         public ulong InvulnerableUntilTick;
         [DataMember(Name = "encounter_id")]
         public ulong EncounterId;
+        [DataMember(Name = "is_in_port")]
+        public bool IsInPort;
 
         public Ship(
             ulong EntityId,
@@ -161,13 +167,16 @@ namespace SpacetimeDB.Types
             float ArmorBack,
             uint ReadyVolleys,
             uint ReloadProgressTicks,
+            float RepairAmount,
+            uint RepairChannelTicks,
             bool IsReloading,
             bool HasFired,
             ulong LastShotTick,
             ulong LastCombatTick,
             ulong RespawnAtTick,
             ulong InvulnerableUntilTick,
-            ulong EncounterId
+            ulong EncounterId,
+            bool IsInPort
         )
         {
             this.EntityId = EntityId;
@@ -214,6 +223,8 @@ namespace SpacetimeDB.Types
             this.ArmorBack = ArmorBack;
             this.ReadyVolleys = ReadyVolleys;
             this.ReloadProgressTicks = ReloadProgressTicks;
+            this.RepairAmount = RepairAmount;
+            this.RepairChannelTicks = RepairChannelTicks;
             this.IsReloading = IsReloading;
             this.HasFired = HasFired;
             this.LastShotTick = LastShotTick;
@@ -221,6 +232,7 @@ namespace SpacetimeDB.Types
             this.RespawnAtTick = RespawnAtTick;
             this.InvulnerableUntilTick = InvulnerableUntilTick;
             this.EncounterId = EncounterId;
+            this.IsInPort = IsInPort;
         }
 
         public Ship()

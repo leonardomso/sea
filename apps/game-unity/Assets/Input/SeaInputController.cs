@@ -199,6 +199,7 @@ namespace Sea.Client
             Bind("AmmoGrapeshot", _ => game?.SetSelectedAmmo("grapeshot"));
             Bind("AmmoIncendiary", _ => game?.SetSelectedAmmo("incendiary"));
             Bind("Repair", _ => game?.ToggleRepair());
+            Bind("RepairKit", _ => game?.UseRepairKit());
         }
 
         private void Bind(string actionName, Action<InputAction.CallbackContext> callback, bool canceled = false)

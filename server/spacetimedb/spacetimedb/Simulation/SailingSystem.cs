@@ -62,6 +62,8 @@ public static partial class Module
                 }
             }
 
+            UpdatePortState(ctx, world, ref ship);
+
             // Every ship publishes in the transaction that moved it, so clients see the
             // tick's kinematics together; ships that stopped drop out of the shard.
             PublishMovement(
@@ -81,6 +83,47 @@ public static partial class Module
         }
 
         return processed;
+    }
+
+    /// <summary>
+    /// Crossing the harbour mouth. Position only ever changes here, so this is the whole of the
+    /// port boundary: entering puts out whatever a ship carried in with it, leaving is only
+    /// bookkeeping because the course out was already paid for with a cast-off.
+    /// </summary>
+    private static void UpdatePortState(
+        ReducerContext ctx,
+        TickWorld world,
+        ref ShipKinematics ship)
+    {
+        if (world.Harbor(ctx) is not WorldObject harbor)
+        {
+            return;
+        }
+
+        var inPort = PortRules.IsInside(
+            ship.PositionX,
+            ship.PositionY,
+            harbor.PositionX,
+            harbor.PositionY,
+            harbor.Radius);
+        if (inPort == ship.IsInPort ||
+            ctx.Db.Ship.EntityId.Find(ship.EntityId) is not Ship stored)
+        {
+            ship.IsInPort = inPort;
+            return;
+        }
+
+        ship.IsInPort = inPort;
+        stored.IsInPort = inPort;
+        if (inPort)
+        {
+            ClearEffects(ctx, stored.EntityId);
+            stored.MovementStatusMask = 0;
+            stored.MovementSlowMagnitude = 0f;
+            CopyTacticalParameters(ToKinematics(stored), ref ship);
+        }
+
+        ctx.Db.Ship.EntityId.Update(stored);
     }
 
     private static void ProcessMovingShip(

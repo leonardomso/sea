@@ -76,6 +76,7 @@ namespace Sea.Client
                 $"SELECT * FROM effect WHERE ship_entity_id = {shipEntityId}",
                 $"SELECT * FROM cooldown WHERE ship_entity_id = {shipEntityId}",
                 $"SELECT * FROM ship_channel WHERE ship_entity_id = {shipEntityId}",
+                $"SELECT * FROM respawn_work WHERE ship_entity_id = {shipEntityId}",
                 $"SELECT * FROM combat_event WHERE owner_entity_id = {shipEntityId}",
                 $"SELECT * FROM volley WHERE is_active = true AND " +
                 $"(source_entity_id = {shipEntityId} OR target_entity_id = {shipEntityId})",

@@ -136,6 +136,7 @@ const FIXTURE = {
     kitCooldownSeconds: 0.1,
     respawnSeconds: 0.1,
     spawnShieldSeconds: 0.1,
+    portCastOffSeconds: 0.1,
     npcHitPointMultipliers: [1, 1],
     npcDpsMultipliers: [1, 1],
     npcArmorByTier: [0.1, 0.1],

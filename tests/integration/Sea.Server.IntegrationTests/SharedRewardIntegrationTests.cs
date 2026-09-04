@@ -11,6 +11,9 @@ public sealed class SharedRewardIntegrationTests
     private const byte ReloadingRejection = 13;
     private const byte FiringTooFastRejection = 14;
     private const byte OutOfRangeRejection = 15;
+
+    /// <summary>A hull that has just put to sea keeps its shield until the tenth second.</summary>
+    private const byte SpawnShieldedRejection = 23;
     private static readonly TimeSpan ScenarioTimeout = TimeSpan.FromSeconds(90);
 
     [Fact]
@@ -27,9 +30,15 @@ public sealed class SharedRewardIntegrationTests
             client.SubscribeNpcWorld();
         }
 
-        var centerX = clients.Average(client => client.OwnedShip().PositionX);
-        var centerY = clients.Average(client => client.OwnedShip().PositionY);
-        var targetId = first.ClosestUntouchedNpcTo(3, centerX, centerY).EntityId;
+        // Port Lowell answers every fire command with InPort, so the fight is picked with a
+        // hostile clear of the harbour and every participant is at sea before it starts.
+        var targetId = first.ClosestUntouchedNpcClearOfPort(3).EntityId;
+        foreach (var client in clients)
+        {
+            var hostile = client.NpcPosition(targetId);
+            client.PutToSea(hostile.X, hostile.Y);
+        }
+
         MoveIntoRange(clients, targetId);
 
         foreach (var client in clients)
@@ -164,7 +173,7 @@ public sealed class SharedRewardIntegrationTests
             {
                 Assert.True(
                     fire.RejectionCode is ReloadingRejection or FiringTooFastRejection
-                        or OutOfRangeRejection,
+                        or OutOfRangeRejection or SpawnShieldedRejection,
                     $"Unexpected fire rejection {fire.RejectionCode}.");
                 if (fire.RejectionCode == OutOfRangeRejection)
                 {
@@ -191,7 +200,8 @@ public sealed class SharedRewardIntegrationTests
                 return;
             }
 
-            if (fire.RejectionCode is ReloadingRejection or FiringTooFastRejection)
+            if (fire.RejectionCode is ReloadingRejection or FiringTooFastRejection
+                or SpawnShieldedRejection)
             {
                 PumpFor(clients, TimeSpan.FromMilliseconds(100));
                 ThrowIfTimedOut(stopwatch);

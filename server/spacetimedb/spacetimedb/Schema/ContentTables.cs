@@ -221,6 +221,7 @@ public static partial class Module
         public float KitCooldownSeconds;
         public float RespawnSeconds;
         public float SpawnShieldSeconds;
+        public float PortCastOffSeconds;
 #pragma warning disable MA0016 // SpacetimeDB algebraic arrays require List<T> fields.
         public List<float> NpcHitPointMultipliers;
         public List<float> NpcDpsMultipliers;
@@ -262,6 +263,7 @@ public static partial class Module
             KitCooldownSeconds = caps.KitCooldownSeconds,
             RespawnSeconds = caps.RespawnSeconds,
             SpawnShieldSeconds = caps.SpawnShieldSeconds,
+            PortCastOffSeconds = caps.PortCastOffSeconds,
 
             // The row is serialized on insert; these copies convert the catalog's
             // IReadOnlyList<float> to the column type without LINQ.

@@ -101,7 +101,7 @@ public static partial class Module
             ref defender,
             damage,
             world.Tick,
-            "volley");
+            DamageSourceCode.Volley);
 
         if (defender.IsAlive)
         {

@@ -30,6 +30,7 @@
     "kitCooldownSeconds": 45,
     "respawnSeconds": 8,
     "spawnShieldSeconds": 10,
+    "portCastOffSeconds": 3.0,
     "npcHitPointMultipliers": [0.5, 1.0, 2.2, 5.0, 30.0, 120.0],
     "npcDpsMultipliers": [0.25, 0.4, 0.7, 0.9, 1.2, 1.5],
     "npcArmorByTier": [0.1, 0.1, 0.15, 0.2, 0.2, 0.2],

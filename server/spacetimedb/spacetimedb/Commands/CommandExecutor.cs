@@ -7,7 +7,8 @@ public static partial class Module
         ShipCommandKind Kind,
         SetCourseCommand SetCourse = default,
         SelectTargetCommand SelectTarget = default,
-        SetAmmoCommand SetAmmo = default);
+        SetAmmoCommand SetAmmo = default,
+        ChooseRespawnCommand ChooseRespawn = default);
 
     private static DecodedCommand DecodeCommand(ShipCommand command) => command switch
     {
@@ -23,6 +24,10 @@ public static partial class Module
         ShipCommand.StartRepair => new(ShipCommandKind.StartRepair),
         ShipCommand.StartBoarding => new(ShipCommandKind.StartBoarding),
         ShipCommand.CancelChannel => new(ShipCommandKind.CancelChannel),
+        ShipCommand.UseRepairKit => new(ShipCommandKind.UseRepairKit),
+        ShipCommand.ChooseRespawn(var value) => new(
+            ShipCommandKind.ChooseRespawn,
+            ChooseRespawn: value),
         _ => throw new InvalidOperationException("Unknown ship command variant."),
     };
 
@@ -40,6 +45,7 @@ public static partial class Module
             AmmoKnown = true,
             FireRejection = FireRejection.None,
             RepairRejection = RepairRejection.None,
+            KitRejection = RepairRejection.None,
             HasActiveChannel = FindActiveChannel(ctx, ship.EntityId) is not null,
         };
 
@@ -53,7 +59,13 @@ public static partial class Module
                 command.SelectTarget),
             ShipCommandKind.SetAmmo => AmmoSnapshot(snapshot, command.SetAmmo),
             ShipCommandKind.Fire => FireSnapshot(ctx, world, ship, snapshot),
-            ShipCommandKind.StartRepair => RepairSnapshot(ctx, ship, snapshot),
+            ShipCommandKind.StartRepair => RepairSnapshot(ctx, world, ship, snapshot),
+            ShipCommandKind.UseRepairKit => KitSnapshot(ctx, world, ship, snapshot),
+            ShipCommandKind.ChooseRespawn => RespawnSnapshot(
+                ctx,
+                ship,
+                snapshot,
+                command.ChooseRespawn),
             _ => snapshot,
         };
     }
@@ -65,6 +77,10 @@ public static partial class Module
         DecodedCommand command,
         CommandDecision decision)
     {
+        // The mode is set before the executor runs, not after, so an executor that decides on a
+        // mode of its own -- casting off, or standing down when a course stays inside the port --
+        // is not overwritten by the decision that let it run.
+        ship.ModeCode = (byte)decision.NextMode;
         switch (command.Kind)
         {
             case ShipCommandKind.SetCourse:
@@ -89,13 +105,18 @@ public static partial class Module
                 ApplyStartRepair(ctx, world, ref ship);
                 break;
             case ShipCommandKind.CancelChannel:
-                ApplyCancelChannel(ctx, world, ship);
+                ApplyCancelChannel(ctx, world, ref ship);
+                break;
+            case ShipCommandKind.UseRepairKit:
+                ApplyUseRepairKit(ctx, world, ref ship);
+                break;
+            case ShipCommandKind.ChooseRespawn:
+                ApplyChooseRespawn(ctx, world, ship, command.ChooseRespawn);
                 break;
             default:
                 throw new InvalidOperationException("Accepted command has no executor.");
         }
 
-        ship.ModeCode = (byte)decision.NextMode;
         PersistCommandShip(ctx, ship, world.Tick);
     }
 
@@ -106,7 +127,7 @@ public static partial class Module
             return ShipMode.Sunk;
         }
 
-        if (ship.ModeCode > (byte)ShipMode.Sunk)
+        if (ship.ModeCode > (byte)ShipMode.CastingOff)
         {
             throw new InvalidOperationException("Ship mode code is corrupt.");
         }

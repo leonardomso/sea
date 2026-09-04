@@ -126,6 +126,10 @@ public static partial class Module
         public bool HasCourse;
         public bool IsStopping;
         public bool IsMoving;
+
+        // Carried on the shard so crossing the harbour mouth is an edge the sailing step can see
+        // without reading the fat row it is trying to avoid touching.
+        public bool IsInPort;
         public float CurrentVelocityX;
         public float CurrentVelocityY;
         public int ChunkX;

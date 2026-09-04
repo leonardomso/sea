@@ -28,12 +28,35 @@ public enum ChannelCode : byte
 {
     None = 0,
     Repair = 1,
+    CastOff = 2,
 }
 
 public enum CooldownCode : byte
 {
     None = 0,
     Repair = 1,
+    RepairKit = 2,
+}
+
+/// <summary>
+/// Where a hit came from. It names the event a damaged ship publishes and decides whether the
+/// hit is the kind a repair crew cannot work through.
+/// </summary>
+public enum DamageSourceCode : byte
+{
+    Volley = 0,
+    Burning = 1,
+    Storm = 2,
+}
+
+/// <summary>
+/// Where a wreck comes back. Zero means its owner has not chosen yet, which is why a player who
+/// never answers stays on the seabed while an NPC, handed its home the moment it sinks, does not.
+/// </summary>
+public enum RespawnOptionCode : byte
+{
+    Unchosen = 0,
+    HomePort = 1,
 }
 
 public enum WorldObjectCode : byte
@@ -155,6 +178,21 @@ public static class HotPathCodes
     public static string CooldownId(CooldownCode code) => code switch
     {
         CooldownCode.Repair => "repair",
+        CooldownCode.RepairKit => "repair_kit",
+        _ => "none",
+    };
+
+    public static string DamageSourceId(DamageSourceCode code) => code switch
+    {
+        DamageSourceCode.Burning => "burning",
+        DamageSourceCode.Storm => "storm",
+        _ => "volley",
+    };
+
+    public static string ChannelId(ChannelCode code) => code switch
+    {
+        ChannelCode.Repair => "repair",
+        ChannelCode.CastOff => "cast_off",
         _ => "none",
     };
 }

@@ -64,6 +64,11 @@ public static partial class Module
         public uint ReadyVolleys;
         public uint ReloadProgressTicks;
 
+        // The repair sheet, alongside the combat one: how much of the hull one channel mends and
+        // how long the crew has to hold station for it.
+        public float RepairAmount;
+        public uint RepairChannelTicks;
+
         // Indexed so the tick advances reloads for the handful of ships mid-magazine instead
         // of walking every hull afloat.
         public bool IsReloading;
@@ -74,6 +79,10 @@ public static partial class Module
         public ulong RespawnAtTick;
         public ulong InvulnerableUntilTick;
         public ulong EncounterId;
+
+        // Stored rather than derived: entering the port is an edge that clears effects, and the
+        // damage paths that must honour it read rows the movement shard may not have republished.
+        public bool IsInPort;
     }
 
     [SpacetimeDB.Table(Accessor = "ShipMovement", Public = true)]
@@ -109,6 +118,10 @@ public static partial class Module
         public ulong ShipEntityId;
         public bool IsPending;
         public ulong RespawnAtTick;
+
+        // Zero until the wreck's owner picks a berth. A player who has not chosen stays sunk
+        // however long the timer has run; NPCs are given their home the moment they go down.
+        public byte OptionCode;
     }
 
     [SpacetimeDB.Table(Accessor = "PlayerOwnership", Public = true)]
@@ -259,7 +272,25 @@ public static partial class Module
         public ulong CompletesAtTick;
         public ulong NextProcessTick;
         public uint InitialHull;
+
+        // Damage suffered since the channel opened. Enough of it breaks the channel; a little
+        // does not, so a single stray shot no longer costs a full repair.
+        public uint DamageTaken;
         public bool IsActive;
+    }
+
+    /// <summary>
+    /// The heals a ship has completed recently, newest last. Fatigue is a rolling window, so it
+    /// cannot be collapsed into a counter; the list is pruned every time it is read.
+    /// </summary>
+    [SpacetimeDB.Table(Accessor = "ShipHealLog")]
+    public partial struct ShipHealLog
+    {
+        [PrimaryKey]
+        public ulong ShipEntityId;
+#pragma warning disable MA0016 // SpacetimeDB algebraic arrays require List<T> fields.
+        public List<ulong> CompletedTicks;
+#pragma warning restore MA0016
     }
 
     [SpacetimeDB.Table(Accessor = "CombatContribution")]

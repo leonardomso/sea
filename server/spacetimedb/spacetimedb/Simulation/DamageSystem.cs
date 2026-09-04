@@ -27,22 +27,22 @@ public static partial class Module
         ref Ship defender,
         uint incoming,
         ulong tick,
-        string cause)
+        DamageSourceCode source)
     {
-        if (tick < defender.InvulnerableUntilTick || incoming == 0)
+        // Port Lowell is a truce, not a shelter with a door: nothing reaches a hull inside it.
+        if (defender.IsInPort || tick < defender.InvulnerableUntilTick || incoming == 0)
         {
             return 0;
-        }
-
-        if (InterruptActiveChannel(ctx, defender.EntityId, tick, cause))
-        {
-            defender.ModeCode = (byte)ShipMode.Operational;
         }
 
         var hullBefore = defender.Hull;
         defender.Hull = WorldRules.ApplyDamage(hullBefore, incoming);
         var applied = hullBefore - defender.Hull;
         defender.LastCombatTick = tick;
+        if (RecordChannelDamage(ctx, defender, applied, tick, source))
+        {
+            defender.ModeCode = (byte)ShipMode.Operational;
+        }
         var sunk = hullBefore > 0 && defender.Hull == 0;
         var attackerIsPlayer = sourceEntityId != 0 &&
             defender.FactionCode == (byte)FactionCode.Npc &&
@@ -64,6 +64,50 @@ public static partial class Module
         }
 
         return applied;
+    }
+
+    /// <summary>
+    /// A hit no longer ends a repair by itself. The channel tallies what it has cost the ship, and
+    /// only enough of it, or the flames of a Fire Shot that a crew cannot work through, breaks the
+    /// attempt; the cooldown is owed all the same.
+    /// </summary>
+    private static bool RecordChannelDamage(
+        ReducerContext ctx,
+        Ship defender,
+        uint applied,
+        ulong tick,
+        DamageSourceCode source)
+    {
+        if (FindActiveChannel(ctx, defender.EntityId) is not ShipChannel channel)
+        {
+            return false;
+        }
+
+        channel.DamageTaken += applied;
+        if (!RepairRules.ShouldCancel(
+                channel.DamageTaken,
+                defender.MaxHull,
+                source == DamageSourceCode.Burning))
+        {
+            ctx.Db.ShipChannel.ShipEntityId.Update(channel);
+            return false;
+        }
+
+        InterruptActiveChannel(
+            ctx,
+            defender.EntityId,
+            tick,
+            HotPathCodes.DamageSourceId(source));
+        if (channel.ChannelTypeCode == (byte)ChannelCode.Repair)
+        {
+            SetCooldown(
+                ctx,
+                defender.EntityId,
+                CooldownCode.Repair,
+                tick + RepairRules.CooldownTicks);
+        }
+
+        return true;
     }
 
     private static void SinkShip(

@@ -11,6 +11,9 @@ namespace Sea.Client
         [SerializeField] private SeaWorldView worldView;
         [SerializeField] private float movePlaneHeight;
 
+        /// <summary>Mirrors <c>RespawnOptionCode.HomePort</c>; the port is the only berth.</summary>
+        private const byte HomePortRespawn = 1;
+
         public ulong SelectedTargetId => TryGetLocalShip(out var ship) ? ship.TargetEntityId : 0;
         public string SelectedAmmoId => TryGetLocalShip(out var ship)
             ? AmmoId(ship.SelectedAmmoCode)
@@ -20,6 +23,7 @@ namespace Sea.Client
             ? localAction
             : connection.CommandStatus;
         public bool IsReady => connection?.Connection != null && connection.IsSubscribed;
+        public bool IsSunk => TryGetLocalShip(out var ship) && !ship.IsAlive;
 
         private static string AmmoId(byte code) => code switch
         {
@@ -218,6 +222,38 @@ namespace Sea.Client
             }
 
             Issue(new ShipCommand.StartRepair(new StartRepairCommand()), "Start repair");
+        }
+
+        /// <summary>
+        /// The kit is a crate opened on deck rather than a manoeuvre, so it is the one repair a
+        /// ship already channelling -- or already under fire -- can still reach for. It keeps a
+        /// slot of its own because it answers a different question than the channel does.
+        /// </summary>
+        public void UseRepairKit()
+        {
+            if (!IsReady)
+            {
+                return;
+            }
+
+            Issue(new ShipCommand.UseRepairKit(new UseRepairKitCommand()), "Use repair kit");
+        }
+
+        /// <summary>
+        /// Port Lowell is the only berth on the chart, so the choice is really a confirmation --
+        /// but the wreck stays on the seabed until it is given, which is what keeps a player who
+        /// closed the tab from being sailed back out on their behalf.
+        /// </summary>
+        public void ChooseHomePortRespawn()
+        {
+            if (!IsReady)
+            {
+                return;
+            }
+
+            Issue(
+                new ShipCommand.ChooseRespawn(new ChooseRespawnCommand(HomePortRespawn)),
+                "Return to Port Lowell");
         }
 
         public bool TryGetLocalShip(out Ship ship)

@@ -46,7 +46,7 @@ public static partial class Module
                 ref ship,
                 damage,
                 tick,
-                "burning");
+                DamageSourceCode.Burning);
             ships.Stage(ship);
         }
 

@@ -37,7 +37,7 @@ public static partial class Module
         Profile("channels");
         RetireVolleys(ctx, tick);
         Profile("volleys");
-        ProcessRespawns(ctx, ships, tick);
+        ProcessRespawns(ctx, world, ships, tick);
         Profile("respawns");
         if (SimulationWorkRules.ShouldApplyHazards(tick))
         {

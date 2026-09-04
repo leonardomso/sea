@@ -70,6 +70,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<StatCaps, float> KitCooldownSeconds { get; }
         public global::SpacetimeDB.Col<StatCaps, float> RespawnSeconds { get; }
         public global::SpacetimeDB.Col<StatCaps, float> SpawnShieldSeconds { get; }
+        public global::SpacetimeDB.Col<StatCaps, float> PortCastOffSeconds { get; }
         public global::SpacetimeDB.Col<StatCaps, System.Collections.Generic.List<float>> NpcHitPointMultipliers { get; }
         public global::SpacetimeDB.Col<StatCaps, System.Collections.Generic.List<float>> NpcDpsMultipliers { get; }
         public global::SpacetimeDB.Col<StatCaps, System.Collections.Generic.List<float>> NpcArmorByTier { get; }
@@ -109,6 +110,7 @@ namespace SpacetimeDB.Types
             KitCooldownSeconds = new global::SpacetimeDB.Col<StatCaps, float>(tableName, "kit_cooldown_seconds");
             RespawnSeconds = new global::SpacetimeDB.Col<StatCaps, float>(tableName, "respawn_seconds");
             SpawnShieldSeconds = new global::SpacetimeDB.Col<StatCaps, float>(tableName, "spawn_shield_seconds");
+            PortCastOffSeconds = new global::SpacetimeDB.Col<StatCaps, float>(tableName, "port_cast_off_seconds");
             NpcHitPointMultipliers = new global::SpacetimeDB.Col<StatCaps, System.Collections.Generic.List<float>>(tableName, "npc_hit_point_multipliers");
             NpcDpsMultipliers = new global::SpacetimeDB.Col<StatCaps, System.Collections.Generic.List<float>>(tableName, "npc_dps_multipliers");
             NpcArmorByTier = new global::SpacetimeDB.Col<StatCaps, System.Collections.Generic.List<float>>(tableName, "npc_armor_by_tier");

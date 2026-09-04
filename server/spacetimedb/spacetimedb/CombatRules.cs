@@ -20,6 +20,7 @@ public enum FireRejection
     FiringTooFast,
     OutOfRange,
     InPort,
+    SpawnShielded,
     Busy,
 }
 
@@ -29,8 +30,14 @@ public readonly record struct FireRequest
     public bool TargetSelected { get; init; }
     public bool TargetAlive { get; init; }
 
-    /// <summary>Port Lowell blocks firing. The rule lands here in 1b; ports arrive in 1c.</summary>
+    /// <summary>Port Lowell blocks firing: the harbour is a truce, not a firing step.</summary>
     public bool InPort { get; init; }
+
+    /// <summary>
+    /// The spawn shield cannot be spent on the first shot. It stops a ship being hit, so letting
+    /// it shoot would make the ten seconds after a respawn a free volley.
+    /// </summary>
+    public bool SpawnShielded { get; init; }
 
     public bool IsChanneling { get; init; }
     public uint ReadyVolleys { get; init; }
@@ -98,6 +105,11 @@ public static class CombatRules
         if (request.InPort)
         {
             return FireRejection.InPort;
+        }
+
+        if (request.SpawnShielded)
+        {
+            return FireRejection.SpawnShielded;
         }
 
         if (request.ReadyVolleys == 0)

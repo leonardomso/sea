@@ -123,6 +123,8 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Ship, float> ArmorBack { get; }
         public global::SpacetimeDB.Col<Ship, uint> ReadyVolleys { get; }
         public global::SpacetimeDB.Col<Ship, uint> ReloadProgressTicks { get; }
+        public global::SpacetimeDB.Col<Ship, float> RepairAmount { get; }
+        public global::SpacetimeDB.Col<Ship, uint> RepairChannelTicks { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsReloading { get; }
         public global::SpacetimeDB.Col<Ship, bool> HasFired { get; }
         public global::SpacetimeDB.Col<Ship, ulong> LastShotTick { get; }
@@ -130,6 +132,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Ship, ulong> RespawnAtTick { get; }
         public global::SpacetimeDB.Col<Ship, ulong> InvulnerableUntilTick { get; }
         public global::SpacetimeDB.Col<Ship, ulong> EncounterId { get; }
+        public global::SpacetimeDB.Col<Ship, bool> IsInPort { get; }
 
         public ShipCols(string tableName)
         {
@@ -177,6 +180,8 @@ namespace SpacetimeDB.Types
             ArmorBack = new global::SpacetimeDB.Col<Ship, float>(tableName, "armor_back");
             ReadyVolleys = new global::SpacetimeDB.Col<Ship, uint>(tableName, "ready_volleys");
             ReloadProgressTicks = new global::SpacetimeDB.Col<Ship, uint>(tableName, "reload_progress_ticks");
+            RepairAmount = new global::SpacetimeDB.Col<Ship, float>(tableName, "repair_amount");
+            RepairChannelTicks = new global::SpacetimeDB.Col<Ship, uint>(tableName, "repair_channel_ticks");
             IsReloading = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_reloading");
             HasFired = new global::SpacetimeDB.Col<Ship, bool>(tableName, "has_fired");
             LastShotTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "last_shot_tick");
@@ -184,6 +189,7 @@ namespace SpacetimeDB.Types
             RespawnAtTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "respawn_at_tick");
             InvulnerableUntilTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "invulnerable_until_tick");
             EncounterId = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "encounter_id");
+            IsInPort = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_in_port");
         }
     }
 

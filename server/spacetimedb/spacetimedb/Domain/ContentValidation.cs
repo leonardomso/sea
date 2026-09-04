@@ -57,6 +57,7 @@ public static partial class ContentCatalog
         Positive(subject, "kit cooldown", caps.KitCooldownSeconds, errors);
         Positive(subject, "respawn seconds", caps.RespawnSeconds, errors);
         Positive(subject, "spawn shield seconds", caps.SpawnShieldSeconds, errors);
+        Positive(subject, "port cast off seconds", caps.PortCastOffSeconds, errors);
 
         ValidateTierTable(subject, "NPC hit point multipliers", caps.NpcHitPointMultipliers, errors);
         ValidateTierTable(subject, "NPC dps multipliers", caps.NpcDpsMultipliers, errors);

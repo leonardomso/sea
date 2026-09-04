@@ -42,6 +42,7 @@ public static partial class ContentCatalog
             }
 
             ValidateObjects(map, label, terrainValid, errors);
+            ValidateHarbor(map, label, errors);
             ValidateCurrents(map, label, errors);
         }
     }
@@ -66,6 +67,42 @@ public static partial class ContentCatalog
         if (SectorRules.TerrainAt(map, port.X, port.Y) != TerrainCode.Water)
         {
             errors.Add($"{label}: the port sector ({port.X}, {port.Y}) must be water.");
+        }
+    }
+
+    /// <summary>
+    /// The harbor object is the port circle the simulation actually reads: it is what makes a
+    /// ship invulnerable and what a cast-off is measured against. A map that describes the port
+    /// twice, once in its port fields and once in its object list, has to describe it the same
+    /// way both times or the two would drift apart.
+    /// </summary>
+    private static void ValidateHarbor(MapContent map, string label, List<string> errors)
+    {
+        var harbors = 0;
+        foreach (var item in map.Objects)
+        {
+            if (!string.Equals(item.Kind, "harbor", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            harbors++;
+            if (item.X != map.PortX || item.Y != map.PortY)
+            {
+                errors.Add(
+                    $"{label}: harbor {item.EntityId} sits at ({Format(item.X)}, {Format(item.Y)}) but the port is at ({Format(map.PortX)}, {Format(map.PortY)}).");
+            }
+
+            if (item.Radius != map.PortRadius)
+            {
+                errors.Add(
+                    $"{label}: harbor {item.EntityId} has radius {Format(item.Radius)} but the port radius is {Format(map.PortRadius)}.");
+            }
+        }
+
+        if (harbors != 1)
+        {
+            errors.Add($"{label}: expected exactly one harbor object, found {harbors}.");
         }
     }
 

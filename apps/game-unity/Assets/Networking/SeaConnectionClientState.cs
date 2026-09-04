@@ -64,6 +64,9 @@ namespace Sea.Client
             connection.Db.ShipChannel.OnInsert += HandleHudRowInserted;
             connection.Db.ShipChannel.OnUpdate += HandleHudRowUpdated;
             connection.Db.ShipChannel.OnDelete += HandleHudRowDeleted;
+            connection.Db.RespawnWork.OnInsert += HandleHudRowInserted;
+            connection.Db.RespawnWork.OnUpdate += HandleHudRowUpdated;
+            connection.Db.RespawnWork.OnDelete += HandleHudRowDeleted;
             connection.Db.Loot.OnInsert += HandleLootInserted;
             connection.Db.Loot.OnUpdate += HandleLootUpdated;
             connection.Db.Loot.OnDelete += HandleLootDeleted;

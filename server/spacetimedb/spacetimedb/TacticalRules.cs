@@ -1,20 +1,5 @@
 namespace Sea.Server;
 
-public enum RepairRejection
-{
-    None,
-    SourceSunk,
-    Busy,
-    NoRepairKit,
-    NothingToRepair,
-}
-
-public readonly record struct RepairRequest(
-    bool SourceAlive,
-    bool IsIdle,
-    bool HasRepairKit,
-    bool IsDamaged);
-
 public readonly record struct TacticalModifiers(
     float MaximumSpeed,
     float Acceleration,
@@ -25,8 +10,6 @@ public readonly record struct HazardPosition(float X, float Y);
 
 public static class TacticalRules
 {
-    public const uint RepairDurationTicks = 30;
-
     /// <summary>
     /// How a ship's own state and the water it is in scale its sailing parameters. With the sail
     /// pool gone the only handling penalties left are the Chain Shot slow, shoals, storms, and
@@ -56,42 +39,6 @@ public static class TacticalRules
             1f,
             inStorm ? 0.65f : 1f,
             inStorm ? 0.75f : 1f);
-    }
-
-    public static RepairRejection ValidateRepair(RepairRequest request)
-    {
-        if (!request.SourceAlive)
-        {
-            return RepairRejection.SourceSunk;
-        }
-
-        if (!request.IsIdle)
-        {
-            return RepairRejection.Busy;
-        }
-
-        if (!request.HasRepairKit)
-        {
-            return RepairRejection.NoRepairKit;
-        }
-
-        return request.IsDamaged ? RepairRejection.None : RepairRejection.NothingToRepair;
-    }
-
-    public static uint ProgressiveRestore(
-        uint initial,
-        uint maximum,
-        uint restoreAmount,
-        ulong elapsedTicks,
-        uint durationTicks)
-    {
-        ArgumentOutOfRangeException.ThrowIfZero(durationTicks);
-
-        var progress = Math.Clamp((float)elapsedTicks / durationTicks, 0f, 1f);
-        var restored = (uint)MathF.Round(
-            restoreAmount * progress,
-            MidpointRounding.AwayFromZero);
-        return Math.Min(maximum, checked(initial + restored));
     }
 
     public static HazardPosition MoveStorm(

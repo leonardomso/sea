@@ -141,6 +141,7 @@ public sealed record StatCapsContent
     public required float KitCooldownSeconds { get; init; }
     public required float RespawnSeconds { get; init; }
     public required float SpawnShieldSeconds { get; init; }
+    public required float PortCastOffSeconds { get; init; }
     public required IReadOnlyList<float> NpcHitPointMultipliers { get; init; }
     public required IReadOnlyList<float> NpcDpsMultipliers { get; init; }
     public required IReadOnlyList<float> NpcArmorByTier { get; init; }

@@ -4,9 +4,10 @@ using SpacetimeDB.Types;
 
 namespace Sea.Server.IntegrationTests;
 
-internal sealed class IntegrationClient : IDisposable
+internal sealed partial class IntegrationClient : IDisposable
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(45);
+
     private readonly DbConnection connection;
     private readonly Identity identity;
     private readonly List<CommandResultEvent> commandResults = [];
@@ -104,11 +105,16 @@ internal sealed class IntegrationClient : IDisposable
             .OnApplied(_ => playerSubscribed = true)
             .OnError((_, error) => failure = error)
             .Subscribe([
+                // Port Lowell is a world object like any other, and now that its water has
+                // rules every client has to know where the mouth is.
+                "SELECT * FROM world_object WHERE kind = 'harbor'",
                 $"SELECT * FROM ship WHERE entity_id = {ownership.ShipEntityId}",
                 $"SELECT * FROM inventory WHERE ship_entity_id = {ownership.ShipEntityId}",
                 $"SELECT * FROM effect WHERE ship_entity_id = {ownership.ShipEntityId}",
                 $"SELECT * FROM cooldown WHERE ship_entity_id = {ownership.ShipEntityId}",
                 $"SELECT * FROM ship_channel WHERE ship_entity_id = {ownership.ShipEntityId}",
+                $"SELECT * FROM ship_movement WHERE entity_id = {ownership.ShipEntityId}",
+                $"SELECT * FROM respawn_work WHERE ship_entity_id = {ownership.ShipEntityId}",
             ]));
         PumpUntil(connection, () => playerSubscribed || failure is not null);
         ThrowIfFailed();
@@ -227,6 +233,14 @@ internal sealed class IntegrationClient : IDisposable
                 movement => movement.EntityId,
                 movement => (movement.PositionX, movement.PositionY));
 
+    /// <summary>Where a hostile actually is this tick, rather than where its fat row last said.</summary>
+    public (float X, float Y) NpcPosition(ulong entityId)
+    {
+        var movement = connection.Db.ShipMovement.EntityId.Find(entityId)
+            ?? throw new InvalidOperationException($"NPC {entityId} has no movement row.");
+        return (movement.PositionX, movement.PositionY);
+    }
+
     public int NpcCount(byte archetypeCode) => connection.Db.Ship.Iter()
         .Count(ship => ship.FactionCode == 2 && ship.ArchetypeCode == archetypeCode);
 
@@ -245,38 +259,6 @@ internal sealed class IntegrationClient : IDisposable
 
     public Ship Npc(ulong entityId) => connection.Db.Ship.EntityId.Find(entityId)
         ?? throw new InvalidOperationException($"NPC {entityId} is not subscribed.");
-
-    public Ship ClosestNpcTo(byte archetypeCode, float x, float y) => connection.Db.Ship.Iter()
-        .Where(ship =>
-            ship.FactionCode == 2 && ship.ArchetypeCode == archetypeCode && ship.IsAlive)
-        .OrderBy(ship => DistanceSquared(ship.PositionX, ship.PositionY, x, y))
-        .First();
-
-    /// <summary>
-    /// The nearest hostile of an archetype that nothing has shot at yet. A test that counts
-    /// volleys has to start from a full hull, or a target another test left half sunk ends the
-    /// encounter before every participant has fired.
-    /// </summary>
-    public Ship ClosestUntouchedNpcTo(byte archetypeCode, float x, float y) =>
-        connection.Db.Ship.Iter()
-            .Where(ship =>
-                ship.FactionCode == 2 &&
-                ship.ArchetypeCode == archetypeCode &&
-                ship.IsActive &&
-                ship.IsAlive &&
-                ship.Hull == ship.MaxHull)
-            .OrderBy(ship => DistanceSquared(ship.PositionX, ship.PositionY, x, y))
-            .First();
-
-    /// <summary>
-    /// The nearest hostile still afloat, whatever it is. A test that has to keep shooting past
-    /// the moment its first target sinks needs a target it can pick up without caring which
-    /// archetype answers.
-    /// </summary>
-    public Ship ClosestLiveNpcTo(float x, float y) => connection.Db.Ship.Iter()
-        .Where(ship => ship.FactionCode == 2 && ship.IsAlive)
-        .OrderBy(ship => DistanceSquared(ship.PositionX, ship.PositionY, x, y))
-        .First();
 
     public EncounterReward[] EncounterRewards() => connection.Db.EncounterReward.Iter().ToArray();
 
@@ -344,13 +326,49 @@ internal sealed class IntegrationClient : IDisposable
         nextCommandId++,
         new ShipCommand.Fire(new FireCommand()));
 
-    public bool IsNear(float x, float y, float radius)
-    {
-        var ship = OwnedShip();
-        var deltaX = ship.PositionX - x;
-        var deltaY = ship.PositionY - y;
-        return deltaX * deltaX + deltaY * deltaY <= radius * radius;
-    }
+    public CommandResultEvent StartRepair() => Issue(
+        nextCommandId++,
+        new ShipCommand.StartRepair(new StartRepairCommand()));
+
+    public CommandResultEvent UseRepairKit() => Issue(
+        nextCommandId++,
+        new ShipCommand.UseRepairKit(new UseRepairKitCommand()));
+
+    public CommandResultEvent CancelChannel() => Issue(
+        nextCommandId++,
+        new ShipCommand.CancelChannel(new CancelChannelCommand()));
+
+    public CommandResultEvent ChooseRespawn(byte optionCode) => Issue(
+        nextCommandId++,
+        new ShipCommand.ChooseRespawn(new ChooseRespawnCommand(optionCode)));
+
+    /// <summary>
+    /// Live kinematics for the player's own hull. The fat ship row is only republished on a chunk
+    /// change or a stop, so a test that watches a ship hold station has to read the row the tick
+    /// publishes every frame.
+    /// </summary>
+    public ShipMovement OwnedMovement() =>
+        connection.Db.ShipMovement.EntityId.Find(OwnedShip().EntityId)
+        ?? throw new InvalidOperationException("The integration identity has no movement row.");
+
+    public RespawnWork? OwnedRespawnWork() =>
+        connection.Db.RespawnWork.ShipEntityId.Find(OwnedShip().EntityId);
+
+    /// <summary>The one channel a ship may hold, or null while it holds none.</summary>
+    public ShipChannel? ActiveChannel() =>
+        connection.Db.ShipChannel.ShipEntityId.Find(OwnedShip().EntityId);
+
+    public Cooldown? OwnedCooldown(string cooldownType) => connection.Db.Cooldown.Iter()
+        .FirstOrDefault(cooldown =>
+            cooldown.ShipEntityId == OwnedShip().EntityId &&
+            string.Equals(cooldown.CooldownType, cooldownType, StringComparison.Ordinal));
+
+    public uint OwnedInventoryQuantity(string itemId) => connection.Db.Inventory.Iter()
+        .Where(item =>
+            item.ShipEntityId == OwnedShip().EntityId &&
+            string.Equals(item.ItemId, itemId, StringComparison.Ordinal))
+        .Select(item => item.Quantity)
+        .FirstOrDefault();
 
     public ulong[] VisiblePlayerShipIds() => connection.Db.Ship.Iter()
         .Where(ship => ship.FactionCode == 1)

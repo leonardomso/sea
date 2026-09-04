@@ -69,57 +69,6 @@ public sealed class TacticalRulesTests
     }
 
     [Theory]
-    [InlineData(false, true, true, true, RepairRejection.SourceSunk)]
-    [InlineData(true, false, true, true, RepairRejection.Busy)]
-    [InlineData(true, true, false, true, RepairRejection.NoRepairKit)]
-    [InlineData(true, true, true, false, RepairRejection.NothingToRepair)]
-    [InlineData(true, true, true, true, RepairRejection.None)]
-    public void RepairValidation_ChecksTheHullBeforeTheKit(
-        bool alive,
-        bool idle,
-        bool hasKit,
-        bool damaged,
-        RepairRejection expected)
-    {
-        Assert.Equal(expected, TacticalRules.ValidateRepair(
-            new RepairRequest(alive, idle, hasKit, damaged)));
-    }
-
-    [Theory]
-    [InlineData(0ul, 40u)]
-    [InlineData(15ul, 55u)]
-    [InlineData(30ul, 70u)]
-    [InlineData(90ul, 70u)]
-    public void ProgressiveRestore_PaysOutInStepWithTheChannel(
-        ulong elapsedTicks,
-        uint expected)
-    {
-        Assert.Equal(
-            expected,
-            TacticalRules.ProgressiveRestore(
-                initial: 40,
-                maximum: 100,
-                restoreAmount: 30,
-                elapsedTicks: elapsedTicks,
-                durationTicks: TacticalRules.RepairDurationTicks));
-    }
-
-    [Fact]
-    public void ProgressiveRestore_NeverExceedsTheHullCeiling()
-    {
-        Assert.Equal(
-            100u,
-            TacticalRules.ProgressiveRestore(90, 100, 50, 30, TacticalRules.RepairDurationTicks));
-    }
-
-    [Fact]
-    public void ProgressiveRestore_RejectsAChannelWithNoDuration()
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(
-            () => TacticalRules.ProgressiveRestore(10, 100, 10, 5, 0));
-    }
-
-    [Theory]
     [InlineData(0f, 0f, 10f)]
     [InlineData(90f, 10f, 0f)]
     [InlineData(180f, 0f, -10f)]

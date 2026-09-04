@@ -44,6 +44,11 @@ export const CannonDef = __t.object("CannonDef", {
 });
 export type CannonDef = __Infer<typeof CannonDef>;
 
+export const ChooseRespawnCommand = __t.object("ChooseRespawnCommand", {
+  optionCode: __t.u8(),
+});
+export type ChooseRespawnCommand = __Infer<typeof ChooseRespawnCommand>;
+
 export const ClearTargetCommand = __t.object("ClearTargetCommand", {});
 export type ClearTargetCommand = __Infer<typeof ClearTargetCommand>;
 
@@ -352,6 +357,7 @@ export const RespawnWork = __t.object("RespawnWork", {
   shipEntityId: __t.u64(),
   isPending: __t.bool(),
   respawnAtTick: __t.u64(),
+  optionCode: __t.u8(),
 });
 export type RespawnWork = __Infer<typeof RespawnWork>;
 
@@ -425,6 +431,8 @@ export const Ship = __t.object("Ship", {
   armorBack: __t.f32(),
   readyVolleys: __t.u32(),
   reloadProgressTicks: __t.u32(),
+  repairAmount: __t.f32(),
+  repairChannelTicks: __t.u32(),
   isReloading: __t.bool(),
   hasFired: __t.bool(),
   lastShotTick: __t.u64(),
@@ -432,6 +440,7 @@ export const Ship = __t.object("Ship", {
   respawnAtTick: __t.u64(),
   invulnerableUntilTick: __t.u64(),
   encounterId: __t.u64(),
+  isInPort: __t.bool(),
 });
 export type Ship = __Infer<typeof Ship>;
 
@@ -444,6 +453,7 @@ export const ShipChannel = __t.object("ShipChannel", {
   completesAtTick: __t.u64(),
   nextProcessTick: __t.u64(),
   initialHull: __t.u32(),
+  damageTaken: __t.u32(),
   isActive: __t.bool(),
 });
 export type ShipChannel = __Infer<typeof ShipChannel>;
@@ -480,8 +490,20 @@ export const ShipCommand = __t.enum("ShipCommand", {
   get CancelChannel() {
     return CancelChannelCommand;
   },
+  get UseRepairKit() {
+    return UseRepairKitCommand;
+  },
+  get ChooseRespawn() {
+    return ChooseRespawnCommand;
+  },
 });
 export type ShipCommand = __Infer<typeof ShipCommand>;
+
+export const ShipHealLog = __t.object("ShipHealLog", {
+  shipEntityId: __t.u64(),
+  completedTicks: __t.array(__t.u64()),
+});
+export type ShipHealLog = __Infer<typeof ShipHealLog>;
 
 export const ShipKinematics = __t.object("ShipKinematics", {
   entityId: __t.u64(),
@@ -504,6 +526,7 @@ export const ShipKinematics = __t.object("ShipKinematics", {
   hasCourse: __t.bool(),
   isStopping: __t.bool(),
   isMoving: __t.bool(),
+  isInPort: __t.bool(),
   currentVelocityX: __t.f32(),
   currentVelocityY: __t.f32(),
   chunkX: __t.i32(),
@@ -611,6 +634,7 @@ export const StatCaps = __t.object("StatCaps", {
   kitCooldownSeconds: __t.f32(),
   respawnSeconds: __t.f32(),
   spawnShieldSeconds: __t.f32(),
+  portCastOffSeconds: __t.f32(),
   npcHitPointMultipliers: __t.array(__t.f32()),
   npcDpsMultipliers: __t.array(__t.f32()),
   npcArmorByTier: __t.array(__t.f32()),
@@ -621,6 +645,9 @@ export type StatCaps = __Infer<typeof StatCaps>;
 
 export const StopCourseCommand = __t.object("StopCourseCommand", {});
 export type StopCourseCommand = __Infer<typeof StopCourseCommand>;
+
+export const UseRepairKitCommand = __t.object("UseRepairKitCommand", {});
+export type UseRepairKitCommand = __Infer<typeof UseRepairKitCommand>;
 
 export const Volley = __t.object("Volley", {
   volleyId: __t.u64(),

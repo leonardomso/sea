@@ -37,7 +37,7 @@
         "...................."
       ],
       "objects": [
-        { "entityId": 1, "kind": "harbor", "x": 0, "y": 0, "radius": 8, "blocksMovement": false },
+        { "entityId": 1, "kind": "harbor", "x": 0, "y": 0, "radius": 10, "blocksMovement": false },
         { "entityId": 2, "kind": "island", "x": 35, "y": 20, "radius": 12, "blocksMovement": true },
         { "entityId": 3, "kind": "reef", "x": -30, "y": -25, "radius": 10, "blocksMovement": true },
         { "entityId": 4, "kind": "island", "x": -46, "y": 43, "radius": 16, "blocksMovement": true },

@@ -18,6 +18,8 @@ namespace SpacetimeDB.Types
         ActivateAbilityCommand ActivateAbility,
         StartRepairCommand StartRepair,
         StartBoardingCommand StartBoarding,
-        CancelChannelCommand CancelChannel
+        CancelChannelCommand CancelChannel,
+        UseRepairKitCommand UseRepairKit,
+        ChooseRespawnCommand ChooseRespawn
     )>;
 }

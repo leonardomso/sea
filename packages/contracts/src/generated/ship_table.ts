@@ -55,6 +55,8 @@ export default __t.row({
   armorBack: __t.f32().name("armor_back"),
   readyVolleys: __t.u32().name("ready_volleys"),
   reloadProgressTicks: __t.u32().name("reload_progress_ticks"),
+  repairAmount: __t.f32().name("repair_amount"),
+  repairChannelTicks: __t.u32().name("repair_channel_ticks"),
   isReloading: __t.bool().name("is_reloading"),
   hasFired: __t.bool().name("has_fired"),
   lastShotTick: __t.u64().name("last_shot_tick"),
@@ -62,4 +64,5 @@ export default __t.row({
   respawnAtTick: __t.u64().name("respawn_at_tick"),
   invulnerableUntilTick: __t.u64().name("invulnerable_until_tick"),
   encounterId: __t.u64().name("encounter_id"),
+  isInPort: __t.bool().name("is_in_port"),
 });

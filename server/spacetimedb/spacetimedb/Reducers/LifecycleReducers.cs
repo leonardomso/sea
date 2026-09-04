@@ -82,6 +82,15 @@ public static partial class Module
         var ship = CreateShip(entityId, "player_sloop", "player", spawn.X, spawn.Y);
         var tick = CurrentSimulationTick(ctx);
         ship.InvulnerableUntilTick = RespawnRules.PlayerProtectionUntil(tick);
+
+        // A new hull is berthed inside the port, and only the sailing shard ever crosses the
+        // harbour mouth, so the flag has to be true before the ship has moved at all.
+        ship.IsInPort = FindHarbor(ctx) is WorldObject harbor && PortRules.IsInside(
+            spawn.X,
+            spawn.Y,
+            harbor.PositionX,
+            harbor.PositionY,
+            harbor.Radius);
         ctx.Db.Ship.Insert(ship);
         InsertShipMovement(ctx, ship, tick);
         ctx.Db.PlayerOwnership.Insert(new PlayerOwnership

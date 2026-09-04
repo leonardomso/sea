@@ -28,52 +28,67 @@ public static partial class Module
             return;
         }
 
-        if ((ChannelCode)channel.ChannelTypeCode == ChannelCode.Repair)
+        switch ((ChannelCode)channel.ChannelTypeCode)
         {
-            ProcessRepairChannel(ctx, ships, channel, source, tick);
-            return;
+            case ChannelCode.Repair:
+                CompleteRepairChannel(ctx, ships, channel, source, tick);
+                return;
+            case ChannelCode.CastOff:
+                CompleteCastOffChannel(ctx, ships, channel, source, tick);
+                return;
+            default:
+                CloseUnknownChannel(ctx, ships, channel, source);
+                return;
         }
-
-        CloseUnknownChannel(ctx, ships, channel, source);
     }
 
-    private static void ProcessRepairChannel(
+    /// <summary>
+    /// A channel that is only ever processed once, on the tick it completes. Nothing is mended
+    /// while the crew works, so breaking the attempt at the last second costs the whole repair.
+    /// </summary>
+    private static void CompleteRepairChannel(
         ReducerContext ctx,
         ShipTickBuffer ships,
         ShipChannel channel,
         Ship source,
         ulong tick)
     {
-        var elapsed = Math.Min(
-            (ulong)TacticalRules.RepairDurationTicks,
-            tick - channel.StartedAtTick);
-        var restored = TacticalRules.ProgressiveRestore(
-            channel.InitialHull, source.MaxHull, 50, elapsed, TacticalRules.RepairDurationTicks);
-        // A burning ship repairs at half rate, which is the only thing incendiary rounds do
-        // beyond their own damage over time.
-        var healing = EffectRules.HealingMultiplier(
+        // A burning ship repairs at half rate, which is the lasting part of what incendiary
+        // rounds do beyond their own damage over time.
+        var healed = RepairRules.Heal(
+            source.MaxHull,
+            source.RepairAmount,
+            CountRecentHeals(ctx, source.EntityId, tick),
             HasActiveEffect(ctx, source.EntityId, EffectCode.Burning, tick));
-        source.Hull = channel.InitialHull +
-            (uint)((restored - channel.InitialHull) * healing);
-
-        if (tick >= channel.CompletesAtTick)
-        {
-            source.ModeCode = (byte)ShipMode.Operational;
-            ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
-            AppendEvent(ctx, tick, channel.ShipEntityId, "repair_completed", "");
-        }
-        else
-        {
-            ScheduleChannel(ctx, channel, tick);
-        }
-
+        source.Hull = RepairRules.Restore(source.Hull, source.MaxHull, healed);
+        source.ModeCode = (byte)ShipMode.Operational;
+        ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
+        RecordHeal(ctx, source.EntityId, tick);
+        SetCooldown(
+            ctx,
+            source.EntityId,
+            CooldownCode.Repair,
+            tick + RepairRules.CooldownTicks);
+        AppendEvent(ctx, tick, channel.ShipEntityId, "repair_completed", $"hull={healed}");
         ships.Stage(source);
     }
 
-    private static void ScheduleChannel(ReducerContext ctx, ShipChannel channel, ulong tick)
+    /// <summary>
+    /// The course that opened the cast-off has been sitting on the ship the whole time; finishing
+    /// it is what finally hands the ship to the sailing shard.
+    /// </summary>
+    private static void CompleteCastOffChannel(
+        ReducerContext ctx,
+        ShipTickBuffer ships,
+        ShipChannel channel,
+        Ship source,
+        ulong tick)
     {
-        channel.NextProcessTick = tick + 1;
-        ctx.Db.ShipChannel.ShipEntityId.Update(channel);
+        ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
+        source.ModeCode = (byte)ShipMode.Operational;
+        source.IsMoving = source.HasCourse;
+        AppendEvent(ctx, tick, channel.ShipEntityId, "cast_off_completed", "");
+        ships.Stage(source);
     }
 
     private static void CloseUnknownChannel(

@@ -16,7 +16,20 @@ public static partial class Module
             return FindSafeSpawn(blockers, seed);
         }
 
-        // The quay itself is kept clear so ships berth in the water around it.
+        // A ship comes back moored, inside the circle that shelters it, so putting to sea is a
+        // decision it has to make rather than the state it wakes up in.
+        if (SpawnRules.TryFindSafePositionNear(
+                seed,
+                harbor.PositionX,
+                harbor.PositionY,
+                harbor.Radius,
+                blockers,
+                out var berth))
+        {
+            return berth;
+        }
+
+        // Only a quay fouled by the chart itself pushes a newcomer into the water outside it.
         blockers.Add(new SpawnBlocker(harbor.PositionX, harbor.PositionY, harbor.Radius));
         if (!SpawnRules.TryFindSafePositionNear(
                 seed,

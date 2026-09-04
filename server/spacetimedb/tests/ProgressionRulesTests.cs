@@ -75,7 +75,7 @@ public sealed class ProgressionRulesTests
     }
 
     [Theory]
-    [InlineData(true, 50u, 100ul)]
+    [InlineData(true, 100u, 100ul)]
     [InlineData(false, 100u, 0ul)]
     public void Respawn_contract_restores_expected_hull_and_protection(
         bool player,

@@ -29,6 +29,8 @@ namespace SpacetimeDB.Types
         public ulong NextProcessTick;
         [DataMember(Name = "initial_hull")]
         public uint InitialHull;
+        [DataMember(Name = "damage_taken")]
+        public uint DamageTaken;
         [DataMember(Name = "is_active")]
         public bool IsActive;
 
@@ -41,6 +43,7 @@ namespace SpacetimeDB.Types
             ulong CompletesAtTick,
             ulong NextProcessTick,
             uint InitialHull,
+            uint DamageTaken,
             bool IsActive
         )
         {
@@ -52,6 +55,7 @@ namespace SpacetimeDB.Types
             this.CompletesAtTick = CompletesAtTick;
             this.NextProcessTick = NextProcessTick;
             this.InitialHull = InitialHull;
+            this.DamageTaken = DamageTaken;
             this.IsActive = IsActive;
         }
 

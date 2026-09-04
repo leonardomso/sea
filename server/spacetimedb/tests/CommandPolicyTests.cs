@@ -262,6 +262,85 @@ public sealed class CommandPolicyTests
         Assert.Equal(CommandEffect.None, decision.Effects);
     }
 
+    [Theory]
+    [InlineData(ShipMode.Repairing)]
+    [InlineData(ShipMode.CastingOff)]
+    public void TheKitIsTheOneHealAShipAlreadyChannellingCanStillReachFor(ShipMode mode)
+    {
+        var decision = CommandPolicy.Evaluate(
+            ValidSnapshot(mode),
+            ShipCommandKind.UseRepairKit);
+
+        Assert.True(decision.Accepted);
+        Assert.Equal(CommandEffect.UseRepairKit, decision.Effects);
+        Assert.Equal(mode, decision.NextMode);
+    }
+
+    [Fact]
+    public void TheKitAndTheChannelAnswerFromCooldownsOfTheirOwn()
+    {
+        var snapshot = ValidSnapshot(ShipMode.Operational) with
+        {
+            RepairRejection = RepairRejection.OnCooldown,
+            KitRejection = RepairRejection.None,
+        };
+
+        Assert.Equal(
+            CommandRejectionCode.OnCooldown,
+            CommandPolicy.Evaluate(snapshot, ShipCommandKind.StartRepair).Rejection);
+        Assert.True(CommandPolicy.Evaluate(snapshot, ShipCommandKind.UseRepairKit).Accepted);
+    }
+
+    [Fact]
+    public void TheSpawnShieldIsSpentBySailingOutRatherThanByShooting()
+    {
+        var snapshot = ValidSnapshot(ShipMode.Operational) with
+        {
+            FireRejection = FireRejection.SpawnShielded,
+        };
+
+        Assert.Equal(
+            CommandRejectionCode.SpawnShielded,
+            CommandPolicy.Evaluate(snapshot, ShipCommandKind.Fire).Rejection);
+    }
+
+    [Fact]
+    public void AWreckComesBackOnlyAfterItHasAskedForABerth()
+    {
+        var decision = CommandPolicy.Evaluate(
+            ValidSnapshot(ShipMode.Sunk),
+            ShipCommandKind.ChooseRespawn);
+
+        Assert.True(decision.Accepted);
+        Assert.Equal(CommandEffect.ChooseRespawn, decision.Effects);
+        Assert.Equal(ShipMode.Sunk, decision.NextMode);
+    }
+
+    [Fact]
+    public void AWreckThatHasAlreadyChosenIsNotAskedTwice()
+    {
+        var snapshot = ValidSnapshot(ShipMode.Sunk) with { RespawnPending = false };
+
+        Assert.Equal(
+            CommandRejectionCode.NotAvailable,
+            CommandPolicy.Evaluate(snapshot, ShipCommandKind.ChooseRespawn).Rejection);
+    }
+
+    [Fact]
+    public void ABerthThePortDoesNotOfferIsRefused()
+    {
+        var snapshot = ValidSnapshot(ShipMode.Sunk) with
+        {
+            ArgumentRejection = CommandRejectionCode.NotAvailable,
+        };
+
+        var decision = CommandPolicy.Evaluate(snapshot, ShipCommandKind.ChooseRespawn);
+
+        Assert.False(decision.Accepted);
+        Assert.Equal(CommandRejectionCode.NotAvailable, decision.Rejection);
+        Assert.Equal(CommandEffect.None, decision.Effects);
+    }
+
     private static CommandSnapshot ValidSnapshot(ShipMode mode) => new()
     {
         Mode = mode,
@@ -270,7 +349,9 @@ public sealed class CommandPolicyTests
         AmmoKnown = true,
         FireRejection = FireRejection.None,
         RepairRejection = RepairRejection.None,
-        HasActiveChannel = mode == ShipMode.Repairing,
+        KitRejection = RepairRejection.None,
+        HasActiveChannel = mode is ShipMode.Repairing or ShipMode.CastingOff,
+        RespawnPending = mode == ShipMode.Sunk,
     };
 
     private static bool ExpectedAccepted(ShipMode mode, ShipCommandKind command)
@@ -280,14 +361,22 @@ public sealed class CommandPolicyTests
             return false;
         }
 
+        // Choosing a berth is answered before the mode gate, so it is the one order a wreck may
+        // give and the one order every other mode may not.
+        if (command == ShipCommandKind.ChooseRespawn)
+        {
+            return mode == ShipMode.Sunk;
+        }
+
         return mode switch
         {
             ShipMode.Operational => command != ShipCommandKind.CancelChannel,
-            ShipMode.Repairing => command is
+            ShipMode.Repairing or ShipMode.CastingOff => command is
                 ShipCommandKind.SetCourse or
                 ShipCommandKind.StopCourse or
                 ShipCommandKind.SelectTarget or
                 ShipCommandKind.ClearTarget or
+                ShipCommandKind.UseRepairKit or
                 ShipCommandKind.CancelChannel,
             ShipMode.Sunk => false,
             _ => throw new ArgumentOutOfRangeException(nameof(mode)),
@@ -301,10 +390,15 @@ public sealed class CommandPolicyTests
             return CommandRejectionCode.NotAvailable;
         }
 
+        if (command == ShipCommandKind.ChooseRespawn)
+        {
+            return CommandRejectionCode.NotSunk;
+        }
+
         return mode switch
         {
             ShipMode.Operational => CommandRejectionCode.NotChanneling,
-            ShipMode.Repairing => CommandRejectionCode.ModeConflict,
+            ShipMode.Repairing or ShipMode.CastingOff => CommandRejectionCode.ModeConflict,
             ShipMode.Sunk => CommandRejectionCode.Sunk,
             _ => throw new ArgumentOutOfRangeException(nameof(mode)),
         };

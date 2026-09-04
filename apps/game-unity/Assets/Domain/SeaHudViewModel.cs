@@ -38,6 +38,10 @@ namespace Sea.Client
         public string ProgressText { get; set; } = string.Empty;
         public float Progress { get; set; }
         public float RepairCooldownSeconds { get; set; }
+        public float RepairKitCooldownSeconds { get; set; }
+        public bool IsSunk { get; set; }
+        public bool RespawnChosen { get; set; }
+        public float RespawnRemainingSeconds { get; set; }
         public string LastAction { get; set; } = string.Empty;
     }
 
@@ -83,6 +87,12 @@ namespace Sea.Client
         public string ProgressText { get; private set; }
         public float Progress { get; private set; }
         public float RepairCooldownSeconds { get; private set; }
+        public float RepairKitCooldownSeconds { get; private set; }
+        public bool IsSunk { get; private set; }
+
+        /// <summary>The berth is only worth offering while the wreck has not asked for one.</summary>
+        public bool CanChooseBerth { get; private set; }
+        public string WreckText { get; private set; }
         public string LastAction { get; private set; }
 
         public static SeaHudViewModel From(SeaHudSnapshot source)
@@ -133,8 +143,29 @@ namespace Sea.Client
                 ProgressText = source.ProgressText,
                 Progress = Mathf.Clamp01(source.Progress),
                 RepairCooldownSeconds = Mathf.Max(0f, source.RepairCooldownSeconds),
+                RepairKitCooldownSeconds = Mathf.Max(0f, source.RepairKitCooldownSeconds),
+                IsSunk = source.IsSunk,
+                CanChooseBerth = source.IsSunk && !source.RespawnChosen,
+                WreckText = WreckLabel(source),
                 LastAction = source.LastAction,
             };
+        }
+
+        /// <summary>
+        /// A wreck reads either the offer or the wait, never both: once the berth is asked for
+        /// there is nothing left to decide, only the count until the hull is back on the water.
+        /// </summary>
+        private static string WreckLabel(SeaHudSnapshot source)
+        {
+            if (!source.RespawnChosen)
+            {
+                return "PORT LOWELL HAS A BERTH WAITING.";
+            }
+
+            return string.Format(
+                DisplayCulture,
+                "PUTTING OUT FROM PORT LOWELL  •  {0:0}s",
+                Mathf.Max(0f, source.RespawnRemainingSeconds));
         }
 
         private static string ShipLabel(SeaHudSnapshot source)

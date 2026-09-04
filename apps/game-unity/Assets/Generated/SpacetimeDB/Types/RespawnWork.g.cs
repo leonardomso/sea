@@ -19,16 +19,20 @@ namespace SpacetimeDB.Types
         public bool IsPending;
         [DataMember(Name = "respawn_at_tick")]
         public ulong RespawnAtTick;
+        [DataMember(Name = "option_code")]
+        public byte OptionCode;
 
         public RespawnWork(
             ulong ShipEntityId,
             bool IsPending,
-            ulong RespawnAtTick
+            ulong RespawnAtTick,
+            byte OptionCode
         )
         {
             this.ShipEntityId = ShipEntityId;
             this.IsPending = IsPending;
             this.RespawnAtTick = RespawnAtTick;
+            this.OptionCode = OptionCode;
         }
 
         public RespawnWork()

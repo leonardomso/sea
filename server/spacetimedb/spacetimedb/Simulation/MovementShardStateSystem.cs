@@ -233,6 +233,7 @@ public static partial class Module
             HasCourse = ship.HasCourse,
             IsStopping = ship.IsStopping,
             IsMoving = ship.IsMoving,
+            IsInPort = ship.IsInPort,
             CurrentVelocityX = ship.CurrentVelocityX,
             CurrentVelocityY = ship.CurrentVelocityY,
             ChunkX = ship.ChunkX,
@@ -254,6 +255,7 @@ public static partial class Module
         target.HasCourse = source.HasCourse;
         target.IsStopping = source.IsStopping;
         target.IsMoving = source.IsMoving;
+        target.IsInPort = source.IsInPort;
         target.CurrentVelocityX = source.CurrentVelocityX;
         target.CurrentVelocityY = source.CurrentVelocityY;
         target.ChunkX = source.ChunkX;
