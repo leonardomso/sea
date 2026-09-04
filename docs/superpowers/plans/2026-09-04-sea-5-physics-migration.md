@@ -1118,7 +1118,8 @@ Expected: FAIL, `Expected 40, Actual 78`.
     /// The chart ruler: forty columns lettered A..Z, AA..AN, forty rows numbered
     /// 1..40, so one ruler cell is ten squares. Columns run east from the
     /// left-hand edge and rows run south from the top, which is the same way the
-    /// map is stored (SEA_5 §3.3).
+    /// map is stored (SEA_5 §3.1) -- there is no Y-flip here, because the map has
+    /// no north-up centre-origin left to flip against.
     /// </summary>
     public const int ColumnCount = 40;
 

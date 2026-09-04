@@ -6,10 +6,10 @@ namespace Sea.Client
     public sealed partial class SeaHudController
     {
         /// <summary>
-        /// The rulers carry one slot per square of the map, so a chart pulled all the way out
-        /// reads 1 to 40 on both edges. Closer in, several slots fall inside the same square;
-        /// only the first of them is written, which puts the number at the square's own edge
-        /// instead of repeating it across the view.
+        /// The rulers carry one slot per ruler cell -- ten squares to a cell -- so a chart
+        /// pulled all the way out reads 1 to 40 on both edges. Closer in, several slots fall
+        /// inside the same cell; only the first of them is written, which puts the number at
+        /// the cell's own edge instead of repeating it across the view.
         /// </summary>
         private void UpdateCoordinateRulers()
         {

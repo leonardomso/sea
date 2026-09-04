@@ -39,8 +39,11 @@ public sealed record MapContent
     public required float PortY { get; init; }
     public required float PortRadius { get; init; }
     /// <summary>
-    /// Row 0 is the southern row at world y = <see cref="WorldRules.MapMin"/> and rows run north;
-    /// <see cref="ChartCoordinates"/> instead counts its vertical axis by column, down from the top.
+    /// Row 0 is the northern row at world y = <see cref="WorldRules.MapMin"/> and rows run south,
+    /// so a row index is a y and <c>TerrainRows[y][x]</c> reads straight
+    /// (<see cref="SectorRules.TerrainAt"/>). This used to warn that
+    /// <see cref="ChartCoordinates"/> disagreed; it no longer does -- the ruler counts its
+    /// vertical axis by row from y as well, and the flip between them is gone.
     /// </summary>
     public required IReadOnlyList<string> TerrainRows { get; init; }
     public required IReadOnlyList<WorldObjectContent> Objects { get; init; }

@@ -10,8 +10,8 @@ namespace Sea.Tests.EditMode
         [Test]
         public void Chart_ruler_labels_are_shared_and_agree_with_full_labels()
         {
-            // The ruler counts the map's own squares: 1 at each of the north and west edges,
-            // 40 at each of the south and east ones.
+            // The ruler counts cells of ten squares, not squares: 1 at each of the north and
+            // west edges, 40 at each of the south and east ones.
             Assert.That(SeaChartCoordinates.ColumnLabelAt(0), Is.EqualTo("1"));
             Assert.That(
                 SeaChartCoordinates.ColumnLabelAt(SeaChartCoordinates.ColumnCount - 1),

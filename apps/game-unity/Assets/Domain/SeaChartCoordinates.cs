@@ -25,11 +25,12 @@ namespace Sea.Client
     }
 
     /// <summary>
-    /// The chart grid a captain reads. It is the map's own square grid and nothing else: the
-    /// world is four hundred squares on a side and a square is one world unit, grouped ten
-    /// squares to a ruler label, so a coordinate spoken on the sea means the same ground the
-    /// server measures ranges in. The origin is the top-left corner; x grows east and y grows
-    /// south, so there is no flip between a ruler row and the world's own y axis.
+    /// The chart grid a captain reads. The world is four hundred squares on a side and a
+    /// square is one world unit; the ruler groups ten of them to a label, so it is forty cells
+    /// on a side and a coordinate spoken on the sea names a cell, not a square. Both are
+    /// measured in the same ground the server measures ranges in. The origin is the top-left
+    /// corner; x grows east and y grows south, so there is no flip between a ruler row and the
+    /// world's own y axis.
     /// </summary>
     public static class SeaChartCoordinates
     {
@@ -37,7 +38,10 @@ namespace Sea.Client
         public const int RowCount = 40;
         public const float MapMinimum = 0f;
         public const float MapMaximum = 400f;
-        public const float SquareSize = (MapMaximum - MapMinimum) / ColumnCount;
+        /// <summary>The width of one ruler cell, in squares. Ten, not one -- the name this
+        /// carried before said "square" and is what put "one slot per square" into three
+        /// comments that meant one slot per ten.</summary>
+        public const float CellSizeSquares = (MapMaximum - MapMinimum) / ColumnCount;
 
         private static readonly char[] Separators = { ' ', '-', ',', ':' };
 
@@ -60,8 +64,8 @@ namespace Sea.Client
             cell = new SeaChartCell(
                 column + 1,
                 row + 1,
-                MapMinimum + (column + 0.5f) * SquareSize,
-                MapMinimum + (row + 0.5f) * SquareSize);
+                MapMinimum + (column + 0.5f) * CellSizeSquares,
+                MapMinimum + (row + 0.5f) * CellSizeSquares);
             return true;
         }
 
@@ -70,11 +74,11 @@ namespace Sea.Client
 
         /// <summary>Zero-based column index, counted east from the western edge.</summary>
         public static int ColumnIndexAt(float x) =>
-            Math.Clamp((int)Math.Floor((x - MapMinimum) / SquareSize), 0, ColumnCount - 1);
+            Math.Clamp((int)Math.Floor((x - MapMinimum) / CellSizeSquares), 0, ColumnCount - 1);
 
         /// <summary>Zero-based row index, counted south from the northern edge.</summary>
         public static int RowIndexAt(float y) =>
-            Math.Clamp((int)Math.Floor((y - MapMinimum) / SquareSize), 0, RowCount - 1);
+            Math.Clamp((int)Math.Floor((y - MapMinimum) / CellSizeSquares), 0, RowCount - 1);
 
         // The chart rulers relabel whenever the camera moves, so the fixed label set is
         // built once and shared instead of being formatted on every frame.

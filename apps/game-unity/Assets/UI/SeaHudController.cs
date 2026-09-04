@@ -28,7 +28,8 @@ namespace Sea.Client
         private Camera chartCamera;
         private SeaChartCameraController chartCameraController;
         private bool recenterOffered;
-        // One slot per square of the map on each edge, so a chart pulled out reads 1 to 40.
+        // One slot per ruler cell on each edge -- ten squares to a cell -- so a chart pulled
+        // all the way out reads 1 to 40.
         private readonly Label[] topCoordinateLabels = new Label[SeaChartCoordinates.ColumnCount];
         private readonly Label[] leftCoordinateLabels = new Label[SeaChartCoordinates.RowCount];
 

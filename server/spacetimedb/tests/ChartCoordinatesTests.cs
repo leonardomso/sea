@@ -30,6 +30,14 @@ public sealed class ChartCoordinatesTests
     public void ACellCentreRoundTripsBackToItsLabel()
     {
         Assert.True(ChartCoordinates.TryCellCenter("M12", out var cell));
+
+        // The label round trip alone passes with the column and the row swapped, because the
+        // ruler is square. Naming both indices is what pins which is which: M is the
+        // thirteenth column counting from A at zero, and the rows are labelled from one.
+        Assert.Equal(12, cell.Column);
+        Assert.Equal(11, cell.Row);
+        Assert.Equal(125f, cell.X, 3);
+        Assert.Equal(115f, cell.Y, 3);
         Assert.Equal("M12", ChartCoordinates.LabelAt(cell.X, cell.Y));
     }
 
