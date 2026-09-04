@@ -2,12 +2,27 @@ namespace Sea.Server;
 
 public static class WorldRules
 {
-    public const float MapMin = -100f;
-    public const float MapMax = 100f;
+    /// <summary>
+    /// Every map is this many squares on a side (SEA_5 §3.1). One square is one
+    /// unit; there is no second unit and no conversion. (0,0) is the top-left
+    /// corner, x grows east, y grows south.
+    /// </summary>
+    public const float MapSizeSquares = 400f;
+
+    public const float MapMin = 0f;
+    public const float MapMax = MapSizeSquares;
+
     public const uint InitialHealth = 100;
     public const uint InitialGold = 0;
     public const uint TickRateHz = 10;
-    public const float CollisionPadding = 0.5f;
+
+    /// <summary>How much time one tick of the simulation covers.</summary>
+    public const float SecondsPerTick = 1f / TickRateHz;
+
+    // Ships never collide with each other (SEA_5 §4.1.6); this only keeps a hull from
+    // clipping the drawn edge of land, so a reef with radius 10 still blocks a touch at 10.
+    public const float LandHazardPadding = 0.5f;
+
     public const uint InitialCannonDamage = 25;
     public const uint InitialCannonCooldownTicks = 20;
     public const uint EnemyInitialHealth = 100;
@@ -15,13 +30,9 @@ public static class WorldRules
     public const uint EnemyCannonCooldownTicks = 40;
     public const uint EnemyGoldReward = 100;
 
-    // Mirrors the client's fog radius. It has to clear the longest gun on the map, or a ship
-    // takes fire from water it cannot see and the player has nothing to aim at.
-    public const float VisionRadius = 110f;
-
     // Players spawn and respawn inside these waters around the harbor, and NPCs never
     // pick a target sailing in them, so a fresh spawn is not sunk before it moves.
-    public const float HarborSafeRadius = 30f;
+    public const float HarborSafeRadiusSquares = 30f;
 
     public readonly struct SailingStep
     {
@@ -37,6 +48,8 @@ public static class WorldRules
         public bool Arrived { get; }
     }
 
+    // The documented boundary guard: GeometryRules assumes finite inputs and skips its
+    // own checks on the hot path, trusting that a position was vetted here first.
     public static bool IsInsideMap(float x, float y) =>
         float.IsFinite(x) &&
         float.IsFinite(y) &&
@@ -46,6 +59,9 @@ public static class WorldRules
         y <= MapMax;
 
     public static bool IsValidMove(float x, float y) => IsInsideMap(x, y);
+
+    public static (float X, float Y) ClampToMap(float x, float y) =>
+        (Math.Clamp(x, MapMin, MapMax), Math.Clamp(y, MapMin, MapMax));
 
     public static SailingStep AdvanceTowards(
         float currentX,
@@ -61,7 +77,7 @@ public static class WorldRules
 
         var deltaX = destinationX - currentX;
         var deltaY = destinationY - currentY;
-        var distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
+        var distance = GeometryRules.Distance(currentX, currentY, destinationX, destinationY);
         if (distance <= maximumDistance)
         {
             return new SailingStep(destinationX, destinationY, true);
@@ -79,10 +95,8 @@ public static class WorldRules
             return false;
         }
 
-        var dx = x - entityX;
-        var dy = y - entityY;
-        var collisionRadius = radius + CollisionPadding;
-        return dx * dx + dy * dy < collisionRadius * collisionRadius;
+        var collisionRadius = radius + LandHazardPadding;
+        return GeometryRules.DistanceSquared(entityX, entityY, x, y) < collisionRadius * collisionRadius;
     }
 
     public static bool IsBlocked(
@@ -98,18 +112,12 @@ public static class WorldRules
             return false;
         }
 
-        var dx = x - entityX;
-        var dy = y - entityY;
-        var collisionRadius = radius + CollisionPadding;
-        return dx * dx + dy * dy < collisionRadius * collisionRadius;
+        var collisionRadius = radius + LandHazardPadding;
+        return GeometryRules.DistanceSquared(entityX, entityY, x, y) < collisionRadius * collisionRadius;
     }
 
-    public static bool IsInRange(float sourceX, float sourceY, float targetX, float targetY, float range)
-    {
-        var dx = targetX - sourceX;
-        var dy = targetY - sourceY;
-        return dx * dx + dy * dy <= range * range;
-    }
+    public static bool IsInRange(float fromX, float fromY, float toX, float toY, float range) =>
+        GeometryRules.DistanceSquared(fromX, fromY, toX, toY) <= range * range;
 
     public static uint ApplyDamage(uint health, uint damage) => damage >= health ? 0 : health - damage;
 }

@@ -5,23 +5,43 @@ namespace Sea.Server.Tests;
 
 public sealed class WorldRulesTests
 {
-    [Theory]
-    [InlineData(-100, -100)]
-    [InlineData(0, 0)]
-    [InlineData(100, 100)]
-    public void IsInsideMap_accepts_positions_within_bounds(float x, float y)
+    [Fact]
+    public void TheMapIsFourHundredSquaresFromTheTopLeft()
     {
-        Assert.True(WorldRules.IsInsideMap(x, y));
+        Assert.Equal(0f, WorldRules.MapMin);
+        Assert.Equal(400f, WorldRules.MapMax);
+        Assert.Equal(400f, WorldRules.MapSizeSquares);
+    }
+
+    [Fact]
+    public void ATickIsATenthOfASecond()
+    {
+        Assert.Equal(0.1f, WorldRules.SecondsPerTick, 6);
     }
 
     [Theory]
-    [InlineData(-100.01f, 0)]
-    [InlineData(100.01f, 0)]
-    [InlineData(0, -100.01f)]
-    [InlineData(0, 100.01f)]
+    [InlineData(0f, 0f, true)]
+    [InlineData(400f, 400f, true)]
+    [InlineData(-0.01f, 200f, false)]
+    [InlineData(200f, 400.01f, false)]
+    public void InsideTheMapIsZeroToFourHundredOnBothAxes(float x, float y, bool expected)
+    {
+        Assert.Equal(expected, WorldRules.IsInsideMap(x, y));
+    }
+
+    [Fact]
+    public void ClampToMapPullsAPointBackInside()
+    {
+        var (x, y) = WorldRules.ClampToMap(-5f, 900f);
+
+        Assert.Equal(0f, x, 4);
+        Assert.Equal(400f, y, 4);
+    }
+
+    [Theory]
     [InlineData(float.NaN, 0)]
     [InlineData(0, float.PositiveInfinity)]
-    public void IsInsideMap_rejects_invalid_positions(float x, float y)
+    public void IsInsideMap_rejects_non_finite_positions(float x, float y)
     {
         Assert.False(WorldRules.IsInsideMap(x, y));
     }
@@ -36,7 +56,6 @@ public sealed class WorldRulesTests
         Assert.Equal(100u, WorldRules.EnemyInitialHealth);
         Assert.Equal(20u, WorldRules.InitialCannonCooldownTicks);
         Assert.Equal(100u, WorldRules.EnemyGoldReward);
-        Assert.Equal(110f, WorldRules.VisionRadius);
     }
 
     [Fact]
