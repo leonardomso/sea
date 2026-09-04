@@ -1476,9 +1476,20 @@ once here: delete it, or give it the caller it was written for.
 **What Task 1.3's review already settled (commit `5e2ae0e`), so do not redo it:**
 
 - The only compile errors left in the whole tree are two mechanical renames, in
-  four files: `WorldRules.CollisionPadding` -> `LandHazardPadding` in
+  **six** files: `WorldRules.CollisionPadding` -> `LandHazardPadding` in
   `NavigationRules.cs` and `SailingRulesTests.cs`, and `WorldRules.HarborSafeRadius`
-  -> `HarborSafeRadiusSquares` in `NpcRules.cs` and `NpcRulesTests.Roaming.cs`.
+  -> `HarborSafeRadiusSquares` in `NpcRules.cs`, `NpcRulesTests.Roaming.cs`,
+  `Navigation/NavigationState.cs:38` and `Simulation/TickWorld.cs:56`.
+
+  **The list said four for three tasks running, and it was wrong.** The two extra
+  files were found by running `pnpm server:generate:csharp`, which builds the whole
+  module, and they are invisible to every measurement this phase has taken:
+  `Sea.Server.Domain.csproj` globs `../spacetimedb/Domain/*.cs` **flat**, so nothing
+  under `Navigation/` or `Simulation/` is in the test build at all. A green test
+  suite therefore does not mean the module compiles. **Build the module, not just
+  the tests, before declaring this task done** -- `./scripts/dotnet.sh build
+  server/spacetimedb/spacetimedb/StdbModule.csproj`, or `pnpm quality:bindings`,
+  which builds it twice and diffs the output.
   `WorldRules.VisionRadius` was the third and is gone: its one caller, the
   desired-range gate in `ContentValidation.cs`, now reads a literal `11f`.
 - **Do not apply rule 3 to that gate.** It is already in squares on both sides.
@@ -1627,6 +1638,18 @@ made against a broken view.
 ```sh
 pnpm server:test
 ```
+
+**Time the seed while you are in here.** Step 4 is the first moment in the whole
+migration that `SeedContent` actually executes against 400 x 400 content, so it is
+the first moment line 1275's question can be answered. Task 1.6 answered it with a
+row count, which is not a timing. Report the wall clock of the `Init` reducer, or
+of the publish-and-reseed with and without the map seed, and say which you
+measured. Context: the `Sector` table is `Public = true`, carries a BTree index,
+now takes 160,000 rows for Havenmere alone, and `grep -rn "Db.Sector" server` finds
+**only the insert** -- no server reader, no client subscription, no admin query --
+while Phase 2 builds `LandMask` from `MapContent.TerrainRows` rather than from this
+table. The rows are write-only today. **Do not delete the table**; dropping a public
+table is a schema decision for the user, who has not been asked. Measure and report.
 
 **Do not publish this phase incrementally.** `Sector.SectorId` is a `[PrimaryKey]`
 whose bit layout changed in Task 1.3, and the `Sector.X`/`Y` columns widen in Task
