@@ -6,14 +6,6 @@ namespace Sea.Server.IntegrationTests;
 
 public sealed class SharedRewardIntegrationTests
 {
-    private const byte NoTargetRejection = 11;
-    private const byte TargetSunkRejection = 12;
-    private const byte ReloadingRejection = 13;
-    private const byte FiringTooFastRejection = 14;
-    private const byte OutOfRangeRejection = 15;
-
-    /// <summary>A hull that has just put to sea keeps its shield until the tenth second.</summary>
-    private const byte SpawnShieldedRejection = 23;
     private static readonly TimeSpan ScenarioTimeout = TimeSpan.FromSeconds(90);
 
     [Fact]
@@ -39,7 +31,7 @@ public sealed class SharedRewardIntegrationTests
             client.PutToSea(hostile.X, hostile.Y);
         }
 
-        MoveIntoRange(clients, targetId);
+        FightScenario.MoveIntoRange(clients, targetId, ScenarioTimeout);
 
         foreach (var client in clients)
         {
@@ -49,7 +41,7 @@ public sealed class SharedRewardIntegrationTests
                 $"Target selection rejected with {selection.RejectionCode}; the target is " +
                 $"hull {client.Npc(targetId).Hull}/{client.Npc(targetId).MaxHull}, " +
                 $"alive {client.Npc(targetId).IsAlive}.");
-            FireWhenLegal(client, clients, targetId);
+            FightScenario.FireWhenLegal(client, clients, targetId, ScenarioTimeout);
         }
 
         var disconnectedToken = fourth.Token;
@@ -57,13 +49,16 @@ public sealed class SharedRewardIntegrationTests
         fourth.Dispose();
         clients = [first, second, third];
         FinishOff(first, clients, targetId);
-        PumpUntil(clients, () => !first.Npc(targetId).IsAlive);
+        FightScenario.PumpUntil(clients, () => !first.Npc(targetId).IsAlive, ScenarioTimeout);
         using var reconnectedFourth = IntegrationClient.Connect(disconnectedToken);
         reconnectedFourth.LoadPlayer();
         reconnectedFourth.SubscribeNpcWorld();
         Assert.Equal(disconnectedShipId, reconnectedFourth.OwnedShip().EntityId);
         clients = [first, second, third, reconnectedFourth];
-        PumpUntil(clients, () => clients.All(client => client.EncounterRewards().Length > 0));
+        FightScenario.PumpUntil(
+            clients,
+            () => clients.All(client => client.EncounterRewards().Length > 0),
+            ScenarioTimeout);
 
         AssertSettlementAndRespawn(clients, first, targetId);
     }
@@ -84,7 +79,7 @@ public sealed class SharedRewardIntegrationTests
         Assert.All(clients, client => Assert.Null(client.UnhandledReducerError));
 
         var rewardIds = rewards.Select(reward => reward.RewardId).Order().ToArray();
-        PumpFor(clients, TimeSpan.FromSeconds(1));
+        FightScenario.PumpFor(clients, TimeSpan.FromSeconds(1));
         Assert.Equal(
             rewardIds,
             clients.SelectMany(client => client.EncounterRewards())
@@ -93,63 +88,20 @@ public sealed class SharedRewardIntegrationTests
                 .ToArray());
 
         var settledEncounterId = rewards[0].EncounterId;
-        PumpUntil(clients, () =>
-        {
-            var respawned = observer.Npc(targetId);
-            return respawned.IsAlive && respawned.EncounterId != settledEncounterId;
-        });
+        FightScenario.PumpUntil(
+            clients,
+            () =>
+            {
+                var respawned = observer.Npc(targetId);
+                return respawned.IsAlive && respawned.EncounterId != settledEncounterId;
+            },
+            ScenarioTimeout);
         Assert.Equal(
             rewardIds,
             clients.SelectMany(client => client.EncounterRewards())
                 .Select(reward => reward.RewardId)
                 .Order()
                 .ToArray());
-    }
-
-    private static void MoveIntoRange(
-        IReadOnlyCollection<IntegrationClient> clients,
-        ulong targetId)
-    {
-        var nextCourseAt = TimeSpan.Zero;
-        var stopwatch = Stopwatch.StartNew();
-        while (!clients.All(client => Distance(client.OwnedShip(), client.Npc(targetId)) <= 24f))
-        {
-            if (stopwatch.Elapsed >= nextCourseAt)
-            {
-                var target = clients.First().Npc(targetId);
-                foreach (var client in clients.Where(client =>
-                             Distance(client.OwnedShip(), target) > 24f))
-                {
-                    Assert.True(TrySetApproachCourse(client, target));
-                }
-
-                nextCourseAt = stopwatch.Elapsed + TimeSpan.FromSeconds(1);
-            }
-
-            PumpOnce(clients);
-            ThrowIfTimedOut(stopwatch);
-        }
-    }
-
-    private static bool TrySetApproachCourse(IntegrationClient client, Ship target)
-    {
-        var source = client.OwnedShip();
-        var sourceAngle = MathF.Atan2(
-            source.PositionX - target.PositionX,
-            source.PositionY - target.PositionY);
-        for (var index = 0; index < 8; index++)
-        {
-            var angle = sourceAngle + index * MathF.PI / 4f;
-            var result = client.SetCourse(
-                target.PositionX + MathF.Sin(angle) * 22f,
-                target.PositionY + MathF.Cos(angle) * 22f);
-            if (result.Accepted)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /// <summary>
@@ -166,7 +118,8 @@ public sealed class SharedRewardIntegrationTests
         while (client.Npc(targetId).IsAlive)
         {
             var fire = client.Fire();
-            if (fire.RejectionCode is NoTargetRejection or TargetSunkRejection)
+            if (fire.RejectionCode is FightScenario.NoTargetRejection
+                or FightScenario.TargetSunkRejection)
             {
                 return;
             }
@@ -174,118 +127,19 @@ public sealed class SharedRewardIntegrationTests
             if (!fire.Accepted)
             {
                 Assert.True(
-                    fire.RejectionCode is ReloadingRejection or FiringTooFastRejection
-                        or OutOfRangeRejection or SpawnShieldedRejection,
+                    fire.RejectionCode is FightScenario.ReloadingRejection
+                        or FightScenario.FiringTooFastRejection
+                        or FightScenario.OutOfRangeRejection
+                        or FightScenario.SpawnShieldedRejection,
                     $"Unexpected fire rejection {fire.RejectionCode}.");
-                if (fire.RejectionCode == OutOfRangeRejection)
+                if (fire.RejectionCode == FightScenario.OutOfRangeRejection)
                 {
-                    Approach(client, client.Npc(targetId));
+                    FightScenario.Approach(client, client.Npc(targetId));
                 }
             }
 
-            PumpFor(clients, TimeSpan.FromMilliseconds(150));
-            ThrowIfTimedOut(stopwatch);
-        }
-    }
-
-    private static void FireWhenLegal(
-        IntegrationClient client,
-        IReadOnlyCollection<IntegrationClient> clients,
-        ulong targetId)
-    {
-        var stopwatch = Stopwatch.StartNew();
-        while (client.Npc(targetId).IsAlive)
-        {
-            var fire = client.Fire();
-            if (fire.Accepted)
-            {
-                return;
-            }
-
-            if (fire.RejectionCode is ReloadingRejection or FiringTooFastRejection
-                or SpawnShieldedRejection)
-            {
-                PumpFor(clients, TimeSpan.FromMilliseconds(100));
-                ThrowIfTimedOut(stopwatch);
-                continue;
-            }
-
-            // Range is the only geometry left: the magazine bears in every direction, so a
-            // rejection that is not the reload is the target sitting too far away.
-            Assert.True(
-                fire.RejectionCode == OutOfRangeRejection,
-                $"Unexpected fire rejection {fire.RejectionCode}; shooter hull " +
-                $"{client.OwnedShip().Hull}/{client.OwnedShip().MaxHull} mode " +
-                $"{client.OwnedShip().ModeCode} target {client.OwnedShip().TargetEntityId}; " +
-                $"target hull {client.Npc(targetId).Hull}/{client.Npc(targetId).MaxHull} " +
-                $"alive {client.Npc(targetId).IsAlive}.");
-            Approach(client, client.Npc(targetId));
-            PumpFor(clients, TimeSpan.FromMilliseconds(150));
-            ThrowIfTimedOut(stopwatch);
-        }
-
-        throw new InvalidOperationException("Target sank before every participant fired.");
-    }
-
-    private static void Approach(IntegrationClient client, Ship target)
-    {
-        var source = client.OwnedShip();
-        var radians = Bearing(source, target) * MathF.PI / 180f;
-        var distance = MathF.Max(8f, Distance(source, target) - 20f);
-        Assert.True(client.SetCourse(
-            source.PositionX + MathF.Sin(radians) * distance,
-            source.PositionY + MathF.Cos(radians) * distance).Accepted);
-    }
-
-    private static float Bearing(Ship source, Ship target) =>
-        MathF.Atan2(target.PositionX - source.PositionX, target.PositionY - source.PositionY) *
-        (180f / MathF.PI);
-
-    private static float Distance(Ship source, Ship target)
-    {
-        var deltaX = target.PositionX - source.PositionX;
-        var deltaY = target.PositionY - source.PositionY;
-        return MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
-    }
-
-    private static void PumpUntil(
-        IReadOnlyCollection<IntegrationClient> clients,
-        Func<bool> condition)
-    {
-        var stopwatch = Stopwatch.StartNew();
-        while (!condition())
-        {
-            PumpOnce(clients);
-            ThrowIfTimedOut(stopwatch);
-        }
-    }
-
-    private static void PumpFor(
-        IReadOnlyCollection<IntegrationClient> clients,
-        TimeSpan duration)
-    {
-        var stopwatch = Stopwatch.StartNew();
-        while (stopwatch.Elapsed < duration)
-        {
-            PumpOnce(clients);
-        }
-    }
-
-    private static void PumpOnce(IEnumerable<IntegrationClient> clients)
-    {
-        foreach (var client in clients)
-        {
-            client.PumpOnce();
-        }
-
-        Thread.Sleep(5);
-    }
-
-    private static void ThrowIfTimedOut(Stopwatch stopwatch)
-    {
-        if (stopwatch.Elapsed > ScenarioTimeout)
-        {
-            throw new TimeoutException("Shared reward integration scenario timed out.");
+            FightScenario.PumpFor(clients, TimeSpan.FromMilliseconds(150));
+            FightScenario.ThrowIfTimedOut(stopwatch, ScenarioTimeout);
         }
     }
 }

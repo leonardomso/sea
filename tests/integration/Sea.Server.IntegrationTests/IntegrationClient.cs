@@ -246,6 +246,16 @@ internal sealed partial class IntegrationClient : IDisposable
 
     public int NpcAiCount() => connection.Db.NpcAi.Iter().Count();
 
+    /// <summary>The decision row behind a hostile: who it follows and whether it has signalled.</summary>
+    public NpcAi NpcBrain(ulong entityId) => connection.Db.NpcAi.ShipEntityId.Find(entityId)
+        ?? throw new InvalidOperationException($"NPC {entityId} has no decision row.");
+
+    /// <summary>The hulls moored to one captain, waiting on her signal.</summary>
+    public NpcAi[] EscortsOf(ulong leaderEntityId) => connection.Db.NpcAi.Iter()
+        .Where(ai => ai.LeaderEntityId == leaderEntityId)
+        .OrderBy(ai => ai.ShipEntityId)
+        .ToArray();
+
     public Ship OwnedShip()
     {
         var ownership = connection.Db.PlayerOwnership.Owner.Find(identity)
@@ -261,6 +271,25 @@ internal sealed partial class IntegrationClient : IDisposable
         ?? throw new InvalidOperationException($"NPC {entityId} is not subscribed.");
 
     public EncounterReward[] EncounterRewards() => connection.Db.EncounterReward.Iter().ToArray();
+
+    /// <summary>
+    /// What the wrecks have left floating. Loot is the one reward a captain has to sail for, so
+    /// a test about collecting it needs the rows as well as the purse.
+    /// </summary>
+    public void SubscribeLoot()
+    {
+        var applied = false;
+        subscriptions.Add(connection.SubscriptionBuilder()
+            .OnApplied(_ => applied = true)
+            .OnError((_, error) => failure = error)
+            .Subscribe(["SELECT * FROM loot"]));
+        PumpUntil(connection, () => applied || failure is not null);
+        ThrowIfFailed();
+    }
+
+    public Loot[] ActiveLoot() => connection.Db.Loot.Iter()
+        .Where(loot => loot.IsActive)
+        .ToArray();
 
     /// <summary>
     /// Subscribes to the shots this ship fires. The volley row is the only public record that a

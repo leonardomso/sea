@@ -37,7 +37,20 @@ internal sealed partial class IntegrationClient
     public Ship ClosestNpcClearOfPort(byte archetypeCode) =>
         ClosestHostileClearOfPort(archetypeCode, _ => true);
 
-    private Ship ClosestHostileClearOfPort(byte archetypeCode, Func<Ship, bool> also)
+    /// <summary>
+    /// The same hostile, for a caller that can wait for one. Hostiles patrol, so a named ship
+    /// whose beat takes her past the harbour mouth is only unfightable for as long as she is
+    /// inside it; a test that throws on the first look fails on where she happened to be.
+    /// </summary>
+    public Ship? TryClosestNpcClearOfPort(byte archetypeCode) =>
+        TryClosestHostileClearOfPort(archetypeCode, _ => true);
+
+    private Ship ClosestHostileClearOfPort(byte archetypeCode, Func<Ship, bool> also) =>
+        TryClosestHostileClearOfPort(archetypeCode, also)
+            ?? throw new InvalidOperationException(
+                $"No hostile of archetype {archetypeCode} is clear of Port Lowell.");
+
+    private Ship? TryClosestHostileClearOfPort(byte archetypeCode, Func<Ship, bool> also)
     {
         var port = PortLowell();
         var fightable = port.Radius + FightingRoom;
@@ -51,9 +64,7 @@ internal sealed partial class IntegrationClient
             .Where(hostile => hostile.Range >= fightable * fightable)
             .OrderBy(hostile => hostile.Range)
             .Select(hostile => hostile.Ship)
-            .FirstOrDefault()
-            ?? throw new InvalidOperationException(
-                $"No hostile of archetype {archetypeCode} is clear of Port Lowell.");
+            .FirstOrDefault();
     }
 
     private static float RangeFromPort(

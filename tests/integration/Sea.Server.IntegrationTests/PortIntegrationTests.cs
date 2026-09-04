@@ -12,6 +12,7 @@ namespace Sea.Server.IntegrationTests;
 public sealed class PortIntegrationTests
 {
     private const byte NothingToRepairRejection = 18;
+    private const byte DestinationBlockedRejection = 6;
     private const byte OnCooldownRejection = 22;
     private const byte NotSunkRejection = 24;
     private const byte HomePortRespawn = 1;
@@ -232,8 +233,19 @@ public sealed class PortIntegrationTests
             if (!client.OwnedShip().HasCourse && stopwatch.Elapsed >= nextCourseAt)
             {
                 var approach = ApproachTo(client.OwnedShip(), client.NpcPosition(targetId));
-                Assert.True(client.SetCourse(approach.X, approach.Y).Accepted);
-                nextCourseAt = stopwatch.Elapsed + TimeSpan.FromSeconds(5);
+                var course = client.SetCourse(approach.X, approach.Y);
+
+                // The skiff patrols, so the point short of it can fall on an island or a reef.
+                // That is the water's answer, not the ship's: the next leg of the patrol puts
+                // the hostile somewhere else, so the course is simply plotted again. Every
+                // other rejection is about this ship and is worth failing on.
+                if (!course.Accepted && course.RejectionCode != DestinationBlockedRejection)
+                {
+                    Assert.Fail($"The approach was rejected with code {course.RejectionCode}.");
+                }
+
+                nextCourseAt = stopwatch.Elapsed + TimeSpan.FromSeconds(
+                    course.Accepted ? 5 : 1);
             }
 
             client.PumpOnce();
