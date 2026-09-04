@@ -30,8 +30,13 @@ public static class WorldRules
     public const uint EnemyCannonCooldownTicks = 40;
     public const uint EnemyGoldReward = 100;
 
-    // Players spawn and respawn inside these waters around the harbor, and NPCs never
-    // pick a target sailing in them, so a fresh spawn is not sunk before it moves.
+    /// <summary>
+    /// The circle of protected water around a harbour, in squares (SEA_5 §10.3).
+    /// Players spawn and respawn inside it and NPCs never pick a target sailing in
+    /// it, so a fresh spawn is not sunk before it moves. §10.3 also forbids firing
+    /// across this line either way; that half arrives with <c>PortRules</c> in Phase
+    /// 9 and will read the same constant, so moving this radius moves both.
+    /// </summary>
     public const float HarborSafeRadiusSquares = 30f;
 
     public readonly struct SailingStep

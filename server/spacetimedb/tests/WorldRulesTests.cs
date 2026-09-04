@@ -23,6 +23,8 @@ public sealed class WorldRulesTests
     [InlineData(0f, 0f, true)]
     [InlineData(400f, 400f, true)]
     [InlineData(-0.01f, 200f, false)]
+    [InlineData(400.01f, 200f, false)]
+    [InlineData(200f, -0.01f, false)]
     [InlineData(200f, 400.01f, false)]
     public void InsideTheMapIsZeroToFourHundredOnBothAxes(float x, float y, bool expected)
     {

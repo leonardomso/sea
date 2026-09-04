@@ -635,6 +635,8 @@ public void ATickIsATenthOfASecond()
 [InlineData(0f, 0f, true)]
 [InlineData(400f, 400f, true)]
 [InlineData(-0.01f, 200f, false)]
+[InlineData(400.01f, 200f, false)]
+[InlineData(200f, -0.01f, false)]
 [InlineData(200f, 400.01f, false)]
 public void InsideTheMapIsZeroToFourHundredOnBothAxes(float x, float y, bool expected)
 {
@@ -679,26 +681,49 @@ In `Domain/WorldRules.cs` replace the bounds block with:
     /// <summary>How much time one tick of the simulation covers.</summary>
     public const float SecondsPerTick = 1f / TickRateHz;
 
-    /// <summary>Water a ship may not be fired on in, in squares (SEA_5 §10.3).</summary>
+    /// <summary>
+    /// The circle of protected water around a harbour, in squares (SEA_5 §10.3).
+    /// Today it only keeps spawns safe and stops NPCs picking a target inside it.
+    /// Task 9.3 adds the second half of §10.3, where no shot is fired either way
+    /// across this line, so a change to this radius moves both.
+    /// </summary>
     public const float HarborSafeRadiusSquares = 30f;
 
+    // The documented boundary guard: GeometryRules assumes finite inputs and skips its
+    // own checks on the hot path, trusting that a position was vetted here first.
     public static bool IsInsideMap(float x, float y) =>
-        x >= MapMin && x <= MapMax && y >= MapMin && y <= MapMax;
+        float.IsFinite(x) &&
+        float.IsFinite(y) &&
+        x >= MapMin &&
+        x <= MapMax &&
+        y >= MapMin &&
+        y <= MapMax;
 
     public static (float X, float Y) ClampToMap(float x, float y) =>
         (Math.Clamp(x, MapMin, MapMax), Math.Clamp(y, MapMin, MapMax));
 ```
 
-Delete `VisionRadius` (it moves to `RangeRules` in Phase 6) and `CollisionPadding`
-(SEA_5 §4.1.6: ships never collide). Replace `WorldRules.Distance`,
-`WorldRules.IsInRange` and `WorldRules.AdvanceTowards` bodies with calls into
-`GeometryRules`, or delete them and fix the call sites; `IsInRange` stays because
-combat uses it, and becomes:
+Delete `VisionRadius` (it moves to `RangeRules` in Phase 6). Rename
+`CollisionPadding` to `LandHazardPadding` and keep it: SEA_5 §4.1.6 removes
+ship-to-ship collision, not land, and both `IsBlocked` overloads still need a
+buffer so a hull does not clip the drawn edge of an island or reef.
+
+Point the hand-rolled distance maths at `GeometryRules`: the square root inside
+`AdvanceTowards` and the two `dx*dx + dy*dy` blocks inside the `IsBlocked`
+overloads. (There is no `WorldRules.Distance` method to replace; the arithmetic
+is inline.) `IsInRange` stays because combat uses it, and becomes:
 
 ```csharp
     public static bool IsInRange(float fromX, float fromY, float toX, float toY, float range) =>
         GeometryRules.DistanceSquared(fromX, fromY, toX, toY) <= range * range;
 ```
+
+`MapMax` is inclusive, so a hull at exactly x = 400 passes `IsInsideMap`. The land
+mask disagrees: it holds 400 cells indexed 0..399 and calls anything off the grid
+land, so that same hull reads as aground. Nothing here has to reconcile them.
+`MapEdgeRules.HoldInside` in Task 9.1 stops a hull a band short of the edge, so the
+two never have to answer for the same position. Whoever changes either bound has to
+change the other.
 
 - [ ] **Step 4: Run the whole server suite and see exactly what broke**
 
