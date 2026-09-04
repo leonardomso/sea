@@ -990,12 +990,76 @@ interest radius still spans four chunks a side rather than the whole world."
 **Files:**
 - Modify: `server/spacetimedb/spacetimedb/Domain/ChartCoordinates.cs`
 - Modify: `apps/game-unity/Assets/Domain/SeaChartCoordinates.cs`
+- Modify: `apps/game-unity/Assets/Domain/SeaSubscriptionPlan.cs`
 - Test: `server/spacetimedb/tests/ChartCoordinatesTests.cs`
+- And the eight further files named under point 6 below.
 
 The ruler is a letter-and-number grid the HUD and the `N` navigator use. It was
 78 columns by 61 rows over 200 units, derived from the old bounds, and it read
 its rows and columns the wrong way round. On a 400-square map a 40 x 40 ruler
 gives one label per 10 squares, which is a readable chart square.
+
+**What the ground truth says, checked before this task was written up.** The
+step list above is right about the shape and wrong about the size. Six things
+it does not say, each verified against the tree:
+
+1. `FirstLetterValue` at `ChartCoordinates.cs:23` is **27**, not 1. The label
+   scheme is bijective base-26 with an offset, so column 0 is `"AA"` today and
+   column 77 is `"CZ"` -- which is what the existing test
+   `Chart_axes_run_AA_to_CZ_...` pins. With 27 the new tests get `"AAA1"`, not
+   `"A1"`. Set it to **1**. It is read by both `ColumnLabel` and
+   `TryColumnIndex`; change one and the round trip breaks.
+
+2. **The label format changes, and the parser cannot survive it unchanged.**
+   `LabelAt` returns `$"{ColumnLabel(column)} {row}"` -- a SPACE, and a
+   **0-based** row, so today's labels read `"AA 0"` and `"AX 59"`. The new
+   tests want `"A1"`, `"AN40"`, `"M12"`: no space, 1-based. `TryCellCenter`
+   parses by splitting on whitespace and requires exactly two parts, so given
+   `"M12"` it produces one part and returns `false`. "TryCellCenter inverts
+   that" badly understates the work: the parser has to be rewritten to split
+   letters from digits. The format is user-visible --
+   `SeaHudSnapshotReader.cs:41` puts it on the HUD.
+
+3. **The test above will not compile.** The real signature is
+   `TryCellCenter(string?, out ChartCell cell)`, and `CellCenter` returns a
+   `ChartCell`; there is no three-out-parameter overload. Fix the test to the
+   real signature. Do not widen the API to suit one test -- `SailingRulesTests.cs:26`
+   and `WorldRulesTests.cs:228` call the real one.
+
+4. **The axes are crossed, and 40 x 40 hides it.** Today
+   `CellWidth = (MapMax - MapMin) / RowCount` and
+   `CellHeight = (MapMax - MapMin) / ColumnCount` -- each derived from the
+   other's count. `LabelAt` then takes `column` from `y` and `row` from `x`,
+   with `column = floor((MapMax - y) / CellHeight)`, a Y-flip left over from the
+   north-up centre-origin chart. On a square ruler both divisions equal 10, so
+   **no test can tell the crossed form from the correct one**. Squaring the grid
+   conceals this bug rather than fixing it. Correct it deliberately:
+   `CellWidthSquares` from `ColumnCount`, `CellHeightSquares` from `RowCount`,
+   column from `x`, row from `y`, and the Y-flip deleted, because Y now grows
+   south from a top-left origin. Say so in the commit body, or a later
+   non-square ruler resurrects it silently.
+
+5. **`MaximumRow` changes meaning.** `MaximumRow = RowCount - 1` is public and
+   read by `GameArbitraries.cs:60`, and `TryCellCenter` validates the parsed
+   number against it. Under 1-based labels the valid label range is 1..40 for
+   indices 0..39, so that bound is off by one unless the parse subtracts first.
+
+6. **The file list above is three files; the real blast radius is twelve.** Also
+   modify: `server/spacetimedb/tests/SailingRulesTests.cs` (lines 18-48 hold
+   `Chart_axes_run_AA_to_CZ_...`, one of the known Phase 1 failures -- it is a
+   ruler test living in the wrong file, and this task owns it);
+   `tests/WorldRulesTests.cs` (203-228); `tests/PropertyRulesTests.cs` (11-14);
+   `tests/GameArbitraries.cs` (59-60);
+   `apps/game-unity/Assets/UI/SeaHudController.cs` (32-33, which sizes label
+   arrays from `ColumnCount`/`RowCount`: 78+61 labels become 40+40);
+   `apps/game-unity/Assets/UI/SeaHudCoordinateRuler.cs`;
+   `apps/game-unity/Assets/UI/SeaHudSnapshotReader.cs:41`; and
+   `apps/game-unity/Assets/Tests/EditMode/SeaProjectTests.cs` (57-59).
+
+   The Unity mirror `SeaChartCoordinates.cs` has a **wider** API than "the same
+   four constants and the same two methods": at least `ColumnIndexAt`,
+   `RowIndexAt`, `ColumnLabelAt`, `RowLabelAt`, `ClampToMap` and `MapMinimum`.
+   Mirroring four constants leaves the HUD ruler broken.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1069,8 +1133,26 @@ Expected: FAIL, `Expected 40, Actual 78`.
 `ColumnLabel(clamped floor(x / CellWidthSquares)) + (clamped floor(y / CellHeightSquares) + 1)`.
 `TryCellCenter` inverts that, returning the centre of the cell.
 
-Mirror the same four constants and the same two methods in
-`apps/game-unity/Assets/Domain/SeaChartCoordinates.cs`.
+Note what that sentence quietly repairs: `column` now comes from `x` and `row`
+from `y`, each cell dimension is divided by its **own** count, and the Y-flip
+(`MapMax - y`) is gone because Y grows south from a top-left origin. A square
+ruler cannot test any of it -- say so in the commit body.
+
+Mirror the constants and methods in
+`apps/game-unity/Assets/Domain/SeaChartCoordinates.cs`, whose surface is wider
+than the server's: `ColumnIndexAt`, `RowIndexAt`, `ColumnLabelAt`,
+`RowLabelAt`, `ClampToMap` and `MapMinimum`/`MapMaximum` all move too.
+
+Then change `SeaSubscriptionPlan.ChunkSize` from `25f` to `50f`. It hand-mirrors
+the server constant Task 1.4 doubled, and `SeaConnectionSubscriptions` branches
+on `CoversWholeMap`, which is `ceil(span / ChunkSize)^2 <= 144`. The moment
+`SeaChartCoordinates.MapMinimum`/`MapMaximum` become 0 and 400 with `ChunkSize`
+still 25, that is `16^2 = 256 > 144`: the client silently drops the single
+whole-map subscription for the chunk window and brings back the resubscribe
+freeze documented at `SeaSubscriptionPlan.cs:18-24`. At 50 it is `8^2 = 64` and
+the behaviour holds. `Assets/Tests/EditMode/SeaSubscriptionTests.cs:111` catches
+this, but only under `pnpm verify`; neither of Task 1.7's gates runs the Unity
+EditMode suite, so this can pass the phase gate green and break the client.
 
 - [ ] **Step 4: Run both suites**
 
@@ -1231,6 +1313,25 @@ fs.writeFileSync(path, JSON.stringify(data, null, 2) + "\n");
 
 This is a bridge, not the answer. Phase 8 deletes `maps.json` and writes three
 maps by hand. Note in the commit body that it is temporary.
+
+**The rescale trips a publish gate, and this task has to settle it.** Havenmere's
+widest current zone reads `radius 28` in world units; `grow` doubles it to **56**.
+`ContentValidation.Maps.cs` bounds a current radius by
+`SpatialRules.MaximumCurrentRadiusSquares`, which is **28**, and `SeedContent`
+throws on any validation error -- so this is a failed deploy, not a red test. The
+storm radius of 40 would reject it too, so raising the gate to the storm number
+does not rescue it. Two honest ways out, and Task 1.6 has to pick one:
+
+- Raise `MaximumCurrentRadiusSquares` to at least 56 and say in the commit body
+  that no specification backs the number, that it is the widest zone the content
+  authors, and that Phase 8 sets the real one when the maps are drawn by hand.
+- Or clamp the zone in `maps.json` and accept that a current that covered 14% of
+  the old chart covers less of the new one.
+
+Do not delete the gate, and do not skip the rescale for currents only: either
+choice has to be visible in the diff. The remark on the constant in
+`Domain/SpatialRules.cs` already records that the 28 is a pre-migration figure in
+the wrong unit and points here.
 
 - [ ] **Step 5: Regenerate and run**
 
