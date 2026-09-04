@@ -192,7 +192,7 @@ public sealed class ContentCatalogTests
     public void Npc_on_an_unknown_map_is_rejected()
     {
         var errors = ContentCatalog.Validate(Catalog with { Npcs = [Catalog.Npcs[0] with { MapId = 9 }] });
-        Assert.Contains("patrol: map 9 does not exist.", errors, StringComparer.Ordinal);
+        Assert.Contains("skiff: map 9 does not exist.", errors, StringComparer.Ordinal);
     }
 
     [Fact]
@@ -215,15 +215,15 @@ public sealed class ContentCatalogTests
     public void Duplicate_npc_archetype_code_is_rejected()
     {
         var npc = Catalog.Npcs[0];
-        var errors = ContentCatalog.Validate(Catalog with { Npcs = [npc, npc with { Id = "patrol_copy" }] });
-        Assert.Contains("patrol_copy: duplicate npc code 'Patrol'.", errors, StringComparer.Ordinal);
+        var errors = ContentCatalog.Validate(Catalog with { Npcs = [npc, npc with { Id = "skiff_copy" }] });
+        Assert.Contains("skiff_copy: duplicate npc code 'Skiff'.", errors, StringComparer.Ordinal);
     }
 
     [Fact]
     public void Zero_desired_range_is_rejected()
     {
         var errors = ContentCatalog.Validate(Catalog with { Npcs = [Catalog.Npcs[0] with { DesiredRangeSquares = 0f }] });
-        Assert.Contains("patrol: desired range must be positive.", errors, StringComparer.Ordinal);
+        Assert.Contains("skiff: desired range must be positive.", errors, StringComparer.Ordinal);
     }
 
     // Content/Catalog.cs resolves these ids at module load as StarterHull/StarterCannon. Renaming

@@ -36,9 +36,10 @@ public sealed class HotPathCodesTests
     [Fact]
     public void ArchetypesMovementMasksAndCooldownIdsRemainStable()
     {
-        Assert.Equal(ShipArchetypeCode.Patrol, HotPathCodes.ShipArchetype("patrol"));
-        Assert.Equal(ShipArchetypeCode.Raider, HotPathCodes.ShipArchetype("raider"));
-        Assert.Equal(ShipArchetypeCode.Gunship, HotPathCodes.ShipArchetype("gunship"));
+        Assert.Equal(ShipArchetypeCode.Skiff, HotPathCodes.ShipArchetype("skiff"));
+        Assert.Equal(ShipArchetypeCode.ReefCrab, HotPathCodes.ShipArchetype("reef_crab"));
+        Assert.Equal(ShipArchetypeCode.Fancy, HotPathCodes.ShipArchetype("fancy"));
+        Assert.Equal(ShipArchetypeCode.RedMary, HotPathCodes.ShipArchetype("red_mary"));
         Assert.Equal(ShipArchetypeCode.PlayerSloop, HotPathCodes.ShipArchetype("unknown"));
         Assert.Equal(HotPathCodes.SlowedMovementMask,
             HotPathCodes.MovementMask(EffectCode.Slowed));

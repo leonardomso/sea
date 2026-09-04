@@ -49,9 +49,10 @@ namespace Sea.Tests.PlayMode
             Assert.That(lease.IsReady, Is.True);
             Assert.That(loaded, Is.Not.Null);
             Assert.That(loaded.ShipModel(SeaOwnedShipRole.Player), Is.Not.Null);
-            Assert.That(loaded.ShipModel(SeaOwnedShipRole.Patrol), Is.Not.Null);
-            Assert.That(loaded.ShipModel(SeaOwnedShipRole.Raider), Is.Not.Null);
-            Assert.That(loaded.ShipModel(SeaOwnedShipRole.Gunship), Is.Not.Null);
+            Assert.That(loaded.ShipModel(SeaOwnedShipRole.Skiff), Is.Not.Null);
+            Assert.That(loaded.ShipModel(SeaOwnedShipRole.ReefCrab), Is.Not.Null);
+            Assert.That(loaded.ShipModel(SeaOwnedShipRole.Fancy), Is.Not.Null);
+            Assert.That(loaded.ShipModel(SeaOwnedShipRole.RedMary), Is.Not.Null);
             Assert.That(loaded.ShipMaterial, Is.Not.Null);
 
             lease.Release();

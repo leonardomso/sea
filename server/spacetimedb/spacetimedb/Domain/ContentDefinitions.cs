@@ -90,23 +90,29 @@ public sealed record AmmunitionContent
     public required float RangeMultiplier { get; init; }
 }
 
+/// <summary>
+/// Who an enemy is, not how hard it hits: the tier decides the numbers and
+/// <see cref="NpcDerivation"/> applies them, so nothing here can drift out of step with the
+/// player's own hull.
+/// </summary>
 public sealed record NpcContent
 {
     public required string Id { get; init; }
     public required ShipArchetypeCode Code { get; init; }
     public required string Name { get; init; }
+    /// <summary>A ship or a monster. It reads on the target frame and it sorts the loot.</summary>
+    public required string Kind { get; init; }
     public required byte Tier { get; init; }
     public required byte MapId { get; init; }
     public required string Family { get; init; }
     public required string Behavior { get; init; }
-    public required float AggroRangeSquares { get; init; }
     public required float DesiredRangeSquares { get; init; }
-    public required float MaximumSpeedSquares { get; init; }
-    public required uint Hull { get; init; }
-    public required uint CannonDamage { get; init; }
     public required AmmunitionCode PreferredAmmunition { get; init; }
-    public required uint GoldReward { get; init; }
     public required ulong ExperienceReward { get; init; }
+    /// <summary>The Sea Dogs break off when a fight has gone badly enough; the beasts do not.</summary>
+    public required bool FleesWhenCrippled { get; init; }
+    /// <summary>A named captain does not fight a losing action alone.</summary>
+    public required bool CallsForHelp { get; init; }
 }
 
 public sealed record StatCapsContent

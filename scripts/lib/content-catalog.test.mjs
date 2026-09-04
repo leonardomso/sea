@@ -95,14 +95,12 @@ const FIXTURE = {
       mapId: 1,
       family: "pirate",
       behavior: "aggressive",
-      aggroRangeSquares: 1,
+      kind: "ship",
       desiredRangeSquares: 1,
-      maximumSpeedSquares: 1,
-      hull: 100,
-      cannonDamage: 1,
       preferredAmmunition: "Round",
-      goldReward: 7,
       experienceReward: 7,
+      fleesWhenCrippled: false,
+      callsForHelp: false,
     },
   ],
   statCaps: {
@@ -167,7 +165,8 @@ test("the emitter renders each scalar kind's C# literal form", () => {
   const source = emitCatalog(FIXTURE);
   assert.match(source, /MapId = \(byte\)1,/);
   assert.match(source, /PortX = 1\.5f,/);
-  assert.match(source, /GoldReward = 7u,/);
+  assert.match(source, /HitPoints = 100u,/);
+  assert.match(source, /FleesWhenCrippled = false,/);
   assert.match(source, /ExperienceReward = 7UL,/);
   assert.match(source, /Code = AmmunitionCode\.Round,/);
   assert.match(source, /Name = "A\\"B",/);

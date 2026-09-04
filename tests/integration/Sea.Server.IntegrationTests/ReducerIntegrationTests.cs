@@ -121,7 +121,7 @@ public sealed class ReducerIntegrationTests
     }
 
     [Fact]
-    public void TwelveNpcShipsSeedAndBeginDeterministicRoaming()
+    public void TheHostileRosterSeedsAndBeginsDeterministicRoaming()
     {
         using var client = IntegrationClient.Connect();
 
@@ -131,10 +131,13 @@ public sealed class ReducerIntegrationTests
         client.SubscribeNpcWorld();
         var initial = client.NpcPositions();
 
-        Assert.Equal(12, initial.Count);
-        Assert.Equal(4, client.NpcCount(1));
-        Assert.Equal(4, client.NpcCount(2));
+        // Twelve patrol slots, every fifth of them a veteran, plus the named captain and the
+        // two escorts moored beside her: five skiffs, five reef crabs, four fancies, one Red Mary.
+        Assert.Equal(15, initial.Count);
+        Assert.Equal(5, client.NpcCount(1));
+        Assert.Equal(5, client.NpcCount(2));
         Assert.Equal(4, client.NpcCount(3));
+        Assert.Equal(1, client.NpcCount(4));
 
         PumpAllUntil([client], () =>
         {
@@ -145,7 +148,7 @@ public sealed class ReducerIntegrationTests
                  MathF.Abs(pair.Value.Y - position.Y) > 0.01f));
         });
 
-        Assert.Equal(12, client.NpcAiCount());
+        Assert.Equal(15, client.NpcAiCount());
         Assert.Null(client.UnhandledReducerError);
     }
 

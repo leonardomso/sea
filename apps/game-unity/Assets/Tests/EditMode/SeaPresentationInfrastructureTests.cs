@@ -43,13 +43,13 @@ namespace Sea.Tests
                 maximumCapacity: 2);
 
             Assert.That(pool.TryAcquire("player", out var player), Is.True);
-            Assert.That(pool.TryAcquire("raider", out var raider), Is.True);
-            Assert.That(pool.TryAcquire("gunship", out _), Is.False);
+            Assert.That(pool.TryAcquire("skiff", out var skiff), Is.True);
+            Assert.That(pool.TryAcquire("fancy", out _), Is.False);
 
             pool.Release(player);
             Assert.That(pool.TryAcquire("player", out var reused), Is.True);
             Assert.That(reused, Is.SameAs(player));
-            Assert.That(raider, Is.Not.SameAs(reused));
+            Assert.That(skiff, Is.Not.SameAs(reused));
             Assert.That(pool.CreatedCount, Is.EqualTo(2));
         }
 

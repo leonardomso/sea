@@ -19,6 +19,13 @@ public sealed class CombatIntegrationTests
     /// <summary>A hull that has just put to sea keeps its shield until the tenth second.</summary>
     private const byte SpawnShieldedRejection = 23;
     private const byte DestinationBlockedRejection = 6;
+
+    /// <summary>
+    /// The map's reef beasts. They are the one hostile that never breaks off: a Sea Dog
+    /// shot down to a quarter of its hull runs, and a target that runs mid-test is a
+    /// target that sails out of range between two volleys.
+    /// </summary>
+    private const byte ReefCrabArchetype = 2;
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(60);
 
     [Fact]
@@ -116,7 +123,7 @@ public sealed class CombatIntegrationTests
             // Nothing is fired from inside Port Lowell and nothing inside it can be fired at,
             // so the fight is picked with a hostile in open water and the run-in starts by
             // leaving the harbour.
-            targetId = client.ClosestNpcClearOfPort(3).EntityId;
+            targetId = client.ClosestNpcClearOfPort(ReefCrabArchetype).EntityId;
             Assert.True(client.SelectTarget(targetId).Accepted);
             var hostile = client.NpcPosition(targetId);
             client.PutToSea(hostile.X, hostile.Y);

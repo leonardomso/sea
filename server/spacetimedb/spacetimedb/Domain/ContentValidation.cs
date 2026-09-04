@@ -218,23 +218,28 @@ public static partial class ContentCatalog
                 errors.Add($"{npc.Id}: map {npc.MapId} does not exist.");
             }
 
-            Positive(npc.Id, "tier", npc.Tier, errors);
-            Positive(npc.Id, "maximum speed", npc.MaximumSpeedSquares, errors);
+            // The tier is the whole stat sheet, so a tier the table does not cover is not a
+            // weak enemy: it is an enemy that cannot be spawned at all.
+            if (npc.Tier < 1 || npc.Tier > NpcDerivation.HighestTier)
+            {
+                errors.Add(
+                    $"{npc.Id}: tier {npc.Tier} is outside the table's 1 to " +
+                    $"{NpcDerivation.HighestTier}.");
+            }
+
+            if (npc.Kind is not ("ship" or "monster"))
+            {
+                errors.Add($"{npc.Id}: kind '{npc.Kind}' is neither a ship nor a monster.");
+            }
+
+            NotEmpty(npc.Id, "family", npc.Family, errors);
+            NotEmpty(npc.Id, "behavior", npc.Behavior, errors);
             PositiveAtMost(
                 npc.Id,
                 "desired range",
                 SectorRules.UnitsFromSquares(npc.DesiredRangeSquares),
                 WorldRules.VisionRadius,
                 errors);
-            AtMost(
-                npc.Id,
-                "aggro range",
-                SectorRules.UnitsFromSquares(npc.AggroRangeSquares),
-                WorldRules.VisionRadius,
-                errors);
-            Positive(npc.Id, "hull", npc.Hull, errors);
-            Positive(npc.Id, "cannon damage", npc.CannonDamage, errors);
-            Positive(npc.Id, "gold reward", npc.GoldReward, errors);
             Positive(npc.Id, "experience reward", npc.ExperienceReward, errors);
         }
     }

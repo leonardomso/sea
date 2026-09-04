@@ -14,7 +14,6 @@ public enum NpcActionKind : byte
 
 public readonly record struct NpcSnapshot
 {
-    public ShipArchetypeCode Archetype { get; init; }
     public bool Active { get; init; }
     public ShipMode Mode { get; init; }
     public float X { get; init; }
@@ -33,6 +32,14 @@ public readonly record struct NpcSnapshot
     public float DistanceToTarget { get; init; }
     public ulong CandidateTargetId { get; init; }
     public float DesiredRange { get; init; }
+    /// <summary>Whether this hull breaks off a fight it is losing instead of dying in it.</summary>
+    public bool FleesWhenCrippled { get; init; }
+    /// <summary>
+    /// True only for an escort whose captain has not called yet: it lies at its mooring and does
+    /// nothing at all until she does. Every ship that answers to nobody is under way from the
+    /// moment it is spawned.
+    /// </summary>
+    public bool AwaitingSignal { get; init; }
     public AmmunitionCode PreferredAmmunition { get; init; }
     public AmmunitionCode SelectedAmmunition { get; init; }
     /// <summary>Whether the magazine and the one-second floor both allow a shot this decision.</summary>
@@ -57,6 +64,19 @@ public static class NpcRules
     public const int MaximumAutomaticAttackersPerPlayer = 1;
     private const float RangeTolerance = 4f;
     private const float RepairHullRatio = 0.3f;
+
+    /// <summary>
+    /// A quarter of the hull left. The Sea Dogs are raiders, not fanatics: past this they put
+    /// their helm over and run, which is what makes finishing one a chase rather than a formality.
+    /// </summary>
+    public const float FleeHullRatio = 0.25f;
+
+    /// <summary>Half the hull left is when a named captain sends up the signal.</summary>
+    public const float CallHelpHullRatio = 0.5f;
+
+    /// <summary>How many hulls answer that signal.</summary>
+    public const int CallHelpCount = 2;
+
     private const float TurnCourseDistance = 8f;
 
     // Every idle ship sails a patrol route: a wide loop across the chart, fixed for the life of
@@ -80,6 +100,12 @@ public static class NpcRules
     // past any aggro range on the map, so the ship gives it up and returns to its route rather
     // than trailing a fleeing player forever.
     public const float DisengageRange = 90f;
+
+    /// <summary>
+    /// How far a fleeing ship steers for. Past <see cref="DisengageRange"/>, so a hull that
+    /// makes it there has broken contact and goes back to its route rather than turning about.
+    /// </summary>
+    public const float FleeRange = DisengageRange + 10f;
 
     // Respawns scatter this far around a ship's home, and hostile homes are seeded this far
     // clear of the harbor so nothing spawns on top of the players' waters.
@@ -107,6 +133,25 @@ public static class NpcRules
     public static bool ShouldAttemptRepair(uint hull, uint maximumHull) =>
         maximumHull > 0 && (float)hull / maximumHull <= RepairHullRatio;
 
+    /// <summary>
+    /// Whether this hull has taken enough to break off. Only the families that run are asked;
+    /// a reef beast has nowhere to run to.
+    /// </summary>
+    public static bool ShouldFlee(bool fleesWhenCrippled, uint hull, uint maximumHull) =>
+        fleesWhenCrippled && maximumHull > 0 && (float)hull / maximumHull <= FleeHullRatio;
+
+    /// <summary>
+    /// Whether the signal goes up this decision. It is asked only of a captain who has one to
+    /// send and has not sent it yet, so the answer is true on exactly one decision per life.
+    /// </summary>
+    public static bool ShouldCallForHelp(
+        bool callsForHelp,
+        bool alreadyCalled,
+        uint hull,
+        uint maximumHull) =>
+        callsForHelp && !alreadyCalled && maximumHull > 0 &&
+        (float)hull / maximumHull <= CallHelpHullRatio;
+
     public static NpcDecision Decide(NpcSnapshot snapshot)
     {
         var loadout = new NpcLoadout(snapshot.PreferredAmmunition);
@@ -115,15 +160,9 @@ public static class NpcRules
             return new NpcDecision(NpcActionKind.Hold);
         }
 
-        if (snapshot.Mode != ShipMode.Operational)
+        if (snapshot.Mode != ShipMode.Operational || snapshot.AwaitingSignal)
         {
             return new NpcDecision(NpcActionKind.Hold);
-        }
-
-        if (snapshot.HasRepairKit &&
-            ShouldAttemptRepair(snapshot.Hull, snapshot.MaximumHull))
-        {
-            return new NpcDecision(NpcActionKind.StartRepair);
         }
 
         if (snapshot.TargetEntityId != 0 &&
@@ -131,6 +170,21 @@ public static class NpcRules
             snapshot.DistanceToTarget > DisengageRange)
         {
             return new NpcDecision(NpcActionKind.ClearTarget);
+        }
+
+        // Running comes before mending: a crippled raider that stopped to patch itself under the
+        // guns that crippled it would only be shot again. It opens the range first, breaks
+        // contact at DisengageRange, and repairs once it is clear.
+        if (snapshot.TargetAvailable &&
+            ShouldFlee(snapshot.FleesWhenCrippled, snapshot.Hull, snapshot.MaximumHull))
+        {
+            return HoldRange(snapshot, snapshot.DistanceToTarget - FleeRange, loadout);
+        }
+
+        if (snapshot.HasRepairKit &&
+            ShouldAttemptRepair(snapshot.Hull, snapshot.MaximumHull))
+        {
+            return new NpcDecision(NpcActionKind.StartRepair);
         }
 
         return snapshot.TargetEntityId == 0
@@ -157,8 +211,7 @@ public static class NpcRules
         NpcSnapshot snapshot,
         NpcLoadout loadout)
     {
-        if (snapshot.Archetype != ShipArchetypeCode.Patrol &&
-            snapshot.CandidateTargetId != 0)
+        if (snapshot.CandidateTargetId != 0)
         {
             return new NpcDecision(
                 NpcActionKind.SelectTarget,

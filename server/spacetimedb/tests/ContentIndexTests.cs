@@ -85,12 +85,12 @@ public sealed class ContentIndexTests
     public void Two_npcs_sharing_an_archetype_code_are_rejected()
     {
         var first = Catalog.Npcs[0];
-        var collided = Catalog with { Npcs = [first, first with { Id = "patrol_copy" }] };
+        var collided = Catalog with { Npcs = [first, first with { Id = "skiff_copy" }] };
 
         var error = Assert.Throws<InvalidOperationException>(
             () => ContentIndex.NpcByArchetypeCode(collided));
         Assert.Equal(
-            $"Npc code '{first.Code}' is claimed by both '{first.Id}' and 'patrol_copy'.",
+            $"Npc code '{first.Code}' is claimed by both '{first.Id}' and 'skiff_copy'.",
             error.Message,
             StringComparer.Ordinal);
     }

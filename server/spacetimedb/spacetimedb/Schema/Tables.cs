@@ -161,6 +161,16 @@ public static partial class Module
         public ulong HomeSeed;
         public float HomeX;
         public float HomeY;
+
+        /// <summary>
+        /// The captain this hull sails under, or zero for a ship that answers to nobody. An
+        /// escort lies at its mooring until its captain calls, and then takes her fight as its
+        /// own -- which is how two more hulls join a named fight without any being conjured.
+        /// </summary>
+        public ulong LeaderEntityId;
+
+        /// <summary>Latched for the life of the ship, so the call goes out exactly once.</summary>
+        public bool HasCalledHelp;
     }
 
     [SpacetimeDB.Table(Accessor = "Inventory", Public = true)]

@@ -52,6 +52,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<NpcDef, string> NpcId { get; }
         public global::SpacetimeDB.Col<NpcDef, byte> ArchetypeCode { get; }
         public global::SpacetimeDB.Col<NpcDef, string> Name { get; }
+        public global::SpacetimeDB.Col<NpcDef, string> Kind { get; }
         public global::SpacetimeDB.Col<NpcDef, byte> Tier { get; }
         public global::SpacetimeDB.Col<NpcDef, byte> MapId { get; }
         public global::SpacetimeDB.Col<NpcDef, string> Family { get; }
@@ -61,6 +62,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<NpcDef, float> MaximumSpeedSquares { get; }
         public global::SpacetimeDB.Col<NpcDef, uint> Hull { get; }
         public global::SpacetimeDB.Col<NpcDef, uint> CannonDamage { get; }
+        public global::SpacetimeDB.Col<NpcDef, float> Armor { get; }
         public global::SpacetimeDB.Col<NpcDef, byte> PreferredAmmoCode { get; }
         public global::SpacetimeDB.Col<NpcDef, uint> GoldReward { get; }
         public global::SpacetimeDB.Col<NpcDef, ulong> ExperienceReward { get; }
@@ -70,6 +72,7 @@ namespace SpacetimeDB.Types
             NpcId = new global::SpacetimeDB.Col<NpcDef, string>(tableName, "npc_id");
             ArchetypeCode = new global::SpacetimeDB.Col<NpcDef, byte>(tableName, "archetype_code");
             Name = new global::SpacetimeDB.Col<NpcDef, string>(tableName, "name");
+            Kind = new global::SpacetimeDB.Col<NpcDef, string>(tableName, "kind");
             Tier = new global::SpacetimeDB.Col<NpcDef, byte>(tableName, "tier");
             MapId = new global::SpacetimeDB.Col<NpcDef, byte>(tableName, "map_id");
             Family = new global::SpacetimeDB.Col<NpcDef, string>(tableName, "family");
@@ -79,6 +82,7 @@ namespace SpacetimeDB.Types
             MaximumSpeedSquares = new global::SpacetimeDB.Col<NpcDef, float>(tableName, "maximum_speed_squares");
             Hull = new global::SpacetimeDB.Col<NpcDef, uint>(tableName, "hull");
             CannonDamage = new global::SpacetimeDB.Col<NpcDef, uint>(tableName, "cannon_damage");
+            Armor = new global::SpacetimeDB.Col<NpcDef, float>(tableName, "armor");
             PreferredAmmoCode = new global::SpacetimeDB.Col<NpcDef, byte>(tableName, "preferred_ammo_code");
             GoldReward = new global::SpacetimeDB.Col<NpcDef, uint>(tableName, "gold_reward");
             ExperienceReward = new global::SpacetimeDB.Col<NpcDef, ulong>(tableName, "experience_reward");

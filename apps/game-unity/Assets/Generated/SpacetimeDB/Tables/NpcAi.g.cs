@@ -56,6 +56,8 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<NpcAi, ulong> HomeSeed { get; }
         public global::SpacetimeDB.Col<NpcAi, float> HomeX { get; }
         public global::SpacetimeDB.Col<NpcAi, float> HomeY { get; }
+        public global::SpacetimeDB.Col<NpcAi, ulong> LeaderEntityId { get; }
+        public global::SpacetimeDB.Col<NpcAi, bool> HasCalledHelp { get; }
 
         public NpcAiCols(string tableName)
         {
@@ -66,6 +68,8 @@ namespace SpacetimeDB.Types
             HomeSeed = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "home_seed");
             HomeX = new global::SpacetimeDB.Col<NpcAi, float>(tableName, "home_x");
             HomeY = new global::SpacetimeDB.Col<NpcAi, float>(tableName, "home_y");
+            LeaderEntityId = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "leader_entity_id");
+            HasCalledHelp = new global::SpacetimeDB.Col<NpcAi, bool>(tableName, "has_called_help");
         }
     }
 

@@ -68,20 +68,20 @@ namespace Sea.Tests
         [Test]
         public void Npc_archetypes_have_distinct_owned_material_variants()
         {
-            var patrol = SeaShipVariantPolicy.Tint(factionCode: 2, archetypeCode: 1);
-            var raider = SeaShipVariantPolicy.Tint(factionCode: 2, archetypeCode: 2);
-            var gunship = SeaShipVariantPolicy.Tint(factionCode: 2, archetypeCode: 3);
+            var skiff = SeaShipVariantPolicy.Tint(factionCode: 2, archetypeCode: 1);
+            var crab = SeaShipVariantPolicy.Tint(factionCode: 2, archetypeCode: 2);
+            var fancy = SeaShipVariantPolicy.Tint(factionCode: 2, archetypeCode: 3);
+            var mary = SeaShipVariantPolicy.Tint(factionCode: 2, archetypeCode: 4);
 
-            Assert.That(patrol, Is.Not.EqualTo(raider));
-            Assert.That(raider, Is.Not.EqualTo(gunship));
-            Assert.That(gunship, Is.Not.EqualTo(patrol));
+            Assert.That(new[] { skiff, crab, fancy, mary }, Is.Unique);
             Assert.That(SeaShipVariantPolicy.Tint(1, 0), Is.EqualTo(Color.white));
         }
 
         [TestCase(1, 0, SeaOwnedShipRole.Player)]
-        [TestCase(2, 1, SeaOwnedShipRole.Patrol)]
-        [TestCase(2, 2, SeaOwnedShipRole.Raider)]
-        [TestCase(2, 3, SeaOwnedShipRole.Gunship)]
+        [TestCase(2, 1, SeaOwnedShipRole.Skiff)]
+        [TestCase(2, 2, SeaOwnedShipRole.ReefCrab)]
+        [TestCase(2, 3, SeaOwnedShipRole.Fancy)]
+        [TestCase(2, 4, SeaOwnedShipRole.RedMary)]
         public void Every_ship_kind_resolves_to_its_replaceable_catalog_slot(
             byte factionCode,
             byte archetypeCode,

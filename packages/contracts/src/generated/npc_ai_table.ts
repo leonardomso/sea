@@ -18,4 +18,6 @@ export default __t.row({
   homeSeed: __t.u64().name("home_seed"),
   homeX: __t.f32().name("home_x"),
   homeY: __t.f32().name("home_y"),
+  leaderEntityId: __t.u64().name("leader_entity_id"),
+  hasCalledHelp: __t.bool().name("has_called_help"),
 });

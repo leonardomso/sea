@@ -17,9 +17,9 @@ public sealed class PortIntegrationTests
     private const byte HomePortRespawn = 1;
     private const byte OperationalMode = 0;
     private const byte CastingOffMode = 3;
-    private const byte GunshipArchetype = 3;
+    private const byte SkiffArchetype = 1;
 
-    /// <summary>Inside the four squares a gunship watches, outside the range it shoots from.</summary>
+    /// <summary>Inside the four squares a skiff watches, inside the range it shoots from.</summary>
     private const float AggroApproachUnits = 20f;
 
     /// <summary>Open water north of Port Lowell: no island, reef or shoal is within thirty units.</summary>
@@ -27,7 +27,7 @@ public sealed class PortIntegrationTests
     private const float OpenWaterY = 40f;
 
     /// <summary>
-    /// Long enough for a gunship to work through a third of a sloop's hull, which is several
+    /// Long enough for a skiff to work through a third of a sloop's hull, which is several
     /// magazines and the reloads between them rather than a handful of shots.
     /// </summary>
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(90);
@@ -184,7 +184,7 @@ public sealed class PortIntegrationTests
     }
 
     /// <summary>
-    /// A hull that has been shot at and has come home. The gunship is left to open the fight --
+    /// A hull that has been shot at and has come home. The skiff is left to open the fight --
     /// it engages on sight and holds its distance -- so the damage arrives without the test
     /// having to fire back and sink the ship it is relying on. The port is where the repairs are
     /// then measured, because inside the circle nothing can hit the hull mid-assertion.
@@ -210,7 +210,7 @@ public sealed class PortIntegrationTests
     }
 
     /// <summary>
-    /// Sails to within sight of the nearest gunship and then lets it come. A gunship shoots from
+    /// Sails to within sight of the nearest skiff and then lets it come. A skiff shoots from
     /// a range it picks itself, so a course laid onto it would push it out of its own gunsight
     /// for as long as the chase lasted; the course stops short instead, and is only re-plotted
     /// once the ship has arrived and the guns have still not opened.
@@ -218,8 +218,11 @@ public sealed class PortIntegrationTests
     private static void SailIntoGunfire(IntegrationClient client)
     {
         // Port Lowell stops every shot that would otherwise land, so the fight is picked with a
-        // gunship in open water and the hull is out of the harbour before it waits to be hit.
-        var hostile = client.ClosestNpcClearOfPort(GunshipArchetype);
+        // skiff in open water and the hull is out of the harbour before it waits to be hit.
+        //
+        // A skiff is the one hostile that is always under way: it is a common, so the map keeps
+        // a dozen of them on patrol, and none of them is a named captain's escort lying at anchor.
+        var hostile = client.ClosestNpcClearOfPort(SkiffArchetype);
         var targetId = hostile.EntityId;
         client.PutToSea(hostile.PositionX, hostile.PositionY);
         var stopwatch = Stopwatch.StartNew();
@@ -239,7 +242,7 @@ public sealed class PortIntegrationTests
     }
 
     /// <summary>
-    /// A berth inside the gunship's aggro range but short of the ship itself, so the approach
+    /// A berth inside the skiff's aggro range but short of the ship itself, so the approach
     /// ends with the hostile picking the fight up rather than backing away from it.
     /// </summary>
     private static (float X, float Y) ApproachTo(Ship own, (float X, float Y) hostile)

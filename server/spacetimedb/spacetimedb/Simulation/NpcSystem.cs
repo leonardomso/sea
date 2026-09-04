@@ -44,12 +44,27 @@ public static partial class Module
         HydrateTrackedKinematics(ctx, ref ship);
         var definition = Catalog.NpcByArchetypeCode[ship.ArchetypeCode] ??
             throw new InvalidOperationException("NPC content definition is missing.");
+        var stats = Catalog.NpcStatsByArchetypeCode[ship.ArchetypeCode];
         var target = FindHydratedShip(ctx, ship.TargetEntityId);
         var targetAvailable = target is Ship selected && world.IsAttackablePlayer(ctx, selected);
-        var aggroRange = SectorRules.UnitsFromSquares(definition.AggroRangeSquares);
-        var candidate = NpcRules.ShouldSearchForTarget(targetAvailable, aggroRange)
-            ? FindNearestPlayer(ctx, world, ship, aggroRange)
-            : default(Ship?);
+
+        // A captain sends her signal up before she acts on it, so the escorts are already under
+        // way on the decision that follows this one.
+        if (NpcRules.ShouldCallForHelp(
+                definition.CallsForHelp,
+                ai.HasCalledHelp,
+                ship.Hull,
+                ship.MaxHull))
+        {
+            ai.HasCalledHelp = true;
+        }
+
+        var orders = EscortOrders(ctx, ai);
+        var aggroRange = SectorRules.UnitsFromSquares(stats.AggroRangeSquares);
+        var candidate = orders.Target ??
+            (NpcRules.ShouldSearchForTarget(targetAvailable, aggroRange)
+                ? FindNearestPlayer(ctx, world, ship, aggroRange)
+                : default(Ship?));
         ExecuteNpcDecision(ctx, world, ship, NpcRules.Decide(BuildNpcSnapshot(
             ctx,
             ai,
@@ -58,9 +73,34 @@ public static partial class Module
             target,
             candidate,
             targetAvailable,
+            orders.AwaitingSignal,
             tick,
             world.Blockers(ctx))));
         ctx.Db.NpcAi.ShipEntityId.Update(ai);
+    }
+
+    /// <summary>
+    /// What an escort is doing about its captain. Until she calls it is moored and has no orders
+    /// at all; once she has, it is handed her target outright rather than left to find one, because
+    /// the automatic aggro cap is there to stop a player being swarmed by hostiles that picked the
+    /// fight themselves, and this fight was picked for them.
+    /// </summary>
+    private static (bool AwaitingSignal, Ship? Target) EscortOrders(ReducerContext ctx, NpcAi ai)
+    {
+        if (ai.LeaderEntityId == 0)
+        {
+            return (false, null);
+        }
+
+        if (ctx.Db.NpcAi.ShipEntityId.Find(ai.LeaderEntityId) is not NpcAi leader ||
+            !leader.HasCalledHelp)
+        {
+            return (true, null);
+        }
+
+        return ctx.Db.Ship.EntityId.Find(ai.LeaderEntityId) is Ship captain
+            ? (false, FindHydratedShip(ctx, captain.TargetEntityId))
+            : (false, null);
     }
 
     private static Ship? FindHydratedShip(ReducerContext ctx, ulong entityId)
@@ -82,10 +122,10 @@ public static partial class Module
         Ship? target,
         Ship? candidate,
         bool targetAvailable,
+        bool awaitingSignal,
         ulong tick,
         IReadOnlyCollection<NavigationBlocker> blockers) => new()
         {
-            Archetype = (ShipArchetypeCode)ship.ArchetypeCode,
             Active = ship.IsActive && ship.IsAlive,
             Mode = ResolveMode(ship),
             X = ship.PositionX,
@@ -111,6 +151,8 @@ public static partial class Module
             : float.PositiveInfinity,
             CandidateTargetId = candidate?.EntityId ?? 0,
             DesiredRange = SectorRules.UnitsFromSquares(definition.DesiredRangeSquares),
+            FleesWhenCrippled = definition.FleesWhenCrippled,
+            AwaitingSignal = awaitingSignal,
             PreferredAmmunition = definition.PreferredAmmunition,
             SelectedAmmunition = (AmmunitionCode)ship.SelectedAmmoCode,
             CanFire = ship.ReadyVolleys > 0 &&

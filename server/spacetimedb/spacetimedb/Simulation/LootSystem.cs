@@ -101,7 +101,7 @@ public static partial class Module
             ChunkX = npc.ChunkX,
             ChunkY = npc.ChunkY,
             LootType = "salvage",
-            Quantity = Math.Max(4u, definition.GoldReward / 10),
+            Quantity = Math.Max(4u, Catalog.NpcStatsByArchetypeCode[npc.ArchetypeCode].GoldReward / 10),
             IsActive = true,
             ExpiresAtTick = tick + LootRules.LifetimeTicks,
             ClaimedByEntityId = 0,

@@ -34,7 +34,7 @@ public static partial class Module
 
         foreach (var npc in content.Npcs)
         {
-            ctx.Db.NpcDef.Insert(NpcDef.From(npc));
+            ctx.Db.NpcDef.Insert(NpcDef.From(npc, Catalog.NpcStatsByArchetypeCode[(byte)npc.Code]));
         }
 
         ctx.Db.StatCaps.Insert(StatCaps.From(content.StatCaps));

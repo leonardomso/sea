@@ -295,6 +295,8 @@ export const NpcAi = __t.object("NpcAi", {
   homeSeed: __t.u64(),
   homeX: __t.f32(),
   homeY: __t.f32(),
+  leaderEntityId: __t.u64(),
+  hasCalledHelp: __t.bool(),
 });
 export type NpcAi = __Infer<typeof NpcAi>;
 
@@ -302,6 +304,7 @@ export const NpcDef = __t.object("NpcDef", {
   npcId: __t.string(),
   archetypeCode: __t.u8(),
   name: __t.string(),
+  kind: __t.string(),
   tier: __t.u8(),
   mapId: __t.u8(),
   family: __t.string(),
@@ -311,6 +314,7 @@ export const NpcDef = __t.object("NpcDef", {
   maximumSpeedSquares: __t.f32(),
   hull: __t.u32(),
   cannonDamage: __t.u32(),
+  armor: __t.f32(),
   preferredAmmoCode: __t.u8(),
   goldReward: __t.u32(),
   experienceReward: __t.u64(),

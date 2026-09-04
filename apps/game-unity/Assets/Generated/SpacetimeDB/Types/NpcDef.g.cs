@@ -19,6 +19,8 @@ namespace SpacetimeDB.Types
         public byte ArchetypeCode;
         [DataMember(Name = "name")]
         public string Name;
+        [DataMember(Name = "kind")]
+        public string Kind;
         [DataMember(Name = "tier")]
         public byte Tier;
         [DataMember(Name = "map_id")]
@@ -37,6 +39,8 @@ namespace SpacetimeDB.Types
         public uint Hull;
         [DataMember(Name = "cannon_damage")]
         public uint CannonDamage;
+        [DataMember(Name = "armor")]
+        public float Armor;
         [DataMember(Name = "preferred_ammo_code")]
         public byte PreferredAmmoCode;
         [DataMember(Name = "gold_reward")]
@@ -48,6 +52,7 @@ namespace SpacetimeDB.Types
             string NpcId,
             byte ArchetypeCode,
             string Name,
+            string Kind,
             byte Tier,
             byte MapId,
             string Family,
@@ -57,6 +62,7 @@ namespace SpacetimeDB.Types
             float MaximumSpeedSquares,
             uint Hull,
             uint CannonDamage,
+            float Armor,
             byte PreferredAmmoCode,
             uint GoldReward,
             ulong ExperienceReward
@@ -65,6 +71,7 @@ namespace SpacetimeDB.Types
             this.NpcId = NpcId;
             this.ArchetypeCode = ArchetypeCode;
             this.Name = Name;
+            this.Kind = Kind;
             this.Tier = Tier;
             this.MapId = MapId;
             this.Family = Family;
@@ -74,6 +81,7 @@ namespace SpacetimeDB.Types
             this.MaximumSpeedSquares = MaximumSpeedSquares;
             this.Hull = Hull;
             this.CannonDamage = CannonDamage;
+            this.Armor = Armor;
             this.PreferredAmmoCode = PreferredAmmoCode;
             this.GoldReward = GoldReward;
             this.ExperienceReward = ExperienceReward;
@@ -83,6 +91,7 @@ namespace SpacetimeDB.Types
         {
             this.NpcId = "";
             this.Name = "";
+            this.Kind = "";
             this.Family = "";
             this.Behavior = "";
         }

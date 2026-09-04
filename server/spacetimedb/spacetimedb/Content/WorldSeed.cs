@@ -3,6 +3,18 @@ using SpacetimeDB;
 
 public static partial class Module
 {
+    /// <summary>How many hostiles keep the map's water busy at once.</summary>
+    private const int CommonSpawnSlots = 12;
+
+    /// <summary>Section 5.3's cadence: one sail in five is a veteran rather than a common.</summary>
+    private const int VeteranEverySlots = 5;
+
+    private const byte CommonTier = 1;
+    private const byte VeteranTier = 2;
+
+    /// <summary>The first entity id the world's own hulls take; players are allocated above them.</summary>
+    private const ulong FirstNpcEntityId = 10;
+
     private static void SeedWorld(ReducerContext ctx)
     {
         var content = Catalog.Content;
@@ -23,22 +35,95 @@ public static partial class Module
         }
 
         // The blocking world objects are all inserted above, so one scan covers every spawn below.
-        var blockers = SpawnBlockers(ctx);
-        var hostileBlockers = HostileHomeBlockers(ctx, blockers);
-        var entityId = 10ul;
-        foreach (var definition in content.Npcs)
+        SeedNpcs(ctx, HostileHomeBlockers(ctx, SpawnBlockers(ctx)));
+    }
+
+    /// <summary>
+    /// The map's roster: commons everywhere, a veteran every fifth sail, and the named captain
+    /// once, with the escorts she calls moored beside her.
+    /// </summary>
+    private static void SeedNpcs(ReducerContext ctx, List<SpawnBlocker> blockers)
+    {
+        var npcs = Catalog.Content.Npcs;
+        var commons = OfTier(npcs, CommonTier);
+        var veterans = OfTier(npcs, VeteranTier);
+        var entityId = FirstNpcEntityId;
+        for (var slot = 0; slot < CommonSpawnSlots; slot++)
         {
-            for (var index = 0; index < 4; index++)
+            // A captain who works one patch of water should meet both of the map's commons and,
+            // often enough to be worth watching for, something heavier.
+            var definition = veterans.Count > 0 && slot % VeteranEverySlots == VeteranEverySlots - 1
+                ? veterans[0]
+                : commons[slot % commons.Count];
+            SeedNpc(ctx, blockers, entityId, definition, slot, leaderEntityId: 0);
+            entityId++;
+        }
+
+        SeedNamedCaptain(ctx, blockers, entityId, veterans);
+    }
+
+    /// <summary>
+    /// The named ship and the two hulls she calls at half health. They are seeded with her rather
+    /// than conjured mid-fight: the sea carries the same number of ships whatever happens on it,
+    /// and no tick has to insert or delete one.
+    /// </summary>
+    private static void SeedNamedCaptain(
+        ReducerContext ctx,
+        List<SpawnBlocker> blockers,
+        ulong entityId,
+        IReadOnlyList<NpcContent> veterans)
+    {
+        var named = Named(Catalog.Content.Npcs);
+        if (named is null || veterans.Count == 0)
+        {
+            return;
+        }
+
+        var home = SeedNpc(ctx, blockers, entityId, named, CommonSpawnSlots, leaderEntityId: 0);
+        for (var escort = 0; escort < NpcRules.CallHelpCount; escort++)
+        {
+            var escortId = entityId + 1 + (ulong)escort;
+            var berth = SpawnRules.TryFindSafePositionNear(
+                escortId,
+                home.X,
+                home.Y,
+                NpcRules.HomeAnchorRadius,
+                blockers,
+                out var mooring)
+                ? mooring
+                : home;
+            SeedNpcAt(ctx, escortId, veterans[0], berth, CommonSpawnSlots, entityId);
+        }
+    }
+
+    private static List<NpcContent> OfTier(IReadOnlyList<NpcContent> npcs, byte tier)
+    {
+        var matches = new List<NpcContent>();
+        foreach (var npc in npcs)
+        {
+            if (npc.Tier == tier)
             {
-                SeedNpc(
-                    ctx,
-                    definition.AggroRangeSquares > 0f ? hostileBlockers : blockers,
-                    entityId,
-                    definition,
-                    index);
-                entityId++;
+                matches.Add(npc);
             }
         }
+
+        return matches.Count > 0
+            ? matches
+            : throw new InvalidOperationException($"The catalog has no tier {tier} enemy.");
+    }
+
+    /// <summary>The one enemy on the map that does not fight its losing battles alone.</summary>
+    private static NpcContent? Named(IReadOnlyList<NpcContent> npcs)
+    {
+        foreach (var npc in npcs)
+        {
+            if (npc.CallsForHelp)
+            {
+                return npc;
+            }
+        }
+
+        return null;
     }
 
     private static List<SpawnBlocker> HostileHomeBlockers(
@@ -57,37 +142,59 @@ public static partial class Module
         return hostileBlockers;
     }
 
-    private static void SeedNpc(
+    private static SpawnPoint SeedNpc(
         ReducerContext ctx,
         IReadOnlyList<SpawnBlocker> blockers,
         ulong entityId,
         NpcContent definition,
-        int archetypeIndex)
+        int slot,
+        ulong leaderEntityId)
     {
         var spawn = FindSafeSpawn(
             blockers,
-            entityId ^ unchecked((ulong)(archetypeIndex + 1) * 0x9E3779B97F4A7C15UL));
+            entityId ^ unchecked((ulong)(slot + 1) * 0x9E3779B97F4A7C15UL));
+        SeedNpcAt(ctx, entityId, definition, spawn, slot, leaderEntityId);
+        return spawn;
+    }
+
+    /// <summary>
+    /// One hostile, on the water it was given. Its magazine and its guns' reach are the baseline
+    /// sloop's; everything the tier decides -- hull, volley, armour, speed, reach and bounty --
+    /// comes from <see cref="NpcDerivation"/>, so no number here is authored twice.
+    /// </summary>
+    private static void SeedNpcAt(
+        ReducerContext ctx,
+        ulong entityId,
+        NpcContent definition,
+        SpawnPoint spawn,
+        int slot,
+        ulong leaderEntityId)
+    {
+        var stats = Catalog.NpcStatsByArchetypeCode[(byte)definition.Code];
         var ship = CreateShip(entityId, definition.Id, "npc", spawn.X, spawn.Y);
-        // An NPC keeps the baseline sloop's armour, magazine and range; its tier only moves the
-        // three numbers the content author actually tunes.
-        ship.MaximumSpeed = SectorRules.UnitsFromSquares(definition.MaximumSpeedSquares);
-        ship.Hull = definition.Hull;
-        ship.MaxHull = definition.Hull;
-        ship.VolleyDamage = definition.CannonDamage;
+        ship.MaximumSpeed = SectorRules.UnitsFromSquares(stats.MaximumSpeedSquares);
+        ship.Hull = stats.MaximumHull;
+        ship.MaxHull = stats.MaximumHull;
+        ship.VolleyDamage = stats.VolleyDamage;
+        ship.ArmorFront = stats.Armor;
+        ship.ArmorSides = stats.Armor;
+        ship.ArmorBack = stats.Armor;
         ship.SelectedAmmoCode = (byte)definition.PreferredAmmunition;
         ship.EncounterId = entityId;
         ctx.Db.Ship.Insert(ship);
         InsertShipMovement(ctx, ship, CurrentSimulationTick(ctx));
-        OpenNpcEncounter(ctx, ship, definition.GoldReward, definition.ExperienceReward, tick: 0);
+        OpenNpcEncounter(ctx, ship, stats.GoldReward, definition.ExperienceReward, tick: 0);
         ctx.Db.NpcAi.Insert(new NpcAi
         {
             ShipEntityId = entityId,
             IsActive = true,
             DecisionShard = SimulationWorkRules.NpcShard(entityId),
-            NextDecisionTick = (ulong)archetypeIndex,
+            NextDecisionTick = (ulong)slot,
             HomeSeed = entityId * 17,
             HomeX = spawn.X,
             HomeY = spawn.Y,
+            LeaderEntityId = leaderEntityId,
+            HasCalledHelp = false,
         });
         SeedNpcInventory(ctx, entityId);
     }

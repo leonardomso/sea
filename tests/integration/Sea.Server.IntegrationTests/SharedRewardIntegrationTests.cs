@@ -76,8 +76,10 @@ public sealed class SharedRewardIntegrationTests
         var rewards = clients.SelectMany(client => client.EncounterRewards()).ToArray();
         Assert.All(clients, client => Assert.Single(client.EncounterRewards()));
         Assert.Single(rewards.Select(reward => reward.EncounterId).Distinct());
-        Assert.Equal(140u, rewards.Aggregate(0u, (total, reward) => total + reward.Gold));
-        Assert.Equal(175ul, rewards.Aggregate(0ul, (total, reward) => total + reward.Experience));
+        // A fancy is the map's veteran: 75 gold and 60 experience, split whole across the
+        // four contributors and never rounded into or out of existence.
+        Assert.Equal(75u, rewards.Aggregate(0u, (total, reward) => total + reward.Gold));
+        Assert.Equal(60ul, rewards.Aggregate(0ul, (total, reward) => total + reward.Experience));
         Assert.Equal(4, rewards.Select(reward => reward.ContributorEntityId).Distinct().Count());
         Assert.All(clients, client => Assert.Null(client.UnhandledReducerError));
 

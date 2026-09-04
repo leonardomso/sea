@@ -153,6 +153,7 @@ public static partial class Module
         [Unique]
         public byte ArchetypeCode;
         public string Name;
+        public string Kind;
         public byte Tier;
         public byte MapId;
         public string Family;
@@ -162,26 +163,33 @@ public static partial class Module
         public float MaximumSpeedSquares;
         public uint Hull;
         public uint CannonDamage;
+        public float Armor;
         public byte PreferredAmmoCode;
         public uint GoldReward;
         public ulong ExperienceReward;
 
-        public static NpcDef From(NpcContent npc) => new()
+        /// <summary>
+        /// The client's copy of an enemy sheet. The tier numbers are the ones the module spawns
+        /// with, so a captain reading the target frame sees what is actually shooting back.
+        /// </summary>
+        public static NpcDef From(NpcContent npc, NpcStatLine stats) => new()
         {
             NpcId = npc.Id,
             ArchetypeCode = (byte)npc.Code,
             Name = npc.Name,
+            Kind = npc.Kind,
             Tier = npc.Tier,
             MapId = npc.MapId,
             Family = npc.Family,
             Behavior = npc.Behavior,
-            AggroRangeSquares = npc.AggroRangeSquares,
+            AggroRangeSquares = stats.AggroRangeSquares,
             DesiredRangeSquares = npc.DesiredRangeSquares,
-            MaximumSpeedSquares = npc.MaximumSpeedSquares,
-            Hull = npc.Hull,
-            CannonDamage = npc.CannonDamage,
+            MaximumSpeedSquares = stats.MaximumSpeedSquares,
+            Hull = stats.MaximumHull,
+            CannonDamage = stats.VolleyDamage,
+            Armor = stats.Armor,
             PreferredAmmoCode = (byte)npc.PreferredAmmunition,
-            GoldReward = npc.GoldReward,
+            GoldReward = stats.GoldReward,
             ExperienceReward = npc.ExperienceReward,
         };
     }

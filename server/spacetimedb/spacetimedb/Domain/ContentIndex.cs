@@ -24,6 +24,28 @@ public static class ContentIndex
     }
 
     /// <summary>
+    /// The tier table applied to every enemy in the catalog, laid out beside
+    /// <see cref="NpcByArchetypeCode"/> so a decision reads an enemy's numbers by its own code
+    /// rather than deriving them again every time it thinks.
+    /// </summary>
+    public static NpcStatLine[] NpcStatsByArchetypeCode(GameContent content, BaseShipProfile baseShip)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        var slots = new NpcStatLine[CodeSlots];
+        for (var index = 0; index < content.Npcs.Count; index++)
+        {
+            var npc = content.Npcs[index];
+            slots[(byte)npc.Code] = NpcDerivation.Derive(
+                npc.Tier,
+                npc.MapId,
+                baseShip,
+                content.StatCaps);
+        }
+
+        return slots;
+    }
+
+    /// <summary>
     /// Builds a <see cref="Dictionary{TKey,TValue}"/> keyed by id. Like <see cref="ByCode{T,TCode}"/>
     /// below, the delegate only runs while the module loads, never on a reducer or tick path.
     /// </summary>

@@ -9,9 +9,11 @@ public static partial class Module
         ulong tick)
     {
         var player = ship.FactionCode == (byte)FactionCode.Player;
+        // How long the sea stays empty is the enemy's own, not one number for all of them: a
+        // common is back inside half a minute, a named captain is an appointment.
         ship.RespawnAtTick = tick + (player
             ? RespawnRules.PlayerDelayTicks
-            : RespawnRules.NpcDelayTicks);
+            : Catalog.NpcStatsByArchetypeCode[ship.ArchetypeCode].RespawnDelayTicks);
         // An NPC is handed its home berth the moment it sinks. A player has to ask for one, and
         // only the wrecks that have asked are pending, so a player who never answers -- who closed
         // the tab on the seabed -- is not sailed back out on their behalf.
@@ -143,8 +145,15 @@ public static partial class Module
         var definition = Catalog.NpcByArchetypeCode[ship.ArchetypeCode] ??
             throw new InvalidOperationException("Respawning NPC definition is missing.");
 
-        OpenNpcEncounter(ctx, ship, definition.GoldReward, definition.ExperienceReward, tick);
+        OpenNpcEncounter(
+            ctx,
+            ship,
+            Catalog.NpcStatsByArchetypeCode[ship.ArchetypeCode].GoldReward,
+            definition.ExperienceReward,
+            tick);
         ai.IsActive = true;
+        // A fresh hull has a fresh signal to send, and its escorts go back to their mooring.
+        ai.HasCalledHelp = false;
         ai.NextDecisionTick = tick + NpcRules.DecisionIntervalTicks;
         ctx.Db.NpcAi.ShipEntityId.Update(ai);
     }

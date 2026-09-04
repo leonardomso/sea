@@ -6,9 +6,10 @@ namespace Sea.Client
     public static class SeaOwnedAssetSlots
     {
         public const string PlayerShip = "ship.player";
-        public const string PatrolShip = "ship.patrol";
-        public const string RaiderShip = "ship.raider";
-        public const string GunshipShip = "ship.gunship";
+        public const string SkiffShip = "ship.skiff";
+        public const string ReefCrabShip = "ship.reef_crab";
+        public const string FancyShip = "ship.fancy";
+        public const string RedMaryShip = "ship.red_mary";
         public const string ShipMaterial = "ship.material";
         public const string Island = "world.island";
         public const string Reef = "world.reef";
@@ -51,9 +52,10 @@ namespace Sea.Client
         private static readonly SeaOwnedAssetDefinition[] Slots =
         {
             Required(SeaOwnedAssetSlots.PlayerShip),
-            Required(SeaOwnedAssetSlots.PatrolShip),
-            Required(SeaOwnedAssetSlots.RaiderShip),
-            Required(SeaOwnedAssetSlots.GunshipShip),
+            Required(SeaOwnedAssetSlots.SkiffShip),
+            Required(SeaOwnedAssetSlots.ReefCrabShip),
+            Required(SeaOwnedAssetSlots.FancyShip),
+            Required(SeaOwnedAssetSlots.RedMaryShip),
             Required(SeaOwnedAssetSlots.ShipMaterial),
             Optional(SeaOwnedAssetSlots.Island, SeaOwnedAssetFallback.ProceduralGeometry),
             Optional(SeaOwnedAssetSlots.Reef, SeaOwnedAssetFallback.ProceduralGeometry),
@@ -64,6 +66,9 @@ namespace Sea.Client
             Optional(SeaOwnedAssetSlots.UiIcon, SeaOwnedAssetFallback.GeneratedIcon),
             Optional(SeaOwnedAssetSlots.Audio, SeaOwnedAssetFallback.Silent),
         };
+
+        /// <summary>The player plus every hostile hull the map can show.</summary>
+        public const int ShipRoleCount = 5;
 
         public static IReadOnlyList<SeaOwnedAssetDefinition> Definitions => Slots;
 
@@ -76,18 +81,20 @@ namespace Sea.Client
 
             return archetypeCode switch
             {
-                2 => SeaOwnedShipRole.Raider,
-                3 => SeaOwnedShipRole.Gunship,
-                _ => SeaOwnedShipRole.Patrol,
+                2 => SeaOwnedShipRole.ReefCrab,
+                3 => SeaOwnedShipRole.Fancy,
+                4 => SeaOwnedShipRole.RedMary,
+                _ => SeaOwnedShipRole.Skiff,
             };
         }
 
         public static string ShipSlot(SeaOwnedShipRole role) => role switch
         {
             SeaOwnedShipRole.Player => SeaOwnedAssetSlots.PlayerShip,
-            SeaOwnedShipRole.Patrol => SeaOwnedAssetSlots.PatrolShip,
-            SeaOwnedShipRole.Raider => SeaOwnedAssetSlots.RaiderShip,
-            SeaOwnedShipRole.Gunship => SeaOwnedAssetSlots.GunshipShip,
+            SeaOwnedShipRole.Skiff => SeaOwnedAssetSlots.SkiffShip,
+            SeaOwnedShipRole.ReefCrab => SeaOwnedAssetSlots.ReefCrabShip,
+            SeaOwnedShipRole.Fancy => SeaOwnedAssetSlots.FancyShip,
+            SeaOwnedShipRole.RedMary => SeaOwnedAssetSlots.RedMaryShip,
             _ => throw new System.ArgumentOutOfRangeException(nameof(role)),
         };
 
@@ -102,9 +109,10 @@ namespace Sea.Client
     public enum SeaOwnedShipRole : byte
     {
         Player = 1,
-        Patrol = 2,
-        Raider = 3,
-        Gunship = 4,
+        Skiff = 2,
+        ReefCrab = 3,
+        Fancy = 4,
+        RedMary = 5,
     }
 
     public static class SeaShipVariantPolicy
@@ -121,6 +129,7 @@ namespace Sea.Client
                 1 => new Color(0.86f, 1f, 0.88f, 1f),
                 2 => new Color(1f, 0.78f, 0.66f, 1f),
                 3 => new Color(0.72f, 0.84f, 1f, 1f),
+                4 => new Color(0.78f, 0.22f, 0.24f, 1f),
                 _ => new Color(0.86f, 0.88f, 0.90f, 1f),
             };
         }

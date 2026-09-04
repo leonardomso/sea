@@ -10,9 +10,10 @@ public enum FactionCode : byte
 public enum ShipArchetypeCode : byte
 {
     PlayerSloop = 0,
-    Patrol = 1,
-    Raider = 2,
-    Gunship = 3,
+    Skiff = 1,
+    ReefCrab = 2,
+    Fancy = 3,
+    RedMary = 4,
 }
 
 public enum AmmunitionCode : byte
@@ -96,9 +97,10 @@ public static class HotPathCodes
 
     public static ShipArchetypeCode ShipArchetype(string id) => id switch
     {
-        "patrol" => ShipArchetypeCode.Patrol,
-        "raider" => ShipArchetypeCode.Raider,
-        "gunship" => ShipArchetypeCode.Gunship,
+        "skiff" => ShipArchetypeCode.Skiff,
+        "reef_crab" => ShipArchetypeCode.ReefCrab,
+        "fancy" => ShipArchetypeCode.Fancy,
+        "red_mary" => ShipArchetypeCode.RedMary,
         _ => ShipArchetypeCode.PlayerSloop,
     };
 

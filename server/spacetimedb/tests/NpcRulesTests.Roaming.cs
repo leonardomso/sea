@@ -19,7 +19,7 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void Fixed_seed_roaming_replays_and_stays_inside_the_chart()
     {
-        var snapshot = Snapshot(ShipArchetypeCode.Patrol) with { X = 30f, Y = -20f };
+        var snapshot = Snapshot() with { X = 30f, Y = -20f };
 
         var first = NpcRules.RoamDestination(snapshot);
         var replay = NpcRules.RoamDestination(snapshot);
@@ -81,7 +81,7 @@ public sealed partial class NpcRulesTests
     {
         var route = NpcRules.RouteFor(seed);
         var start = OnRoute(route, 25f);
-        var snapshot = Snapshot(ShipArchetypeCode.Patrol) with
+        var snapshot = Snapshot() with
         {
             X = start.X,
             Y = start.Y,
@@ -104,7 +104,7 @@ public sealed partial class NpcRulesTests
     {
         for (var seed = 0UL; seed < 64UL; seed++)
         {
-            var destination = NpcRules.RoamDestination(Snapshot(ShipArchetypeCode.Patrol) with
+            var destination = NpcRules.RoamDestination(Snapshot() with
             {
                 X = WorldRules.MapMax,
                 Y = WorldRules.MapMin,
@@ -119,7 +119,7 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void Idle_npc_sets_course_for_a_roam_waypoint()
     {
-        var snapshot = Snapshot(ShipArchetypeCode.Patrol) with { X = 30f, Y = -20f };
+        var snapshot = Snapshot() with { X = 30f, Y = -20f };
 
         var decision = NpcRules.Decide(snapshot);
         var waypoint = NpcRules.RoamDestination(snapshot);
@@ -132,7 +132,7 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void RoamingNpcKeepsItsExistingCourse()
     {
-        var snapshot = Snapshot(ShipArchetypeCode.Patrol);
+        var snapshot = Snapshot();
         var leg = OnRoute(NpcRules.RouteFor(snapshot.DecisionSeed), 0f);
 
         var decision = NpcRules.Decide(snapshot with
@@ -148,7 +148,7 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void A_leg_plotted_off_the_route_is_replaced_by_one_back_onto_it()
     {
-        var snapshot = Snapshot(ShipArchetypeCode.Patrol);
+        var snapshot = Snapshot();
         var route = NpcRules.RouteFor(snapshot.DecisionSeed);
 
         // A course left over from a chase: it ends on the route centre, far off the ring.
@@ -173,7 +173,7 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void Roaming_npc_plots_the_next_leg_just_before_the_current_one_ends()
     {
-        var snapshot = Snapshot(ShipArchetypeCode.Patrol);
+        var snapshot = Snapshot();
         var route = NpcRules.RouteFor(snapshot.DecisionSeed);
         var arrival = OnRoute(route, 0f);
         var ship = OnRoute(route, 6f);
@@ -203,7 +203,7 @@ public sealed partial class NpcRulesTests
             var start = OnRoute(route, 0f);
             var blocked = OnRoute(route, 60f);
             var island = new NavigationBlocker(blocked.X, blocked.Y, 20f);
-            var destination = NpcRules.RoamDestination(Snapshot(ShipArchetypeCode.Patrol) with
+            var destination = NpcRules.RoamDestination(Snapshot() with
             {
                 X = start.X,
                 Y = start.Y,
@@ -233,7 +233,7 @@ public sealed partial class NpcRulesTests
     {
         var route = NpcRules.RouteFor(seed);
         var start = OnRoute(route, 0f);
-        var snapshot = Snapshot(ShipArchetypeCode.Patrol) with
+        var snapshot = Snapshot() with
         {
             X = start.X,
             Y = start.Y,
@@ -253,7 +253,7 @@ public sealed partial class NpcRulesTests
     {
         var route = NpcRules.RouteFor(98UL);
         var start = OnRoute(route, 0f);
-        var snapshot = Snapshot(ShipArchetypeCode.Patrol) with
+        var snapshot = Snapshot() with
         {
             X = start.X,
             Y = start.Y,

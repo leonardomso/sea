@@ -84,22 +84,22 @@ const AMMO_FIELDS = [
   field("rangeMultiplier", "float"),
 ];
 
+// Hull, damage, armour, gold, speed and aggro are not authored here: they come from the tier
+// table in stat_caps.json, applied to the player's own starter loadout by NpcDerivation.
 const NPC_FIELDS = [
   field("id", "string"),
   field("code", "enum", { enumType: "ShipArchetypeCode" }),
   field("name", "string"),
+  field("kind", "string"),
   field("tier", "byte"),
   field("mapId", "byte"),
   field("family", "string"),
   field("behavior", "string"),
-  field("aggroRangeSquares", "float"),
   field("desiredRangeSquares", "float"),
-  field("maximumSpeedSquares", "float"),
-  field("hull", "uint"),
-  field("cannonDamage", "uint"),
   field("preferredAmmunition", "enum", { enumType: "AmmunitionCode" }),
-  field("goldReward", "uint"),
   field("experienceReward", "ulong"),
+  field("fleesWhenCrippled", "bool"),
+  field("callsForHelp", "bool"),
 ];
 
 const STAT_CAPS_FIELDS = [

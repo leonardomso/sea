@@ -30,6 +30,17 @@ internal static class Catalog
 
     public static readonly CannonContent StarterCannon = CannonById[StarterCannonId];
 
+    /// <summary>
+    /// The hull every hostile is measured against: the sloop a captain starts with, every slot
+    /// filled with the cannon it is bought with.
+    /// </summary>
+    public static readonly BaseShipProfile PlayerBaseline =
+        BaseShipProfile.From(StarterHull, StarterCannon);
+
+    /// <summary>The tier table applied, indexed by archetype code exactly as the catalog is.</summary>
+    public static readonly NpcStatLine[] NpcStatsByArchetypeCode =
+        ContentIndex.NpcStatsByArchetypeCode(Content, PlayerBaseline);
+
     public static readonly AmmunitionContent BaselineAmmunition =
         AmmunitionByCode[(byte)AmmunitionCode.Round] ??
         throw new InvalidOperationException("Round Shot ammunition is missing.");

@@ -6,13 +6,11 @@ namespace Sea.Server.Tests;
 public sealed partial class NpcRulesTests
 {
     [Theory]
-    [InlineData(ShipArchetypeCode.Raider, AmmunitionCode.Chain)]
-    [InlineData(ShipArchetypeCode.Gunship, AmmunitionCode.Incendiary)]
-    public void Hostile_archetypes_acquire_players_with_their_preferred_shot(
-        ShipArchetypeCode archetype,
-        AmmunitionCode ammunition)
+    [InlineData(AmmunitionCode.Chain)]
+    [InlineData(AmmunitionCode.Incendiary)]
+    public void Hostiles_acquire_players_with_their_preferred_shot(AmmunitionCode ammunition)
     {
-        var decision = NpcRules.Decide(Snapshot(archetype) with
+        var decision = NpcRules.Decide(Snapshot(preferred: ammunition) with
         {
             CandidateTargetId = 42,
         });
@@ -23,16 +21,16 @@ public sealed partial class NpcRulesTests
     }
 
     [Fact]
-    public void Raider_closes_range_and_gunship_retreats_when_too_close()
+    public void A_boarder_closes_the_range_and_a_gunner_opens_it()
     {
-        var raider = NpcRules.Decide(Snapshot(ShipArchetypeCode.Raider) with
+        var boarder = NpcRules.Decide(Snapshot(BoardingRange) with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 40f,
             TargetX = 40f,
         });
-        var gunship = NpcRules.Decide(Snapshot(ShipArchetypeCode.Gunship) with
+        var gunner = NpcRules.Decide(Snapshot() with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
@@ -40,10 +38,10 @@ public sealed partial class NpcRulesTests
             TargetX = 12f,
         });
 
-        Assert.Equal(NpcActionKind.SetCourse, raider.Action);
-        Assert.Equal(22f, raider.DestinationX, 3);
-        Assert.Equal(NpcActionKind.SetCourse, gunship.Action);
-        Assert.Equal(-36f, gunship.DestinationX, 3);
+        Assert.Equal(NpcActionKind.SetCourse, boarder.Action);
+        Assert.Equal(22f, boarder.DestinationX, 3);
+        Assert.Equal(NpcActionKind.SetCourse, gunner.Action);
+        Assert.Equal(-36f, gunner.DestinationX, 3);
     }
 
     [Theory]
@@ -53,7 +51,7 @@ public sealed partial class NpcRulesTests
         float courseX,
         NpcActionKind expected)
     {
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Raider) with
+        var decision = NpcRules.Decide(Snapshot(BoardingRange) with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
@@ -69,7 +67,7 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void Npc_at_range_with_an_empty_magazine_holds_its_station()
     {
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Patrol) with
+        var decision = NpcRules.Decide(Snapshot() with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
@@ -85,7 +83,7 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void Damaged_npc_repairs_before_taking_an_offensive_action()
     {
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Gunship) with
+        var decision = NpcRules.Decide(Snapshot(preferred: AmmunitionCode.Incendiary) with
         {
             Hull = 20,
             HasRepairKit = true,
@@ -111,7 +109,7 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void Fire_decision_is_deterministic_for_the_same_snapshot()
     {
-        var snapshot = Snapshot(ShipArchetypeCode.Gunship) with
+        var snapshot = Snapshot(preferred: AmmunitionCode.Incendiary) with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
@@ -132,7 +130,7 @@ public sealed partial class NpcRulesTests
     [InlineData(true, ShipMode.Repairing)]
     public void InactiveOrNonOperationalNpcHolds(bool active, ShipMode mode)
     {
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Raider) with
+        var decision = NpcRules.Decide(Snapshot(BoardingRange) with
         {
             Active = active,
             Mode = mode,
@@ -144,7 +142,7 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void LostTargetIsClearedBeforeAnotherAction()
     {
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Gunship) with
+        var decision = NpcRules.Decide(Snapshot(preferred: AmmunitionCode.Incendiary) with
         {
             TargetEntityId = 42,
             TargetAvailable = false,
@@ -168,7 +166,7 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void NpcSelectsItsLoadoutBeforeFiring()
     {
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Gunship) with
+        var decision = NpcRules.Decide(Snapshot(preferred: AmmunitionCode.Incendiary) with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
@@ -184,7 +182,7 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void AShipAtRangeFiresWhenLoadedAndOtherwiseHolds()
     {
-        var starboard = Snapshot(ShipArchetypeCode.Patrol) with
+        var starboard = Snapshot() with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
@@ -202,9 +200,9 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void Hold_range_point_inside_an_island_is_steered_to_open_water()
     {
-        // Raider at the origin, target 40 east, island squarely on the 22-unit hold point.
+        // A boarder at the origin, target 40 east, island squarely on the 22-unit hold point.
         var island = new NavigationBlocker(22f, 0f, 10f);
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Raider) with
+        var decision = NpcRules.Decide(Snapshot(BoardingRange) with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
@@ -223,7 +221,7 @@ public sealed partial class NpcRulesTests
     [Fact]
     public void Target_that_opens_the_disengage_range_is_let_go()
     {
-        var chasing = Snapshot(ShipArchetypeCode.Raider) with
+        var chasing = Snapshot(BoardingRange) with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
@@ -251,26 +249,98 @@ public sealed partial class NpcRulesTests
         Assert.False(NpcRules.ShouldSearchForTarget(false, 0f));
     }
 
-    private static NpcSnapshot Snapshot(ShipArchetypeCode archetype) => new()
-    {
-        Archetype = archetype,
-        Active = true,
-        Mode = ShipMode.Operational,
-        X = 0f,
-        Y = 0f,
-        Hull = 100,
-        MaximumHull = 100,
-        DesiredRange = archetype == ShipArchetypeCode.Raider ? 18f : 48f,
-        SelectedAmmunition = AmmunitionCode.Round,
-        PreferredAmmunition = archetype switch
+    /// <summary>The range a hull that wants to be alongside holds.</summary>
+    internal const float BoardingRange = 18f;
+
+    /// <summary>The range a hull that would rather shoot holds.</summary>
+    internal const float GunneryRange = 48f;
+
+    // Nothing about a decision depends on which enemy it is any more: how close it wants to be
+    // and what it loads are the whole of its character, so a snapshot is built from those.
+    internal static NpcSnapshot Snapshot(
+        float desiredRange = GunneryRange,
+        AmmunitionCode preferred = AmmunitionCode.Round) => new()
         {
-            ShipArchetypeCode.Raider => AmmunitionCode.Chain,
-            ShipArchetypeCode.Gunship => AmmunitionCode.Incendiary,
-            _ => AmmunitionCode.Round,
-        },
-        CanFire = true,
-        DecisionSeed = 99,
-    };
+            Active = true,
+            Mode = ShipMode.Operational,
+            X = 0f,
+            Y = 0f,
+            Hull = 100,
+            MaximumHull = 100,
+            DesiredRange = desiredRange,
+            SelectedAmmunition = AmmunitionCode.Round,
+            PreferredAmmunition = preferred,
+            CanFire = true,
+            DecisionSeed = 99,
+        };
+
+    [Theory]
+    [InlineData(true, 25u, 100u, true)]
+    [InlineData(true, 26u, 100u, false)]
+    [InlineData(false, 1u, 100u, false)]
+    [InlineData(true, 0u, 0u, false)]
+    public void Only_a_hull_that_runs_runs_and_only_at_a_quarter(
+        bool fleesWhenCrippled,
+        uint hull,
+        uint maximumHull,
+        bool expected)
+    {
+        Assert.Equal(expected, NpcRules.ShouldFlee(fleesWhenCrippled, hull, maximumHull));
+    }
+
+    [Fact]
+    public void A_crippled_sea_dog_breaks_contact_before_it_patches_itself()
+    {
+        // It is at a quarter hull with a kit aboard, so both the flee rule and the repair rule
+        // want this decision. Repairing under the guns that crippled it is how it dies.
+        var decision = NpcRules.Decide(Snapshot(BoardingRange) with
+        {
+            Hull = 25,
+            HasRepairKit = true,
+            FleesWhenCrippled = true,
+            TargetEntityId = 42,
+            TargetAvailable = true,
+            DistanceToTarget = 20f,
+            TargetX = 20f,
+        });
+
+        Assert.Equal(NpcActionKind.SetCourse, decision.Action);
+        Assert.True(
+            CombatRules.Distance(decision.DestinationX, decision.DestinationY, 20f, 0f) >
+            NpcRules.DisengageRange);
+    }
+
+    [Theory]
+    [InlineData(true, false, 50u, 100u, true)]
+    [InlineData(true, false, 51u, 100u, false)]
+    [InlineData(true, true, 10u, 100u, false)]
+    [InlineData(false, false, 10u, 100u, false)]
+    public void The_signal_goes_up_at_half_a_hull_and_only_once(
+        bool callsForHelp,
+        bool alreadyCalled,
+        uint hull,
+        uint maximumHull,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            NpcRules.ShouldCallForHelp(callsForHelp, alreadyCalled, hull, maximumHull));
+    }
+
+    [Fact]
+    public void An_escort_lies_at_its_mooring_until_its_captain_calls()
+    {
+        var moored = Snapshot(BoardingRange) with
+        {
+            AwaitingSignal = true,
+            CandidateTargetId = 42,
+        };
+
+        Assert.Equal(NpcActionKind.Hold, NpcRules.Decide(moored).Action);
+        Assert.Equal(
+            NpcActionKind.SelectTarget,
+            NpcRules.Decide(moored with { AwaitingSignal = false }).Action);
+    }
 
     [Theory]
     [InlineData(100UL, 50UL, 80f, true)]
