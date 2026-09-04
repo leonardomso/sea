@@ -165,6 +165,26 @@ namespace Sea.Tests
         }
 
         [Test]
+        public void Presentation_benchmark_sails_without_a_live_world()
+        {
+            Assert.That(
+                SeaRuntimeValidationRules.ShouldConnectOnStart(
+                    connectOnStart: true,
+                    presentationPerformanceRequested: false),
+                Is.True);
+            Assert.That(
+                SeaRuntimeValidationRules.ShouldConnectOnStart(
+                    connectOnStart: true,
+                    presentationPerformanceRequested: true),
+                Is.False);
+            Assert.That(
+                SeaRuntimeValidationRules.ShouldConnectOnStart(
+                    connectOnStart: false,
+                    presentationPerformanceRequested: false),
+                Is.False);
+        }
+
+        [Test]
         public void Runtime_arguments_support_command_line_and_webgl_query_values()
         {
             var arguments = new[] { "game", "-seaProfile", "captain-1" };

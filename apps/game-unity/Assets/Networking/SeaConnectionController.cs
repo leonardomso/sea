@@ -74,10 +74,18 @@ namespace Sea.Client
 
         private void Start()
         {
-            if (connectOnStart)
+            if (!SeaRuntimeValidationRules.ShouldConnectOnStart(
+                    connectOnStart,
+                    SeaRuntimeArguments.Has(
+                        "-seaPresentationPerformanceTest",
+                        Environment.GetCommandLineArgs(),
+                        Application.absoluteURL)))
             {
-                Connect();
+                Status = "Sailing alone for the presentation benchmark";
+                return;
             }
+
+            Connect();
         }
 
         private void Update()

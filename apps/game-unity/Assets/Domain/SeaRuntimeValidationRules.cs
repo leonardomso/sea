@@ -59,6 +59,17 @@ namespace Sea.Client
             ulong shotTickNow) =>
             volleysNow < volleysBeforeFiring || shotTickNow > shotTickBeforeFiring;
 
+        /// <summary>
+        /// The presentation benchmark seeds its own fleet up to the platform ship budget, so a
+        /// live world would cost it hulls it has already counted: one real ship inside the ring
+        /// pushes a synthetic one past the limit, the probe never reaches its required count and
+        /// reseeds forever instead of measuring. The benchmark therefore sails alone.
+        /// </summary>
+        public static bool ShouldConnectOnStart(
+            bool connectOnStart,
+            bool presentationPerformanceRequested) =>
+            connectOnStart && !presentationPerformanceRequested;
+
         public static bool ShouldRestoreSyntheticFleet(
             int visibleCount,
             int requiredCount) =>

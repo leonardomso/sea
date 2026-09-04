@@ -13,6 +13,7 @@ namespace Sea.Client
         private int presentationMeasuredFrames;
         private int presentationPoolCountAfterWarmup;
         private string presentationEvidencePath;
+        private float nextPresentationReportTime;
 
         private void ObservePresentationPerformance()
         {
@@ -20,6 +21,7 @@ namespace Sea.Client
                 ? 100
                 : 250;
             Application.targetFrameRate = 1_000;
+            ReportPresentationProgress(requiredShipCount);
             if (worldView == null)
             {
                 return;
@@ -37,9 +39,7 @@ namespace Sea.Client
                 return;
             }
 
-            var allocatedBefore = presentationWarmupFrames >= 180
-                ? GC.GetAllocatedBytesForCurrentThread()
-                : 0;
+            var allocatedBefore = presentationWarmupFrames >= 180 ? AllocatedBytes() : 0;
             worldView.RunSyntheticPerformanceFrame();
             if (presentationWarmupFrames < 180)
             {
@@ -51,11 +51,39 @@ namespace Sea.Client
             RecordPresentationFrame(allocatedBefore, requiredShipCount);
         }
 
+        // A probe that cannot fill its fleet reseeds it forever and says nothing while it does,
+        // which is indistinguishable from a hung player. This says which of the two it is.
+        private void ReportPresentationProgress(int requiredShipCount)
+        {
+            if (Time.unscaledTime < nextPresentationReportTime)
+            {
+                return;
+            }
+
+            nextPresentationReportTime = Time.unscaledTime + 5f;
+            Debug.Log(
+                $"Sea presentation progress: required={requiredShipCount} " +
+                $"visible={(worldView == null ? -1 : worldView.VisibleShipPresentationCount)} " +
+                $"seeded={presentationFleetSeeded} warmup={presentationWarmupFrames} " +
+                $"measured={presentationMeasuredFrames}",
+                this);
+        }
+
+        // The browser runtime has no per-thread allocation counter: the icall behind
+        // GC.GetAllocatedBytesForCurrentThread is not implemented there and throws, which cost
+        // the WebGL probe its idle-bytes evidence entirely. It asks the collector how much of
+        // the managed heap is in use instead — a coarser number that catches a frame leaving
+        // bytes behind but not one that allocates and collects between two samples.
+        private static long AllocatedBytes() =>
+            Application.platform == RuntimePlatform.WebGLPlayer
+                ? GC.GetTotalMemory(forceFullCollection: false)
+                : GC.GetAllocatedBytesForCurrentThread();
+
         private void RecordPresentationFrame(long allocatedBefore, int requiredShipCount)
         {
             presentationFrameTimes[presentationMeasuredFrames] = Time.unscaledDeltaTime * 1_000f;
             presentationAllocatedBytes[presentationMeasuredFrames] =
-                GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+                AllocatedBytes() - allocatedBefore;
             presentationMeasuredFrames++;
             if (presentationMeasuredFrames < presentationFrameTimes.Length)
             {
