@@ -111,12 +111,15 @@ public sealed class NpcSteeringTests
 
     private static NpcSnapshot Idle() => NpcRulesTests.Snapshot();
 
+    // Eighty squares out on a hull that holds forty-eight, so she is chasing rather than
+    // sitting: SEA_5 §11.4 only ever asks for a course when the target is further off than
+    // the range she holds, and a hull that is already inside it holds what she has.
     private static NpcSnapshot Chasing() => NpcRulesTests.Snapshot() with
     {
         TargetEntityId = 42,
         TargetAvailable = true,
-        DistanceToTarget = 40f,
-        TargetX = ShipX + 40f,
+        DistanceToTarget = 80f,
+        TargetX = ShipX + 80f,
         TargetY = ShipY,
     };
 }

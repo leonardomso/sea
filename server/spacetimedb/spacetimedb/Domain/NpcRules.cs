@@ -307,8 +307,13 @@ public static class NpcRules
             return new NpcDecision(NpcActionKind.ClearTarget);
         }
 
+        // SEA_5 §11.4: sail toward it when further, stop when closer. Backing off to keep a
+        // nominal distance is the one thing the same paragraph forbids -- never sail away from
+        // a target except to go home -- and it read as two ships fencing at arm's length, each
+        // giving ground the moment the other closed. Only the flee path opens a range now, and
+        // that one is going home.
         var travel = snapshot.DistanceToTarget - snapshot.DesiredRange;
-        if (MathF.Abs(travel) > RangeTolerance)
+        if (travel > RangeTolerance)
         {
             return HoldRange(snapshot, travel, loadout);
         }

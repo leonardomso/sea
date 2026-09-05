@@ -51,15 +51,20 @@ public sealed class NpcDerivationTests
     }
 
     [Fact]
-    public void A_common_is_slower_than_the_player_and_watches_four_squares()
+    public void A_common_is_slower_than_the_player_and_watches_the_same_water_as_everyone()
     {
         var common = Derive(1);
 
         // Appendix D: a common keeps four fifths of the player's speed, so a captain who does
         // not want the fight can always leave it.
         Assert.Equal(0.8f * Tier1.Hull.SpeedSquaresPerSecond, common.MaximumSpeedSquares, 3);
-        Assert.Equal(4f, common.AggroRangeSquares, 3);
         Assert.True(common.MaximumSpeedSquares < Tier1.Hull.SpeedSquaresPerSecond);
+
+        // SEA_5 11.3 gives one watch for every hostile on the chart, so a common sees as far
+        // as a world boss does. Appendix D's per-tier ladder was four to twelve squares, which
+        // is inside every gun on the chart.
+        Assert.Equal(NpcMovementRules.AggroRadiusSquares, common.AggroRangeSquares, 3);
+        Assert.Equal(NpcMovementRules.AggroRadiusSquares, Derive(6).AggroRangeSquares, 3);
     }
 
     [Fact]

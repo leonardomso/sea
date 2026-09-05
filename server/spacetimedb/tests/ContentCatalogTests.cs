@@ -236,6 +236,26 @@ public sealed class ContentCatalogTests
         Assert.Contains("skiff_copy: duplicate npc code 'Skiff'.", errors, StringComparer.Ordinal);
     }
 
+    // SEA_5 11.4 puts a gun ship at eight tenths of her own range. Every hostile afloat
+    // carries the starter gun -- seeding gives a tier its hull, its guns' output and its
+    // armour, never its reach -- so eight tenths of the tier one gun is what they all hold.
+    // The reef beast is exempt: it has no guns and closes to ram.
+    [Fact]
+    public void A_gun_ship_holds_eight_tenths_of_her_own_range()
+    {
+        var expected = NpcMovementRules.HoldDistanceSquares(RangeRules.BaseRangeSquares(1));
+
+        foreach (var npc in Catalog.Npcs)
+        {
+            if (string.Equals(npc.Kind, "monster", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            Assert.Equal(expected, npc.DesiredRangeSquares, 3);
+        }
+    }
+
     [Fact]
     public void Zero_desired_range_is_rejected()
     {

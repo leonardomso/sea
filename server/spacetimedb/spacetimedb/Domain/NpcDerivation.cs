@@ -37,8 +37,10 @@ public readonly record struct BaseShipProfile(
 
 /// <summary>
 /// Everything a tier decides about a hostile. The content author picks which enemy it is; the
-/// tier picks how hard it hits, how long it lives, how fast it sails, how far it watches, what it
-/// is worth and how long the sea waits before it is back.
+/// tier picks how hard it hits, how long it lives, how fast it sails, what it is worth and how
+/// long the sea waits before it is back. How far it watches is not a tier's to pick: SEA_5 §11.3
+/// gives one figure to every hostile afloat, and it is carried here so a boss that wants its own
+/// has somewhere to put it.
 /// </summary>
 public readonly record struct NpcStatLine(
     uint MaximumHull,
@@ -61,9 +63,6 @@ public static class NpcDerivation
 
     /// <summary>Appendix D: how much of the player's speed each tier keeps.</summary>
     private static readonly IReadOnlyList<float> SpeedFractions = [0.8f, 0.9f, 0.8f, 0.9f, 0.7f, 0.6f];
-
-    /// <summary>Appendix D: how far a tier watches for a sail, in squares.</summary>
-    private static readonly IReadOnlyList<float> AggroSquares = [4f, 5f, 6f, 8f, 12f, 12f];
 
     /// <summary>
     /// How long the sea stays empty where one sank. Commons come straight back so the map is
@@ -95,7 +94,7 @@ public static class NpcDerivation
             caps.NpcArmorByTier[index],
             Round(GoldMultipliers[index] * BaseGold(mapId, caps)),
             SpeedFractions[index] * baseShip.SpeedSquaresPerSecond,
-            AggroSquares[index],
+            NpcMovementRules.AggroRadiusSquares,
             (ulong)MathF.Round(RespawnSeconds[index] * WorldRules.TickRateHz));
     }
 

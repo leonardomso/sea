@@ -21,16 +21,16 @@ public sealed partial class NpcRulesTests
     }
 
     [Fact]
-    public void A_boarder_closes_the_range_and_a_gunner_opens_it()
+    public void A_hull_closes_to_her_holding_range_and_never_opens_it()
     {
-        var boarder = NpcRules.Decide(Snapshot(BoardingRange) with
+        var closing = NpcRules.Decide(Snapshot(BoardingRange) with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 40f,
             TargetX = ShipX + 40f,
         });
-        var gunner = NpcRules.Decide(Snapshot() with
+        var crowded = NpcRules.Decide(Snapshot() with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
@@ -38,12 +38,15 @@ public sealed partial class NpcRulesTests
             TargetX = ShipX + 12f,
         });
 
-        // The boarder wants eighteen and has forty, so she runs twenty-two squares in; the
-        // gunner wants forty-eight and has twelve, so she backs thirty-six squares out.
-        Assert.Equal(NpcActionKind.SetCourse, boarder.Action);
-        Assert.Equal(ShipX + 22f, boarder.DestinationX, 3);
-        Assert.Equal(NpcActionKind.SetCourse, gunner.Action);
-        Assert.Equal(ShipX - 36f, gunner.DestinationX, 3);
+        // SEA_5 11.4: sail toward it when further, stop when closer. She wants eighteen and
+        // has forty, so she runs twenty-two squares in.
+        Assert.Equal(NpcActionKind.SetCourse, closing.Action);
+        Assert.Equal(ShipX + 22f, closing.DestinationX, 3);
+
+        // The other wants forty-eight and has twelve. She used to back thirty-six squares out,
+        // which is the one thing the same paragraph forbids: never sail away from a target
+        // except to go home. She holds what she has and keeps shooting.
+        Assert.Equal(NpcActionKind.Fire, crowded.Action);
     }
 
     [Theory]
