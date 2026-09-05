@@ -138,7 +138,7 @@ public sealed partial class NpcRulesTests
 
         var decision = NpcRules.Decide(snapshot with
         {
-            HasCourse = true,
+            HasRoute = true,
             CourseX = leg.X,
             CourseY = leg.Y,
         });
@@ -155,7 +155,7 @@ public sealed partial class NpcRulesTests
         // A course left over from a chase: it ends on the route centre, far off the ring.
         var decision = NpcRules.Decide(snapshot with
         {
-            HasCourse = true,
+            HasRoute = true,
             CourseX = route.CenterX,
             CourseY = route.CenterY,
         });
@@ -183,7 +183,7 @@ public sealed partial class NpcRulesTests
         {
             X = ship.X,
             Y = ship.Y,
-            HasCourse = true,
+            HasRoute = true,
             CourseX = arrival.X,
             CourseY = arrival.Y,
         });

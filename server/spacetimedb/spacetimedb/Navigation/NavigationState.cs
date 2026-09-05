@@ -186,41 +186,6 @@ public static partial class Module
         }
     }
 
-    private static void ConfigureNavigationWaypoint(
-        ref Ship ship,
-        IReadOnlyCollection<NavigationBlocker> blockers)
-    {
-        ship.HasWaypoint = NavigationRules.TryFindDetour(
-            ship.PositionX,
-            ship.PositionY,
-            ship.DestinationX,
-            ship.DestinationY,
-            blockers,
-            out var waypoint);
-        ship.WaypointX = ship.HasWaypoint ? waypoint.X : ship.DestinationX;
-        ship.WaypointY = ship.HasWaypoint ? waypoint.Y : ship.DestinationY;
-    }
-
-    private static void ConfigureNavigationWaypoint(
-        ref ShipKinematics ship,
-        IReadOnlyCollection<NavigationBlocker> blockers)
-    {
-        ship.HasWaypoint = NavigationRules.TryFindDetour(
-            ship.PositionX,
-            ship.PositionY,
-            ship.DestinationX,
-            ship.DestinationY,
-            blockers,
-            out var waypoint);
-        ship.WaypointX = ship.HasWaypoint ? waypoint.X : ship.DestinationX;
-        ship.WaypointY = ship.HasWaypoint ? waypoint.Y : ship.DestinationY;
-        ship.DesiredHeadingDegrees = SailingRules.DesiredHeading(
-            ship.PositionX,
-            ship.PositionY,
-            ship.WaypointX,
-            ship.WaypointY);
-    }
-
     private static ulong IdentitySeed(Identity identity)
     {
         var seed = 1469598103934665603UL;

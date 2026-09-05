@@ -76,7 +76,6 @@ public static partial class Module
         ship.MagazineSize = sheet.Magazine;
         ship.RangeUnits = sheet.RangeSquares;
         ship.MaximumSpeed = sheet.SpeedSquaresPerSecond;
-        ship.TurnRateDegrees = sheet.TurnDegreesPerSecond;
         ship.ArmorFront = sheet.ArmorFront;
         ship.ArmorSides = sheet.ArmorSides;
         ship.ArmorBack = sheet.ArmorBack;

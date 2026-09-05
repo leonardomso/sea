@@ -146,7 +146,7 @@ public sealed class RouteRulesTests
     }
 
     /// <summary>
-    /// A becalmed hull standing inside <see cref="SailingRules.ArrivalRadius"/> of her last
+    /// A becalmed hull standing inside <see cref="RouteRules.ArrivalRadius"/> of her last
     /// mark is standing on it. SEA_5 §4.1.3 stops a ship exactly on the last waypoint, and
     /// §13 test 5 wants two ships sent to one point to hold that same exact point; without
     /// this a hull with no way on her would report "still sailing" for the rest of the match
@@ -155,7 +155,7 @@ public sealed class RouteRulesTests
     [Fact]
     public void AHullInsideTheArrivalRadiusOfHerLastMarkIsStandingOnIt()
     {
-        var gap = SailingRules.ArrivalRadius * 0.5f;
+        var gap = RouteRules.ArrivalRadius * 0.5f;
 
         var step = RouteRules.Advance(StraightEast, 0, 250f - gap, 50f, 90f, 0f);
 
@@ -173,7 +173,7 @@ public sealed class RouteRulesTests
     [Fact]
     public void TheArrivalRadiusDoesNotCutTheCornersInBetween()
     {
-        var gap = SailingRules.ArrivalRadius * 0.5f;
+        var gap = RouteRules.ArrivalRadius * 0.5f;
 
         var step = RouteRules.Advance(Dogleg, 0, 60f - gap, 50f, 90f, 0f);
 

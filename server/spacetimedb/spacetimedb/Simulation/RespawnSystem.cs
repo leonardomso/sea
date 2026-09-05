@@ -84,15 +84,7 @@ public static partial class Module
         var restored = RespawnRules.Restore(player, ship.MaxHull, tick);
         ship.PositionX = spawn.X;
         ship.PositionY = spawn.Y;
-        ship.DestinationX = spawn.X;
-        ship.DestinationY = spawn.Y;
-        ship.WaypointX = spawn.X;
-        ship.WaypointY = spawn.Y;
-        ship.HasWaypoint = false;
-        ship.HasCourse = false;
-        ship.IsStopping = false;
-        ship.IsMoving = false;
-        ship.Speed = 0f;
+        ClearRoute(ctx, ref ship);
         ship.CurrentVelocityX = 0f;
         ship.CurrentVelocityY = 0f;
         ship.ChunkX = SpatialRules.ChunkCoordinate(spawn.X);

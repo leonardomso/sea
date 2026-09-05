@@ -19,7 +19,7 @@ public readonly record struct NpcSnapshot
     public float X { get; init; }
     public float Y { get; init; }
     public float HeadingDegrees { get; init; }
-    public bool HasCourse { get; init; }
+    public bool HasRoute { get; init; }
     public float CourseX { get; init; }
     public float CourseY { get; init; }
     public uint Hull { get; init; }
@@ -239,7 +239,7 @@ public static class NpcRules
         // route; that one is replaced by a leg back onto it. The next leg is plotted just
         // before the current one ends so the ship swings straight into it instead of
         // stopping, waiting, and setting off.
-        if (snapshot.HasCourse &&
+        if (snapshot.HasRoute &&
             IsOnPatrolRoute(snapshot, snapshot.CourseX, snapshot.CourseY) &&
             !IsNearCourseEnd(snapshot))
         {
@@ -371,7 +371,7 @@ public static class NpcRules
         var destination = ClearPoint(Clamp(x), Clamp(y), Blockers(snapshot));
         x = destination.X;
         y = destination.Y;
-        if (snapshot.HasCourse &&
+        if (snapshot.HasRoute &&
             CombatRules.Distance(snapshot.CourseX, snapshot.CourseY, x, y) <= RangeTolerance)
         {
             return new NpcDecision(NpcActionKind.Hold);

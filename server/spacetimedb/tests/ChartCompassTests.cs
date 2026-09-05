@@ -11,10 +11,11 @@ namespace Sea.Server.Tests;
 public sealed class ChartCompassTests
 {
     /// <summary>
-    /// Way made good under sail, on the same compass as everything else on the tick. The
-    /// integrator used to propel a hull by an unnegated cosine, so heading 0 carried her
-    /// south while the current on the same bearing set her north, and the two were added
-    /// together in <c>SailingSystem.ApplySailingStep</c>.
+    /// Way made good along a course, on the same compass as everything else on the tick.
+    /// The integrator used to propel a hull by an unnegated cosine, so heading 0 carried
+    /// her south while the current on the same bearing set her north, and the two were
+    /// added together in <c>SailingSystem.ApplySailingStep</c>. Heading is an output now,
+    /// so the mark is the input and the bearing she reports is checked against it.
     /// </summary>
     [Theory]
     [InlineData(0f, 0f, -1f)]
@@ -26,17 +27,20 @@ public sealed class ChartCompassTests
         float expectedX,
         float expectedY)
     {
-        var step = SailingRules.StepTowardHeading(
-            new SailingState(0f, 0f, headingDegrees, 1f),
-            destinationX: 1000f,
-            destinationY: 1000f,
-            desiredHeadingDegrees: headingDegrees,
-            stopping: false,
-            new SailingParameters(1f, 0f, 0f, 0f),
-            deltaSeconds: 1f);
+        var step = RouteRules.Advance(
+            [new RouteWaypoint(expectedX * 1000f, expectedY * 1000f)],
+            waypointIndex: 0,
+            positionX: 0f,
+            positionY: 0f,
+            headingDegrees: 0f,
+            travel: 1f);
 
         Assert.Equal(expectedX, step.PositionX, 3);
         Assert.Equal(expectedY, step.PositionY, 3);
+        Assert.Equal(
+            headingDegrees,
+            GeometryRules.NormalizeAngle(step.HeadingDegrees),
+            3);
     }
 
     /// <summary>
@@ -51,14 +55,13 @@ public sealed class ChartCompassTests
     public void Sail_and_current_on_one_bearing_push_the_same_way(float bearingDegrees)
     {
         var (currentX, currentY) = EnvironmentRules.DirectionalVelocity(bearingDegrees, 1f);
-        var step = SailingRules.StepTowardHeading(
-            new SailingState(0f, 0f, bearingDegrees, 1f),
-            destinationX: currentX * 1000f,
-            destinationY: currentY * 1000f,
-            desiredHeadingDegrees: bearingDegrees,
-            stopping: false,
-            new SailingParameters(1f, 0f, 0f, 0f),
-            deltaSeconds: 1f);
+        var step = RouteRules.Advance(
+            [new RouteWaypoint(currentX * 1000f, currentY * 1000f)],
+            waypointIndex: 0,
+            positionX: 0f,
+            positionY: 0f,
+            headingDegrees: bearingDegrees,
+            travel: 1f);
 
         Assert.Equal(currentX, step.PositionX, 3);
         Assert.Equal(currentY, step.PositionY, 3);
@@ -66,7 +69,7 @@ public sealed class ChartCompassTests
 
     /// <summary>
     /// The bearing she steers is the inverse of the way she makes: steering the answer to
-    /// <see cref="SailingRules.DesiredHeading"/> has to close the distance to the mark.
+    /// <see cref="GeometryRules.HeadingTo"/> has to close the distance to the mark.
     /// Both halves used to be wrong together, which is why nothing went red.
     /// </summary>
     [Theory]
@@ -79,11 +82,12 @@ public sealed class ChartCompassTests
         float destinationX,
         float destinationY)
     {
-        var heading = SailingRules.DesiredHeading(0f, 0f, destinationX, destinationY);
+        var heading = GeometryRules.HeadingTo(
+            0f, 0f, destinationX, destinationY, fallbackHeadingDegrees: 0f);
 
         var (directionX, directionY) = GeometryRules.Direction(heading);
 
-        // Compared as a bearing, not as a position. DesiredHeading answers off MathF.Atan2,
+        // Compared as a bearing, not as a position. HeadingTo answers off MathF.Atan2,
         // which is exact, but Direction reads a table sampled every quarter degree, so the way
         // she sails can sit up to half a step -- 0.125 degrees -- off the bearing she steers.
         // Multiplying that back out to a position and asserting decimal places would fail any

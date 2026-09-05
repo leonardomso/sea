@@ -59,7 +59,7 @@ public sealed partial class NpcRulesTests
             TargetAvailable = true,
             DistanceToTarget = 40f,
             TargetX = ShipX + 40f,
-            HasCourse = true,
+            HasRoute = true,
             CourseX = courseX,
         });
 
@@ -75,7 +75,7 @@ public sealed partial class NpcRulesTests
             TargetAvailable = true,
             DistanceToTarget = 45f,
             TargetX = ShipX + 45f,
-            HasCourse = true,
+            HasRoute = true,
             CanFire = false,
         });
 

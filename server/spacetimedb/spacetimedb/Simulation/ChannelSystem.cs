@@ -86,7 +86,7 @@ public static partial class Module
     {
         ctx.Db.ShipChannel.ShipEntityId.Delete(channel.ShipEntityId);
         source.ModeCode = (byte)ShipMode.Operational;
-        source.IsMoving = source.HasCourse;
+        source.IsMoving = source.HasRoute;
         AppendEvent(ctx, tick, channel.ShipEntityId, "cast_off_completed", "");
         ships.Stage(source);
     }

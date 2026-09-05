@@ -134,7 +134,7 @@ public static partial class Module
             X = ship.PositionX,
             Y = ship.PositionY,
             HeadingDegrees = ship.HeadingDegrees,
-            HasCourse = ship.HasCourse,
+            HasRoute = ship.HasRoute,
             CourseX = ship.DestinationX,
             CourseY = ship.DestinationY,
             Hull = ship.Hull,

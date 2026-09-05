@@ -62,6 +62,17 @@ public static class RouteRules
     public const int MaximumWaypoints = 32;
 
     /// <summary>
+    /// How close to her last mark counts as standing on it, in squares.
+    /// </summary>
+    /// <remarks>
+    /// A tick moves a hull a whole stride, so she almost never lands on the mark exactly:
+    /// without a radius she would overshoot it, be handed a leg pointing back the way she
+    /// came, and shuttle across the mark forever. Being close enough is arriving. The
+    /// corners in between get no such grace -- see <c>ReachesCorner</c>.
+    /// </remarks>
+    public const float ArrivalRadius = 0.15f;
+
+    /// <summary>
     /// Walks one tick's <paramref name="travel"/> along the course, rounding as many corners
     /// as that distance reaches. A course therefore takes exactly its own length over her
     /// speed, however it bends: a corner costs nothing to turn.
@@ -156,7 +167,7 @@ public static class RouteRules
     /// Whether this tick's remaining way carries her onto the corner she is steering for.
     /// </summary>
     /// <remarks>
-    /// The last mark has <see cref="SailingRules.ArrivalRadius"/> around it and the corners
+    /// The last mark has <see cref="ArrivalRadius"/> around it and the corners
     /// before it have none. Standing a tenth of a square off her destination is standing on
     /// it — SEA_5 §4.1.3 stops a ship exactly on the last waypoint and §13 test 5 wants two
     /// ships sent to one point to hold that same point — and without the radius a becalmed
@@ -167,5 +178,5 @@ public static class RouteRules
     /// </remarks>
     private static bool ReachesCorner(float remaining, float left, int index, int length) =>
         remaining <= left ||
-        (index == length - 1 && remaining <= SailingRules.ArrivalRadius);
+        (index == length - 1 && remaining <= ArrivalRadius);
 }

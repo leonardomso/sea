@@ -59,13 +59,11 @@ public static partial class Module
             var ship = ships[readIndex];
             var chunkX = ship.ChunkX;
             var chunkY = ship.ChunkY;
+            var wasMoving = ship.IsMoving;
             for (var tick = firstTick; tick <= lastTick; tick++)
             {
                 processed++;
-                if (ship.IsMoving)
-                {
-                    ProcessMovingShip(ctx, world, ref ship, tick, 1f / WorldRules.TickRateHz);
-                }
+                ProcessMovingShip(ctx, world, ref ship, tick, 1f / WorldRules.TickRateHz);
             }
 
             UpdatePortState(ctx, world, ref ship);
@@ -79,8 +77,10 @@ public static partial class Module
 
             // A ship holding her course is already drawn where she is, so only the ones whose
             // reckoning has drifted, crossed into another chunk or come to rest cost a row.
+            // Coming to rest is the tick she arrives, not every tick she lies still: a hull
+            // set adrift on a current is published by the reckoning test like any other.
             var changedChunk = ship.ChunkX != chunkX || ship.ChunkY != chunkY;
-            if (changedChunk || !ship.IsMoving || ReplicationRules.ShouldPublish(
+            if (changedChunk || (wasMoving && !ship.IsMoving) || ReplicationRules.ShouldPublish(
                     PublishedMotionOf(ship),
                     ship.PositionX,
                     ship.PositionY,
@@ -89,7 +89,9 @@ public static partial class Module
             {
                 PublishMovement(ctx, ref ship, lastTick, changedChunk);
             }
-            if (ship.IsMoving)
+            // A ship at rest in a current is still being carried, so she stays in the shard
+            // until the water lets go of her (SEA_5 5.2).
+            if (ship.IsMoving || ship.CurrentVelocityX != 0f || ship.CurrentVelocityY != 0f)
             {
                 ships[writeIndex++] = ship;
             }
@@ -152,23 +154,80 @@ public static partial class Module
         float deltaSeconds)
     {
         RefreshEnvironment(world.CurrentField(ctx), world.Environment(ctx), ref ship, tick);
-        AdvanceNavigationWaypoint(ctx, world, ref ship);
-        var destination = NavigationDestination(ship);
-        var parameters = MovementParameters(ship);
-        var step = SailingRules.StepTowardHeading(
-            new SailingState(ship.PositionX, ship.PositionY, ship.HeadingDegrees, ship.Speed),
-            destination.X,
-            destination.Y,
-            ship.DesiredHeadingDegrees,
-            ship.IsStopping,
-            parameters,
-            deltaSeconds);
-        ApplySailingStep(ref ship, step, deltaSeconds);
+        if (ship.IsMoving)
+        {
+            FollowRoute(ctx, world, ref ship, deltaSeconds);
+        }
+
+        ApplyCurrentDrift(ref ship, deltaSeconds);
+        ship.ChunkX = SpatialRules.ChunkCoordinate(ship.PositionX);
+        ship.ChunkY = SpatialRules.ChunkCoordinate(ship.PositionY);
         if (SimulationWorkRules.ShouldProcessLootPickup(ship.EntityId, tick) &&
             world.HasActiveLoot(ctx))
         {
             ProcessLootClaims(ctx, ship, tick);
         }
+    }
+
+    /// <summary>
+    /// One tick down the course. She turns instantly onto each leg and holds her rating
+    /// along it (SEA_5 4.2); the only thing that moves her off the line is the current.
+    /// </summary>
+    private static void FollowRoute(
+        ReducerContext ctx,
+        TickWorld world,
+        ref ShipKinematics ship,
+        float deltaSeconds)
+    {
+        var step = RouteRules.Advance(
+            world.RouteFor(ctx, ship.EntityId),
+            ship.RouteIndex,
+            ship.PositionX,
+            ship.PositionY,
+            ship.HeadingDegrees,
+            ship.EffectiveSpeedSquaresPerSecond * deltaSeconds);
+        ship.PositionX = step.PositionX;
+        ship.PositionY = step.PositionY;
+        ship.HeadingDegrees = step.HeadingDegrees;
+        ship.RouteIndex = step.WaypointIndex;
+        ship.Speed = ship.EffectiveSpeedSquaresPerSecond;
+        if (!step.Arrived)
+        {
+            return;
+        }
+
+        ship.HasRoute = false;
+        ship.IsMoving = false;
+        ship.Speed = 0f;
+    }
+
+    /// <summary>
+    /// The set of the current, which does not ask whether she has a course: a ship lying
+    /// at anchor is carried too (SEA_5 5.2). Drift stops at land and at the map edge, so a
+    /// hull left alone in a stream fetches up on a shore instead of being pushed through it.
+    /// </summary>
+    private static void ApplyCurrentDrift(ref ShipKinematics ship, float deltaSeconds)
+    {
+        if (ship.CurrentVelocityX == 0f && ship.CurrentVelocityY == 0f)
+        {
+            return;
+        }
+
+        var driftedX = Math.Clamp(
+            ship.PositionX + ship.CurrentVelocityX * deltaSeconds,
+            WorldRules.MapMin,
+            WorldRules.MapMax);
+        var driftedY = Math.Clamp(
+            ship.PositionY + ship.CurrentVelocityY * deltaSeconds,
+            WorldRules.MapMin,
+            WorldRules.MapMax);
+        if (ContentCatalog.LandMaskFor(ship.MapId).IsLand(driftedX, driftedY))
+        {
+            return;
+        }
+
+        ship.PositionX = driftedX;
+        ship.PositionY = driftedY;
     }
 
     private static void RefreshEnvironment(
@@ -180,7 +239,7 @@ public static partial class Module
         var refreshCurrent = SimulationWorkRules.ShouldRefreshCurrent(
             ship.EntityId,
             tick);
-        if (!refreshCurrent && ship.EffectiveMaximumSpeed >= 0f)
+        if (!refreshCurrent && ship.EffectiveSpeedSquaresPerSecond >= 0f)
         {
             return;
         }
@@ -190,73 +249,12 @@ public static partial class Module
             var current = CurrentVelocityAt(currentField, ship.PositionX, ship.PositionY);
             ship.CurrentVelocityX = current.X;
             ship.CurrentVelocityY = current.Y;
-            var destination = NavigationDestination(ship);
-            ship.DesiredHeadingDegrees = SailingRules.DesiredHeading(
-                ship.PositionX,
-                ship.PositionY,
-                destination.X,
-                destination.Y);
         }
 
         var windMultiplier = environment is EnvironmentState wind
             ? SpeedRules.WindMultiplier(ship.HeadingDegrees, wind.WindDirectionDegrees)
             : 1f;
-        ship.EffectiveMaximumSpeed = ship.TacticalMaximumSpeed * windMultiplier;
-    }
-
-    private static void AdvanceNavigationWaypoint(
-        ReducerContext ctx,
-        TickWorld world,
-        ref ShipKinematics ship)
-    {
-        if (!ship.HasWaypoint || NavigationRules.Distance(
-                ship.PositionX,
-                ship.PositionY,
-                ship.WaypointX,
-                ship.WaypointY) > NavigationRules.WaypointArrivalRadius)
-        {
-            return;
-        }
-
-        ship.HasWaypoint = false;
-        ConfigureNavigationWaypoint(ref ship, world.Blockers(ctx));
-    }
-
-    private static (float X, float Y) NavigationDestination(ShipKinematics ship) =>
-        ship.HasWaypoint
-            ? (ship.WaypointX, ship.WaypointY)
-            : (ship.DestinationX, ship.DestinationY);
-
-    private static SailingParameters MovementParameters(ShipKinematics ship) =>
-        new(
-            ship.EffectiveMaximumSpeed,
-            ship.TacticalAcceleration,
-            ship.Deceleration,
-            ship.TacticalTurnRateDegrees);
-
-    private static void ApplySailingStep(
-        ref ShipKinematics ship,
-        AuthoritativeSailingStep step,
-        float deltaSeconds)
-    {
-        var hasCourse = ship.HasCourse;
-        var hasWaypoint = ship.HasWaypoint;
-        var wasStopping = ship.IsStopping;
-        ship.HeadingDegrees = step.HeadingDegrees;
-        ship.Speed = step.Speed;
-        ship.IsMoving = step.IsMoving;
-        ship.HasCourse = hasCourse && (!step.Arrived || hasWaypoint);
-        ship.IsStopping = wasStopping && step.Speed > 0f;
-        ship.PositionX = Math.Clamp(
-            step.PositionX + ship.CurrentVelocityX * deltaSeconds,
-            WorldRules.MapMin,
-            WorldRules.MapMax);
-        ship.PositionY = Math.Clamp(
-            step.PositionY + ship.CurrentVelocityY * deltaSeconds,
-            WorldRules.MapMin,
-            WorldRules.MapMax);
-        ship.ChunkX = SpatialRules.ChunkCoordinate(ship.PositionX);
-        ship.ChunkY = SpatialRules.ChunkCoordinate(ship.PositionY);
+        ship.EffectiveSpeedSquaresPerSecond = ship.TacticalMaximumSpeed * windMultiplier;
     }
 
     /// <summary>

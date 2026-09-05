@@ -102,21 +102,15 @@ public static partial class Module
                 : (byte)FactionCode.Npc,
             PositionX = x,
             PositionY = y,
+            MapId = Catalog.Content.Maps[0].MapId,
             DestinationX = x,
             DestinationY = y,
-            WaypointX = x,
-            WaypointY = y,
-            HasWaypoint = false,
+            RouteIndex = 0,
+            HasRoute = false,
+            RouteVersion = 0,
             HeadingDegrees = 0f,
             Speed = 0f,
-            // A ship used to need 72 units to come to rest and 23 to come about, on a chart
-            // 200 units across: better than a third of the sea to stop in, and a turning
-            // circle wider than two chart squares. Every course she was given read as a
-            // wallow. These put both inside one square, which is what the click implies.
-            Acceleration = HandlingRules.Acceleration,
-            Deceleration = HandlingRules.Deceleration,
-            HasCourse = false,
-            IsStopping = false,
+            EffectiveSpeedSquaresPerSecond = 0f,
             IsMoving = false,
             MovementShard = SimulationWorkRules.MovementShard(entityId),
             IsActive = true,

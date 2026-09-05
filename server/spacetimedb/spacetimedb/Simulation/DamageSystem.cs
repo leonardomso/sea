@@ -119,9 +119,7 @@ public static partial class Module
     {
         defender.IsAlive = false;
         defender.IsActive = false;
-        defender.IsMoving = false;
-        defender.HasCourse = false;
-        defender.IsStopping = false;
+        ClearRoute(ctx, ref defender);
         defender.ModeCode = (byte)ShipMode.Sunk;
         ClearEffects(ctx, defender.EntityId);
         defender.MovementStatusMask = 0;

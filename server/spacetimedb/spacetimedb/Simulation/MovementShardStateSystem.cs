@@ -229,42 +229,28 @@ public static partial class Module
     private static bool ShouldTrackMovement(Ship ship) =>
         ship.IsActive && ship.IsAlive && ship.IsMoving;
 
-    private static ShipKinematics ToKinematics(Ship ship)
+    private static ShipKinematics ToKinematics(Ship ship) => new()
     {
-        var tactical = TacticalMovementParameters(ship);
-        return new ShipKinematics
-        {
-            EntityId = ship.EntityId,
-            FactionCode = ship.FactionCode,
-            PositionX = ship.PositionX,
-            PositionY = ship.PositionY,
-            DestinationX = ship.DestinationX,
-            DestinationY = ship.DestinationY,
-            WaypointX = ship.WaypointX,
-            WaypointY = ship.WaypointY,
-            HasWaypoint = ship.HasWaypoint,
-            DesiredHeadingDegrees = SailingRules.DesiredHeading(
-                ship.PositionX,
-                ship.PositionY,
-                ship.HasWaypoint ? ship.WaypointX : ship.DestinationX,
-                ship.HasWaypoint ? ship.WaypointY : ship.DestinationY),
-            HeadingDegrees = ship.HeadingDegrees,
-            Speed = ship.Speed,
-            TacticalMaximumSpeed = tactical.MaximumSpeed,
-            TacticalAcceleration = tactical.Acceleration,
-            Deceleration = ship.Deceleration,
-            TacticalTurnRateDegrees = tactical.TurnRateDegrees,
-            EffectiveMaximumSpeed = -1f,
-            HasCourse = ship.HasCourse,
-            IsStopping = ship.IsStopping,
-            IsMoving = ship.IsMoving,
-            IsInPort = ship.IsInPort,
-            CurrentVelocityX = ship.CurrentVelocityX,
-            CurrentVelocityY = ship.CurrentVelocityY,
-            ChunkX = ship.ChunkX,
-            ChunkY = ship.ChunkY,
-        };
-    }
+        EntityId = ship.EntityId,
+        FactionCode = ship.FactionCode,
+        MapId = ship.MapId,
+        PositionX = ship.PositionX,
+        PositionY = ship.PositionY,
+        DestinationX = ship.DestinationX,
+        DestinationY = ship.DestinationY,
+        RouteIndex = ship.RouteIndex,
+        HasRoute = ship.HasRoute,
+        HeadingDegrees = ship.HeadingDegrees,
+        Speed = ship.Speed,
+        TacticalMaximumSpeed = TacticalMaximumSpeed(ship),
+        EffectiveSpeedSquaresPerSecond = -1f,
+        IsMoving = ship.IsMoving,
+        IsInPort = ship.IsInPort,
+        CurrentVelocityX = ship.CurrentVelocityX,
+        CurrentVelocityY = ship.CurrentVelocityY,
+        ChunkX = ship.ChunkX,
+        ChunkY = ship.ChunkY,
+    };
 
     private static void CopyKinematics(ShipKinematics source, ref Ship target)
     {
@@ -272,13 +258,11 @@ public static partial class Module
         target.PositionY = source.PositionY;
         target.DestinationX = source.DestinationX;
         target.DestinationY = source.DestinationY;
-        target.WaypointX = source.WaypointX;
-        target.WaypointY = source.WaypointY;
-        target.HasWaypoint = source.HasWaypoint;
+        target.RouteIndex = source.RouteIndex;
+        target.HasRoute = source.HasRoute;
         target.HeadingDegrees = source.HeadingDegrees;
         target.Speed = source.Speed;
-        target.HasCourse = source.HasCourse;
-        target.IsStopping = source.IsStopping;
+        target.EffectiveSpeedSquaresPerSecond = source.EffectiveSpeedSquaresPerSecond;
         target.IsMoving = source.IsMoving;
         target.IsInPort = source.IsInPort;
         target.CurrentVelocityX = source.CurrentVelocityX;
@@ -304,13 +288,15 @@ public static partial class Module
     private static void CopyTacticalParameters(ShipKinematics source, ref ShipKinematics target)
     {
         target.TacticalMaximumSpeed = source.TacticalMaximumSpeed;
-        target.TacticalAcceleration = source.TacticalAcceleration;
-        target.Deceleration = source.Deceleration;
-        target.TacticalTurnRateDegrees = source.TacticalTurnRateDegrees;
-        target.EffectiveMaximumSpeed = -1f;
+        target.EffectiveSpeedSquaresPerSecond = -1f;
     }
 
-    private static SailingParameters TacticalMovementParameters(Ship ship)
+    /// <summary>
+    /// Her rating with the debuffs the shard cannot see already worked in. Wind is
+    /// deliberately left out: it turns with her heading, so it is applied per tick
+    /// where the heading is known.
+    /// </summary>
+    private static float TacticalMaximumSpeed(Ship ship)
     {
         var modifiers = TacticalRules.Resolve(
             (ship.MovementStatusMask & HotPathCodes.SlowedMovementMask) != 0,
@@ -321,8 +307,7 @@ public static partial class Module
         // SEA_5 5.1 floors the product of the debuffs, not each slow in turn, so
         // a chained and grapeshotted hull keeps half her rating instead of a
         // hundredth of it. The storm multiplies on the outside of that floor,
-        // which is where the document draws it. Acceleration and turn rate are
-        // no longer debuffed: they go with the rest of the inertia model.
+        // which is where the document draws it.
         var speedMultiplier = Math.Clamp(
             modifiers.SpeedMultiplier,
             SpeedRules.DebuffFloor,
@@ -332,10 +317,6 @@ public static partial class Module
             speedMultiplier *= SpeedRules.StormMultiplier;
         }
 
-        return new SailingParameters(
-            ship.MaximumSpeed * speedMultiplier,
-            ship.Acceleration,
-            ship.Deceleration,
-            ship.TurnRateDegrees);
+        return ship.MaximumSpeed * speedMultiplier;
     }
 }
