@@ -606,6 +606,7 @@ export type ShipKinematics = __Infer<typeof ShipKinematics>;
 export const ShipMovement = __t.object("ShipMovement", {
   entityId: __t.u64(),
   factionCode: __t.u8(),
+  mapId: __t.u8(),
   positionX: __t.f32(),
   positionY: __t.f32(),
   headingDegrees: __t.f32(),

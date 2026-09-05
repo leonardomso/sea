@@ -61,6 +61,13 @@ public static class ChunkBlobRules
     }
 
     /// <summary>
+    /// Whose slot this is, without unpacking the rest of it. The blob is searched by id on
+    /// every edit, so the search reads eight bytes a slot rather than sixteen.
+    /// </summary>
+    public static ulong EntityIdAt(ReadOnlySpan<byte> buffer, int index) =>
+        BinaryPrimitives.ReadUInt64LittleEndian(buffer.Slice(index * BytesPerShip, BytesPerShip));
+
+    /// <summary>
     /// The row a chunk owns, worked out rather than handed out. A chunk's row is rewritten
     /// every tick something in it moves, so the writer must reach it by primary key; an
     /// allocated id would mean a lookup by map and chunk first, every tick, for every chunk.
@@ -79,6 +86,15 @@ public static class ChunkBlobRules
 
         return ((uint)mapId << 16) | ((uint)chunkX << 8) | (uint)chunkY;
     }
+
+    /// <summary>The map a row id belongs to.</summary>
+    public static byte MapIdOf(uint rowId) => (byte)(rowId >> 16);
+
+    /// <summary>The chunk column a row id belongs to.</summary>
+    public static int ChunkXOf(uint rowId) => (int)((rowId >> 8) & 0xFFu);
+
+    /// <summary>The chunk row a row id belongs to.</summary>
+    public static int ChunkYOf(uint rowId) => (int)(rowId & 0xFFu);
 
     /// <summary>
     /// Clamped to the chart before it is scaled. A hull the simulation has somehow put off the

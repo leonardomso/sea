@@ -66,6 +66,45 @@ namespace Sea.Client
                 movement.HeadingDegrees);
         }
 
+        /// <summary>
+        /// Every ship in one chunk, placed off one row (SEA_5 §12.1).
+        /// </summary>
+        /// <remarks>
+        /// The local ship is skipped: she is sailed by the prediction off her own movement row,
+        /// which carries her speed and the tick it was taken at, and a hundredth-of-a-square
+        /// sample laid over that would only jog her about under the captain's own hands.
+        ///
+        /// A hull the client has no ship row for yet is dropped rather than drawn. The chunk row
+        /// carries an id and a position and nothing else, so there would be no hull to put
+        /// there, no colours to fly and no name to read.
+        /// </remarks>
+        private void HandleChunkMovementChanged(ChunkMovement chunk)
+        {
+            var count = SeaChunkBlob.Count(chunk.Payload, chunk.ShipCount);
+            if (count == 0)
+            {
+                return;
+            }
+
+            snapshotClock ??= new SeaSnapshotClock(
+                connection.WorldTickRate > 0 ? connection.WorldTickRate : SeaSnapshotClock.DefaultTickRate);
+            snapshotClock.Observe(chunk.Tick, Time.realtimeSinceStartupAsDouble);
+            for (var index = 0; index < count; index++)
+            {
+                if (!SeaChunkBlob.TryUnpack(
+                        chunk.Payload, index, out var entityId, out var x, out var y, out var heading) ||
+                    entityId == playerEntityId ||
+                    !targets.TryGetValue(entityId, out var timeline))
+                {
+                    continue;
+                }
+
+                timeline.Push(chunk.Tick, ToWorld(x, y, ShipRootHeight), heading);
+            }
+
+            visibilityDirty = true;
+        }
+
         private void HandleWorldObjectChanged(WorldObject entity)
         {
             if (!mapGeometry.TryGetValue(entity.EntityId, out var geometry))

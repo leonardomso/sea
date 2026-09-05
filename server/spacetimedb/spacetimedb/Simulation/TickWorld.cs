@@ -10,6 +10,7 @@ public static partial class Module
     private sealed class TickWorld
     {
         private readonly Dictionary<byte, MovementShardState> movementShards = new();
+        private Dictionary<uint, ChunkBlob>? chunks;
         private readonly Dictionary<ulong, (RouteWaypoint[] Points, int Count)> routes = new();
         private List<ShipMovement>? activePlayers;
         private List<NavigationBlocker>? blockers;
@@ -123,6 +124,48 @@ public static partial class Module
 
         public void StoreMovementShard(MovementShardState shard) =>
             movementShards[shard.ShardId] = shard;
+
+        /// <summary>
+        /// One chunk's packed ships, read once per transaction and edited in place.
+        /// </summary>
+        /// <remarks>
+        /// The hulls in a chunk are spread across all eight movement shards, so a chunk is
+        /// touched again and again through the movement phase. Writing the row on each touch
+        /// would copy the whole blob per ship; holding it here and writing the dirty ones at the
+        /// end costs one write a chunk however many ships sailed through it.
+        /// </remarks>
+        public ChunkBlob Chunk(ReducerContext ctx, byte mapId, int chunkX, int chunkY)
+        {
+            var id = ChunkBlobRules.RowId(mapId, chunkX, chunkY);
+            chunks ??= new Dictionary<uint, ChunkBlob>();
+            if (!chunks.TryGetValue(id, out var blob))
+            {
+                blob = ReadChunkBlob(ctx, id);
+                chunks.Add(id, blob);
+            }
+
+            return blob;
+        }
+
+        /// <summary>
+        /// Writes back every chunk whose packed bytes actually changed. A chunk of ships holding
+        /// station packs to what it packed last tick and costs nothing.
+        /// </summary>
+        public void PublishDirtyChunks(ReducerContext ctx)
+        {
+            if (chunks is null)
+            {
+                return;
+            }
+
+            foreach (var (id, blob) in chunks)
+            {
+                if (blob.IsDirty)
+                {
+                    WriteChunkBlob(ctx, id, blob, Tick);
+                }
+            }
+        }
 
         /// <summary>
         /// The course a ship is sailing, read once per transaction and then held. The

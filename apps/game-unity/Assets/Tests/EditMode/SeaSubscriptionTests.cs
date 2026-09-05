@@ -109,9 +109,16 @@ namespace Sea.Tests
             Assert.That(queries, Has.Some.Contains("chunk_x <= 5"));
             Assert.That(queries, Has.Some.Contains("chunk_y >= 1"));
             Assert.That(queries, Has.Some.Contains("chunk_y <= 3"));
-            Assert.That(queries.All(query => query.Contains("is_active = true")), Is.True);
+            Assert.That(
+                queries.All(query =>
+                    query.Contains("is_active = true") ||
+                    query.StartsWith("SELECT * FROM chunk_movement", StringComparison.Ordinal)),
+                Is.True);
             Assert.That(queries, Has.Some.StartsWith("SELECT * FROM world_object"));
-            Assert.That(queries, Has.Some.StartsWith("SELECT * FROM ship_movement"));
+
+            // Every other hull comes off the packed chunk rows, not a movement row apiece.
+            Assert.That(queries, Has.Some.StartsWith("SELECT * FROM chunk_movement"));
+            Assert.That(queries, Has.None.StartsWith("SELECT * FROM ship_movement"));
         }
 
         [Test]
@@ -161,10 +168,28 @@ namespace Sea.Tests
             var chunked = SeaSubscriptionPlan.Spatial(0, 0, SeaSubscriptionPlan.SpatialRadius);
 
             Assert.That(wholeMap.Length, Is.EqualTo(chunked.Length));
-            Assert.That(wholeMap.All(query => query.Contains("is_active = true")), Is.True);
-            Assert.That(wholeMap.All(query => !query.Contains("chunk_")), Is.True);
+            Assert.That(
+                wholeMap.All(query =>
+                    query.Contains("is_active = true") ||
+                    query.StartsWith("SELECT * FROM chunk_movement", StringComparison.Ordinal)),
+                Is.True);
+            Assert.That(wholeMap.All(query => !query.Contains("chunk_x")), Is.True);
             Assert.That(wholeMap, Has.Some.StartsWith("SELECT * FROM world_object"));
-            Assert.That(wholeMap, Has.Some.StartsWith("SELECT * FROM ship_movement"));
+            Assert.That(wholeMap, Has.Some.StartsWith("SELECT * FROM chunk_movement"));
+        }
+
+        // A chunk row is keyed by the chunk it is, so its columns cannot be asked for a chunk
+        // minus two: the window is clipped to the chart while the ship window is not.
+        [Test]
+        public void The_chunk_window_at_the_corner_of_the_chart_asks_for_no_chunk_below_zero()
+        {
+            var queries = SeaSubscriptionPlan.Spatial(chunkX: 0, chunkY: 0, radius: 2);
+            var chunkQuery = queries.Single(query =>
+                query.StartsWith("SELECT * FROM chunk_movement", StringComparison.Ordinal));
+
+            Assert.That(chunkQuery, Does.Contain("chunk_x >= 0"));
+            Assert.That(chunkQuery, Does.Contain("chunk_y >= 0"));
+            Assert.That(chunkQuery, Does.Not.Contain("-"));
         }
 
         [Test]

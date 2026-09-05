@@ -25,11 +25,9 @@ public static partial class Module
     // Tracked ships are always active and alive, so the published row is rebuilt from
     // the kinematics instead of being read back first. The fat Ship row only follows
     // on a chunk change or a stop; clients read live kinematics from ShipMovement.
-    private static void PublishMovement(
-        ReducerContext ctx,
-        ref ShipKinematics tracked,
-        ulong tick,
-        bool changedChunk)
+    // What the client was last told, so the next tick can tell how far the reckoning has
+    // drifted. Recorded whenever a hull is republished, whichever row carried her.
+    private static void RecordPublication(ref ShipKinematics tracked, ulong tick)
     {
         var published = ReplicationRules.Publish(
             PublishedMotionOf(tracked),
@@ -43,6 +41,14 @@ public static partial class Module
         tracked.PublishedHeadingDegrees = published.HeadingDegrees;
         tracked.PublishedVelocityX = published.VelocityX;
         tracked.PublishedVelocityY = published.VelocityY;
+    }
+
+    private static void PublishMovement(
+        ReducerContext ctx,
+        ref ShipKinematics tracked,
+        ulong tick,
+        bool changedChunk)
+    {
         ctx.Db.ShipMovement.EntityId.Update(ToShipMovement(tracked, tick));
         if (!changedChunk && tracked.IsMoving)
         {
@@ -66,15 +72,18 @@ public static partial class Module
         VelocityY = tracked.PublishedVelocityY,
     };
 
-    private static void InsertShipMovement(ReducerContext ctx, Ship ship, ulong tick) =>
+    private static void InsertShipMovement(ReducerContext ctx, Ship ship, ulong tick)
+    {
         ctx.Db.ShipMovement.Insert(ToShipMovement(ship, tick));
+        SyncChunkMembership(ctx, ship, previous: null, tick);
+    }
 
     private static void UpdateShipMovement(ReducerContext ctx, Ship ship, ulong tick)
     {
         var movement = ctx.Db.ShipMovement.EntityId.Find(ship.EntityId);
         if (movement is null)
         {
-            ctx.Db.ShipMovement.Insert(ToShipMovement(ship, tick));
+            InsertShipMovement(ctx, ship, tick);
             return;
         }
 
@@ -82,6 +91,10 @@ public static partial class Module
         CopyKinematics(ship, ref updated);
         updated.SnapshotTick = tick;
         ctx.Db.ShipMovement.EntityId.Update(updated);
+
+        // The movement row is the only place the chunk she was in is still written down, so the
+        // chunk rows are squared up against the row as it was, before it is overwritten above.
+        SyncChunkMembership(ctx, ship, movement, tick);
     }
 
     private static ulong CurrentSimulationTick(ReducerContext ctx) =>
@@ -98,6 +111,7 @@ public static partial class Module
     {
         EntityId = tracked.EntityId,
         FactionCode = tracked.FactionCode,
+        MapId = tracked.MapId,
         PositionX = tracked.PositionX,
         PositionY = tracked.PositionY,
         HeadingDegrees = tracked.HeadingDegrees,
@@ -114,6 +128,7 @@ public static partial class Module
     private static void CopyKinematics(Ship source, ref ShipMovement target)
     {
         target.FactionCode = source.FactionCode;
+        target.MapId = source.MapId;
         target.PositionX = source.PositionX;
         target.PositionY = source.PositionY;
         target.HeadingDegrees = source.HeadingDegrees;

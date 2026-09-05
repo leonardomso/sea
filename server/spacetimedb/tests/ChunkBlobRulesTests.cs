@@ -114,4 +114,33 @@ public sealed class ChunkBlobRulesTests
 
         Assert.Equal(0L, GC.GetAllocatedBytesForCurrentThread() - before);
     }
+
+    [Fact]
+    public void ARowIdSaysWhichChunkItIs()
+    {
+        // The writer reaches a chunk by key; the flush at the end of the tick has only the key
+        // and has to write the map and chunk columns back out of it.
+        var id = ChunkBlobRules.RowId(3, 5, 7);
+        Assert.Equal(3, ChunkBlobRules.MapIdOf(id));
+        Assert.Equal(5, ChunkBlobRules.ChunkXOf(id));
+        Assert.Equal(7, ChunkBlobRules.ChunkYOf(id));
+    }
+
+    [Fact]
+    public void EveryChunkOnEveryMapComesBackOutOfItsOwnRowId()
+    {
+        for (byte mapId = 0; mapId < 4; mapId++)
+        {
+            for (var chunkX = 0; chunkX < SpatialRules.ChunkCountPerAxis; chunkX++)
+            {
+                for (var chunkY = 0; chunkY < SpatialRules.ChunkCountPerAxis; chunkY++)
+                {
+                    var id = ChunkBlobRules.RowId(mapId, chunkX, chunkY);
+                    Assert.Equal(mapId, ChunkBlobRules.MapIdOf(id));
+                    Assert.Equal(chunkX, ChunkBlobRules.ChunkXOf(id));
+                    Assert.Equal(chunkY, ChunkBlobRules.ChunkYOf(id));
+                }
+            }
+        }
+    }
 }

@@ -24,6 +24,7 @@ namespace Sea.Client
             interestConnection.WorldObjectLeftInterest += RemoveWorldObjectPresentation;
             interestConnection.ShipChanged += HandleShipChanged;
             interestConnection.ShipMovementChanged += HandleShipMovementChanged;
+            interestConnection.ChunkMovementChanged += HandleChunkMovementChanged;
             interestConnection.ShipMovementLeftInterest += HandleShipMovementRemoved;
             interestConnection.WorldObjectChanged += HandleWorldObjectChanged;
             interestConnection.VolleyChanged += HandleVolleyChanged;
@@ -46,6 +47,7 @@ namespace Sea.Client
             interestConnection.WorldObjectLeftInterest -= RemoveWorldObjectPresentation;
             interestConnection.ShipChanged -= HandleShipChanged;
             interestConnection.ShipMovementChanged -= HandleShipMovementChanged;
+            interestConnection.ChunkMovementChanged -= HandleChunkMovementChanged;
             interestConnection.ShipMovementLeftInterest -= HandleShipMovementRemoved;
             interestConnection.WorldObjectChanged -= HandleWorldObjectChanged;
             interestConnection.VolleyChanged -= HandleVolleyChanged;

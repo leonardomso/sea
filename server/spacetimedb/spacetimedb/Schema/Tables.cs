@@ -63,6 +63,11 @@ public static partial class Module
         [PrimaryKey]
         public ulong EntityId;
         public byte FactionCode;
+
+        // Which chart she is on. A chunk belongs to a map, so a hull that crosses a border has
+        // to be taken out of the chunk she left before she is put into the one she arrives in,
+        // and this is the only place the chunk she left is still written down.
+        public byte MapId;
         public float PositionX;
         public float PositionY;
         public float HeadingDegrees;

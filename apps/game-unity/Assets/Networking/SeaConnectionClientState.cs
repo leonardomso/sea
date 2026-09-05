@@ -14,6 +14,13 @@ namespace Sea.Client
         public event Action<Ship> ShipChanged;
         public event Action<ShipMovement> ShipMovementChanged;
         public event Action<ulong> ShipMovementLeftInterest;
+
+        /// <summary>
+        /// One chunk's ships, packed (SEA_5 §12.1). Every hull but the player's own is placed
+        /// off these rows: a chunk costs sixteen bytes a ship and one row change a tick however
+        /// many of them are under way, where a movement row apiece cost a row change each.
+        /// </summary>
+        public event Action<ChunkMovement> ChunkMovementChanged;
         public event Action<WorldObject> WorldObjectChanged;
         public event Action<Volley> VolleyChanged;
         public event Action<ulong> VolleyLeftInterest;
@@ -55,6 +62,8 @@ namespace Sea.Client
             connection.Db.ShipMovement.OnInsert += HandleShipMovementInserted;
             connection.Db.ShipMovement.OnUpdate += HandleShipMovementUpdated;
             connection.Db.ShipMovement.OnDelete += HandleShipMovementDeleted;
+            connection.Db.ChunkMovement.OnInsert += HandleChunkMovementInserted;
+            connection.Db.ChunkMovement.OnUpdate += HandleChunkMovementUpdated;
             connection.Db.PlayerProgression.OnInsert += HandleHudRowInserted;
             connection.Db.PlayerProgression.OnUpdate += HandleHudRowUpdated;
             connection.Db.EncounterReward.OnInsert += HandleHudRowInserted;
@@ -136,6 +145,14 @@ namespace Sea.Client
 
         private void HandleShipMovementDeleted(EventContext _context, ShipMovement movement) =>
             ShipMovementLeftInterest?.Invoke(movement.EntityId);
+
+        private void HandleChunkMovementInserted(EventContext _context, ChunkMovement chunk) =>
+            ChunkMovementChanged?.Invoke(chunk);
+
+        private void HandleChunkMovementUpdated(
+            EventContext _context,
+            ChunkMovement _oldChunk,
+            ChunkMovement chunk) => ChunkMovementChanged?.Invoke(chunk);
 
         private void NotifyShipMovementChanged(ShipMovement movement)
         {

@@ -161,7 +161,13 @@ namespace Sea.Client
             return new[]
             {
                 "SELECT * FROM ship WHERE is_active = true",
-                "SELECT * FROM ship_movement WHERE is_active = true",
+
+                // Where every other ship is, one row per chunk rather than one per hull
+                // (SEA_5 §12.1). There is no is_active predicate to write: a chunk is a stretch
+                // of water, and the hulls in it are the hulls the server put in it. The local
+                // ship keeps her own movement row, which carries the speed and snapshot tick
+                // her prediction needs and the packed sixteen bytes do not.
+                "SELECT * FROM chunk_movement",
                 "SELECT * FROM volley WHERE is_active = true",
                 "SELECT * FROM loot WHERE is_active = true",
                 "SELECT * FROM world_object WHERE is_active = true",
@@ -184,10 +190,17 @@ namespace Sea.Client
                 $"chunk_x >= {minimumX} AND chunk_x <= {maximumX} " +
                 $"AND chunk_y >= {minimumY} AND chunk_y <= {maximumY}";
 
+            // A chunk row is keyed by the chunk it is, so its columns are unsigned and a window
+            // that runs off the edge of the chart has to be clipped to it rather than asking for
+            // a chunk minus two.
+            var chunkBounds =
+                $"chunk_x >= {Math.Max(0, minimumX)} AND chunk_x <= {Math.Max(0, maximumX)} " +
+                $"AND chunk_y >= {Math.Max(0, minimumY)} AND chunk_y <= {Math.Max(0, maximumY)}";
+
             return new[]
             {
                 $"SELECT * FROM ship WHERE is_active = true AND {bounds}",
-                $"SELECT * FROM ship_movement WHERE is_active = true AND {bounds}",
+                $"SELECT * FROM chunk_movement WHERE {chunkBounds}",
                 $"SELECT * FROM volley WHERE is_active = true AND {bounds}",
                 $"SELECT * FROM loot WHERE is_active = true AND {bounds}",
                 $"SELECT * FROM world_object WHERE is_active = true AND {bounds}",

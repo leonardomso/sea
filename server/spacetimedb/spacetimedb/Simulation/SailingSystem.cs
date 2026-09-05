@@ -18,6 +18,9 @@ public static partial class Module
             processed += AdvanceMovementShard(ctx, world, shardId);
         }
 
+        // Every chunk touched this tick is written once, here, rather than once per hull that
+        // sailed through it: that is the whole point of packing a chunk into a row.
+        world.PublishDirtyChunks(ctx);
         return (processed, 0);
     }
 
@@ -76,20 +79,8 @@ public static partial class Module
                 ProcessLootClaims(ctx, ship, lastTick);
             }
 
-            // A ship holding her course is already drawn where she is, so only the ones whose
-            // reckoning has drifted, crossed into another chunk or come to rest cost a row.
-            // Coming to rest is the tick she arrives, not every tick she lies still: a hull
-            // set adrift on a current is published by the reckoning test like any other.
-            var changedChunk = ship.ChunkX != chunkX || ship.ChunkY != chunkY;
-            if (changedChunk || (wasMoving && !ship.IsMoving) || ReplicationRules.ShouldPublish(
-                    PublishedMotionOf(ship),
-                    ship.PositionX,
-                    ship.PositionY,
-                    ship.HeadingDegrees,
-                    lastTick))
-            {
-                PublishMovement(ctx, ref ship, lastTick, changedChunk);
-            }
+            PublishSailedShip(ctx, world, ref ship, chunkX, chunkY, wasMoving, lastTick);
+
             // A ship at rest in a current is still being carried, so she stays in the shard
             // until the water lets go of her (SEA_5 5.2).
             if (ship.IsMoving || ship.CurrentVelocityX != 0f || ship.CurrentVelocityY != 0f)
@@ -104,6 +95,51 @@ public static partial class Module
         }
 
         return processed;
+    }
+
+    /// <summary>
+    /// What the world is told about a hull that has just finished sailing her batch of ticks.
+    /// </summary>
+    /// <remarks>
+    /// A ship holding her course is already drawn where she is, so only the ones whose reckoning
+    /// has drifted, crossed into another chunk or come to rest cost anything. Coming to rest is
+    /// the tick she arrives, not every tick she lies still: a hull set adrift on a current is
+    /// published by the reckoning test like any other.
+    /// </remarks>
+    private static void PublishSailedShip(
+        ReducerContext ctx,
+        TickWorld world,
+        ref ShipKinematics ship,
+        int fromChunkX,
+        int fromChunkY,
+        bool wasMoving,
+        ulong lastTick)
+    {
+        var changedChunk = ship.ChunkX != fromChunkX || ship.ChunkY != fromChunkY;
+        if (!changedChunk && (!wasMoving || ship.IsMoving) && !ReplicationRules.ShouldPublish(
+                PublishedMotionOf(ship),
+                ship.PositionX,
+                ship.PositionY,
+                ship.HeadingDegrees,
+                lastTick))
+        {
+            return;
+        }
+
+        RecordPublication(ref ship, lastTick);
+
+        // Where she is now goes into her chunk's blob, which is what every other captain is
+        // subscribed to. A hull that has crossed a chunk line is taken out of the one she left
+        // first, or she would be drawn in both.
+        if (changedChunk)
+        {
+            world.Chunk(ctx, ship.MapId, fromChunkX, fromChunkY).Remove(ship.EntityId);
+        }
+
+        world
+            .Chunk(ctx, ship.MapId, ship.ChunkX, ship.ChunkY)
+            .Set(ship.EntityId, ship.PositionX, ship.PositionY, ship.HeadingDegrees);
+        PublishMovement(ctx, ref ship, lastTick, changedChunk);
     }
 
     /// <summary>

@@ -61,6 +61,7 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.Col<ShipMovement, ulong> EntityId { get; }
         public global::SpacetimeDB.Col<ShipMovement, byte> FactionCode { get; }
+        public global::SpacetimeDB.Col<ShipMovement, byte> MapId { get; }
         public global::SpacetimeDB.Col<ShipMovement, float> PositionX { get; }
         public global::SpacetimeDB.Col<ShipMovement, float> PositionY { get; }
         public global::SpacetimeDB.Col<ShipMovement, float> HeadingDegrees { get; }
@@ -77,6 +78,7 @@ namespace SpacetimeDB.Types
         {
             EntityId = new global::SpacetimeDB.Col<ShipMovement, ulong>(tableName, "entity_id");
             FactionCode = new global::SpacetimeDB.Col<ShipMovement, byte>(tableName, "faction_code");
+            MapId = new global::SpacetimeDB.Col<ShipMovement, byte>(tableName, "map_id");
             PositionX = new global::SpacetimeDB.Col<ShipMovement, float>(tableName, "position_x");
             PositionY = new global::SpacetimeDB.Col<ShipMovement, float>(tableName, "position_y");
             HeadingDegrees = new global::SpacetimeDB.Col<ShipMovement, float>(tableName, "heading_degrees");

@@ -13,6 +13,7 @@ import {
 export default __t.row({
   entityId: __t.u64().primaryKey().name("entity_id"),
   factionCode: __t.u8().name("faction_code"),
+  mapId: __t.u8().name("map_id"),
   positionX: __t.f32().name("position_x"),
   positionY: __t.f32().name("position_y"),
   headingDegrees: __t.f32().name("heading_degrees"),
