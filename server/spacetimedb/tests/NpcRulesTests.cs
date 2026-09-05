@@ -383,4 +383,67 @@ public sealed partial class NpcRulesTests
             expected,
             NpcRules.IsProtectedFromNpcs(invulnerableUntilTick, tick, distanceFromHarbor));
     }
+
+    [Fact]
+    public void TheFourDistancesAreTheOnesSeaFiveNames()
+    {
+        Assert.Equal(25f, NpcMovementRules.WanderRadiusSquares, 4);
+        Assert.Equal(20f, NpcMovementRules.AggroRadiusSquares, 4);
+        Assert.Equal(60f, NpcMovementRules.LeashRadiusSquares, 4);
+        Assert.Equal(0.8f, NpcMovementRules.HoldDistanceFraction, 4);
+    }
+
+    [Fact]
+    public void ANpcChasesAShipInsideAggro()
+    {
+        Assert.Equal(
+            NpcIntent.Chase,
+            NpcMovementRules.Decide(distanceToTargetSquares: 15f, distanceFromHomeSquares: 10f));
+    }
+
+    [Fact]
+    public void ANpcTooFarFromHomeGoesHomeWhateverIsChasingHer()
+    {
+        Assert.Equal(
+            NpcIntent.Leash,
+            NpcMovementRules.Decide(distanceToTargetSquares: 5f, distanceFromHomeSquares: 61f));
+    }
+
+    [Fact]
+    public void ANpcHoldsAtEightyPerCentOfHerRangeRatherThanClosingToTouch()
+    {
+        var hold = NpcMovementRules.HoldDistanceSquares(effectiveRangeSquares: 20f);
+
+        Assert.Equal(16f, hold, 4);
+        Assert.Equal(NpcIntent.Hold, NpcMovementRules.Decide(16f, 10f, holdDistanceSquares: 16f));
+    }
+
+    [Fact]
+    public void ANpcReplansTwiceASecondAtMost()
+    {
+        Assert.Equal(5UL, NpcMovementRules.ReplanIntervalTicks);
+    }
+
+    [Fact]
+    public void AnIdleNpcPicksANewSpotEveryEightToTwentySeconds()
+    {
+        for (var entityId = 1UL; entityId <= 200UL; entityId++)
+        {
+            var wait = NpcMovementRules.WanderWaitTicks(entityId, wanderIndex: 3UL);
+
+            Assert.InRange(wait, 80UL, 200UL);
+        }
+    }
+
+    [Fact]
+    public void TwoNpcsDoNotAllPickTheirNextSpotOnTheSameTick()
+    {
+        var waits = new HashSet<ulong>();
+        for (var entityId = 1UL; entityId <= 50UL; entityId++)
+        {
+            waits.Add(NpcMovementRules.WanderWaitTicks(entityId, 0UL));
+        }
+
+        Assert.True(waits.Count > 10);
+    }
 }
