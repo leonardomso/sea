@@ -35,89 +35,89 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="top-coordinate-ruler" class="coordinate-ruler top-coordinate-ruler">
-            <ui:Label name="top-coordinate-0" text="" />
-            <ui:Label name="top-coordinate-1" text="" />
-            <ui:Label name="top-coordinate-2" text="" />
-            <ui:Label name="top-coordinate-3" text="" />
-            <ui:Label name="top-coordinate-4" text="" />
-            <ui:Label name="top-coordinate-5" text="" />
-            <ui:Label name="top-coordinate-6" text="" />
-            <ui:Label name="top-coordinate-7" text="" />
-            <ui:Label name="top-coordinate-8" text="" />
-            <ui:Label name="top-coordinate-9" text="" />
-            <ui:Label name="top-coordinate-10" text="" />
-            <ui:Label name="top-coordinate-11" text="" />
-            <ui:Label name="top-coordinate-12" text="" />
-            <ui:Label name="top-coordinate-13" text="" />
-            <ui:Label name="top-coordinate-14" text="" />
-            <ui:Label name="top-coordinate-15" text="" />
-            <ui:Label name="top-coordinate-16" text="" />
-            <ui:Label name="top-coordinate-17" text="" />
-            <ui:Label name="top-coordinate-18" text="" />
-            <ui:Label name="top-coordinate-19" text="" />
-            <ui:Label name="top-coordinate-20" text="" />
-            <ui:Label name="top-coordinate-21" text="" />
-            <ui:Label name="top-coordinate-22" text="" />
-            <ui:Label name="top-coordinate-23" text="" />
-            <ui:Label name="top-coordinate-24" text="" />
-            <ui:Label name="top-coordinate-25" text="" />
-            <ui:Label name="top-coordinate-26" text="" />
-            <ui:Label name="top-coordinate-27" text="" />
-            <ui:Label name="top-coordinate-28" text="" />
-            <ui:Label name="top-coordinate-29" text="" />
-            <ui:Label name="top-coordinate-30" text="" />
-            <ui:Label name="top-coordinate-31" text="" />
-            <ui:Label name="top-coordinate-32" text="" />
-            <ui:Label name="top-coordinate-33" text="" />
-            <ui:Label name="top-coordinate-34" text="" />
-            <ui:Label name="top-coordinate-35" text="" />
-            <ui:Label name="top-coordinate-36" text="" />
-            <ui:Label name="top-coordinate-37" text="" />
-            <ui:Label name="top-coordinate-38" text="" />
-            <ui:Label name="top-coordinate-39" text="" />
+            <ui:Label name="top-coordinate-0" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-1" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-2" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-3" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-4" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-5" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-6" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-7" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-8" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-9" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-10" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-11" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-12" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-13" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-14" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-15" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-16" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-17" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-18" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-19" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-20" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-21" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-22" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-23" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-24" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-25" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-26" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-27" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-28" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-29" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-30" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-31" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-32" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-33" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-34" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-35" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-36" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-37" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-38" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-39" text="" class="coordinate-mark" />
         </ui:VisualElement>
 
         <ui:VisualElement name="left-coordinate-ruler" class="coordinate-ruler left-coordinate-ruler">
-            <ui:Label name="left-coordinate-0" text="" />
-            <ui:Label name="left-coordinate-1" text="" />
-            <ui:Label name="left-coordinate-2" text="" />
-            <ui:Label name="left-coordinate-3" text="" />
-            <ui:Label name="left-coordinate-4" text="" />
-            <ui:Label name="left-coordinate-5" text="" />
-            <ui:Label name="left-coordinate-6" text="" />
-            <ui:Label name="left-coordinate-7" text="" />
-            <ui:Label name="left-coordinate-8" text="" />
-            <ui:Label name="left-coordinate-9" text="" />
-            <ui:Label name="left-coordinate-10" text="" />
-            <ui:Label name="left-coordinate-11" text="" />
-            <ui:Label name="left-coordinate-12" text="" />
-            <ui:Label name="left-coordinate-13" text="" />
-            <ui:Label name="left-coordinate-14" text="" />
-            <ui:Label name="left-coordinate-15" text="" />
-            <ui:Label name="left-coordinate-16" text="" />
-            <ui:Label name="left-coordinate-17" text="" />
-            <ui:Label name="left-coordinate-18" text="" />
-            <ui:Label name="left-coordinate-19" text="" />
-            <ui:Label name="left-coordinate-20" text="" />
-            <ui:Label name="left-coordinate-21" text="" />
-            <ui:Label name="left-coordinate-22" text="" />
-            <ui:Label name="left-coordinate-23" text="" />
-            <ui:Label name="left-coordinate-24" text="" />
-            <ui:Label name="left-coordinate-25" text="" />
-            <ui:Label name="left-coordinate-26" text="" />
-            <ui:Label name="left-coordinate-27" text="" />
-            <ui:Label name="left-coordinate-28" text="" />
-            <ui:Label name="left-coordinate-29" text="" />
-            <ui:Label name="left-coordinate-30" text="" />
-            <ui:Label name="left-coordinate-31" text="" />
-            <ui:Label name="left-coordinate-32" text="" />
-            <ui:Label name="left-coordinate-33" text="" />
-            <ui:Label name="left-coordinate-34" text="" />
-            <ui:Label name="left-coordinate-35" text="" />
-            <ui:Label name="left-coordinate-36" text="" />
-            <ui:Label name="left-coordinate-37" text="" />
-            <ui:Label name="left-coordinate-38" text="" />
-            <ui:Label name="left-coordinate-39" text="" />
+            <ui:Label name="left-coordinate-0" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-1" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-2" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-3" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-4" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-5" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-6" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-7" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-8" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-9" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-10" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-11" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-12" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-13" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-14" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-15" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-16" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-17" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-18" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-19" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-20" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-21" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-22" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-23" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-24" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-25" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-26" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-27" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-28" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-29" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-30" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-31" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-32" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-33" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-34" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-35" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-36" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-37" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-38" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-39" text="" class="coordinate-mark" />
         </ui:VisualElement>
 
         <ui:VisualElement name="mini-map-frame" class="mini-map-frame">

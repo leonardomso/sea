@@ -139,6 +139,11 @@ namespace Sea.Client
             {
                 $"SELECT * FROM ship WHERE {targetPredicate}",
                 $"SELECT * FROM ship_movement WHERE {targetPredicate}",
+
+                // Her course, so it can be drawn beside the local ship's. A route the client
+                // does not stream is a line it cannot draw, and the captain is back to reading
+                // where a ship is bound off the way her bow happens to point.
+                $"SELECT * FROM ship_route WHERE {targetPredicate}",
                 $"SELECT * FROM effect WHERE {statusPredicate}",
                 $"SELECT * FROM cooldown WHERE {statusPredicate}",
                 $"SELECT * FROM ship_channel WHERE {statusPredicate}",

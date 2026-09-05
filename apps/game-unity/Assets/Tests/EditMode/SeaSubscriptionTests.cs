@@ -87,6 +87,12 @@ namespace Sea.Tests
                 "SELECT * FROM ship_movement WHERE entity_id = 42"));
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM effect WHERE ship_entity_id = 42"));
+
+            // Her course, so the selected ship's route can be drawn. A route the client never
+            // streams is a line it cannot draw, and the captain is back to guessing where a
+            // ship is bound from where her bow points.
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM ship_route WHERE entity_id = 42"));
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM volley WHERE is_active = true AND " +
                 "(source_entity_id = 7 OR target_entity_id = 7 OR " +

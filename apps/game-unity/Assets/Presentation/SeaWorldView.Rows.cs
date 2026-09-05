@@ -340,6 +340,7 @@ namespace Sea.Client
             UpdateTargetRing(localShip);
             UpdateOwnShipRing();
             UpdateCoursePing();
+            UpdateRouteLines();
         }
 
         // World space: the fog is a plane in the scene and its shader measures the fragment's

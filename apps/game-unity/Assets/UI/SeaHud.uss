@@ -204,6 +204,14 @@
     letter-spacing: 0.6px;
 }
 
+/* Three characters wide. The ruler runs A to AN and 1 to 40, so a mark is at most two
+   glyphs, and a fixed field keeps "AN" sitting over the same cell edge "A" sat over instead
+   of nudging its neighbours along as the chart is pulled out. */
+.coordinate-mark {
+    min-width: 18px;
+    -unity-text-align: middle-center;
+}
+
 .top-coordinate-ruler {
     top: 48px;
     left: 26px;
