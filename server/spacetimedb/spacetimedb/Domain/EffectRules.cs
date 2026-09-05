@@ -23,9 +23,6 @@ public static class EffectRules
     /// <summary>A burning ship heals at half rate. Read by 1c's repair channel.</summary>
     public const float BurnHealMultiplier = 0.5f;
 
-    /// <summary>A slow can never stop a ship dead, however it is configured.</summary>
-    public const float MinimumSpeedMultiplier = 0.1f;
-
     public static EffectCode From(AmmoEffectCode effect) => effect switch
     {
         AmmoEffectCode.Slow => EffectCode.Slowed,
@@ -83,10 +80,6 @@ public static class EffectRules
 
     public static bool HasExpired(ulong expiresAtTick, ulong currentTick) =>
         currentTick >= expiresAtTick;
-
-    public static float SpeedMultiplier(bool slowed, float magnitude) => slowed
-        ? Math.Clamp(1f - magnitude, MinimumSpeedMultiplier, 1f)
-        : 1f;
 
     /// <summary>Grape Shot adds its magnitude to the reload time rather than scaling it down.</summary>
     public static uint ReloadTicks(uint baseTicks, bool reloadSlowed, float magnitude)

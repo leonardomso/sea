@@ -56,4 +56,25 @@ public static class RangeRules
     /// </summary>
     public static bool IsWithinRange(float distanceSquares, float effectiveRangeSquares) =>
         distanceSquares <= effectiveRangeSquares + GraceSquares;
+
+    /// <summary>
+    /// Twice what a captain can see. A hull inside it is a dot on the minimap and
+    /// nothing else: she cannot be selected or fired on until she is inside
+    /// <see cref="ViewDistanceSquares"/> (SEA_5 §7.5).
+    /// </summary>
+    public const float MinimapRadiusSquares = ViewDistanceSquares * 2f;
+
+    /// <summary>Half of base is as much as any debuff can take (SEA_5 §7.6).</summary>
+    public const float DebuffFloorFraction = 0.50f;
+
+    /// <summary>
+    /// A range or view debuff subtracts flat squares, floored at half of base.
+    /// Flat rather than proportional, because a fixed fraction would cost a tier
+    /// 5 gun 3 squares where it costs a tier 1 gun 1.8, which is backwards: the
+    /// cheap gun is the one that needs the room.
+    /// </summary>
+    public static float DebuffedSquares(float baseSquares, float subtractedSquares) =>
+        MathF.Max(
+            baseSquares * DebuffFloorFraction,
+            baseSquares - MathF.Max(0f, subtractedSquares));
 }

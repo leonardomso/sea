@@ -51,4 +51,35 @@ public sealed class RangeRulesTests
     {
         Assert.True(30f / RangeRules.ProjectileSpeedSquaresPerSecond < 1f);
     }
+
+    [Fact]
+    public void TheMinimapShowsTwiceAsFarAsACaptainCanSee()
+    {
+        Assert.Equal(120f, RangeRules.MinimapRadiusSquares, 4);
+    }
+
+    [Fact]
+    public void ARangeDebuffTakesFlatSquaresOff()
+    {
+        Assert.Equal(24f, RangeRules.DebuffedSquares(30f, 6f), 4);
+        Assert.Equal(12f, RangeRules.DebuffedSquares(18f, 6f), 4);
+    }
+
+    [Fact]
+    public void ARangeDebuffCannotTakeMoreThanHalf()
+    {
+        Assert.Equal(15f, RangeRules.DebuffedSquares(30f, 25f), 4);
+    }
+
+    [Fact]
+    public void AViewDebuffUsesTheSameFloor()
+    {
+        Assert.Equal(30f, RangeRules.DebuffedSquares(RangeRules.ViewDistanceSquares, 90f), 4);
+    }
+
+    [Fact]
+    public void NoDebuffLeavesTheRangeAlone()
+    {
+        Assert.Equal(27f, RangeRules.DebuffedSquares(27f, 0f), 4);
+    }
 }
