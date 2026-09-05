@@ -10,6 +10,7 @@ public static partial class Module
     private sealed class TickWorld
     {
         private readonly Dictionary<byte, MovementShardState> movementShards = new();
+        private readonly Dictionary<ulong, (RouteWaypoint[] Points, int Count)> routes = new();
         private List<ShipMovement>? activePlayers;
         private List<NavigationBlocker>? blockers;
         private List<NavigationBlocker>? patrolBlockers;
@@ -112,6 +113,62 @@ public static partial class Module
 
         public void StoreMovementShard(MovementShardState shard) =>
             movementShards[shard.ShardId] = shard;
+
+        /// <summary>
+        /// The course a ship is sailing, read once per transaction and then held. The
+        /// span is over a buffer this world owns, so it is only good until the next
+        /// call for the same ship; a caller that wants to keep it copies it.
+        /// </summary>
+        /// <remarks>
+        /// Courses are read on the movement phase and written on the command phase
+        /// before it, so the cache has to answer with what was just ordered rather
+        /// than what the row said at the start of the tick. That is what
+        /// <see cref="StoreRoute"/> is for: an NPC given a course this tick sails it
+        /// on the same tick, which is what the dispatcher's ordering promises.
+        /// </remarks>
+        public ReadOnlySpan<RouteWaypoint> RouteFor(ReducerContext ctx, ulong entityId)
+        {
+            if (!routes.TryGetValue(entityId, out var cached))
+            {
+                cached = ReadRoute(ctx, entityId);
+                routes[entityId] = cached;
+            }
+
+            return cached.Points.AsSpan(0, cached.Count);
+        }
+
+        public void StoreRoute(ulong entityId, ReadOnlySpan<RouteWaypoint> route)
+        {
+            if (!routes.TryGetValue(entityId, out var cached) ||
+                cached.Points.Length < route.Length)
+            {
+                cached = (new RouteWaypoint[RouteRules.MaximumWaypoints], 0);
+            }
+
+            route.CopyTo(cached.Points);
+            routes[entityId] = (cached.Points, route.Length);
+        }
+
+        private static (RouteWaypoint[] Points, int Count) ReadRoute(
+            ReducerContext ctx,
+            ulong entityId)
+        {
+            if (ctx.Db.ShipRoute.EntityId.Find(entityId) is not ShipRoute row)
+            {
+                return (Array.Empty<RouteWaypoint>(), 0);
+            }
+
+            var count = Math.Min(
+                Math.Min(row.PointsX.Count, row.PointsY.Count),
+                RouteRules.MaximumWaypoints);
+            var points = new RouteWaypoint[RouteRules.MaximumWaypoints];
+            for (var index = 0; index < count; index++)
+            {
+                points[index] = new RouteWaypoint(row.PointsX[index], row.PointsY[index]);
+            }
+
+            return (points, count);
+        }
 
         // Every NPC hunts through the same handful of player rows, so the scan is paid once
         // for the tick rather than once per hull. Players hold still inside this transaction:

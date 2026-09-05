@@ -3,18 +3,29 @@ using SpacetimeDB;
 
 public static partial class Module
 {
+    /// <summary>
+    /// A click is blocked only when it lands inland and there is no water within the
+    /// nudge radius SEA_5 4.1.2 allows. Water the click cannot be sailed to -- the far
+    /// side of an isthmus, a lake -- is not blocked here; that is the search's answer,
+    /// and it is NO_PATH.
+    /// </summary>
     private static CommandSnapshot CourseSnapshot(
-        ReducerContext ctx,
-        TickWorld world,
+        Ship ship,
         CommandSnapshot snapshot,
-        SetCourseCommand command) => snapshot with
+        SetCourseCommand command)
+    {
+        var (clampedX, clampedY) = WorldRules.ClampToMap(command.X, command.Y);
+        return snapshot with
         {
             CourseValid = WorldRules.IsValidMove(command.X, command.Y),
-            DestinationBlocked = NavigationRules.IsDestinationBlocked(
-                command.X,
-                command.Y,
-                world.Blockers(ctx)),
+            DestinationBlocked = !ContentCatalog.LandMaskFor(ship.MapId).TryNearestWater(
+                clampedX,
+                clampedY,
+                PathfindingRules.NudgeSearchSquares,
+                out _,
+                out _),
         };
+    }
 
     private static CommandSnapshot TargetSnapshot(
         ReducerContext ctx,

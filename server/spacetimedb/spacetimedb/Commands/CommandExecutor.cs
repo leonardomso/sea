@@ -51,7 +51,7 @@ public static partial class Module
 
         return command.Kind switch
         {
-            ShipCommandKind.SetCourse => CourseSnapshot(ctx, world, snapshot, command.SetCourse),
+            ShipCommandKind.SetCourse => CourseSnapshot(ship, snapshot, command.SetCourse),
             ShipCommandKind.SelectTarget => TargetSnapshot(
                 ctx,
                 ship,
@@ -70,7 +70,14 @@ public static partial class Module
         };
     }
 
-    private static void ApplyAcceptedCommand(
+    /// <summary>
+    /// Runs an accepted command and hands back what actually happened. Most executors
+    /// cannot fail, but plotting a course can: whether there is a way through the
+    /// islands, and whether the captain has already had her eight clicks this second,
+    /// are not questions the snapshot can answer without doing the search twice. Such a
+    /// command is refused after the fact, and the refusal replaces the acceptance.
+    /// </summary>
+    private static CommandDecision ApplyAcceptedCommand(
         ReducerContext ctx,
         TickWorld world,
         ref Ship ship,
@@ -81,10 +88,11 @@ public static partial class Module
         // mode of its own -- casting off, or standing down when a course stays inside the port --
         // is not overwritten by the decision that let it run.
         ship.ModeCode = (byte)decision.NextMode;
+        var rejection = CommandRejectionCode.None;
         switch (command.Kind)
         {
             case ShipCommandKind.SetCourse:
-                ApplySetCourse(ctx, world, ref ship, command.SetCourse);
+                rejection = ApplySetCourse(ctx, world, ref ship, command.SetCourse);
                 break;
             case ShipCommandKind.StopCourse:
                 ApplyStopCourse(ctx, world, ref ship);
@@ -117,7 +125,12 @@ public static partial class Module
                 throw new InvalidOperationException("Accepted command has no executor.");
         }
 
+        // The ship is written back either way: a dropped course still spends the
+        // captain's rate-limit budget and still counts against her trust score.
         PersistCommandShip(ctx, ship, world.Tick);
+        return rejection == CommandRejectionCode.None
+            ? decision
+            : new CommandDecision(false, rejection, decision.NextMode, CommandEffect.None);
     }
 
     private static ShipMode ResolveMode(Ship ship)

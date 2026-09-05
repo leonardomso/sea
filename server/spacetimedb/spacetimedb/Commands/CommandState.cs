@@ -81,7 +81,7 @@ public static partial class Module
         var decision = CommandPolicy.Evaluate(snapshot, decoded.Kind);
         if (decision.Accepted)
         {
-            ApplyAcceptedCommand(ctx, world, ref ship, decoded, decision);
+            decision = ApplyAcceptedCommand(ctx, world, ref ship, decoded, decision);
         }
 
         state.LastProcessedCommandId = envelope.CommandId;

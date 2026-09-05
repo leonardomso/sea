@@ -68,7 +68,7 @@ public static partial class Module
         // where it is rather than sailing it out unpaid for.
         if (castOff)
         {
-            ClearCourse(ref ship);
+            ClearRoute(ctx, world, ref ship);
         }
     }
 

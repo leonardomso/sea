@@ -403,4 +403,21 @@ public sealed class CommandPolicyTests
             _ => throw new ArgumentOutOfRangeException(nameof(mode)),
         };
     }
+
+    /// <summary>
+    /// The client reads these numbers off the wire, so their values are the contract,
+    /// not their names. A course that cannot be plotted is refused whole (SEA_5 4.1.5)
+    /// rather than half-obeyed, and the ninth click in a second is dropped (4.1.8).
+    /// </summary>
+    [Fact]
+    public void ACourseIntoALandLockedLakeIsRejectedWithNoPath()
+    {
+        Assert.Equal(25, (int)CommandRejectionCode.NoPath);
+    }
+
+    [Fact]
+    public void TooManyCoursesInOneSecondAreRejectedAsRateLimited()
+    {
+        Assert.Equal(26, (int)CommandRejectionCode.RateLimited);
+    }
 }

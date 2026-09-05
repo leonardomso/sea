@@ -56,6 +56,12 @@ public enum CommandRejectionCode : byte
     OnCooldown = 22,
     SpawnShielded = 23,
     NotSunk = 24,
+
+    /// <summary>There is no way from here to there (SEA_5 4.1.5).</summary>
+    NoPath = 25,
+
+    /// <summary>More than eight courses in one second (SEA_5 4.1.8).</summary>
+    RateLimited = 26,
 }
 
 [Flags]

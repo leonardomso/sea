@@ -3,19 +3,18 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    private static void ApplySetCourse(
+    private static CommandRejectionCode ApplySetCourse(
         ReducerContext ctx,
         TickWorld world,
         ref Ship ship,
         SetCourseCommand command)
     {
-        var blockers = world.Blockers(ctx);
-        ship.DestinationX = command.X;
-        ship.DestinationY = command.Y;
-        ConfigureNavigationWaypoint(ref ship, blockers);
-        ship.HasCourse = ship.PositionX != command.X || ship.PositionY != command.Y;
-        ship.IsStopping = false;
-        ship.IsMoving = ship.HasCourse;
+        var rejection = SetCourse(ctx, world, ref ship, command.X, command.Y);
+        if (rejection != CommandRejectionCode.None)
+        {
+            return rejection;
+        }
+
         StartCastOff(ctx, world, ref ship, command);
         AppendEvent(
             ctx,
@@ -23,6 +22,7 @@ public static partial class Module
             ship.EntityId,
             "set_course",
             $"x={command.X:0.###},y={command.Y:0.###}");
+        return CommandRejectionCode.None;
     }
 
     /// <summary>
@@ -76,7 +76,7 @@ public static partial class Module
 
     private static void ApplyStopCourse(ReducerContext ctx, TickWorld world, ref Ship ship)
     {
-        ClearCourse(ref ship);
+        ClearRoute(ctx, world, ref ship);
 
         // A cast-off is only worth holding while there is a course left to leave on.
         if (ship.ModeCode == (byte)ShipMode.CastingOff)
@@ -85,18 +85,6 @@ public static partial class Module
         }
 
         AppendEvent(ctx, world.Tick, ship.EntityId, "stop_course", "");
-    }
-
-    private static void ClearCourse(ref Ship ship)
-    {
-        ship.DestinationX = ship.PositionX;
-        ship.DestinationY = ship.PositionY;
-        ship.WaypointX = ship.PositionX;
-        ship.WaypointY = ship.PositionY;
-        ship.HasWaypoint = false;
-        ship.HasCourse = false;
-        ship.IsStopping = ship.Speed > 0f;
-        ship.IsMoving = ship.Speed > 0f;
     }
 
     private static void ApplySelectTarget(
