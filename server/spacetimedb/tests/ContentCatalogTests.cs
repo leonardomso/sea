@@ -251,4 +251,85 @@ public sealed class ContentCatalogTests
         Assert.Equal("hull_t1", Tier1.Hull.Id);
         Assert.Equal("cannon_t1", Tier1.Cannon.Id);
     }
+
+    // Phase 8.1: all five hull tiers exist, one per Map Rank (SEA_2_MATH §2.4 for
+    // HP/armor/slots/cost/magazine; SEA_5 §4.4 for speed).
+    [Fact]
+    public void All_five_hull_tiers_are_present()
+    {
+        var tiers = Catalog.Hulls.Select(hull => hull.Tier).OrderBy(tier => tier).ToArray();
+        Assert.Equal(new byte[] { 1, 2, 3, 4, 5 }, tiers);
+    }
+
+    [Theory]
+    [InlineData((byte)1, "hull_t1", 1600u, 0.15f, 0.08f, 0.03f, (byte)8, 0u)]
+    [InlineData((byte)2, "hull_t2", 4800u, 0.18f, 0.10f, 0.04f, (byte)14, 20000u)]
+    [InlineData((byte)3, "hull_t3", 10500u, 0.22f, 0.12f, 0.05f, (byte)20, 120000u)]
+    [InlineData((byte)4, "hull_t4", 20000u, 0.26f, 0.14f, 0.06f, (byte)26, 500000u)]
+    [InlineData((byte)5, "hull_t5", 36000u, 0.30f, 0.16f, 0.08f, (byte)32, 2000000u)]
+    public void Hull_tiers_match_the_design_sheet(
+        byte tier, string id, uint hitPoints, float front, float sides, float back, byte slots, uint cost)
+    {
+        var hull = Catalog.Hulls.Single(candidate => candidate.Tier == tier);
+
+        Assert.Equal(id, hull.Id);
+        Assert.Equal(hitPoints, hull.HitPoints);
+        Assert.Equal(front, hull.ArmorFront, 3);
+        Assert.Equal(sides, hull.ArmorSides, 3);
+        Assert.Equal(back, hull.ArmorBack, 3);
+        Assert.Equal(slots, hull.CannonSlots);
+        Assert.Equal((byte)3, hull.Magazine);
+        Assert.Equal(cost, hull.CostGold);
+        Assert.Equal(tier, hull.MapRankRequired);
+    }
+
+    // Speeds are SEA_5 §4.4: a bigger hull is always the slower one.
+    [Theory]
+    [InlineData((byte)1, 5.6f)]
+    [InlineData((byte)2, 5.3f)]
+    [InlineData((byte)3, 5.0f)]
+    [InlineData((byte)4, 4.7f)]
+    [InlineData((byte)5, 4.4f)]
+    public void Hull_speeds_match_SEA_5(byte tier, float speed)
+    {
+        var hull = Catalog.Hulls.Single(candidate => candidate.Tier == tier);
+        Assert.Equal(speed, hull.SpeedSquaresPerSecond, 3);
+    }
+
+    // Phase 8.2: all five cannon tiers exist (SEA_2_MATH §2.5 for damage/reload/cost).
+    [Fact]
+    public void All_five_cannon_tiers_are_present()
+    {
+        var tiers = Catalog.Cannons.Select(cannon => cannon.Tier).OrderBy(tier => tier).ToArray();
+        Assert.Equal(new byte[] { 1, 2, 3, 4, 5 }, tiers);
+    }
+
+    [Theory]
+    [InlineData((byte)1, "cannon_t1", 20u, 3.0f, 500u)]
+    [InlineData((byte)2, "cannon_t2", 32u, 2.9f, 3000u)]
+    [InlineData((byte)3, "cannon_t3", 48u, 2.8f, 15000u)]
+    [InlineData((byte)4, "cannon_t4", 68u, 2.7f, 50000u)]
+    [InlineData((byte)5, "cannon_t5", 92u, 2.6f, 150000u)]
+    public void Cannon_tiers_match_the_design_sheet(
+        byte tier, string id, uint damage, float reloadSeconds, uint cost)
+    {
+        var cannon = Catalog.Cannons.Single(candidate => candidate.Tier == tier);
+
+        Assert.Equal(id, cannon.Id);
+        Assert.Equal(damage, cannon.Damage);
+        Assert.Equal(reloadSeconds, cannon.ReloadSeconds, 3);
+        Assert.Equal(cost, cannon.CostGold);
+    }
+
+    // Ranges are SEA_5 §7.1. The sheet is asserted against RangeRules rather than repeating
+    // the figures, so the content and the rule that reads it cannot drift apart.
+    [Fact]
+    public void Cannon_range_matches_RangeRules()
+    {
+        foreach (var tier in new byte[] { 1, 2, 3, 4, 5 })
+        {
+            var cannon = Catalog.Cannons.Single(candidate => candidate.Tier == tier);
+            Assert.Equal((byte)RangeRules.BaseRangeSquares(tier), cannon.RangeSquares);
+        }
+    }
 }

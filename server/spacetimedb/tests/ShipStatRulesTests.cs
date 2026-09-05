@@ -22,9 +22,9 @@ public sealed class ShipStatRulesTests
         Assert.Equal(0.15f, sheet.ArmorFront, 3);
         Assert.Equal(0.08f, sheet.ArmorSides, 3);
         Assert.Equal(0.03f, sheet.ArmorBack, 3);
-        Assert.Equal(2.4f, sheet.SpeedSquaresPerSecond, 3);
+        Assert.Equal(5.6f, sheet.SpeedSquaresPerSecond, 3);
         Assert.Equal(150f, sheet.TurnDegreesPerSecond, 3);
-        Assert.Equal((byte)8, sheet.RangeSquares);
+        Assert.Equal((byte)18, sheet.RangeSquares);
         Assert.Equal(0.2f, sheet.RepairAmount, 3);
         Assert.Equal(3000u, sheet.RepairChannelMilliseconds);
         Assert.Equal(0f, sheet.CombatPowerUsed);
