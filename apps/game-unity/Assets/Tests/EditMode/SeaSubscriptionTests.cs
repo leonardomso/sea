@@ -59,6 +59,11 @@ namespace Sea.Tests
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM combat_event WHERE owner_entity_id = 42"));
 
+            // A route the client does not stream is a route the local ship cannot walk, and
+            // walking it is the whole of the prediction (SEA_5 12.2).
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM ship_route WHERE entity_id = 42"));
+
             // A wreck cannot be told it may choose a berth by a table it does not stream.
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM respawn_work WHERE ship_entity_id = 42"));

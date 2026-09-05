@@ -282,7 +282,7 @@ namespace Sea.Client
                 }
 
                 var motion = target.Key == playerEntityId &&
-                    TryPredictLocalShip(serverTick, deltaSeconds, entityObject.transform.position, out var predicted)
+                    TryPredictLocalShip(serverTick, deltaSeconds, out var predicted)
                         ? predicted
                         : ToMotion(target.Value.Sample(renderTick));
                 entityObject.transform.SetPositionAndRotation(
@@ -294,18 +294,17 @@ namespace Sea.Client
         private static SeaPredictedMotion ToMotion(SeaInterpolationSample sample) =>
             new(sample.Position, sample.HeadingDegrees);
 
-        /// <summary>Enough acceleration to reach any rated speed inside one tick.</summary>
-        private const float InstantHandlingRate = 1000f;
+        // The ship the player steers is drawn where the server has already agreed she is
+        // heading, not a render delay behind it, so a click turns the hull on the frame it is
+        // made. She walks the route the server sent her with the rule the server walks it with
+        // (SEA_5 12.2), which is why there is nothing here to keep in step by hand.
+        private readonly SeaLocalShipPrediction prediction = new();
+        private ulong predictedSnapshotTick;
+        private float secondsSincePredictionUpdate;
 
-        /// <summary>Enough turn to come onto any bearing inside one tick.</summary>
-        private const float InstantTurnDegreesPerSecond = 36000f;
-
-        // The ship the player steers is drawn where the server has already agreed it is heading,
-        // not a render delay behind it, so a click turns the hull on the frame it is made.
         private bool TryPredictLocalShip(
             double serverTick,
             float deltaSeconds,
-            Vector3 rendered,
             out SeaPredictedMotion motion)
         {
             motion = default;
@@ -317,38 +316,53 @@ namespace Sea.Client
             var tickRate = connection.WorldTickRate > 0
                 ? connection.WorldTickRate
                 : SeaSnapshotClock.DefaultTickRate;
-            var elapsed = (float)Math.Max(0d, (serverTick - movement.SnapshotTick) / tickRate);
-            var predicted = SeaLocalShipPrediction.Predict(
-                new SeaSailingState(
-                    ToWorld(movement.PositionX, movement.PositionY, ShipRootHeight),
+            if (movement.SnapshotTick != predictedSnapshotTick)
+            {
+                predictedSnapshotTick = movement.SnapshotTick;
+                secondsSincePredictionUpdate =
+                    (float)Math.Max(0d, (serverTick - movement.SnapshotTick) / tickRate);
+                var route = connection.Connection?.Db.ShipRoute.EntityId.Find(playerEntityId);
+                prediction.OnServerUpdate(
+                    new Vector2(movement.PositionX, movement.PositionY),
                     movement.HeadingDegrees,
-                    movement.Speed),
-                ToWorld(localShip.DestinationX, localShip.DestinationY, ShipRootHeight),
-                localShip.HasRoute,
-                // A stop is instant now, so there is no state of stopping to predict.
-                false,
-                // The row carries the ship's rated figures, not the tactical ones the server
-                // sails her with under wind and effects. That difference is small and the
-                // reconcile absorbs it; refusing to reckon at all is what did not get absorbed.
-                //
-                // The handling figures are gone from the schema with the inertia model
-                // (SEA_5 4.2): the server turns a hull instantly and gives her her whole
-                // speed on the first tick. These stand in for that until Phase 13 replaces
-                // this prediction outright with the route walk the server uses. They are
-                // large rather than infinite because the rule divides by them. Note the
-                // client still reckons a straight line to the destination while the server
-                // sails a bent route round land; the reconcile absorbs the difference.
-                new SeaSailingParameters(
-                    localShip.BaseSpeedSquaresPerSecond,
-                    InstantHandlingRate,
-                    InstantHandlingRate,
-                    InstantTurnDegreesPerSecond),
-                1f / tickRate,
-                elapsed);
+                    movement.Speed,
+                    ToChartRoute(route),
+                    route?.Version ?? 0u);
+            }
+
+            // Past the budget this would be guessing rather than reckoning: the server has
+            // missed five ticks, and running further ahead only makes the correction worse.
+            var budget = SeaLocalShipPrediction.MaximumPredictionSeconds -
+                secondsSincePredictionUpdate;
+            var step = Mathf.Clamp(deltaSeconds, 0f, Mathf.Max(0f, budget));
+            secondsSincePredictionUpdate += step;
+            prediction.Advance(step);
             motion = new SeaPredictedMotion(
-                SeaLocalShipPrediction.Reconcile(rendered, predicted.Position, deltaSeconds),
-                predicted.HeadingDegrees);
+                ToWorld(prediction.Position.x, prediction.Position.y, ShipRootHeight),
+                prediction.DrawnHeadingDegrees);
             return true;
+        }
+
+        /// <summary>
+        /// The route row read as the list of chart points the prediction walks. Null rather than
+        /// an empty array when there is no course: a ship with nowhere to go must not be walked
+        /// anywhere, and the rule reads the two the same way.
+        /// </summary>
+        private static Vector2[] ToChartRoute(ShipRoute route)
+        {
+            if (route == null || route.PointsX == null || route.PointsX.Count == 0 ||
+                route.PointsX.Count != route.PointsY.Count)
+            {
+                return null;
+            }
+
+            var points = new Vector2[route.PointsX.Count];
+            for (var index = 0; index < points.Length; index++)
+            {
+                points[index] = new Vector2(route.PointsX[index], route.PointsY[index]);
+            }
+
+            return points;
         }
 
         private GameObject CreateShip(string name, Ship row)

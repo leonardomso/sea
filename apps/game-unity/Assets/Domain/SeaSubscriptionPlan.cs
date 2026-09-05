@@ -73,6 +73,11 @@ namespace Sea.Client
             {
                 $"SELECT * FROM ship WHERE entity_id = {shipEntityId}",
                 $"SELECT * FROM ship_movement WHERE entity_id = {shipEntityId}",
+
+                // The course she is actually following. The prediction walks it rather than
+                // reckoning a straight line at the destination, so a route the client does not
+                // stream is a hull drawn through the land the server sailed her round.
+                $"SELECT * FROM ship_route WHERE entity_id = {shipEntityId}",
                 $"SELECT * FROM inventory WHERE ship_entity_id = {shipEntityId}",
                 $"SELECT * FROM effect WHERE ship_entity_id = {shipEntityId}",
                 $"SELECT * FROM cooldown WHERE ship_entity_id = {shipEntityId}",
