@@ -312,16 +312,30 @@ public static partial class Module
 
     private static SailingParameters TacticalMovementParameters(Ship ship)
     {
-        var modifiers = TacticalRules.MovementModifiers(
+        var modifiers = TacticalRules.Resolve(
             (ship.MovementStatusMask & HotPathCodes.SlowedMovementMask) != 0,
             ship.MovementSlowMagnitude,
-            (ship.EnvironmentExposureCode & 2) != 0,
-            (ship.EnvironmentExposureCode & 1) != 0,
+            HazardRules.HasExposure(ship.EnvironmentExposureCode, WorldObjectCode.Shoal),
             ship.ModeCode == (byte)ShipMode.Repairing);
+
+        // SEA_5 5.1 floors the product of the debuffs, not each slow in turn, so
+        // a chained and grapeshotted hull keeps half her rating instead of a
+        // hundredth of it. The storm multiplies on the outside of that floor,
+        // which is where the document draws it. Acceleration and turn rate are
+        // no longer debuffed: they go with the rest of the inertia model.
+        var speedMultiplier = Math.Clamp(
+            modifiers.SpeedMultiplier,
+            SpeedRules.DebuffFloor,
+            1f);
+        if (HazardRules.HasExposure(ship.EnvironmentExposureCode, WorldObjectCode.Storm))
+        {
+            speedMultiplier *= SpeedRules.StormMultiplier;
+        }
+
         return new SailingParameters(
-            ship.MaximumSpeed * modifiers.MaximumSpeed,
-            ship.Acceleration * modifiers.Acceleration,
+            ship.MaximumSpeed * speedMultiplier,
+            ship.Acceleration,
             ship.Deceleration,
-            ship.TurnRateDegrees * modifiers.TurnRate);
+            ship.TurnRateDegrees);
     }
 }

@@ -1,3 +1,4 @@
+using System.Linq;
 using Sea.Server;
 using Xunit;
 
@@ -6,71 +7,70 @@ namespace Sea.Server.Tests;
 public sealed class TacticalRulesTests
 {
     [Fact]
-    public void MovementModifiers_LeaveACleanHullAtFullSpeed()
+    public void TheStormIsNotAppliedHereBecauseSpeedRulesOwnsIt()
     {
-        var modifiers = TacticalRules.MovementModifiers(
-            slowed: false,
-            slowMagnitude: 0f,
-            inShoal: false,
-            inStorm: false,
-            repairing: false);
+        // SEA_5 §5.1 puts the storm outside the debuff floor, so it is SpeedRules'
+        // term and this returns only what the floor applies to.
+        var modifiers = TacticalRules.Resolve(
+            slowed: false, slowMagnitude: 0f, inShoal: false, repairing: false);
 
-        Assert.Equal(1f, modifiers.MaximumSpeed);
-        Assert.Equal(1f, modifiers.Acceleration);
-        Assert.Equal(1f, modifiers.TurnRate);
-        Assert.Equal(1f, modifiers.WeaponEffectiveness);
-    }
-
-    [Theory]
-    [InlineData(0.3f, 0.7f)]
-    [InlineData(0.9f, 0.1f)]
-    [InlineData(1.5f, EffectRules.MinimumSpeedMultiplier)]
-    public void ChainShotSlowsAShipButNeverStopsIt(float magnitude, float expected)
-    {
-        var modifiers = TacticalRules.MovementModifiers(
-            slowed: true,
-            slowMagnitude: magnitude,
-            inShoal: false,
-            inStorm: false,
-            repairing: false);
-
-        Assert.Equal(expected, modifiers.MaximumSpeed, 4);
+        Assert.Equal(1f, modifiers.SpeedMultiplier, 4);
     }
 
     [Fact]
-    public void ShoalsStormsAndRepairsStackOntoTheSameHull()
+    public void AShoalAndASlowMultiplyTogether()
     {
-        var modifiers = TacticalRules.MovementModifiers(
-            slowed: true,
-            slowMagnitude: 0.5f,
-            inShoal: true,
-            inStorm: true,
-            repairing: true);
+        var modifiers = TacticalRules.Resolve(
+            slowed: true, slowMagnitude: 0.2f, inShoal: true, repairing: false);
+
+        Assert.Equal(0.8f * TacticalRules.ShoalMultiplier, modifiers.SpeedMultiplier, 4);
+    }
+
+    [Fact]
+    public void AStormThatReachesTheBorderStopsThere()
+    {
+        var (x, y) = TacticalRules.MoveStorm(
+            positionX: 398f, positionY: 200f, directionDegrees: 90f,
+            speedSquaresPerSecond: 0.5f, deltaSeconds: 20f);
+
+        Assert.Equal(WorldRules.MapMax, x, 4);
+        Assert.Equal(200f, y, 4);
+    }
+
+    [Fact]
+    public void ThereIsNoWeaponEffectivenessLeftToIgnore()
+    {
+        Assert.DoesNotContain(
+            "WeaponEffectiveness",
+            typeof(TacticalModifiers).GetProperties().Select(property => property.Name),
+            StringComparer.Ordinal);
+    }
+
+    [Fact]
+    public void ARepairingHullHoldsStationRatherThanRunning()
+    {
+        var modifiers = TacticalRules.Resolve(
+            slowed: false, slowMagnitude: 0f, inShoal: false, repairing: true);
+
+        Assert.Equal(TacticalRules.RepairingMultiplier, modifiers.SpeedMultiplier, 4);
+    }
+
+    [Fact]
+    public void ASlowShoalAndARepairAllMultiplyTogether()
+    {
+        var modifiers = TacticalRules.Resolve(
+            slowed: true, slowMagnitude: 0.5f, inShoal: true, repairing: true);
 
         // 0.5 slow, then the shoal, then holding station: each multiplies the one before it.
-        Assert.Equal(0.5f * 0.65f * 0.5f, modifiers.MaximumSpeed, 4);
-        Assert.Equal(0.65f, modifiers.TurnRate);
-        Assert.Equal(0.75f, modifiers.WeaponEffectiveness);
+        Assert.Equal(
+            0.5f * TacticalRules.ShoalMultiplier * TacticalRules.RepairingMultiplier,
+            modifiers.SpeedMultiplier,
+            4);
     }
 
-    [Fact]
-    public void AStormBitesHandlingAndGunneryWithoutTouchingTopSpeed()
-    {
-        var modifiers = TacticalRules.MovementModifiers(
-            slowed: false,
-            slowMagnitude: 0f,
-            inShoal: false,
-            inStorm: true,
-            repairing: false);
-
-        Assert.Equal(1f, modifiers.MaximumSpeed);
-        Assert.Equal(0.65f, modifiers.TurnRate);
-        Assert.Equal(0.75f, modifiers.WeaponEffectiveness);
-    }
-
-    // Mid-chart on purpose. The old fixture stood at (0,0), which was the middle of the
-    // world and is now its north-west corner, so three of the four bearings ran off the
-    // edge and came back wrapped rather than testing the heading at all.
+    // Mid-chart on purpose. A fixture at (0,0) sits in the world's north-west corner, so
+    // three of the four bearings would run off the edge and stop against the border
+    // rather than testing the heading at all.
     [Theory]
     [InlineData(0f, 200f, 190f)]     // north is up the screen
     [InlineData(90f, 210f, 200f)]
@@ -81,18 +81,20 @@ public sealed class TacticalRulesTests
         float expectedX,
         float expectedY)
     {
-        var moved = TacticalRules.MoveStorm(200f, 200f, directionDegrees, 10f, 1f);
+        var (x, y) = TacticalRules.MoveStorm(200f, 200f, directionDegrees, 10f, 1f);
 
-        Assert.Equal(expectedX, moved.X, 3);
-        Assert.Equal(expectedY, moved.Y, 3);
+        Assert.Equal(expectedX, x, 3);
+        Assert.Equal(expectedY, y, 3);
     }
 
     [Fact]
-    public void MoveStorm_WrapsAroundTheChartRatherThanLeavingIt()
+    public void MoveStorm_StopsAtEveryBorderRatherThanWrapping()
     {
-        var moved = TacticalRules.MoveStorm(WorldRules.MapMax - 1f, 0f, 90f, 10f, 1f);
+        var (x, y) = TacticalRules.MoveStorm(
+            positionX: WorldRules.MapMin + 1f, positionY: WorldRules.MapMin + 1f,
+            directionDegrees: 270f, speedSquaresPerSecond: 10f, deltaSeconds: 1f);
 
-        Assert.InRange(moved.X, WorldRules.MapMin, WorldRules.MapMax);
-        Assert.Equal(WorldRules.MapMin + 9f, moved.X, 3);
+        Assert.Equal(WorldRules.MapMin, x, 4);
+        Assert.Equal(WorldRules.MapMin + 1f, y, 4);
     }
 }

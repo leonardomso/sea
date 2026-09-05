@@ -1,79 +1,61 @@
 namespace Sea.Server;
 
-public readonly record struct TacticalModifiers(
-    float MaximumSpeed,
-    float Acceleration,
-    float TurnRate,
-    float WeaponEffectiveness);
-
-public readonly record struct HazardPosition(float X, float Y);
+/// <summary>
+/// What the water a hull is sitting in does to her, for everything the debuff
+/// floor applies to.
+/// </summary>
+/// <remarks>
+/// Turn rate is gone with the rest of the inertia model, and so is the weapon
+/// effectiveness term, which no caller ever read. The storm is not here: SEA_5
+/// §5.1 puts it outside the 0.50 floor, so SpeedRules owns it and this owns
+/// only the terms the floor binds.
+/// </remarks>
+public readonly record struct TacticalModifiers(float SpeedMultiplier);
 
 public static class TacticalRules
 {
-    /// <summary>
-    /// How a ship's own state and the water it is in scale its sailing parameters. With the sail
-    /// pool gone the only handling penalties left are the Chain Shot slow, shoals, storms, and
-    /// holding station to repair.
-    /// </summary>
-    public static TacticalModifiers MovementModifiers(
+    /// <summary>Shallow water a tier-1 to tier-3 hull can cross, slowly.</summary>
+    public const float ShoalMultiplier = 0.65f;
+
+    /// <summary>A hull under repair holds station rather than running.</summary>
+    public const float RepairingMultiplier = 0.5f;
+
+    public static TacticalModifiers Resolve(
         bool slowed,
         float slowMagnitude,
         bool inShoal,
-        bool inStorm,
         bool repairing)
     {
-        var maximumSpeed = EffectRules.SpeedMultiplier(slowed, slowMagnitude);
-
+        var multiplier = slowed ? 1f - Math.Clamp(slowMagnitude, 0f, 1f) : 1f;
         if (inShoal)
         {
-            maximumSpeed *= 0.65f;
+            multiplier *= ShoalMultiplier;
         }
 
         if (repairing)
         {
-            maximumSpeed *= 0.5f;
+            multiplier *= RepairingMultiplier;
         }
 
-        return new TacticalModifiers(
-            maximumSpeed,
-            1f,
-            inStorm ? 0.65f : 1f,
-            inStorm ? 0.75f : 1f);
+        return new TacticalModifiers(multiplier);
     }
 
     /// <summary>
-    /// Where a storm on <paramref name="directionDegrees"/> stands after
-    /// <paramref name="deltaSeconds"/>. A storm bearing north travels up the screen,
-    /// so it reads its vector from <see cref="GeometryRules.Direction"/> like every
-    /// other moving thing; the private <c>MathF.Cos</c> it used to keep here was
-    /// north-positive and drove every storm the opposite way to its own bearing.
+    /// Where a storm has drifted to. A storm that reaches the border stops
+    /// against it and stays until it blows out; it used to be teleported to the
+    /// opposite edge, which put a squall on top of a harbour with no warning.
     /// </summary>
-    public static HazardPosition MoveStorm(
-        float x,
-        float y,
+    public static (float X, float Y) MoveStorm(
+        float positionX,
+        float positionY,
         float directionDegrees,
-        float speed,
+        float speedSquaresPerSecond,
         float deltaSeconds)
     {
-        var (headingX, headingY) = GeometryRules.Direction(directionDegrees);
-        var nextX = x + headingX * speed * deltaSeconds;
-        var nextY = y + headingY * speed * deltaSeconds;
-        return new HazardPosition(WrapMapCoordinate(nextX), WrapMapCoordinate(nextY));
-    }
-
-    private static float WrapMapCoordinate(float value)
-    {
-        const float span = WorldRules.MapSizeSquares;
-        while (value > WorldRules.MapMax)
-        {
-            value -= span;
-        }
-
-        while (value < WorldRules.MapMin)
-        {
-            value += span;
-        }
-
-        return value;
+        var (directionX, directionY) = GeometryRules.Direction(directionDegrees);
+        var travel = speedSquaresPerSecond * deltaSeconds;
+        return WorldRules.ClampToMap(
+            positionX + (directionX * travel),
+            positionY + (directionY * travel));
     }
 }
