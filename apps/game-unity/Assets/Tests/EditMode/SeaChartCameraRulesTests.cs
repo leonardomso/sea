@@ -81,16 +81,16 @@ namespace Sea.Tests
         [Test]
         public void Mini_map_positions_map_panel_corners_to_the_map_corners()
         {
-            // The top of the panel is the north edge, and north is the *minimum* y now that
-            // the origin is the north-west corner. So the panel and the chart run the same
-            // way on both axes and neither lerp flips: panel (0,0) is chart (0,0).
+            // This rule answers in WORLD space, and the minimap camera looks straight down,
+            // so the top of the panel is the maximum world z. North is drawn there because
+            // SeaChartCoordinates.ToWorld puts north there.
             Assert.That(
                 SeaMiniMapRules.ToWorldPosition(Vector2.zero),
-                Is.EqualTo(new Vector3(0f, 0f, 0f)),
+                Is.EqualTo(new Vector3(0f, 0f, 400f)),
                 "The top-left of the panel is the north-west corner of the chart.");
             Assert.That(
                 SeaMiniMapRules.ToWorldPosition(Vector2.one),
-                Is.EqualTo(new Vector3(400f, 0f, 400f)),
+                Is.EqualTo(new Vector3(400f, 0f, 0f)),
                 "The bottom-right of the panel is the south-east corner.");
             Assert.That(
                 SeaMiniMapRules.ToWorldPosition(new Vector2(0.5f, 0.5f)),
@@ -98,7 +98,7 @@ namespace Sea.Tests
                 "The middle of the panel is the middle of the chart, which is no longer zero.");
             Assert.That(
                 SeaMiniMapRules.ToWorldPosition(new Vector2(2f, -1f)),
-                Is.EqualTo(new Vector3(400f, 0f, 0f)),
+                Is.EqualTo(new Vector3(400f, 0f, 400f)),
                 "Positions past the panel are clamped to the map.");
         }
 
@@ -119,8 +119,8 @@ namespace Sea.Tests
                 SeaMiniMapRules.TryScreenToWorldPosition(new Vector2(1400f, 496f), panel, out var bottomLeft),
                 Is.True);
             // Screen pixels count up from the bottom, so the panel's own origin is its
-            // south-west corner: minimum x and, with south now the maximum y, maximum z.
-            Assert.That(bottomLeft, Is.EqualTo(new Vector3(0f, 0f, 400f)));
+            // south-west corner: minimum x, and south is the minimum world z.
+            Assert.That(bottomLeft, Is.EqualTo(new Vector3(0f, 0f, 0f)));
             Assert.That(
                 SeaMiniMapRules.TryScreenToWorldPosition(Vector2.zero, new Rect(0f, 0f, 0f, 0f), out _),
                 Is.False,

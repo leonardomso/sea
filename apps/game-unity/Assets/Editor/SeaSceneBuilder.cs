@@ -61,8 +61,8 @@ namespace Sea.Editor
             var camera = cameraObject.AddComponent<Camera>();
             cameraObject.tag = "MainCamera";
             camera.orthographic = true;
-            camera.orthographicSize = 34f;
-            camera.transform.position = new Vector3(0f, 70f, -50f);
+            camera.orthographicSize = SeaChartCameraRules.DefaultZoom;
+            camera.transform.position = SeaChartCameraRules.ChartCameraStartPosition();
             camera.transform.rotation = Quaternion.Euler(55f, 0f, 0f);
             camera.clearFlags = CameraClearFlags.SolidColor;
             camera.backgroundColor = new Color(0.025f, 0.09f, 0.15f, 1f);
@@ -71,9 +71,8 @@ namespace Sea.Editor
             var miniMapCamera = miniMapObject.AddComponent<Camera>();
             miniMapCamera.orthographic = true;
             // The minimap shows exactly the map; the HUD keeps its viewport square.
-            miniMapCamera.orthographicSize =
-                (SeaChartCoordinates.MapMaximum - SeaChartCoordinates.MapMinimum) / 2f;
-            miniMapCamera.transform.position = new Vector3(0f, 180f, 0f);
+            miniMapCamera.orthographicSize = SeaChartCameraRules.MiniMapOrthographicSize;
+            miniMapCamera.transform.position = SeaChartCameraRules.MiniMapCameraPosition();
             miniMapCamera.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             miniMapCamera.clearFlags = CameraClearFlags.SolidColor;
             miniMapCamera.backgroundColor = new Color(0.018f, 0.10f, 0.13f, 1f);

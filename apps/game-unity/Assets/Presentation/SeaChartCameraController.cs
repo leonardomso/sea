@@ -12,13 +12,14 @@ namespace Sea.Client
                 SeaChartCoordinates.MapMaximum,
                 Mathf.Clamp01(normalizedPosition.x)),
             0f,
-            // The top of the minimap is the north edge of the chart, and north is now the
-            // *minimum* y: the world's origin moved to the top-left corner and +y grows south,
-            // so the flip this lerp used to carry -- normalised 0 meaning maximum world y --
-            // is gone. Same flip ChartCoordinates dropped, living in a second file.
+            // This answers in WORLD space, so it answers to the minimap camera and not to the
+            // chart. That camera looks straight down, which puts world +z up the screen, so the
+            // top of the minimap -- normalised y of zero -- is the maximum world z. It is the
+            // north edge of the chart because SeaChartCoordinates.ToWorld puts north there; the
+            // lerp does not get to have an opinion about which end of the chart that is.
             Mathf.Lerp(
-                SeaChartCoordinates.MapMinimum,
                 SeaChartCoordinates.MapMaximum,
+                SeaChartCoordinates.MapMinimum,
                 Mathf.Clamp01(normalizedPosition.y)));
 
         public static bool TryScreenToWorldPosition(
@@ -86,9 +87,35 @@ namespace Sea.Client
         private const float MapHalfSize =
             (SeaChartCoordinates.MapMaximum - SeaChartCoordinates.MapMinimum) / 2f;
 
-        private const float MapCentre = SeaChartCoordinates.MapMinimum + MapHalfSize;
-
         private const float ReachHalfSize = MapHalfSize + MapMargin;
+
+        /// <summary>
+        /// The minimap shows exactly the chart, so its orthographic size is half the map. The
+        /// scene builder sets it and the scene test asserts it, both from here: they used to
+        /// carry 200 and 100 as two separate literals, and the committed scene a third, so any
+        /// two of them could disagree with nothing going red.
+        /// </summary>
+        public const float MiniMapOrthographicSize = MapHalfSize;
+
+        /// <summary>How high the minimap camera hangs over the chart.</summary>
+        public const float MiniMapHeight = 180f;
+
+        /// <summary>How high the ship camera rides, and how far back along +z it sits so the
+        /// tilt lands its gaze where it is pointed.</summary>
+        public const float ChartCameraHeight = 70f;
+        public const float ChartCameraSetback = 50f;
+
+        /// <summary>Straight down over the middle of the chart.</summary>
+        public static Vector3 MiniMapCameraPosition() => new(
+            SeaChartCoordinates.MapCentre, MiniMapHeight, SeaChartCoordinates.MapCentre);
+
+        /// <summary>The framing the scene ships with: the middle of the chart, not the origin,
+        /// which is its north-west corner and was the middle only while the map was centred on
+        /// zero.</summary>
+        public static Vector3 ChartCameraStartPosition() => new(
+            SeaChartCoordinates.MapCentre,
+            ChartCameraHeight,
+            SeaChartCoordinates.MapCentre - ChartCameraSetback);
 
         public static Vector2 ViewHalfExtents(float zoom, float aspect) =>
             new(zoom * aspect, zoom / Mathf.Sin(TiltDegrees * Mathf.Deg2Rad));
@@ -122,7 +149,10 @@ namespace Sea.Client
             // `reach` is a half-width and is origin-free; the clamp is what had zero baked into
             // it, from when zero was the middle of the map rather than its north-west corner.
             var reach = Mathf.Min(MapHalfSize, Mathf.Max(0f, ReachHalfSize - halfExtent));
-            return Mathf.Clamp(value, MapCentre - reach, MapCentre + reach);
+            return Mathf.Clamp(
+                value,
+                SeaChartCoordinates.MapCentre - reach,
+                SeaChartCoordinates.MapCentre + reach);
         }
     }
 
@@ -341,7 +371,7 @@ namespace Sea.Client
 
             if (TryGetPlayerShip(out var ship))
             {
-                position = new Vector3(ship.PositionX, 0f, ship.PositionY);
+                position = SeaChartCoordinates.ToWorld(ship.PositionX, ship.PositionY, 0f);
                 return true;
             }
 

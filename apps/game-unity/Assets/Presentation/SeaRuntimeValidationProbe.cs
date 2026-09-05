@@ -187,10 +187,14 @@ namespace Sea.Client
             if (!moveRequested)
             {
                 start = position;
-                destination = new Vector2(Mathf.Min(position.x + 12f, 95f), position.y);
+                // Twelve squares east, or twelve west if east is off the chart. The edges read
+                // 95 and -95, which were the edges of a map centred on zero.
+                destination = new Vector2(
+                    Mathf.Min(position.x + 12f, SeaChartCoordinates.MapMaximum),
+                    position.y);
                 if (Mathf.Approximately(destination.x, position.x))
                 {
-                    destination.x = Mathf.Max(position.x - 12f, -95f);
+                    destination.x = Mathf.Max(position.x - 12f, SeaChartCoordinates.MapMinimum);
                 }
                 SetCourse(destination.x, destination.y);
                 moveRequested = true;
@@ -245,7 +249,10 @@ namespace Sea.Client
             {
                 if (!combatApproachRequested)
                 {
-                    SetCombatCourse(20f, -35f);
+                    // On the chart, not on the vanished centre-origin map this read (20, -35)
+                    // for -- a course to a square north of the northern edge, which is no course
+                    // at all, so the sweep for a target never started.
+                    SetCombatCourse(240f, 130f);
                     combatApproachRequested = true;
                 }
 
@@ -271,11 +278,9 @@ namespace Sea.Client
                         outward = new Vector2(-1f, -1f).normalized;
                     }
 
-                    var approach = targetPosition +
-                        outward * SeaRuntimeValidationRules.CombatApproachRange;
-                    SetCombatCourse(
-                        Mathf.Clamp(approach.x, -95f, 95f),
-                        Mathf.Clamp(approach.y, -95f, 95f));
+                    var approach = SeaChartCoordinates.ClampToMap(targetPosition +
+                        outward * SeaRuntimeValidationRules.CombatApproachRange);
+                    SetCombatCourse(approach.x, approach.y);
                     nextCombatCourseTime = Time.unscaledTime + 1f;
                 }
 
@@ -348,13 +353,12 @@ namespace Sea.Client
             {
                 if (Time.unscaledTime >= nextCombatCourseTime)
                 {
+                    // A chart bearing turned back into a chart step: north is the smaller y.
                     var desiredHeading = firing.DesiredHeadingDegrees * Mathf.Deg2Rad;
-                    var turnDestination = playerPosition + new Vector2(
+                    var turnDestination = SeaChartCoordinates.ClampToMap(playerPosition + new Vector2(
                         Mathf.Sin(desiredHeading),
-                        Mathf.Cos(desiredHeading)) * 10f;
-                    SetCombatCourse(
-                        Mathf.Clamp(turnDestination.x, -95f, 95f),
-                        Mathf.Clamp(turnDestination.y, -95f, 95f));
+                        0f - Mathf.Cos(desiredHeading)) * 10f);
+                    SetCombatCourse(turnDestination.x, turnDestination.y);
                     nextCombatCourseTime = Time.unscaledTime + 0.5f;
                 }
 

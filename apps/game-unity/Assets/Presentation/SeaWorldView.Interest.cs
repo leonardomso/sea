@@ -148,6 +148,10 @@ namespace Sea.Client
             }
         }
 
-        private static Vector3 ToWorld(float x, float y, float height) => new(x, height, y);
+        // The chart's own flip lives in SeaChartCoordinates and nowhere else. This drew the
+        // world upside down while it read `new(x, height, y)`: chart y grows south, world z
+        // draws up the screen, and nothing turned one into the other.
+        private static Vector3 ToWorld(float x, float y, float height) =>
+            SeaChartCoordinates.ToWorld(x, y, height);
     }
 }

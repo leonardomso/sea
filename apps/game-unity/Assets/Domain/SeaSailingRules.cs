@@ -82,7 +82,12 @@ namespace Sea.Client
         /// <summary>
         /// Mirrors <c>SailingRules.ArrivalRadius</c> on the server. The two must move together.
         /// </summary>
-        public const float ArrivalRadius = 1.5f;
+        /// <remarks>
+        /// This read 1.5 while a square was ten world units. Deleting that conversion moved the
+        /// server's copy to 0.15 and left this one behind, so the client called a ship arrived a
+        /// square and a half short of where the server did and every course ended in a snap.
+        /// </remarks>
+        public const float ArrivalRadius = 0.15f;
 
         public static SeaSailingStep Step(
             SeaSailingState state,

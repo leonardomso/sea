@@ -47,6 +47,10 @@ namespace Sea.Client
         public const float MapMinimum = 0f;
         public const float MapMaximum = 400f;
 
+        /// <summary>The middle of the chart, on either axis. Not the origin: the origin is the
+        /// north-west corner.</summary>
+        public const float MapCentre = MapMinimum + ((MapMaximum - MapMinimum) / 2f);
+
         // One per axis, derived from that axis's own count. They are both ten while the ruler
         // is square, so nothing here can tell a single shared constant from these two -- which
         // is exactly why the server split them, and why this side follows rather than waiting
@@ -110,6 +114,31 @@ namespace Sea.Client
         public static string ColumnLabelAt(int column) => ColumnLabels[column];
 
         public static string RowLabelAt(int row) => RowLabels[row];
+
+        /// <summary>
+        /// The one place a chart position becomes a point in the scene, and
+        /// <see cref="ToChart"/> is the one place it comes back. North is the smaller chart y;
+        /// a camera looking straight down has screen-up on +z; so north has to be the LARGER
+        /// world z. That is a reflection about the middle of the chart rather than a bare
+        /// negation, which keeps the drawn world inside the same 0..400 box on both axes and
+        /// leaves the map centre where every camera clamp already expects it.
+        /// </summary>
+        /// <remarks>
+        /// No camera rotation can stand in for this. A top-down camera has screen-right +x and
+        /// screen-up +z; asking for screen-up = -z while screen-right stays +x forces the
+        /// camera's forward to +y, which is a camera beneath the sea looking up through it.
+        /// The flip belongs in the data. It used to be missing entirely, so north drew at the
+        /// bottom of the screen while the ruler beside it faithfully labelled row 1 at the top.
+        /// A ship's yaw needs no correction to match: Unity is left-handed, so yaw 0 points at
+        /// +z, which is now north, and yaw grows clockwise, which is how a bearing grows.
+        /// </remarks>
+        public static Vector3 ToWorld(float x, float y, float height) =>
+            new(x, height, MapMinimum + MapMaximum - y);
+
+        /// <summary>The inverse of <see cref="ToWorld"/>: a point in the scene read back as a
+        /// chart position, which is the only shape the server will take.</summary>
+        public static Vector2 ToChart(Vector3 world) =>
+            new(world.x, MapMinimum + MapMaximum - world.z);
 
         public static Vector2 ClampToMap(Vector2 position) => new(
             Mathf.Clamp(position.x, MapMinimum, MapMaximum),

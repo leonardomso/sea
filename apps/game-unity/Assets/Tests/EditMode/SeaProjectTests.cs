@@ -75,14 +75,13 @@ namespace Sea.Tests
             var topLeft = SeaMiniMapRules.ToWorldPosition(new Vector2(0f, 0f));
             var bottomRight = SeaMiniMapRules.ToWorldPosition(new Vector2(1f, 1f));
 
-            // Both corners read the same way on both axes: the chart's origin is its
-            // north-west corner and y grows south, so the top of the panel is the minimum
-            // and the bottom is the maximum. The z expectations used to be the other way
-            // round because the world's north used to be its maximum y.
+            // The panel and the chart run the same way on x and opposite ways on the other
+            // axis, because this rule answers in world space and the minimap camera draws
+            // world +z up the screen while the chart counts y down it.
             Assert.That(topLeft.x, Is.EqualTo(SeaChartCoordinates.MapMinimum));
-            Assert.That(topLeft.z, Is.EqualTo(SeaChartCoordinates.MapMinimum));
+            Assert.That(topLeft.z, Is.EqualTo(SeaChartCoordinates.MapMaximum));
             Assert.That(bottomRight.x, Is.EqualTo(SeaChartCoordinates.MapMaximum));
-            Assert.That(bottomRight.z, Is.EqualTo(SeaChartCoordinates.MapMaximum));
+            Assert.That(bottomRight.z, Is.EqualTo(SeaChartCoordinates.MapMinimum));
         }
 
         [Test]
@@ -96,7 +95,7 @@ namespace Sea.Tests
             // square once it is stretched over a chart four hundred squares wide, so the
             // tolerance is the click's own offset rather than slack in the rule.
             Assert.That(topLeft.x, Is.EqualTo(SeaChartCoordinates.MapMinimum).Within(0.3f));
-            Assert.That(topLeft.z, Is.EqualTo(SeaChartCoordinates.MapMinimum).Within(0.3f));
+            Assert.That(topLeft.z, Is.EqualTo(SeaChartCoordinates.MapMaximum).Within(0.3f));
             Assert.That(SeaMiniMapRules.TryScreenToWorldPosition(
                 new Vector2(799f, 750f), pixelRect, out _), Is.False);
         }
@@ -113,6 +112,10 @@ namespace Sea.Tests
                 worldCamera.orthographicSize,
                 Is.EqualTo(SeaChartCameraRules.DefaultZoom).Within(0.1f),
                 "The scene ships the framing the rules call default, or the first frame jumps.");
+            Assert.That(
+                worldCamera.transform.position,
+                Is.EqualTo(SeaChartCameraRules.ChartCameraStartPosition()),
+                "The scene frames the middle of the chart, not the corner the origin sits in.");
         }
 
         [Test]
@@ -124,7 +127,14 @@ namespace Sea.Tests
 
             Assert.That(miniMap, Is.Not.Null);
             Assert.That(miniMap.orthographic, Is.True);
-            Assert.That(miniMap.orthographicSize, Is.EqualTo(100f).Within(0.1f));
+            Assert.That(
+                miniMap.orthographicSize,
+                Is.EqualTo(SeaChartCameraRules.MiniMapOrthographicSize).Within(0.1f),
+                "The scene, the scene builder and this assertion all read one number now.");
+            Assert.That(
+                miniMap.transform.position,
+                Is.EqualTo(SeaChartCameraRules.MiniMapCameraPosition()),
+                "A minimap of the whole chart hangs over the middle of it.");
             Assert.That(miniMap.rect.width, Is.EqualTo(0.17f).Within(0.001f));
             Assert.That((miniMap.cullingMask & (1 << 8)), Is.Zero,
                 "Fog of war belongs to the main chart, not the strategic minimap.");
@@ -139,7 +149,9 @@ namespace Sea.Tests
 
             Assert.That(waterShader, Is.Not.Null);
             Assert.That(Shader.Find("Sea/Chart Fog"), Is.Not.Null);
-            Assert.That(SeaPresentationRules.VisionRadius, Is.EqualTo(110f));
+            // The server's RangeRules.ViewDistanceSquares. Fog that clears further than the
+            // server will talk about draws open water where it has nothing to draw.
+            Assert.That(SeaPresentationRules.VisionRadius, Is.EqualTo(60f));
         }
 
         [Test]

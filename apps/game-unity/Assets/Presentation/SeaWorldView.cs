@@ -26,7 +26,10 @@ namespace Sea.Client
         private const int MainChartFogLayer = 8;
         // A Unity plane is ten units across per unit of scale. The water and fog reach one camera
         // margin past each map edge, because the camera stays centred on a ship sailing along the
-        // edge and would otherwise frame the void beyond it.
+        // edge and would otherwise frame the void beyond it. They are laid on the middle of the
+        // map to do it: the span moved to 480 when the map's origin moved to its north-west
+        // corner, but the planes stayed on the origin, so they covered -240..240 and left
+        // everything east or south of 240 -- most of the chart -- drawing over nothing.
         private const float MapPlaneSpan =
             SeaChartCoordinates.MapMaximum - SeaChartCoordinates.MapMinimum
             + (2f * SeaChartCameraRules.MapMargin);
@@ -75,7 +78,7 @@ namespace Sea.Client
         private ulong worldTick;
         private Ship localShip;
         private Transform chartCameraTransform;
-        private Vector3 previousVisibilityOrigin = new(float.PositiveInfinity, 0f, 0f);
+        private Vector2 previousVisibilityOrigin = new(float.PositiveInfinity, 0f);
         private bool visibilityDirty = true;
         private LineRenderer coursePing;
         private float coursePingStartedAt;
@@ -207,7 +210,8 @@ namespace Sea.Client
         private void CreateWater()
         {
             var water = SeaPrimitive.Create(PrimitiveType.Plane, "Water Surface", waterMaterial);
-            water.transform.position = new Vector3(0f, WaterSurfaceHeight, 0f);
+            water.transform.position = new Vector3(
+                SeaChartCoordinates.MapCentre, WaterSurfaceHeight, SeaChartCoordinates.MapCentre);
             water.transform.localScale = MapPlaneScale;
             CreateCoursePing();
         }
@@ -216,7 +220,8 @@ namespace Sea.Client
         {
             var fog = SeaPrimitive.Create(PrimitiveType.Plane, "Player Vision Fog", fogMaterial);
             fog.layer = MainChartFogLayer;
-            fog.transform.position = new Vector3(0f, 8f, 0f);
+            fog.transform.position = new Vector3(
+                SeaChartCoordinates.MapCentre, 8f, SeaChartCoordinates.MapCentre);
             fog.transform.localScale = MapPlaneScale;
             var renderer = fog.GetComponent<Renderer>();
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -409,7 +414,7 @@ namespace Sea.Client
             if (ship.TargetEntityId == 0 ||
                 !entities.TryGetValue(ship.TargetEntityId, out var selectedObject) ||
                 !SeaPresentationRules.IsInVision(Vector3.Distance(
-                    PlayerChartPosition(),
+                    PlayerWorldPosition(),
                     selectedObject.transform.position)))
             {
                 if (targetRing != null)

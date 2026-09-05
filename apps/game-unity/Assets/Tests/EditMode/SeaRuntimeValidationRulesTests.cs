@@ -16,10 +16,13 @@ namespace Sea.Tests
                 Is.LessThan(SeaRuntimeValidationRules.CombatObservationRange));
         }
 
-        [TestCase(0f, 0f, 10f, 0f)]
+        // Chart bearings: north is the smaller y, so a target ten squares up the chart is
+        // due north and answers 0. The first and last cases read the other way round, which
+        // is the compass this file's own SeededStormPosition never used.
+        [TestCase(0f, 0f, 10f, 180f)]
         [TestCase(0f, 10f, 0f, 90f)]
         [TestCase(90f, -10f, 0f, -90f)]
-        [TestCase(180f, 0f, -10f, 180f)]
+        [TestCase(180f, 0f, -10f, 0f)]
         public void Combat_probe_steers_at_the_target_because_every_gun_bears(
             float headingDegrees,
             float targetX,

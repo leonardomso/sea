@@ -23,7 +23,7 @@ namespace Sea.Client
             {
                 var viewportX = 0.04f + 0.74f * index / (topCoordinateLabels.Length - 1);
                 var column = TryChartPoint(new Vector2(viewportX, 0.96f), out var point)
-                    ? SeaChartCoordinates.ColumnIndexAt(point.x)
+                    ? SeaChartCoordinates.ColumnIndexAt(SeaChartCoordinates.ToChart(point).x)
                     : -1;
                 Write(topCoordinateLabels[index], SeaChartCoordinates.ColumnLabelAt, column, previous);
                 previous = column;
@@ -34,7 +34,7 @@ namespace Sea.Client
             {
                 var viewportY = 0.92f - 0.76f * index / (leftCoordinateLabels.Length - 1);
                 var row = TryChartPoint(new Vector2(0.03f, viewportY), out var point)
-                    ? SeaChartCoordinates.RowIndexAt(point.z)
+                    ? SeaChartCoordinates.RowIndexAt(SeaChartCoordinates.ToChart(point).y)
                     : -1;
                 Write(leftCoordinateLabels[index], SeaChartCoordinates.RowLabelAt, row, previous);
                 previous = row;

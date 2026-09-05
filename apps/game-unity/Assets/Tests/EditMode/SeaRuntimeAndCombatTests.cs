@@ -256,10 +256,18 @@ namespace Sea.Tests
         public void The_hud_names_the_same_armour_face_the_server_charges_for()
         {
             // CombatRules.ResolveFacing: 45 degrees of bow, 45 of stern, the rest is beam.
+            //
+            // These are chart positions, where y grows south, so a shooter due north of the
+            // target sits at NEGATIVE y and Vector2.up is astern. The two cases below read
+            // upside down for that reason and used to be written the other way round, which
+            // passed only while heading 0 sailed south.
+            var north = new Vector2(0f, -10f);
+            var south = new Vector2(0f, 10f);
+
             Assert.That(SeaVolleyPresentationRules.ArmorFaceAt(
-                0f, Vector2.zero, Vector2.up * 10f), Is.EqualTo("front"));
+                0f, Vector2.zero, north), Is.EqualTo("front"));
             Assert.That(SeaVolleyPresentationRules.ArmorFaceAt(
-                0f, Vector2.zero, Vector2.down * 10f), Is.EqualTo("back"));
+                0f, Vector2.zero, south), Is.EqualTo("back"));
             Assert.That(SeaVolleyPresentationRules.ArmorFaceAt(
                 0f, Vector2.zero, Vector2.right * 10f), Is.EqualTo("sides"));
             Assert.That(SeaVolleyPresentationRules.ArmorFaceAt(

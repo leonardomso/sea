@@ -45,7 +45,9 @@ namespace Sea.Client
                 return new RuntimeFirePlan(false, headingDegrees);
             }
 
-            var bearing = Mathf.Atan2(delta.x, delta.y) * Mathf.Rad2Deg;
+            // A chart bearing: north is -y, the same way SeededStormPosition below already
+            // reckoned it. One file held both conventions until this line was fixed.
+            var bearing = Mathf.Atan2(delta.x, 0f - delta.y) * Mathf.Rad2Deg;
             return new RuntimeFirePlan(true, bearing);
         }
 

@@ -16,7 +16,7 @@ namespace Sea.Client
             var cameraTransform = ChartCameraTransform();
             var center = cameraTransform == null
                 ? Vector2.zero
-                : new Vector2(cameraTransform.position.x, cameraTransform.position.z);
+                : SeaChartCoordinates.ToChart(cameraTransform.position);
             for (var index = 0; index < count; index++)
             {
                 var position = SeaRuntimeValidationRules.SyntheticFleetPosition(

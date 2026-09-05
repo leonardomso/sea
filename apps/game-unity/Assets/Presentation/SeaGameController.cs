@@ -67,7 +67,7 @@ namespace Sea.Client
                 return;
             }
 
-            var destination = SeaChartCoordinates.ClampToMap(new Vector2(point.x, point.z));
+            var destination = SeaChartCoordinates.ClampToMap(SeaChartCoordinates.ToChart(point));
             foreach (var worldObject in connection.Connection.Db.WorldObject.Iter())
             {
                 if (worldObject.IsActive && worldObject.BlocksMovement &&
@@ -305,11 +305,13 @@ namespace Sea.Client
             return ship != null;
         }
 
-        private ulong? FindEnemyAt(Vector3 point)
+        private ulong? FindEnemyAt(Vector3 worldPoint)
         {
             const float selectionRadius = 7f;
             var closestDistance = selectionRadius * selectionRadius;
             ulong? closestId = null;
+            // The ships come off the wire in chart space; the click arrives in world space.
+            var point = SeaChartCoordinates.ToChart(worldPoint);
 
             foreach (var enemy in connection.Connection.Db.Ship.Iter())
             {
@@ -319,8 +321,8 @@ namespace Sea.Client
                 }
 
                 var dx = point.x - enemy.PositionX;
-                var dz = point.z - enemy.PositionY;
-                var squaredDistance = dx * dx + dz * dz;
+                var dy = point.y - enemy.PositionY;
+                var squaredDistance = dx * dx + dy * dy;
                 if (squaredDistance <= closestDistance)
                 {
                     closestDistance = squaredDistance;

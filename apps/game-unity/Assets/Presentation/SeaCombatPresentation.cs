@@ -227,7 +227,8 @@ namespace Sea.Client
                     2.6f);
                 var origin = source != null
                     ? source.TransformPoint(muzzle + Vector3.up * 0.7f)
-                    : new Vector3(volley.OriginX, SeaWorldView.WaterSurfaceHeight + 0.8f, volley.OriginY);
+                    : SeaChartCoordinates.ToWorld(
+                        volley.OriginX, volley.OriginY, SeaWorldView.WaterSurfaceHeight + 0.8f);
                 presentation = new ActiveVolley(visual, origin, target, frame);
                 active.Add(volley.VolleyId, presentation);
                 sourceFeedback?.PlayVolley(muzzle.x / 2.6f);

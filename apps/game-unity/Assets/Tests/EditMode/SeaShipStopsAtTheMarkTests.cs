@@ -11,8 +11,11 @@ namespace Sea.Tests.EditMode
     /// </summary>
     public sealed class SeaShipStopsAtTheMarkTests
     {
-        // The sloop as the seed content rates her, sailed by the shared handling figures.
-        private static readonly SeaSailingParameters Sloop = new(24f, 10f, 30f, 150f);
+        // The sloop as the seed content rates her, sailed by the shared handling figures, in
+        // squares per second. These read 24, 10 and 30 while a square was ten world units; the
+        // server's half of this file was re-derived to 2.4, 1 and 3 and this half was not, so
+        // the two suites stopped sailing the same ship.
+        private static readonly SeaSailingParameters Sloop = new(2.4f, 1f, 3f, 150f);
 
         private const float Tick = 0.1f;
 
@@ -22,6 +25,8 @@ namespace Sea.Tests.EditMode
             float startingSpeed,
             int tickLimit = 3000)
         {
+            // World space, where the client's own rule puts heading 0 on +z. The chart's flip
+            // between -y north and +z north lives in SeaChartCoordinates and stops there.
             var radians = bearingDegrees * Mathf.Deg2Rad;
             var destination = new Vector3(
                 distance * Mathf.Sin(radians), 0f, distance * Mathf.Cos(radians));
@@ -62,10 +67,10 @@ namespace Sea.Tests.EditMode
             }
         }
 
-        [TestCase(3f, 90f)]
-        [TestCase(2f, 120f)]
-        [TestCase(1f, 180f)]
-        [TestCase(5f, 60f)]
+        [TestCase(0.3f, 90f)]
+        [TestCase(0.2f, 120f)]
+        [TestCase(0.1f, 180f)]
+        [TestCase(0.5f, 60f)]
         public void A_short_click_off_the_bow_no_longer_circles(float distance, float bearing)
         {
             var (seconds, _) = SailTo(distance, bearing, 0f);
@@ -80,7 +85,7 @@ namespace Sea.Tests.EditMode
         [Test]
         public void The_arrival_radius_matches_the_server()
         {
-            Assert.That(SeaSailingRules.ArrivalRadius, Is.EqualTo(1.5f));
+            Assert.That(SeaSailingRules.ArrivalRadius, Is.EqualTo(0.15f));
         }
     }
 }

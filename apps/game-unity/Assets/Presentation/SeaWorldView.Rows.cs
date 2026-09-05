@@ -162,12 +162,16 @@ namespace Sea.Client
                 return;
             }
 
+            // Chart space, because that is what the job below measures against: the ship
+            // positions it compares this to come off the wire unconverted. Reading the camera's
+            // world z straight into a chart y made every distance wrong by twice the distance
+            // from the map's middle, so ships went visible and invisible in the wrong places.
             var cameraTransform = ChartCameraTransform();
             var origin = cameraTransform != null
-                ? new Vector3(cameraTransform.position.x, 0f, cameraTransform.position.z)
+                ? SeaChartCoordinates.ToChart(cameraTransform.position)
                 : localShip == null
-                    ? Vector3.zero
-                    : MovementPosition(localShip);
+                    ? Vector2.zero
+                    : MovementPosition2(localShip);
             if (!visibilityDirty && (origin - previousVisibilityOrigin).sqrMagnitude < 0.25f)
             {
                 return;
@@ -194,7 +198,7 @@ namespace Sea.Client
             {
                 Positions = visibilityPositions,
                 SquaredDistances = visibilitySquaredDistances,
-                Origin = new float2(origin.x, origin.z),
+                Origin = new float2(origin.x, origin.y),
             };
             distanceJob.Schedule(trackedCount, innerloopBatchCount: 64).Complete();
             for (var index = 0; index < trackedCount; index++)
@@ -295,14 +299,16 @@ namespace Sea.Client
 
             // The fog follows the rendered ship so vision reveals the chart as smoothly as the
             // ship sails rather than in server snapshot steps.
-            var playerPosition = PlayerChartPosition();
+            var playerPosition = PlayerWorldPosition();
             fogMaterial.SetVector("_PlayerPosition", new Vector4(playerPosition.x, playerPosition.z, 0f, 0f));
             UpdateTargetRing(localShip);
             UpdateOwnShipRing();
             UpdateCoursePing();
         }
 
-        private Vector3 PlayerChartPosition() => playerObject != null
+        // World space: the fog is a plane in the scene and its shader measures the fragment's
+        // own world xz against this.
+        private Vector3 PlayerWorldPosition() => playerObject != null
             ? playerObject.transform.position
             : MovementPosition(localShip);
 
@@ -313,7 +319,7 @@ namespace Sea.Client
         private Vector3 MovementPosition(Ship ship)
         {
             var position = MovementPosition2(ship);
-            return new Vector3(position.x, 0f, position.y);
+            return SeaChartCoordinates.ToWorld(position.x, position.y, 0f);
         }
 
         private Vector2 MovementPosition2(Ship ship) =>

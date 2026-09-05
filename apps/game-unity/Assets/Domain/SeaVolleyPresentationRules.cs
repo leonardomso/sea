@@ -41,7 +41,10 @@ namespace Sea.Client
                 return Vector3.forward * Mathf.Abs(distance);
             }
 
-            var bearing = Mathf.Atan2(delta.x, delta.y) * Mathf.Rad2Deg;
+            // A chart bearing, so north is the smaller y and the y term is negated. The offset
+            // below is not: it is an angle off the bow in the ship's own space, where +z is
+            // ahead, and Sin/Cos of it are already the right way round.
+            var bearing = Mathf.Atan2(delta.x, 0f - delta.y) * Mathf.Rad2Deg;
             var offset = Mathf.DeltaAngle(headingDegrees, bearing) * Mathf.Deg2Rad;
             return new Vector3(Mathf.Sin(offset), 0f, Mathf.Cos(offset)) * Mathf.Abs(distance);
         }
@@ -61,7 +64,8 @@ namespace Sea.Client
                 return "sides";
             }
 
-            var bearingToSource = Mathf.Atan2(delta.x, delta.y) * Mathf.Rad2Deg;
+            // The same chart compass CombatRules.ResolveFacing reads: north is -y.
+            var bearingToSource = Mathf.Atan2(delta.x, 0f - delta.y) * Mathf.Rad2Deg;
             var offset = Mathf.Abs(Mathf.DeltaAngle(targetHeadingDegrees, bearingToSource));
             if (offset <= FrontArcHalfDegrees)
             {
