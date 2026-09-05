@@ -72,7 +72,7 @@ public sealed class ContentValidationTests
         { "round_copy: duplicate ammunition code 'Round'.", Catalog with { Ammunition = [Catalog.Ammunition[0], Catalog.Ammunition[0] with { Id = "round_copy" }] } },
         { "round: damage multiplier must be positive.", Ammunition(ammo => ammo with { DamageMultiplier = 0f }) },
         { "round: reload multiplier must be positive.", Ammunition(ammo => ammo with { ReloadMultiplier = 0f }) },
-        { "round: range multiplier must be positive.", Ammunition(ammo => ammo with { RangeMultiplier = 0f }) },
+        { "round: range penalty must not be negative.", Ammunition(ammo => ammo with { RangePenaltySquares = -1f }) },
         { "round: effect magnitude must not be negative.", Ammunition(ammo => ammo with { EffectMagnitude = -1f }) },
         { "round: effect duration must not be negative.", Ammunition(ammo => ammo with { EffectDurationSeconds = -1f }) },
         { "At least one npc is required.", Catalog with { Npcs = [] } },

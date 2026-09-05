@@ -21,5 +21,5 @@ export default __t.row({
   effectMagnitude: __t.f32().name("effect_magnitude"),
   effectDurationSeconds: __t.f32().name("effect_duration_seconds"),
   rangeLimitSquares: __t.u8().name("range_limit_squares"),
-  rangeMultiplier: __t.f32().name("range_multiplier"),
+  rangePenaltySquares: __t.f32().name("range_penalty_squares"),
 });

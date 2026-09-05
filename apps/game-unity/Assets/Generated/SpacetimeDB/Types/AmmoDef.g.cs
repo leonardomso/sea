@@ -33,8 +33,8 @@ namespace SpacetimeDB.Types
         public float EffectDurationSeconds;
         [DataMember(Name = "range_limit_squares")]
         public byte RangeLimitSquares;
-        [DataMember(Name = "range_multiplier")]
-        public float RangeMultiplier;
+        [DataMember(Name = "range_penalty_squares")]
+        public float RangePenaltySquares;
 
         public AmmoDef(
             string AmmoId,
@@ -47,7 +47,7 @@ namespace SpacetimeDB.Types
             float EffectMagnitude,
             float EffectDurationSeconds,
             byte RangeLimitSquares,
-            float RangeMultiplier
+            float RangePenaltySquares
         )
         {
             this.AmmoId = AmmoId;
@@ -60,7 +60,7 @@ namespace SpacetimeDB.Types
             this.EffectMagnitude = EffectMagnitude;
             this.EffectDurationSeconds = EffectDurationSeconds;
             this.RangeLimitSquares = RangeLimitSquares;
-            this.RangeMultiplier = RangeMultiplier;
+            this.RangePenaltySquares = RangePenaltySquares;
         }
 
         public AmmoDef()

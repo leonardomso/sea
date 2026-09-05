@@ -2274,7 +2274,7 @@ public static partial class ContentCatalog
                 EffectMagnitude = 0f,
                 EffectDurationSeconds = 0f,
                 RangeLimitSquares = (byte)0,
-                RangeMultiplier = 1f,
+                RangePenaltySquares = 0f,
             },
             new AmmunitionContent
             {
@@ -2288,7 +2288,7 @@ public static partial class ContentCatalog
                 EffectMagnitude = 0.3f,
                 EffectDurationSeconds = 4f,
                 RangeLimitSquares = (byte)0,
-                RangeMultiplier = 0.9f,
+                RangePenaltySquares = 2f,
             },
             new AmmunitionContent
             {
@@ -2302,7 +2302,7 @@ public static partial class ContentCatalog
                 EffectMagnitude = 0.5f,
                 EffectDurationSeconds = 3f,
                 RangeLimitSquares = (byte)4,
-                RangeMultiplier = 0.55f,
+                RangePenaltySquares = 11f,
             },
             new AmmunitionContent
             {
@@ -2316,7 +2316,7 @@ public static partial class ContentCatalog
                 EffectMagnitude = 0.006f,
                 EffectDurationSeconds = 5f,
                 RangeLimitSquares = (byte)0,
-                RangeMultiplier = 0.85f,
+                RangePenaltySquares = 4f,
             },
         },
         Npcs = new NpcContent[]

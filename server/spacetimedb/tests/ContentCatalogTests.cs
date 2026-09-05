@@ -61,6 +61,30 @@ public sealed class ContentCatalogTests
         Assert.Contains("Ammunition must include the Round baseline.", errors, StringComparer.Ordinal);
     }
 
+    // SEA_5 7.6: a debuff takes flat squares off a gun, so the same shot costs every tier the
+    // same water. The old multiplier charged the longest gun the most and the shortest gun the
+    // least, which is backwards: a short gun can least afford to lose the water.
+    [Fact]
+    public void Grape_gives_up_squares_and_never_more_than_half_of_them()
+    {
+        var round = Catalog.Ammunition.Single(ammo => ammo.Code == AmmunitionCode.Round);
+        var grape = Catalog.Ammunition.Single(ammo => ammo.Code == AmmunitionCode.Grapeshot);
+        var shortest = RangeRules.BaseRangeSquares(1);
+        var middle = RangeRules.BaseRangeSquares(3);
+
+        // The baseline round costs nothing, at either end of the chart.
+        Assert.Equal(0f, round.RangePenaltySquares, 3);
+        Assert.Equal(shortest, RangeRules.DebuffedSquares(shortest, round.RangePenaltySquares), 3);
+        Assert.Equal(middle, RangeRules.DebuffedSquares(middle, round.RangePenaltySquares), 3);
+
+        // Grape is authored at the middle of the chart: eleven squares off twenty-four leaves
+        // thirteen. Off the eighteen-square gun the same eleven would leave seven, and the half
+        // of base floor holds it at nine -- which is what the floor is for.
+        Assert.Equal(11f, grape.RangePenaltySquares, 3);
+        Assert.Equal(13f, RangeRules.DebuffedSquares(middle, grape.RangePenaltySquares), 3);
+        Assert.Equal(9f, RangeRules.DebuffedSquares(shortest, grape.RangePenaltySquares), 3);
+    }
+
     [Fact]
     public void Short_terrain_row_is_rejected()
     {

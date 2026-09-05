@@ -91,7 +91,7 @@ const AMMO_FIELDS = [
   field("effectMagnitude", "float"),
   field("effectDurationSeconds", "float"),
   field("rangeLimitSquares", "byte"),
-  field("rangeMultiplier", "float"),
+  field("rangePenaltySquares", "float"),
 ];
 
 // Hull, damage, armour, gold, speed and aggro are not authored here: they come from the tier

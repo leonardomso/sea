@@ -107,7 +107,15 @@ public sealed record AmmunitionContent
     public required float EffectMagnitude { get; init; }
     public required float EffectDurationSeconds { get; init; }
     public required byte RangeLimitSquares { get; init; }
-    public required float RangeMultiplier { get; init; }
+
+    /// <summary>
+    /// SEA_5 §7.6: what this shot costs a gun, in squares. A flat figure charges every tier
+    /// the same water; the multiplier it replaced took the most off the longest gun and the
+    /// least off the shortest, which is backwards -- a short gun can least afford to lose it.
+    /// Authored against the middle of the range chart and floored at half of base, so no
+    /// stack of debuffs can leave a gun unable to reach.
+    /// </summary>
+    public required float RangePenaltySquares { get; init; }
 }
 
 /// <summary>

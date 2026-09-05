@@ -93,7 +93,7 @@ const FIXTURE = {
       effectMagnitude: 0,
       effectDurationSeconds: 0,
       rangeLimitSquares: 5,
-      rangeMultiplier: 1,
+      rangePenaltySquares: 0,
     },
   ],
   npcs: [

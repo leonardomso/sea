@@ -127,7 +127,7 @@ public static partial class Module
         public float EffectMagnitude;
         public float EffectDurationSeconds;
         public byte RangeLimitSquares;
-        public float RangeMultiplier;
+        public float RangePenaltySquares;
 
         public static AmmoDef From(AmmunitionContent ammunition) => new()
         {
@@ -141,7 +141,7 @@ public static partial class Module
             EffectMagnitude = ammunition.EffectMagnitude,
             EffectDurationSeconds = ammunition.EffectDurationSeconds,
             RangeLimitSquares = ammunition.RangeLimitSquares,
-            RangeMultiplier = ammunition.RangeMultiplier,
+            RangePenaltySquares = ammunition.RangePenaltySquares,
         };
     }
 

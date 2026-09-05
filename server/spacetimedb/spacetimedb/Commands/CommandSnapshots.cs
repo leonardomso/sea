@@ -95,7 +95,7 @@ public static partial class Module
                 SourceY = source.PositionY,
                 TargetX = target?.PositionX ?? source.PositionX,
                 TargetY = target?.PositionY ?? source.PositionY,
-                RangeSquares = source.RangeSquares * ammunition.RangeMultiplier,
+                RangeSquares = RangeRules.DebuffedSquares(source.RangeSquares, ammunition.RangePenaltySquares),
             }),
         };
     }

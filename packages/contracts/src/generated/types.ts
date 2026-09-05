@@ -26,7 +26,7 @@ export const AmmoDef = __t.object("AmmoDef", {
   effectMagnitude: __t.f32(),
   effectDurationSeconds: __t.f32(),
   rangeLimitSquares: __t.u8(),
-  rangeMultiplier: __t.f32(),
+  rangePenaltySquares: __t.f32(),
 });
 export type AmmoDef = __Infer<typeof AmmoDef>;
 

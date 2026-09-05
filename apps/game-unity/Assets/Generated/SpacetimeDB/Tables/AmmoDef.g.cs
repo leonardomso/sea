@@ -59,7 +59,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<AmmoDef, float> EffectMagnitude { get; }
         public global::SpacetimeDB.Col<AmmoDef, float> EffectDurationSeconds { get; }
         public global::SpacetimeDB.Col<AmmoDef, byte> RangeLimitSquares { get; }
-        public global::SpacetimeDB.Col<AmmoDef, float> RangeMultiplier { get; }
+        public global::SpacetimeDB.Col<AmmoDef, float> RangePenaltySquares { get; }
 
         public AmmoDefCols(string tableName)
         {
@@ -73,7 +73,7 @@ namespace SpacetimeDB.Types
             EffectMagnitude = new global::SpacetimeDB.Col<AmmoDef, float>(tableName, "effect_magnitude");
             EffectDurationSeconds = new global::SpacetimeDB.Col<AmmoDef, float>(tableName, "effect_duration_seconds");
             RangeLimitSquares = new global::SpacetimeDB.Col<AmmoDef, byte>(tableName, "range_limit_squares");
-            RangeMultiplier = new global::SpacetimeDB.Col<AmmoDef, float>(tableName, "range_multiplier");
+            RangePenaltySquares = new global::SpacetimeDB.Col<AmmoDef, float>(tableName, "range_penalty_squares");
         }
     }
 

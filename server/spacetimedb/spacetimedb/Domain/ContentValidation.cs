@@ -174,7 +174,7 @@ public static partial class ContentCatalog
 
             Positive(ammo.Id, "damage multiplier", ammo.DamageMultiplier, errors);
             Positive(ammo.Id, "reload multiplier", ammo.ReloadMultiplier, errors);
-            Positive(ammo.Id, "range multiplier", ammo.RangeMultiplier, errors);
+            NotNegative(ammo.Id, "range penalty", ammo.RangePenaltySquares, errors);
             NotNegative(ammo.Id, "effect magnitude", ammo.EffectMagnitude, errors);
             NotNegative(ammo.Id, "effect duration", ammo.EffectDurationSeconds, errors);
         }

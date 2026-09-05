@@ -11,7 +11,7 @@
       "effectMagnitude": 0,
       "effectDurationSeconds": 0,
       "rangeLimitSquares": 0,
-      "rangeMultiplier": 1.0
+      "rangePenaltySquares": 0
     },
     {
       "id": "chain",
@@ -24,7 +24,7 @@
       "effectMagnitude": 0.3,
       "effectDurationSeconds": 4,
       "rangeLimitSquares": 0,
-      "rangeMultiplier": 0.9
+      "rangePenaltySquares": 2
     },
     {
       "id": "grapeshot",
@@ -37,7 +37,7 @@
       "effectMagnitude": 0.5,
       "effectDurationSeconds": 3,
       "rangeLimitSquares": 4,
-      "rangeMultiplier": 0.55
+      "rangePenaltySquares": 11
     },
     {
       "id": "incendiary",
@@ -50,7 +50,7 @@
       "effectMagnitude": 0.006,
       "effectDurationSeconds": 5,
       "rangeLimitSquares": 0,
-      "rangeMultiplier": 0.85
+      "rangePenaltySquares": 4
     }
   ]
 }
