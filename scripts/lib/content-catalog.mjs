@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
+import { rasterizeMap } from "./rasterize-maps.mjs";
+
 const pascal = (json) => json[0].toUpperCase() + json.slice(1);
 const field = (json, kind, options = {}) => ({ json, cs: pascal(json), kind, ...options });
 
@@ -39,10 +41,18 @@ const MAP_FIELDS = [
   field("portX", "float"),
   field("portY", "float"),
   field("portRadius", "float"),
+  // terrainRows, landMaskSize and landMaskBits are not authored: augmentMapsWithRasterizedTerrain
+  // computes them from `objects` below, in the same rasterising pass, so the drawn coastline and
+  // the grid the simulation reads can never say two different things about the same square.
   field("terrainRows", "string[]"),
   field("objects", "object[]", { type: "WorldObjectContent", fields: WORLD_OBJECT_FIELDS }),
   field("currents", "object[]", { type: "CurrentContent", fields: CURRENT_FIELDS }),
+  field("landMaskSize", "ushort"),
+  field("landMaskBits", "hexwords[]"),
 ];
+
+/** Computed by augmentMapsWithRasterizedTerrain; authoring one by hand in maps.json is an error. */
+const COMPUTED_MAP_KEYS = ["terrainRows", "landMaskSize", "landMaskBits"];
 
 const HULL_FIELDS = [
   field("id", "string"),
@@ -238,6 +248,13 @@ function checkValue(spec, value, location, errors) {
       return checkArray({ ...spec, kind: "object" }, value, location, errors);
     case "object":
       return checkObject(spec.fields, value, location, errors);
+    case "hexwords[]":
+      // Not authored JSON: a BigUint64Array computed by rasterizeMap, values up to 2^64-1,
+      // well past Number.MAX_SAFE_INTEGER, so the ordinary "ulong" scalar check does not apply.
+      if (!(value instanceof BigUint64Array)) {
+        errors.push(`${location}: expected a BigUint64Array of mask words, got ${describe(value)}`);
+      }
+      return;
     default:
       return checkScalar(spec.kind, value, location, errors);
   }
@@ -315,6 +332,9 @@ const indent = (lines) => lines.map((line) => INDENT + line);
 const comma = (lines) => [...lines.slice(0, -1), `${lines.at(-1)},`];
 const block = (header, items) => [header, "{", ...indent(items.flatMap(comma)), "}"];
 
+/** Hex words per emitted line: enough that a changed bit is a small diff, not one word per line. */
+const MASK_WORDS_PER_LINE = 16;
+
 function valueLines(spec, item) {
   switch (spec.kind) {
     case "object":
@@ -325,6 +345,17 @@ function valueLines(spec, item) {
       return block("new string[]", item.map((entry) => [JSON.stringify(entry)]));
     case "float[]":
       return block("new float[]", item.map((entry) => [floatLiteral(entry)]));
+    case "hexwords[]": {
+      const lines = [];
+      for (let start = 0; start < item.length; start += MASK_WORDS_PER_LINE) {
+        const group = Array.from(
+          item.slice(start, start + MASK_WORDS_PER_LINE),
+          (word) => `0x${word.toString(16)}UL`,
+        );
+        lines.push(group.join(", "));
+      }
+      return block("new ulong[]", lines.map((line) => [line]));
+    }
     default:
       return [scalarLiteral(spec, item)];
   }
@@ -359,8 +390,50 @@ export function emitCatalog(content) {
   return `${[...HEADER, "public static partial class ContentCatalog", "{", ...indent(method), "}"].join("\n")}\n`;
 }
 
+/**
+ * Replaces each map's authored placeholder fields with the ones the rasteriser computes from
+ * `objects`: `terrainRows` (now generated, not authored -- see the field comment in MAP_FIELDS),
+ * plus `landMaskSize` and `landMaskBits`. Mutating maps.json to still carry any of these is
+ * refused rather than silently ignored, so a stale hand-authored grid cannot come back.
+ */
+export function augmentMapsWithRasterizedTerrain(content) {
+  if (!Array.isArray(content.maps)) {
+    return;
+  }
+
+  content.maps = content.maps.map((map) => {
+    if (map === null || typeof map !== "object") {
+      return map;
+    }
+
+    for (const key of COMPUTED_MAP_KEYS) {
+      if (Object.hasOwn(map, key)) {
+        throw new ContentError(
+          `maps.json: map '${map.code ?? map.mapId}' authors '${key}', but it is computed by ` +
+          "scripts/lib/rasterize-maps.mjs from 'objects' and must not be authored by hand.",
+        );
+      }
+    }
+
+    let rasterized;
+    try {
+      rasterized = rasterizeMap(map);
+    } catch (error) {
+      throw new ContentError(`maps.json: ${error.message}`, { cause: error });
+    }
+
+    return {
+      ...map,
+      terrainRows: rasterized.terrainRows,
+      landMaskSize: map.width,
+      landMaskBits: rasterized.words,
+    };
+  });
+}
+
 export function buildCatalog(dataDir) {
   const content = loadContent(dataDir);
+  augmentMapsWithRasterizedTerrain(content);
   const errors = validateContent(content);
   if (errors.length > 0) {
     throw new AggregateError(errors.map((message) => new Error(message)), "invalid content");

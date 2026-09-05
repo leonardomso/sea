@@ -5,7 +5,13 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { buildCatalog, emitCatalog, loadContent, validateContent } from "./content-catalog.mjs";
+import {
+  augmentMapsWithRasterizedTerrain,
+  buildCatalog,
+  emitCatalog,
+  loadContent,
+  validateContent,
+} from "./content-catalog.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const dataDir = path.join(repoRoot, "server/spacetimedb/spacetimedb/Content/Data");
@@ -29,6 +35,10 @@ const FIXTURE = {
       portY: 0,
       portRadius: 5,
       terrainRows: ["."],
+      // Stands in for what buildCatalog's rasteriser would have computed from `objects`; these
+      // two tests exercise generic emission directly and never go through augmentation.
+      landMaskSize: 10,
+      landMaskBits: new BigUint64Array([0n, 0n]),
       objects: [
         {
           entityId: 1,
@@ -145,7 +155,14 @@ const FIXTURE = {
 
 test("the committed content passes shape validation", () => {
   const content = loadContent(dataDir);
+  augmentMapsWithRasterizedTerrain(content);
   assert.deepEqual(validateContent(content), []);
+});
+
+test("augmentation refuses a map that still authors a computed field by hand", () => {
+  const content = loadContent(dataDir);
+  content.maps = [{ ...content.maps[0], terrainRows: ["."] }];
+  assert.throws(() => augmentMapsWithRasterizedTerrain(content), /terrainRows.*must not be authored/s);
 });
 
 test("the fixture content passes shape validation", () => {
@@ -153,7 +170,9 @@ test("the fixture content passes shape validation", () => {
 });
 
 test("the catalog emits a well-formed ContentCatalog partial class", () => {
-  const source = emitCatalog(loadContent(dataDir));
+  // buildCatalog, not emitCatalog(loadContent(...)): the committed maps.json no longer carries
+  // terrainRows/landMaskSize/landMaskBits, so it needs the rasterising augmentation step too.
+  const source = buildCatalog(dataDir);
   assert.match(source, /public static partial class ContentCatalog/);
   assert.match(source, /public static GameContent CreateDefault\(\)/);
   assert.ok(source.endsWith("}\n"), "file ends with a single newline");

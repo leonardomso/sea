@@ -125,6 +125,92 @@ public sealed class ContentValidationTests
         }
     }
 
+    /// <summary>
+    /// The mask is generated from the same blocking objects the publish-time gate at
+    /// ContentValidation.Maps.cs:192 checks, so a shape's own centre has to be land in both.
+    /// This is the regression for the maps.json defect the mask replaced: terrainRows used to be
+    /// a stale hand-authored grid that quietly disagreed with the authored circles on 5,406 of
+    /// 160,000 squares, and nothing noticed because the old gate only ever checked one square.
+    /// </summary>
+    [Fact]
+    public void TheGeneratedMaskAgreesWithTheAuthoredIslandsAndReefs()
+    {
+        foreach (var map in Catalog.Maps)
+        {
+            var mask = ContentCatalog.LandMaskFor(map.MapId);
+            foreach (var shape in map.Objects)
+            {
+                if (shape.Kind is not ("island" or "reef"))
+                {
+                    continue;
+                }
+
+                Assert.True(
+                    mask.IsLand(shape.X, shape.Y),
+                    $"{map.Code}: the centre of {shape.Kind} at ({shape.X}, {shape.Y}) is not land in the mask");
+            }
+        }
+    }
+
+    /// <summary>
+    /// A shoal slows a hull; it does not block one, so it must never set a mask bit even though
+    /// it is authored the same way an island or a reef is (a kind, a centre, a radius).
+    /// </summary>
+    [Fact]
+    public void AShoalNeverSetsTheMask()
+    {
+        foreach (var map in Catalog.Maps)
+        {
+            var mask = ContentCatalog.LandMaskFor(map.MapId);
+            foreach (var shape in map.Objects)
+            {
+                if (!string.Equals(shape.Kind, "shoal", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                Assert.False(
+                    mask.IsLand(shape.X, shape.Y),
+                    $"{map.Code}: shoal {shape.EntityId} at ({shape.X}, {shape.Y}) is land in the mask");
+            }
+        }
+    }
+
+    /// <summary>
+    /// The mask and the terrain grid are two representations of the same rasterising pass
+    /// (scripts/lib/rasterize-maps.mjs), so every square has to agree between the two: the mask
+    /// bit set if and only if the terrain symbol is land.
+    /// </summary>
+    [Fact]
+    public void TheMaskAndTheTerrainGridAgreeOnEverySquare()
+    {
+        foreach (var map in Catalog.Maps)
+        {
+            var mask = ContentCatalog.LandMaskFor(map.MapId);
+            for (var y = 0; y < map.Height; y++)
+            {
+                for (var x = 0; x < map.Width; x++)
+                {
+                    var isLandTerrain = SectorRules.TerrainAt(map, x, y) == TerrainCode.Land;
+                    Assert.True(
+                        mask.IsLandCell(x, y) == isLandTerrain,
+                        $"{map.Code}: mask and terrain disagree at ({x}, {y})");
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void EveryHarbourSitsOnOpenWater()
+    {
+        foreach (var map in Catalog.Maps)
+        {
+            Assert.False(
+                ContentCatalog.LandMaskFor(map.MapId).IsLand(map.PortX, map.PortY),
+                $"{map.Code}: the harbour is inside land");
+        }
+    }
+
     [Fact]
     public void NoWorldObjectSitsOutsideItsMap()
     {
