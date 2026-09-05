@@ -284,7 +284,7 @@ namespace Sea.Client
                     movementRows.TryGetValue(ship.EntityId, out var latestMovement)
                         ? latestMovement.Speed
                         : ship.Speed,
-                    ship.MaximumSpeed,
+                    ship.BaseSpeedSquaresPerSecond,
                     ship.FactionCode,
                     ship.ArchetypeCode);
             }

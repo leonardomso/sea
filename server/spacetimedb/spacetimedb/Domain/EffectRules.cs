@@ -32,6 +32,25 @@ public static class EffectRules
     };
 
     /// <summary>
+    /// Whether a volley that landed this far off leaves its after-effect behind. A limit of
+    /// zero is no limit at all; a limit that is set is inclusive, and it is in squares --
+    /// the same unit as the distance, which is the whole point of the check.
+    /// </summary>
+    /// <remarks>
+    /// A distance that is not a number counts as outside every limit. It gets here only from
+    /// a corrupt row, and dropping the effect is the safe answer; both <c>&gt;</c> and
+    /// <c>&lt;=</c> would be false against NaN, so the test is written out rather than left
+    /// to a comparison whose answer depends on which way round it is spelled.
+    /// </remarks>
+    public static bool AppliesAtRange(AmmunitionContent ammunition, float distanceSquares)
+    {
+        ArgumentNullException.ThrowIfNull(ammunition);
+
+        return ammunition.RangeLimitSquares == 0 ||
+            (float.IsFinite(distanceSquares) && distanceSquares <= ammunition.RangeLimitSquares);
+    }
+
+    /// <summary>
     /// The effect a volley of this ammunition leaves, if any. Grape Shot carries a range limit:
     /// beyond it the volley still lands, it just leaves nothing behind.
     /// </summary>
@@ -52,8 +71,7 @@ public static class EffectRules
             return false;
         }
 
-        if (ammunition.RangeLimitSquares > 0 &&
-            (!float.IsFinite(distance) || distance > ammunition.RangeLimitSquares))
+        if (!AppliesAtRange(ammunition, distance))
         {
             return false;
         }

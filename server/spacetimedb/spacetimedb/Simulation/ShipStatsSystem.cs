@@ -75,7 +75,7 @@ public static partial class Module
         ship.ReloadTicks = CombatRules.ReloadTicks(sheet.ReloadMilliseconds);
         ship.MagazineSize = sheet.Magazine;
         ship.RangeUnits = sheet.RangeSquares;
-        ship.MaximumSpeed = sheet.SpeedSquaresPerSecond;
+        ship.BaseSpeedSquaresPerSecond = sheet.SpeedSquaresPerSecond;
         ship.ArmorFront = sheet.ArmorFront;
         ship.ArmorSides = sheet.ArmorSides;
         ship.ArmorBack = sheet.ArmorBack;

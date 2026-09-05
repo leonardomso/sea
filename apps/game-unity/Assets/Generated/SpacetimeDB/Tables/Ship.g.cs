@@ -95,7 +95,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Ship, uint> DroppedCommandCount { get; }
         public global::SpacetimeDB.Col<Ship, float> HeadingDegrees { get; }
         public global::SpacetimeDB.Col<Ship, float> Speed { get; }
-        public global::SpacetimeDB.Col<Ship, float> MaximumSpeed { get; }
+        public global::SpacetimeDB.Col<Ship, float> BaseSpeedSquaresPerSecond { get; }
         public global::SpacetimeDB.Col<Ship, float> EffectiveSpeedSquaresPerSecond { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsMoving { get; }
         public global::SpacetimeDB.Col<Ship, byte> MovementShard { get; }
@@ -152,7 +152,7 @@ namespace SpacetimeDB.Types
             DroppedCommandCount = new global::SpacetimeDB.Col<Ship, uint>(tableName, "dropped_command_count");
             HeadingDegrees = new global::SpacetimeDB.Col<Ship, float>(tableName, "heading_degrees");
             Speed = new global::SpacetimeDB.Col<Ship, float>(tableName, "speed");
-            MaximumSpeed = new global::SpacetimeDB.Col<Ship, float>(tableName, "maximum_speed");
+            BaseSpeedSquaresPerSecond = new global::SpacetimeDB.Col<Ship, float>(tableName, "base_speed_squares_per_second");
             EffectiveSpeedSquaresPerSecond = new global::SpacetimeDB.Col<Ship, float>(tableName, "effective_speed_squares_per_second");
             IsMoving = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_moving");
             MovementShard = new global::SpacetimeDB.Col<Ship, byte>(tableName, "movement_shard");

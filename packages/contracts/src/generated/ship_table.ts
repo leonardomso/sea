@@ -27,7 +27,7 @@ export default __t.row({
   droppedCommandCount: __t.u32().name("dropped_command_count"),
   headingDegrees: __t.f32().name("heading_degrees"),
   speed: __t.f32(),
-  maximumSpeed: __t.f32().name("maximum_speed"),
+  baseSpeedSquaresPerSecond: __t.f32().name("base_speed_squares_per_second"),
   effectiveSpeedSquaresPerSecond: __t.f32().name("effective_speed_squares_per_second"),
   isMoving: __t.bool().name("is_moving"),
   movementShard: __t.u8().name("movement_shard"),

@@ -45,8 +45,8 @@ namespace SpacetimeDB.Types
         public float HeadingDegrees;
         [DataMember(Name = "speed")]
         public float Speed;
-        [DataMember(Name = "maximum_speed")]
-        public float MaximumSpeed;
+        [DataMember(Name = "base_speed_squares_per_second")]
+        public float BaseSpeedSquaresPerSecond;
         [DataMember(Name = "effective_speed_squares_per_second")]
         public float EffectiveSpeedSquaresPerSecond;
         [DataMember(Name = "is_moving")]
@@ -139,7 +139,7 @@ namespace SpacetimeDB.Types
             uint DroppedCommandCount,
             float HeadingDegrees,
             float Speed,
-            float MaximumSpeed,
+            float BaseSpeedSquaresPerSecond,
             float EffectiveSpeedSquaresPerSecond,
             bool IsMoving,
             byte MovementShard,
@@ -195,7 +195,7 @@ namespace SpacetimeDB.Types
             this.DroppedCommandCount = DroppedCommandCount;
             this.HeadingDegrees = HeadingDegrees;
             this.Speed = Speed;
-            this.MaximumSpeed = MaximumSpeed;
+            this.BaseSpeedSquaresPerSecond = BaseSpeedSquaresPerSecond;
             this.EffectiveSpeedSquaresPerSecond = EffectiveSpeedSquaresPerSecond;
             this.IsMoving = IsMoving;
             this.MovementShard = MovementShard;

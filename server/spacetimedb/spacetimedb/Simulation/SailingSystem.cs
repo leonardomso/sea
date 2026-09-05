@@ -236,25 +236,35 @@ public static partial class Module
         ref ShipKinematics ship,
         ulong tick)
     {
-        var refreshCurrent = SimulationWorkRules.ShouldRefreshCurrent(
-            ship.EntityId,
-            tick);
-        if (!refreshCurrent && ship.EffectiveSpeedSquaresPerSecond >= 0f)
-        {
-            return;
-        }
-
-        if (refreshCurrent)
+        if (SimulationWorkRules.ShouldRefreshCurrent(ship.EntityId, tick))
         {
             var current = CurrentVelocityAt(currentField, ship.PositionX, ship.PositionY);
             ship.CurrentVelocityX = current.X;
             ship.CurrentVelocityY = current.Y;
         }
 
-        var windMultiplier = environment is EnvironmentState wind
-            ? SpeedRules.WindMultiplier(ship.HeadingDegrees, wind.WindDirectionDegrees)
-            : 1f;
-        ship.EffectiveSpeedSquaresPerSecond = ship.TacticalMaximumSpeed * windMultiplier;
+        var debuffs = TacticalRules.Resolve(
+            (ship.MovementStatusMask & HotPathCodes.SlowedMovementMask) != 0,
+            ship.MovementSlowMagnitude,
+            HazardRules.HasExposure(ship.EnvironmentExposureCode, WorldObjectCode.Shoal),
+            ship.IsRepairing);
+
+        ship.EffectiveSpeedSquaresPerSecond = SpeedRules.Effective(new SpeedInputs(
+            ship.BaseSpeedSquaresPerSecond,
+
+            // Her fit's speed bonus is already in the rating, capped there by the same
+            // 0.25 SpeedRules publishes. Handing it over a second time would pay it twice.
+            BonusFraction: 0f,
+            ship.Hull,
+            ship.MaxHull,
+            ship.HeadingDegrees,
+            environment is EnvironmentState wind ? wind.WindDirectionDegrees : 0f,
+            HazardRules.HasExposure(ship.EnvironmentExposureCode, WorldObjectCode.Storm),
+            debuffs.SpeedMultiplier,
+
+            // Nothing freezes a hull yet. The rule is written because SEA_5 5.2 has it;
+            // the day something sets it, this is the line that carries it.
+            IsFrozen: false));
     }
 
     /// <summary>

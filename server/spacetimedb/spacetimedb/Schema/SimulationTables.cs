@@ -118,12 +118,19 @@ public static partial class Module
         public float HeadingDegrees;
         public float Speed;
 
-        // Her rating once the debuffs on the fat row have been applied, which the shard
-        // cannot see. Wind is the one term left, and it turns with her heading, so it is
-        // applied here rather than carried.
-        public float TacticalMaximumSpeed;
+        // Everything SpeedRules needs, carried on the shard so the tick can work her speed
+        // out again from scratch without reading the fat row it is trying to avoid touching
+        // (SEA_5 5.1). The fat row pushes a new copy of these through CopyTacticalParameters
+        // whenever damage, a slow or the water she is in changes.
+        public float BaseSpeedSquaresPerSecond;
+        public uint Hull;
+        public uint MaxHull;
+        public byte MovementStatusMask;
+        public float MovementSlowMagnitude;
+        public byte EnvironmentExposureCode;
+        public bool IsRepairing;
 
-        // Negative means "not worked out for this tick yet"; RefreshEnvironment fills it.
+        // Worked out fresh every tick from the fields above.
         public float EffectiveSpeedSquaresPerSecond;
         public bool IsMoving;
 

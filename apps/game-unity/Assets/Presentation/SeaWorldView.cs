@@ -342,7 +342,7 @@ namespace Sea.Client
                 // client still reckons a straight line to the destination while the server
                 // sails a bent route round land; the reconcile absorbs the difference.
                 new SeaSailingParameters(
-                    localShip.MaximumSpeed,
+                    localShip.BaseSpeedSquaresPerSecond,
                     InstantHandlingRate,
                     InstantHandlingRate,
                     InstantTurnDegreesPerSecond),

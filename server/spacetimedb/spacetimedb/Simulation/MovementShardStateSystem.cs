@@ -242,8 +242,14 @@ public static partial class Module
         HasRoute = ship.HasRoute,
         HeadingDegrees = ship.HeadingDegrees,
         Speed = ship.Speed,
-        TacticalMaximumSpeed = TacticalMaximumSpeed(ship),
-        EffectiveSpeedSquaresPerSecond = -1f,
+        BaseSpeedSquaresPerSecond = ship.BaseSpeedSquaresPerSecond,
+        Hull = ship.Hull,
+        MaxHull = ship.MaxHull,
+        MovementStatusMask = ship.MovementStatusMask,
+        MovementSlowMagnitude = ship.MovementSlowMagnitude,
+        EnvironmentExposureCode = ship.EnvironmentExposureCode,
+        IsRepairing = ship.ModeCode == (byte)ShipMode.Repairing,
+        EffectiveSpeedSquaresPerSecond = ship.EffectiveSpeedSquaresPerSecond,
         IsMoving = ship.IsMoving,
         IsInPort = ship.IsInPort,
         CurrentVelocityX = ship.CurrentVelocityX,
@@ -285,38 +291,19 @@ public static partial class Module
         target.ChunkY = source.ChunkY;
     }
 
+    /// <summary>
+    /// The half of a kinematics row the shard must not overwrite from the fat row: her
+    /// rating and everything the water and her wounds do to it. Position and course are
+    /// left alone, because the shard is the one sailing them.
+    /// </summary>
     private static void CopyTacticalParameters(ShipKinematics source, ref ShipKinematics target)
     {
-        target.TacticalMaximumSpeed = source.TacticalMaximumSpeed;
-        target.EffectiveSpeedSquaresPerSecond = -1f;
-    }
-
-    /// <summary>
-    /// Her rating with the debuffs the shard cannot see already worked in. Wind is
-    /// deliberately left out: it turns with her heading, so it is applied per tick
-    /// where the heading is known.
-    /// </summary>
-    private static float TacticalMaximumSpeed(Ship ship)
-    {
-        var modifiers = TacticalRules.Resolve(
-            (ship.MovementStatusMask & HotPathCodes.SlowedMovementMask) != 0,
-            ship.MovementSlowMagnitude,
-            HazardRules.HasExposure(ship.EnvironmentExposureCode, WorldObjectCode.Shoal),
-            ship.ModeCode == (byte)ShipMode.Repairing);
-
-        // SEA_5 5.1 floors the product of the debuffs, not each slow in turn, so
-        // a chained and grapeshotted hull keeps half her rating instead of a
-        // hundredth of it. The storm multiplies on the outside of that floor,
-        // which is where the document draws it.
-        var speedMultiplier = Math.Clamp(
-            modifiers.SpeedMultiplier,
-            SpeedRules.DebuffFloor,
-            1f);
-        if (HazardRules.HasExposure(ship.EnvironmentExposureCode, WorldObjectCode.Storm))
-        {
-            speedMultiplier *= SpeedRules.StormMultiplier;
-        }
-
-        return ship.MaximumSpeed * speedMultiplier;
+        target.BaseSpeedSquaresPerSecond = source.BaseSpeedSquaresPerSecond;
+        target.Hull = source.Hull;
+        target.MaxHull = source.MaxHull;
+        target.MovementStatusMask = source.MovementStatusMask;
+        target.MovementSlowMagnitude = source.MovementSlowMagnitude;
+        target.EnvironmentExposureCode = source.EnvironmentExposureCode;
+        target.IsRepairing = source.IsRepairing;
     }
 }

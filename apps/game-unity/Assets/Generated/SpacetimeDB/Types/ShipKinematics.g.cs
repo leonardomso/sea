@@ -35,8 +35,20 @@ namespace SpacetimeDB.Types
         public float HeadingDegrees;
         [DataMember(Name = "speed")]
         public float Speed;
-        [DataMember(Name = "tactical_maximum_speed")]
-        public float TacticalMaximumSpeed;
+        [DataMember(Name = "base_speed_squares_per_second")]
+        public float BaseSpeedSquaresPerSecond;
+        [DataMember(Name = "hull")]
+        public uint Hull;
+        [DataMember(Name = "max_hull")]
+        public uint MaxHull;
+        [DataMember(Name = "movement_status_mask")]
+        public byte MovementStatusMask;
+        [DataMember(Name = "movement_slow_magnitude")]
+        public float MovementSlowMagnitude;
+        [DataMember(Name = "environment_exposure_code")]
+        public byte EnvironmentExposureCode;
+        [DataMember(Name = "is_repairing")]
+        public bool IsRepairing;
         [DataMember(Name = "effective_speed_squares_per_second")]
         public float EffectiveSpeedSquaresPerSecond;
         [DataMember(Name = "is_moving")]
@@ -76,7 +88,13 @@ namespace SpacetimeDB.Types
             bool HasRoute,
             float HeadingDegrees,
             float Speed,
-            float TacticalMaximumSpeed,
+            float BaseSpeedSquaresPerSecond,
+            uint Hull,
+            uint MaxHull,
+            byte MovementStatusMask,
+            float MovementSlowMagnitude,
+            byte EnvironmentExposureCode,
+            bool IsRepairing,
             float EffectiveSpeedSquaresPerSecond,
             bool IsMoving,
             bool IsInPort,
@@ -103,7 +121,13 @@ namespace SpacetimeDB.Types
             this.HasRoute = HasRoute;
             this.HeadingDegrees = HeadingDegrees;
             this.Speed = Speed;
-            this.TacticalMaximumSpeed = TacticalMaximumSpeed;
+            this.BaseSpeedSquaresPerSecond = BaseSpeedSquaresPerSecond;
+            this.Hull = Hull;
+            this.MaxHull = MaxHull;
+            this.MovementStatusMask = MovementStatusMask;
+            this.MovementSlowMagnitude = MovementSlowMagnitude;
+            this.EnvironmentExposureCode = EnvironmentExposureCode;
+            this.IsRepairing = IsRepairing;
             this.EffectiveSpeedSquaresPerSecond = EffectiveSpeedSquaresPerSecond;
             this.IsMoving = IsMoving;
             this.IsInPort = IsInPort;

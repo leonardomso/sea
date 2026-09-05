@@ -47,7 +47,14 @@ public static partial class Module
 
         public float HeadingDegrees;
         public float Speed;
-        public float MaximumSpeed;
+
+        /// <summary>
+        /// Her rating in squares per second: the hull's figure with the bonuses her fit
+        /// earns already capped and worked in by <see cref="ShipStatRules"/>. It changes
+        /// when the fit changes and at no other time -- nothing about the water she is in
+        /// is in here.
+        /// </summary>
+        public float BaseSpeedSquaresPerSecond;
 
         /// <summary>Her speed this tick in squares per second, wind and debuffs included.</summary>
         public float EffectiveSpeedSquaresPerSecond;
