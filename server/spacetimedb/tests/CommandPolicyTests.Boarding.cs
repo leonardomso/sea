@@ -13,13 +13,13 @@ public sealed class CommandPolicyBoardingTests
     private static CommandSnapshot Ready(
         BoardingRejection rejection = BoardingRejection.None,
         ShipMode mode = ShipMode.Operational) => new()
-    {
-        Mode = mode,
-        CourseValid = true,
-        TargetValid = true,
-        AmmoKnown = true,
-        BoardingRejection = rejection,
-    };
+        {
+            Mode = mode,
+            CourseValid = true,
+            TargetValid = true,
+            AmmoKnown = true,
+            BoardingRejection = rejection,
+        };
 
     [Fact]
     public void ABoardingThatPassedTheGateIsAccepted()
