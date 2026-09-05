@@ -76,6 +76,48 @@ public static partial class Module
         public ulong SnapshotTick;
     }
 
+    /// <summary>
+    /// Every ship in one chunk, packed (SEA_5 §12.1). Public, and the row a client subscribes
+    /// to for other ships' positions.
+    /// </summary>
+    /// <remarks>
+    /// The row exists so that moving one hull costs one write for her chunk rather than one
+    /// write for her and a rewrite of the shard blob she shares with every other hull on the
+    /// map. <see cref="ChunkBlobRules"/> owns the layout of <c>Payload</c>; nothing else may
+    /// read it byte by byte.
+    ///
+    /// The key is worked out from the map and the chunk by <c>ChunkBlobRules.RowId</c>, not
+    /// allocated, so the writer reaches a chunk by primary key instead of looking it up by
+    /// three columns every tick. The index is for the reader: a client subscribes to a square
+    /// block of chunks around her ship and needs the range scan.
+    /// </remarks>
+    [SpacetimeDB.Table(Accessor = "ChunkMovement", Public = true)]
+    [SpacetimeDB.Index.BTree(
+        Accessor = "ByMapAndChunk",
+        Columns = new[] { nameof(MapId), nameof(ChunkX), nameof(ChunkY) })]
+    public partial struct ChunkMovement
+    {
+        [PrimaryKey]
+        public uint Id;
+
+        public byte MapId;
+        public byte ChunkX;
+        public byte ChunkY;
+
+        /// <summary>How many slots of <see cref="Payload"/> are a ship. The list is not
+        /// trimmed when a hull leaves, so its length is a high-water mark and this is the
+        /// count.</summary>
+        public ushort ShipCount;
+
+        /// <summary>The tick the blob was packed, which is the one snapshot time every hull
+        /// in it shares.</summary>
+        public ulong Tick;
+
+#pragma warning disable MA0016 // SpacetimeDB algebraic arrays require List<T> fields.
+        public List<byte> Payload;
+#pragma warning restore MA0016
+    }
+
     [SpacetimeDB.Table(Accessor = "RespawnWork", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByRespawnDue", Columns = new[] { nameof(IsPending), nameof(RespawnAtTick) })]
     public partial struct RespawnWork

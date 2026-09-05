@@ -42,6 +42,7 @@ import LoadPlayerReducer from "./load_player_reducer";
 // Import all table schema definitions
 import AmmoDefRow from "./ammo_def_table";
 import CannonDefRow from "./cannon_def_table";
+import ChunkMovementRow from "./chunk_movement_table";
 import CombatEventRow from "./combat_event_table";
 import CommandResultEventRow from "./command_result_event_table";
 import CooldownRow from "./cooldown_table";
@@ -106,6 +107,22 @@ const tablesSchema = __schema({
       { name: 'cannon_def_cannon_def_id_key', constraint: 'unique', columns: ['cannonDefId'] },
     ],
   }, CannonDefRow),
+  chunkMovement: __table({
+    name: 'chunk_movement',
+    indexes: [
+      { accessor: 'Id', name: 'chunk_movement_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'ByMapAndChunk', name: 'chunk_movement_map_id_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
+        'mapId',
+        'chunkX',
+        'chunkY',
+      ] },
+    ],
+    constraints: [
+      { name: 'chunk_movement_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ChunkMovementRow),
   combatEvent: __table({
     name: 'combat_event',
     indexes: [
@@ -597,6 +614,8 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "AmmoDef": Omit<typeof tablesSchema.schemaType.tables["ammoDef"], "accessorName"> & { readonly accessorName: "AmmoDef" };
     /** @deprecated Use `cannonDef` instead. This alias will be removed in the next major version. */
     readonly "CannonDef": Omit<typeof tablesSchema.schemaType.tables["cannonDef"], "accessorName"> & { readonly accessorName: "CannonDef" };
+    /** @deprecated Use `chunkMovement` instead. This alias will be removed in the next major version. */
+    readonly "ChunkMovement": Omit<typeof tablesSchema.schemaType.tables["chunkMovement"], "accessorName"> & { readonly accessorName: "ChunkMovement" };
     /** @deprecated Use `combatEvent` instead. This alias will be removed in the next major version. */
     readonly "CombatEvent": Omit<typeof tablesSchema.schemaType.tables["combatEvent"], "accessorName"> & { readonly accessorName: "CombatEvent" };
     /** @deprecated Use `commandResultEvent` instead. This alias will be removed in the next major version. */
@@ -683,6 +702,7 @@ const REMOTE_MODULE = {
 const tableAccessorAliases = {
   "AmmoDef": "ammoDef",
   "CannonDef": "cannonDef",
+  "ChunkMovement": "chunkMovement",
   "CombatEvent": "combatEvent",
   "CommandResultEvent": "commandResultEvent",
   "Cooldown": "cooldown",
@@ -740,6 +760,8 @@ export type DbView = __DbViewBase & {
   readonly "AmmoDef": __DbViewBase["ammoDef"];
   /** @deprecated Use `cannonDef` instead. This alias will be removed in the next major version. */
   readonly "CannonDef": __DbViewBase["cannonDef"];
+  /** @deprecated Use `chunkMovement` instead. This alias will be removed in the next major version. */
+  readonly "ChunkMovement": __DbViewBase["chunkMovement"];
   /** @deprecated Use `combatEvent` instead. This alias will be removed in the next major version. */
   readonly "CombatEvent": __DbViewBase["combatEvent"];
   /** @deprecated Use `commandResultEvent` instead. This alias will be removed in the next major version. */
@@ -814,6 +836,8 @@ export type Tables = __TablesBase & {
   readonly "AmmoDef": __TablesBase["ammoDef"];
   /** @deprecated Use `cannonDef` instead. This alias will be removed in the next major version. */
   readonly "CannonDef": __TablesBase["cannonDef"];
+  /** @deprecated Use `chunkMovement` instead. This alias will be removed in the next major version. */
+  readonly "ChunkMovement": __TablesBase["chunkMovement"];
   /** @deprecated Use `combatEvent` instead. This alias will be removed in the next major version. */
   readonly "CombatEvent": __TablesBase["combatEvent"];
   /** @deprecated Use `commandResultEvent` instead. This alias will be removed in the next major version. */

@@ -29,6 +29,7 @@ namespace SpacetimeDB.Types
         {
             AddTable(AmmoDef = new(conn));
             AddTable(CannonDef = new(conn));
+            AddTable(ChunkMovement = new(conn));
             AddTable(CombatEvent = new(conn));
             AddTable(CommandResultEvent = new(conn));
             AddTable(Cooldown = new(conn));
@@ -560,6 +561,7 @@ namespace SpacetimeDB.Types
         {
             new QueryBuilder().From.AmmoDef().ToSql(),
             new QueryBuilder().From.CannonDef().ToSql(),
+            new QueryBuilder().From.ChunkMovement().ToSql(),
             new QueryBuilder().From.CombatEvent().ToSql(),
             new QueryBuilder().From.CommandResultEvent().ToSql(),
             new QueryBuilder().From.Cooldown().ToSql(),
@@ -601,6 +603,7 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.Table<AmmoDef, AmmoDefCols, AmmoDefIxCols> AmmoDef() => new("ammo_def", new AmmoDefCols("ammo_def"), new AmmoDefIxCols("ammo_def"));
         public global::SpacetimeDB.Table<CannonDef, CannonDefCols, CannonDefIxCols> CannonDef() => new("cannon_def", new CannonDefCols("cannon_def"), new CannonDefIxCols("cannon_def"));
+        public global::SpacetimeDB.Table<ChunkMovement, ChunkMovementCols, ChunkMovementIxCols> ChunkMovement() => new("chunk_movement", new ChunkMovementCols("chunk_movement"), new ChunkMovementIxCols("chunk_movement"));
         public global::SpacetimeDB.Table<CombatEvent, CombatEventCols, CombatEventIxCols> CombatEvent() => new("combat_event", new CombatEventCols("combat_event"), new CombatEventIxCols("combat_event"));
         public global::SpacetimeDB.Table<CommandResultEvent, CommandResultEventCols, CommandResultEventIxCols> CommandResultEvent() => new("command_result_event", new CommandResultEventCols("command_result_event"), new CommandResultEventIxCols("command_result_event"));
         public global::SpacetimeDB.Table<Cooldown, CooldownCols, CooldownIxCols> Cooldown() => new("cooldown", new CooldownCols("cooldown"), new CooldownIxCols("cooldown"));

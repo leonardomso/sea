@@ -52,6 +52,17 @@ export const ChooseRespawnCommand = __t.object("ChooseRespawnCommand", {
 });
 export type ChooseRespawnCommand = __Infer<typeof ChooseRespawnCommand>;
 
+export const ChunkMovement = __t.object("ChunkMovement", {
+  id: __t.u32(),
+  mapId: __t.u8(),
+  chunkX: __t.u8(),
+  chunkY: __t.u8(),
+  shipCount: __t.u16(),
+  tick: __t.u64(),
+  payload: __t.byteArray(),
+});
+export type ChunkMovement = __Infer<typeof ChunkMovement>;
+
 export const ClearTargetCommand = __t.object("ClearTargetCommand", {});
 export type ClearTargetCommand = __Infer<typeof ClearTargetCommand>;
 
