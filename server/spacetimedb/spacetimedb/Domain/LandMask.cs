@@ -69,8 +69,6 @@ public sealed class LandMask
             return false;
         }
 
-        var endCellX = (int)MathF.Floor(endX);
-        var endCellY = (int)MathF.Floor(endY);
         var deltaX = endX - startX;
         var deltaY = endY - startY;
         var stepX = deltaX > 0f ? 1 : deltaX < 0f ? -1 : 0;
@@ -84,15 +82,33 @@ public sealed class LandMask
             ? float.PositiveInfinity
             : (stepY > 0 ? cellY + 1 - startY : startY - cellY) * perCellY;
 
-        while (cellX != endCellX || cellY != endCellY)
+        // The walk ends by distance along the ray, not by reaching the end cell:
+        // a diagonal step crosses two boundaries at once and can pass a corner
+        // straight over the end cell without ever landing on it. Both boundaries
+        // being a full segment length away means the ray stops before it enters
+        // another cell, and an entry at exactly one length means it stops on that
+        // edge rather than crossing it.
+        while (nextX < 1f || nextY < 1f)
         {
             if (nextX < nextY)
             {
                 cellX += stepX;
                 nextX += perCellX;
             }
+            else if (nextY < nextX)
+            {
+                cellY += stepY;
+                nextY += perCellY;
+            }
             else
             {
+                if (CornerIsBlocked(cellX, cellY, stepX, stepY))
+                {
+                    return false;
+                }
+
+                cellX += stepX;
+                nextX += perCellX;
                 cellY += stepY;
                 nextY += perCellY;
             }
@@ -105,6 +121,15 @@ public sealed class LandMask
 
         return true;
     }
+
+    /// <summary>
+    /// Whether the corner a diagonal ray is passing exactly through is pinched by
+    /// land on either side of it. A hull cannot cut between two rocks that meet at
+    /// a point, so both cells flanking the corner have to be open, not just the one
+    /// the walk in <see cref="SegmentIsClear"/> would otherwise step into first.
+    /// </summary>
+    private bool CornerIsBlocked(int cellX, int cellY, int stepX, int stepY) =>
+        IsLandCell(cellX + stepX, cellY) || IsLandCell(cellX, cellY + stepY);
 
     /// <summary>
     /// The nearest square of water to a point, searched outward a ring at a

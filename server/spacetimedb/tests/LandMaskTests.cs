@@ -159,4 +159,31 @@ public sealed class LandMaskTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new LandMask(0, []));
     }
+
+    [Fact]
+    public void ASegmentThatStopsOnACellCornerDoesNotWalkOnPastIt()
+    {
+        // The end point is the exact corner of four cells and the ray arrives at
+        // it diagonally, so both cell boundaries fall due at the same distance. A
+        // walk that only stopped once it stood on the end cell would step over
+        // that corner, miss the cell entirely and march off the map into the land
+        // that surrounds it.
+        Assert.True(SmallSea().SegmentIsClear(1.5f, 3.5f, 2f, 3f));
+    }
+
+    [Fact]
+    public void AHullCannotSlipBetweenTwoRocksThatMeetAtAPoint()
+    {
+        var bits = new ulong[LandMask.WordCount(10)];
+        var mask = new LandMask(10, bits);
+        var open = mask.SegmentIsClear(3.5f, 3.5f, 4.5f, 4.5f);
+
+        var first = (3 * 10) + 4;
+        var second = (4 * 10) + 3;
+        bits[first >> 6] |= 1UL << (first & 63);
+        bits[second >> 6] |= 1UL << (second & 63);
+
+        Assert.True(open);
+        Assert.False(mask.SegmentIsClear(3.5f, 3.5f, 4.5f, 4.5f));
+    }
 }
