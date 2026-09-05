@@ -181,6 +181,8 @@ public static partial class Module
         ship.ArmorSides = stats.Armor;
         ship.ArmorBack = stats.Armor;
         ship.SelectedAmmoCode = (byte)definition.PreferredAmmunition;
+        ship.MaxHands = BoardingRules.Complement(definition.Tier);
+        ship.Hands = ship.MaxHands;
         ship.EncounterId = entityId;
         ctx.Db.Ship.Insert(ship);
         InsertShipMovement(ctx, ship, CurrentSimulationTick(ctx));

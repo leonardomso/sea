@@ -372,6 +372,39 @@ public sealed class CombatRulesTests
         }
     }
 
+    /// <summary>
+    /// SEA_3 §4.3: a boarding party spikes the guns for three seconds. The silence is a tick on
+    /// the row rather than a channel, so the same check covers a hostile: an NPC fires through
+    /// the same admission a captain does.
+    /// </summary>
+    [Fact]
+    public void Fire_admission_refuses_a_ship_whose_guns_a_boarding_party_silenced()
+    {
+        var request = ValidFireRequest() with { CurrentTick = 20, SilencedUntilTick = 21 };
+
+        Assert.Equal(FireRejection.Silenced, CombatRules.ValidateFire(request));
+        Assert.Equal(
+            FireRejection.None,
+            CombatRules.ValidateFire(request with { SilencedUntilTick = 20 }));
+    }
+
+    /// <summary>
+    /// The harbour and the spawn shield are the nearer reasons: a ship that is silenced and in
+    /// port is told about the port, because that is the one she can do something about.
+    /// </summary>
+    [Fact]
+    public void Fire_admission_puts_the_silence_behind_the_port_and_the_shield()
+    {
+        var silenced = ValidFireRequest() with { SilencedUntilTick = 999 };
+
+        Assert.Equal(
+            FireRejection.InPort,
+            CombatRules.ValidateFire(silenced with { InPort = true }));
+        Assert.Equal(
+            FireRejection.SpawnShielded,
+            CombatRules.ValidateFire(silenced with { SpawnShielded = true }));
+    }
+
     private static FireRequest ValidFireRequest() => new()
     {
         SourceAlive = true,

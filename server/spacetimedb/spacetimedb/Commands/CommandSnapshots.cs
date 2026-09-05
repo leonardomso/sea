@@ -90,6 +90,7 @@ public static partial class Module
                 TargetAlive = target is Ship selected && selected.IsActive && selected.IsAlive,
                 InPort = source.IsInPort,
                 SpawnShielded = world.Tick < source.InvulnerableUntilTick,
+                SilencedUntilTick = source.WeaponSilencedUntilTick,
                 IsChanneling = snapshot.HasActiveChannel,
                 ReadyVolleys = source.ReadyVolleys,
                 CurrentTick = world.Tick,

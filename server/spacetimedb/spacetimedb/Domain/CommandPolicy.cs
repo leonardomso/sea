@@ -66,6 +66,18 @@ public enum CommandRejectionCode : byte
 
     /// <summary>She is not at a border that leads anywhere, so nothing was asked (SEA_5 10.2).</summary>
     NoCrossingOffered = 27,
+
+    /// <summary>Still above half her hull, so there is nothing to grapple yet (SEA_5 9.1).</summary>
+    TargetNotBoardable = 28,
+
+    /// <summary>Somebody else took her within the last five minutes (SEA_3 4.3).</summary>
+    TargetRecentlyBoarded = 29,
+
+    /// <summary>Fewer than half her own hands still standing (SEA_2 5.7).</summary>
+    NotEnoughHands = 30,
+
+    /// <summary>Boarders on deck; the guns are spiked for three seconds (SEA_3 4.3).</summary>
+    Silenced = 31,
 }
 
 [Flags]
@@ -83,6 +95,7 @@ public enum CommandEffect : ushort
     UseRepairKit = 1 << 8,
     ChooseRespawn = 1 << 9,
     ChangeMap = 1 << 10,
+    StartBoarding = 1 << 11,
 }
 
 public readonly record struct CommandSnapshot
@@ -106,6 +119,14 @@ public readonly record struct CommandSnapshot
     /// own answer rather than the client's claim about what it drew.
     /// </summary>
     public bool CrossingOffered { get; init; }
+
+    /// <summary>
+    /// Why the hooks cannot be thrown, or <see cref="Sea.Server.BoardingRejection.None"/>. Every
+    /// part of it -- the reach, the two clocks, the hands -- is read off two rows the executor
+    /// would have to read anyway, so admission does not answer half the question and leave the
+    /// rest to be refused after the fact.
+    /// </summary>
+    public BoardingRejection BoardingRejection { get; init; }
     public CommandRejectionCode ArgumentRejection { get; init; }
 }
 
@@ -148,9 +169,9 @@ public static class CommandPolicy
             return Reject(snapshot.Mode, CommandRejectionCode.MissingResource);
         }
 
-        // Abilities and boarding left the model with the four damage pools they scaled off. Their
-        // keys stay bound on the client, so they answer "not available yet" rather than nothing.
-        if (command is ShipCommandKind.ActivateAbility or ShipCommandKind.StartBoarding)
+        // Abilities left the model with the four damage pools they scaled off. The key stays
+        // bound on the client, so it answers "not available yet" rather than nothing.
+        if (command == ShipCommandKind.ActivateAbility)
         {
             return Reject(snapshot.Mode, CommandRejectionCode.NotAvailable);
         }
@@ -244,6 +265,9 @@ public static class CommandPolicy
                 CommandRejectionCode.NotChanneling,
             ShipCommandKind.ChangeMap when !snapshot.CrossingOffered =>
                 CommandRejectionCode.NoCrossingOffered,
+            ShipCommandKind.StartBoarding when snapshot.TargetIsFriendly =>
+                CommandRejectionCode.PlayerTargetForbidden,
+            ShipCommandKind.StartBoarding => Map(snapshot.BoardingRejection),
             _ => CommandRejectionCode.None,
         };
 
@@ -291,6 +315,7 @@ public static class CommandPolicy
         ShipCommandKind.UseRepairKit => CommandEffect.UseRepairKit,
         ShipCommandKind.ChooseRespawn => CommandEffect.ChooseRespawn,
         ShipCommandKind.ChangeMap => CommandEffect.ChangeMap,
+        ShipCommandKind.StartBoarding => CommandEffect.StartBoarding,
         _ => CommandEffect.None,
     };
 
@@ -309,6 +334,22 @@ public static class CommandPolicy
         FireRejection.InPort => CommandRejectionCode.InPort,
         FireRejection.SpawnShielded => CommandRejectionCode.SpawnShielded,
         FireRejection.Busy => CommandRejectionCode.ModeConflict,
+        FireRejection.Silenced => CommandRejectionCode.Silenced,
+        _ => CommandRejectionCode.MissingResource,
+    };
+
+    private static CommandRejectionCode Map(BoardingRejection rejection) => rejection switch
+    {
+        BoardingRejection.None => CommandRejectionCode.None,
+        BoardingRejection.SourceSunk => CommandRejectionCode.Sunk,
+        BoardingRejection.NoTarget => CommandRejectionCode.NoTarget,
+        BoardingRejection.TargetSunk => CommandRejectionCode.TargetSunk,
+        BoardingRejection.InPort => CommandRejectionCode.InPort,
+        BoardingRejection.OutOfRange => CommandRejectionCode.OutOfRange,
+        BoardingRejection.TargetNotBoardable => CommandRejectionCode.TargetNotBoardable,
+        BoardingRejection.NotEnoughHands => CommandRejectionCode.NotEnoughHands,
+        BoardingRejection.OnCooldown => CommandRejectionCode.OnCooldown,
+        BoardingRejection.TargetRecentlyBoarded => CommandRejectionCode.TargetRecentlyBoarded,
         _ => CommandRejectionCode.MissingResource,
     };
 

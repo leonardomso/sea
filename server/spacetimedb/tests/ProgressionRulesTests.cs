@@ -113,4 +113,12 @@ public sealed class ProgressionRulesTests
             RespawnRules.Restore(player: true, maximumHull: 100, currentTick: 40).InvulnerableUntilTick,
             RespawnRules.PlayerProtectionUntil(40));
     }
+    [Fact]
+    public void AChargeLargerThanThePurseEmptiesItRatherThanWrappingRound()
+    {
+        Assert.Equal(400u, ProgressionRules.TakeGoldSaturating(1_000u, 600u));
+        Assert.Equal(0u, ProgressionRules.TakeGoldSaturating(1_000u, 1_000u));
+        Assert.Equal(0u, ProgressionRules.TakeGoldSaturating(1_000u, uint.MaxValue));
+    }
+
 }

@@ -123,6 +123,18 @@ namespace SpacetimeDB.Types
         public ulong EncounterId;
         [DataMember(Name = "is_in_port")]
         public bool IsInPort;
+        [DataMember(Name = "hands")]
+        public uint Hands;
+        [DataMember(Name = "max_hands")]
+        public uint MaxHands;
+        [DataMember(Name = "hands_recovered_at_tick")]
+        public ulong HandsRecoveredAtTick;
+        [DataMember(Name = "board_cooldown_until_tick")]
+        public ulong BoardCooldownUntilTick;
+        [DataMember(Name = "board_immune_until_tick")]
+        public ulong BoardImmuneUntilTick;
+        [DataMember(Name = "weapon_silenced_until_tick")]
+        public ulong WeaponSilencedUntilTick;
 
         public Ship(
             ulong EntityId,
@@ -179,7 +191,13 @@ namespace SpacetimeDB.Types
             ulong RespawnAtTick,
             ulong InvulnerableUntilTick,
             ulong EncounterId,
-            bool IsInPort
+            bool IsInPort,
+            uint Hands,
+            uint MaxHands,
+            ulong HandsRecoveredAtTick,
+            ulong BoardCooldownUntilTick,
+            ulong BoardImmuneUntilTick,
+            ulong WeaponSilencedUntilTick
         )
         {
             this.EntityId = EntityId;
@@ -237,6 +255,12 @@ namespace SpacetimeDB.Types
             this.InvulnerableUntilTick = InvulnerableUntilTick;
             this.EncounterId = EncounterId;
             this.IsInPort = IsInPort;
+            this.Hands = Hands;
+            this.MaxHands = MaxHands;
+            this.HandsRecoveredAtTick = HandsRecoveredAtTick;
+            this.BoardCooldownUntilTick = BoardCooldownUntilTick;
+            this.BoardImmuneUntilTick = BoardImmuneUntilTick;
+            this.WeaponSilencedUntilTick = WeaponSilencedUntilTick;
         }
 
         public Ship()

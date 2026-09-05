@@ -234,6 +234,29 @@ namespace Sea.Client
             ship.ReadyVolleys > 0 &&
             ship.TargetEntityId != 0;
 
+        /// <summary>
+        /// Throws the hooks. The gate is the server's -- four squares, a target already at half
+        /// her hull, half this crew still standing and neither cooldown running -- so the client
+        /// only refuses what it can see for itself, which is having aimed at nothing. Everything
+        /// else comes back as a refusal the captain can read.
+        /// </summary>
+        public void StartBoarding()
+        {
+            if (!IsReady)
+            {
+                return;
+            }
+
+            if (SelectedTargetId == 0 &&
+                (!TryGetLocalShip(out var ship) || ship.TargetEntityId == 0))
+            {
+                localAction = "Select a target before boarding.";
+                return;
+            }
+
+            Issue(new ShipCommand.StartBoarding(new StartBoardingCommand()), "Board");
+        }
+
         /// <summary>A key the mechanics sheet reserves but Milestone 1 does not answer yet.</summary>
         public void ReportUnavailable(string feature) =>
             localAction = SeaCommandResultText.NotAvailableYet(feature);

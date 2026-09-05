@@ -208,10 +208,10 @@ namespace Sea.Client
             Bind("AmmoIncendiary", _ => game?.SetSelectedAmmo("incendiary"));
             Bind("Repair", _ => game?.ToggleRepair());
             Bind("RepairKit", _ => game?.UseRepairKit());
+            Bind("Board", _ => game?.StartBoarding());
 
             // Section 1.1 keeps these keys bound so they appear in the rebinder and answer when
             // pressed; the answer, for now, is that the milestone has not reached them.
-            BindUnavailable("Board", "Boarding");
             BindUnavailable("Ram", "Ramming");
             BindUnavailable("Ability1", "Abilities");
             BindUnavailable("Ability2", "Abilities");

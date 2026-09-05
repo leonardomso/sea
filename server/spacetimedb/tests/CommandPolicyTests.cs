@@ -5,11 +5,11 @@ namespace Sea.Server.Tests;
 
 public sealed class CommandPolicyTests
 {
-    /// <summary>Abilities and boarding left the model in 1b but keep their keys bound.</summary>
+    /// <summary>Abilities left the model in 1b but keep their keys bound. Boarding came back
+    /// in Phase 11; see <see cref="CommandPolicyBoardingTests"/>.</summary>
     private static readonly ShipCommandKind[] Retired =
     [
         ShipCommandKind.ActivateAbility,
-        ShipCommandKind.StartBoarding,
     ];
 
     public static IEnumerable<object[]> ModeCommandCases()
@@ -38,7 +38,6 @@ public sealed class CommandPolicyTests
 
     [Theory]
     [InlineData(ShipCommandKind.ActivateAbility)]
-    [InlineData(ShipCommandKind.StartBoarding)]
     public void RetiredCommandsAnswerNotAvailableInEveryMode(ShipCommandKind command)
     {
         foreach (var mode in Enum.GetValues<ShipMode>())
@@ -353,6 +352,7 @@ public sealed class CommandPolicyTests
         HasActiveChannel = mode is ShipMode.Repairing or ShipMode.CastingOff,
         RespawnPending = mode == ShipMode.Sunk,
         CrossingOffered = true,
+        BoardingRejection = BoardingRejection.None,
     };
 
     private static bool ExpectedAccepted(ShipMode mode, ShipCommandKind command)

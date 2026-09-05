@@ -191,4 +191,44 @@ public sealed class CriticalHitRulesTests
     {
         Assert.Equal(uint.MaxValue, CriticalHitRules.Apply(uint.MaxValue, isCritical: true));
     }
+    /// <summary>
+    /// Boarding needs a draw of its own and must not carry a generator to make it. It reads the
+    /// same hash the critical does, so both are functions of the command log and a replay
+    /// grapples the same way it crits.
+    /// </summary>
+    [Fact]
+    public void TheRollIsTheSameDrawTheCriticalIsDecidedBy()
+    {
+        var criticals = 0;
+
+        for (var tick = 0UL; tick < 2000UL; tick++)
+        {
+            var roll = CriticalHitRules.Roll(seed: 0x5EA2026, tick, attackerId: 7, defenderId: 9);
+
+            Assert.True(roll >= 0f && roll < 1f, "the roll is a unit fraction");
+
+            if (CriticalHitRules.IsCritical(0x5EA2026, tick, 7, 9))
+            {
+                criticals++;
+
+                // Both read the same top bits, so a critical is always one of the low rolls.
+                Assert.True(roll < CriticalHitRules.Chance, "a critical is a low roll");
+            }
+        }
+
+        // One volley in ten, over enough volleys for the count to mean something.
+        Assert.InRange(criticals, 150, 250);
+    }
+
+    [Fact]
+    public void TheRollMovesWhenAnyOneOfItsFourInputsDoes()
+    {
+        var baseline = CriticalHitRules.Roll(1, 2, 3, 4);
+
+        Assert.NotEqual(baseline, CriticalHitRules.Roll(9, 2, 3, 4));
+        Assert.NotEqual(baseline, CriticalHitRules.Roll(1, 9, 3, 4));
+        Assert.NotEqual(baseline, CriticalHitRules.Roll(1, 2, 9, 4));
+        Assert.NotEqual(baseline, CriticalHitRules.Roll(1, 2, 3, 9));
+    }
+
 }

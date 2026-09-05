@@ -30,11 +30,21 @@ namespace Sea.Client
             19 => "no active channel",
             20 => "missing resource",
             21 => "not available yet",
+            22 => "still on cooldown",
+            23 => "target is spawn shielded",
+            24 => "ship is not sunk",
+            25 => "no way through",
+            26 => "slow down",
+            27 => "no crossing here",
+            28 => "target is not damaged enough to board",
+            29 => "target was boarded too recently",
+            30 => "not enough hands to board",
+            31 => "boarders have spiked the guns",
             _ => $"rejection code {code}",
         };
 
         /// <summary>
-        /// The keys the mechanics sheet reserves for boarding, ramming, abilities and the PvP
+        /// The keys the mechanics sheet reserves for ramming, abilities and the PvP
         /// flag stay bound through Milestone 1 so the rebinder lists them; pressing one says so
         /// rather than doing nothing, which reads as a broken key.
         /// </summary>

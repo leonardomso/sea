@@ -61,6 +61,7 @@ public static partial class Module
             ShipCommandKind.SetAmmo => AmmoSnapshot(snapshot, command.SetAmmo),
             ShipCommandKind.Fire => FireSnapshot(ctx, world, ship, snapshot),
             ShipCommandKind.StartRepair => RepairSnapshot(ctx, world, ship, snapshot),
+            ShipCommandKind.StartBoarding => BoardingSnapshot(ctx, world, ship, snapshot),
             ShipCommandKind.UseRepairKit => KitSnapshot(ctx, world, ship, snapshot),
             ShipCommandKind.ChooseRespawn => RespawnSnapshot(
                 ctx,
@@ -120,6 +121,9 @@ public static partial class Module
                 break;
             case ShipCommandKind.StartRepair:
                 ApplyStartRepair(ctx, world, ref ship);
+                break;
+            case ShipCommandKind.StartBoarding:
+                ApplyStartBoarding(ctx, world, ref ship);
                 break;
             case ShipCommandKind.CancelChannel:
                 ApplyCancelChannel(ctx, world, ref ship);

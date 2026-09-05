@@ -151,6 +151,10 @@ namespace Sea.Tests
             Assert.That(SeaCommandResultText.Rejection(13),
                 Is.EqualTo("magazine reloading"));
             Assert.That(SeaCommandResultText.Rejection(21), Is.EqualTo("not available yet"));
+            Assert.That(SeaCommandResultText.Rejection(28),
+                Is.EqualTo("target is not damaged enough to board"));
+            Assert.That(SeaCommandResultText.Rejection(31),
+                Is.EqualTo("boarders have spiked the guns"));
             Assert.That(SeaCommandResultText.Rejection(255), Is.EqualTo("rejection code 255"));
         }
 

@@ -9,6 +9,13 @@ public static class ProgressionRules
 
     public static uint AddGoldSaturating(uint current, uint amount) =>
         uint.MaxValue - current < amount ? uint.MaxValue : current + amount;
+
+    /// <summary>
+    /// Money out of the purse. A charge larger than what she is carrying empties it rather than
+    /// wrapping round and making her the richest captain afloat.
+    /// </summary>
+    public static uint TakeGoldSaturating(uint current, uint amount) =>
+        amount >= current ? 0u : current - amount;
 }
 
 public readonly record struct LootCandidate(ulong EntityId, float Distance);

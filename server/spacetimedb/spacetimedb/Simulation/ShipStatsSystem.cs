@@ -83,6 +83,7 @@ public static partial class Module
         ship.MaxHull = sheet.MaxHitPoints;
         ship.RepairAmount = sheet.RepairAmount;
         ship.RepairChannelTicks = RepairRules.ChannelTicks(sheet.RepairChannelMilliseconds);
+        ship.MaxHands = BoardingRules.Complement(sheet.Tier);
 
         if (restock)
         {
@@ -90,6 +91,7 @@ public static partial class Module
             ship.ReadyVolleys = sheet.Magazine;
             ship.ReloadProgressTicks = 0;
             ship.IsReloading = false;
+            ship.Hands = ship.MaxHands;
             return;
         }
 
@@ -98,5 +100,6 @@ public static partial class Module
         ship.Hull = Math.Min(ship.Hull, sheet.MaxHitPoints);
         ship.ReadyVolleys = Math.Min(ship.ReadyVolleys, sheet.Magazine);
         ship.IsReloading = ship.ReadyVolleys < sheet.Magazine;
+        ship.Hands = Math.Min(ship.Hands, ship.MaxHands);
     }
 }

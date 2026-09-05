@@ -22,6 +22,9 @@ public enum FireRejection
     InPort,
     SpawnShielded,
     Busy,
+
+    /// <summary>A boarding party is on deck and the guns are spiked (SEA_3 4.3).</summary>
+    Silenced,
 }
 
 public readonly record struct FireRequest
@@ -40,6 +43,14 @@ public readonly record struct FireRequest
     public bool SpawnShielded { get; init; }
 
     public bool IsChanneling { get; init; }
+
+    /// <summary>
+    /// The tick her guns come back after a boarding. Zero for a ship nobody has grappled, which
+    /// is every ship most of the time, so the check costs one comparison against a field the row
+    /// already carries.
+    /// </summary>
+    public ulong SilencedUntilTick { get; init; }
+
     public uint ReadyVolleys { get; init; }
     public ulong CurrentTick { get; init; }
 
@@ -115,6 +126,11 @@ public static class CombatRules
         if (request.SpawnShielded)
         {
             return FireRejection.SpawnShielded;
+        }
+
+        if (request.CurrentTick < request.SilencedUntilTick)
+        {
+            return FireRejection.Silenced;
         }
 
         if (request.ReadyVolleys == 0)

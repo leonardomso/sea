@@ -471,6 +471,12 @@ export const Ship = __t.object("Ship", {
   invulnerableUntilTick: __t.u64(),
   encounterId: __t.u64(),
   isInPort: __t.bool(),
+  hands: __t.u32(),
+  maxHands: __t.u32(),
+  handsRecoveredAtTick: __t.u64(),
+  boardCooldownUntilTick: __t.u64(),
+  boardImmuneUntilTick: __t.u64(),
+  weaponSilencedUntilTick: __t.u64(),
 });
 export type Ship = __Infer<typeof Ship>;
 

@@ -53,15 +53,17 @@ public static class CriticalHitRules
     /// Decides whether one volley is a critical. Pure in its four arguments, so
     /// a replay of the same command log crits on the same volleys.
     /// </summary>
-    public static bool IsCritical(ulong seed, ulong tick, ulong attackerId, ulong defenderId)
-    {
-        var state = Mix(seed);
-        state = Mix(state ^ tick);
-        state = Mix(state ^ attackerId);
-        state = Mix(state ^ defenderId);
+    public static bool IsCritical(ulong seed, ulong tick, ulong attackerId, ulong defenderId) =>
+        Raw(seed, tick, attackerId, defenderId) < CriticalThreshold;
 
-        return (state >> (64 - RollBits)) < CriticalThreshold;
-    }
+    /// <summary>
+    /// The same draw <see cref="IsCritical" /> is decided by, as a number from zero up to but not
+    /// including one. A boarding wants to know how the dice fell rather than whether they beat the
+    /// critical's tenth, and it must not carry a generator of its own to find out: two draws off one
+    /// hash stay two functions of the command log, so a replay grapples the way it crits.
+    /// </summary>
+    public static float Roll(ulong seed, ulong tick, ulong attackerId, ulong defenderId) =>
+        Raw(seed, tick, attackerId, defenderId) / RollScale;
 
     /// <summary>
     /// Scales damage that has already been through armour. Rounds down, so a
@@ -77,6 +79,20 @@ public static class CriticalHitRules
 
         var scaled = ((ulong)damage * MultiplierNumerator) / MultiplierDenominator;
         return scaled > uint.MaxValue ? uint.MaxValue : (uint)scaled;
+    }
+
+    /// <summary>
+    /// The draw itself: the four inputs absorbed one at a time, then the top
+    /// <see cref="RollBits" /> bits of what comes out.
+    /// </summary>
+    private static ulong Raw(ulong seed, ulong tick, ulong attackerId, ulong defenderId)
+    {
+        var state = Mix(seed);
+        state = Mix(state ^ tick);
+        state = Mix(state ^ attackerId);
+        state = Mix(state ^ defenderId);
+
+        return state >> (64 - RollBits);
     }
 
     /// <summary>

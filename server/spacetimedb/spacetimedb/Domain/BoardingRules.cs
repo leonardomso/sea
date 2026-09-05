@@ -23,6 +23,49 @@ public readonly record struct BoardingOutcome(
     float LootMultiplier);
 
 /// <summary>
+/// Why an order to grapple was refused. The order matters as much as the list: a captain is told
+/// the nearest reason she cannot board, not the last one, so "she is too healthy" beats "you are
+/// on cooldown" when both are true.
+/// </summary>
+public enum BoardingRejection
+{
+    None,
+    SourceSunk,
+    NoTarget,
+    TargetSunk,
+    InPort,
+    OutOfRange,
+    TargetNotBoardable,
+    NotEnoughHands,
+    OnCooldown,
+    TargetRecentlyBoarded,
+}
+
+/// <summary>
+/// Everything admission knows about a captain asking to throw her hooks. It carries the two
+/// timers rather than the ticks they were set on, because a cooldown is a fact about the row and
+/// working it out twice is how the two ends of it come to disagree.
+/// </summary>
+public readonly record struct BoardingRequest
+{
+    public bool SourceAlive { get; init; }
+    public bool TargetSelected { get; init; }
+    public bool TargetAlive { get; init; }
+
+    /// <summary>Either ship inside safe water. The harbour is a truce for hooks as well as guns.</summary>
+    public bool InPort { get; init; }
+
+    public float DistanceSquares { get; init; }
+    public uint DefenderHull { get; init; }
+    public uint DefenderMaxHull { get; init; }
+    public uint AttackerHands { get; init; }
+    public uint AttackerMaxHands { get; init; }
+    public ulong CurrentTick { get; init; }
+    public ulong AttackerCooldownUntilTick { get; init; }
+    public ulong DefenderImmuneUntilTick { get; init; }
+}
+
+/// <summary>
 /// Grappling and taking a ship. SEA_5_PHYSICS §9 sets the reach and the cooldowns,
 /// SEA_2_MATH §5.7 the scores, the chance and the price of failing, SEA_3_MECHANICS §4.3 the
 /// outcome of a success.
@@ -183,6 +226,120 @@ public static class BoardingRules
             0f,
             LootMultiplier(attacker, defender));
     }
+
+    /// <summary>Ten hands to a rate (SEA_2 §5.7): 10/20/30/40/50 by hull, and 10 x tier hostile.</summary>
+    public const uint HandsPerTier = 10;
+
+    /// <summary>A sailor comes back to his post every minute at sea (SEA_3 §4.3).</summary>
+    public const ulong HandsRecoveryTicks = 60 * WorldRules.TickRateHz;
+
+    /// <summary>A won boarding is paid by the game at fifteen map drops (SEA_2 §5.7).</summary>
+    public const float HaulBaseMultiplier = 15f;
+
+    /// <summary>A lost one costs twenty-five (SEA_2 §5.7), capped by <see cref="FailPurseFraction"/>.</summary>
+    public const float FailGoldMultiplier = 25f;
+
+    /// <inheritdoc cref="FailGoldMultiplier"/>
+    public const float FailPurseFraction = 0.05f;
+
+    /// <summary>
+    /// The crew a rate carries. Tier nought is not a rate anything afloat has, but a row read
+    /// before its stats are written would say so, and a complement of nought is a ship that can
+    /// never board again -- so the first rate's crew is the floor.
+    /// </summary>
+    public static uint Complement(byte tier) => HandsPerTier * Math.Max((uint)tier, 1u);
+
+    /// <summary>
+    /// Hands, brought forward by however long she has been at sea. Worked out when it is asked
+    /// for rather than added every tick: a sailor an hour is not worth a write per hull per tick,
+    /// and the answer is the same either way.
+    /// </summary>
+    public static uint Recover(uint hands, uint maxHands, ulong elapsedTicks)
+    {
+        if (hands >= maxHands)
+        {
+            return maxHands;
+        }
+
+        var recovered = elapsedTicks / HandsRecoveryTicks;
+        return recovered >= maxHands - hands ? maxHands : hands + (uint)recovered;
+    }
+
+    /// <summary>
+    /// The hull factor on the attack, <c>0.6 + 0.4 x HP</c> (SEA_2 §5.7). A hull with no maximum
+    /// is not a mauled ship, it is a ship whose stats have not been written; she counts as whole.
+    /// </summary>
+    public static float AttackerMorale(uint hull, uint maximumHull) =>
+        0.6f + (0.4f * HullFraction(hull, maximumHull));
+
+    /// <summary>
+    /// The same factor on the defence, <c>0.4 + 0.6 x HP</c>: a mauled ship loses more of her
+    /// defence than of her attack, which is what makes half health the moment to grapple.
+    /// </summary>
+    public static float DefenderMorale(uint hull, uint maximumHull) =>
+        0.4f + (0.6f * HullFraction(hull, maximumHull));
+
+    /// <summary>What a won boarding pays, from the game and not from the victim (SEA_3 §4.3).</summary>
+    public static uint Haul(float baseGold, float lootMultiplier) =>
+        Round(baseGold * HaulBaseMultiplier * lootMultiplier);
+
+    /// <summary><c>min(25 x G(map), 0.05 x purse)</c> (SEA_2 §5.7).</summary>
+    public static uint FailGold(float baseGold, uint purse) =>
+        Math.Min(Round(baseGold * FailGoldMultiplier), Round(purse * FailPurseFraction));
+
+    /// <summary>
+    /// The checks, in the order SEA_5 §9.1 and SEA_3 §4.3 put them: alive, at peace or not, near
+    /// enough, hurt enough, manned enough, and only then the two clocks.
+    /// </summary>
+    public static BoardingRejection Validate(BoardingRequest request)
+    {
+        if (!request.SourceAlive)
+        {
+            return BoardingRejection.SourceSunk;
+        }
+
+        if (!request.TargetSelected)
+        {
+            return BoardingRejection.NoTarget;
+        }
+
+        if (!request.TargetAlive)
+        {
+            return BoardingRejection.TargetSunk;
+        }
+
+        if (request.InPort)
+        {
+            return BoardingRejection.InPort;
+        }
+
+        if (!IsInReach(request.DistanceSquares))
+        {
+            return BoardingRejection.OutOfRange;
+        }
+
+        if (!CanBoard(request.DefenderHull, request.DefenderMaxHull))
+        {
+            return BoardingRejection.TargetNotBoardable;
+        }
+
+        if (!HasHandsToBoard(request.AttackerHands, request.AttackerMaxHands))
+        {
+            return BoardingRejection.NotEnoughHands;
+        }
+
+        if (request.CurrentTick < request.AttackerCooldownUntilTick)
+        {
+            return BoardingRejection.OnCooldown;
+        }
+
+        return request.CurrentTick < request.DefenderImmuneUntilTick
+            ? BoardingRejection.TargetRecentlyBoarded
+            : BoardingRejection.None;
+    }
+
+    private static float HullFraction(uint hull, uint maximumHull) =>
+        maximumHull == 0 ? 1f : Math.Clamp((float)hull / maximumHull, 0f, 1f);
 
     private static uint Hull(uint maximumHull, float fraction) =>
         Round(maximumHull * fraction);

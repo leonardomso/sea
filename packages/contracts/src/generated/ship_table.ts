@@ -66,4 +66,10 @@ export default __t.row({
   invulnerableUntilTick: __t.u64().name("invulnerable_until_tick"),
   encounterId: __t.u64().name("encounter_id"),
   isInPort: __t.bool().name("is_in_port"),
+  hands: __t.u32(),
+  maxHands: __t.u32().name("max_hands"),
+  handsRecoveredAtTick: __t.u64().name("hands_recovered_at_tick"),
+  boardCooldownUntilTick: __t.u64().name("board_cooldown_until_tick"),
+  boardImmuneUntilTick: __t.u64().name("board_immune_until_tick"),
+  weaponSilencedUntilTick: __t.u64().name("weapon_silenced_until_tick"),
 });

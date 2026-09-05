@@ -11,7 +11,6 @@ namespace Sea.Client
         private static readonly ShipCommand[] RetiredCommands =
         {
             new ShipCommand.ActivateAbility(new ActivateAbilityCommand("full_sail")),
-            new ShipCommand.StartBoarding(new StartBoardingCommand()),
         };
 
         private int retiredCommandIndex;
@@ -60,8 +59,8 @@ namespace Sea.Client
         }
 
         /// <summary>
-        /// Abilities and boarding left the game with 1b, but a stale client can still put those
-        /// variants on the wire, so the module keeps them and answers <c>NotAvailable</c>. This
+        /// Abilities left the game with 1b, but a stale client can still put that variant on the
+        /// wire, so the module keeps it and answers <c>NotAvailable</c>. This
         /// walks that path in the built player: every retired command must come back rejected
         /// with the stable code and must never move the ship.
         /// </summary>

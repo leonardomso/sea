@@ -48,6 +48,9 @@ public enum DamageSourceCode : byte
     Volley = 0,
     Burning = 1,
     Storm = 2,
+
+    /// <summary>A boarding party's work. It is not a shot, so no armour face turns it aside.</summary>
+    Boarding = 3,
 }
 
 /// <summary>
@@ -188,6 +191,7 @@ public static class HotPathCodes
     {
         DamageSourceCode.Burning => "burning",
         DamageSourceCode.Storm => "storm",
+        DamageSourceCode.Boarding => "boarding",
         _ => "volley",
     };
 

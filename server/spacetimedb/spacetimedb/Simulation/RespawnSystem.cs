@@ -114,12 +114,27 @@ public static partial class Module
         ship.LastShotTick = 0;
         ship.RespawnAtTick = 0;
         ship.InvulnerableUntilTick = restored.InvulnerableUntilTick;
+        RestoreCrewForRespawn(ref ship, tick);
         ClearRespawnState(ctx, ship.EntityId);
         ClearHealLog(ctx, ship.EntityId);
         if (!player)
         {
             ReopenNpcEncounter(ctx, ref ship, tick);
         }
+    }
+
+    /// <summary>
+    /// A fresh crew, and none of the boarding clocks the last life ran out. A ship that was still
+    /// safe from hooks when she sank does not come back safe: the immunity is there so one victim
+    /// is not taken twice over, and the hull that surfaces is not the one that was taken.
+    /// </summary>
+    private static void RestoreCrewForRespawn(ref Ship ship, ulong tick)
+    {
+        ship.Hands = ship.MaxHands;
+        ship.HandsRecoveredAtTick = tick;
+        ship.BoardCooldownUntilTick = 0;
+        ship.BoardImmuneUntilTick = 0;
+        ship.WeaponSilencedUntilTick = 0;
     }
 
     /// <summary>

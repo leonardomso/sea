@@ -134,6 +134,12 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Ship, ulong> InvulnerableUntilTick { get; }
         public global::SpacetimeDB.Col<Ship, ulong> EncounterId { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsInPort { get; }
+        public global::SpacetimeDB.Col<Ship, uint> Hands { get; }
+        public global::SpacetimeDB.Col<Ship, uint> MaxHands { get; }
+        public global::SpacetimeDB.Col<Ship, ulong> HandsRecoveredAtTick { get; }
+        public global::SpacetimeDB.Col<Ship, ulong> BoardCooldownUntilTick { get; }
+        public global::SpacetimeDB.Col<Ship, ulong> BoardImmuneUntilTick { get; }
+        public global::SpacetimeDB.Col<Ship, ulong> WeaponSilencedUntilTick { get; }
 
         public ShipCols(string tableName)
         {
@@ -192,6 +198,12 @@ namespace SpacetimeDB.Types
             InvulnerableUntilTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "invulnerable_until_tick");
             EncounterId = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "encounter_id");
             IsInPort = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_in_port");
+            Hands = new global::SpacetimeDB.Col<Ship, uint>(tableName, "hands");
+            MaxHands = new global::SpacetimeDB.Col<Ship, uint>(tableName, "max_hands");
+            HandsRecoveredAtTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "hands_recovered_at_tick");
+            BoardCooldownUntilTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "board_cooldown_until_tick");
+            BoardImmuneUntilTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "board_immune_until_tick");
+            WeaponSilencedUntilTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "weapon_silenced_until_tick");
         }
     }
 
