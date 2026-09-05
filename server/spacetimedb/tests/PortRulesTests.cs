@@ -43,4 +43,20 @@ public sealed class PortRulesTests
     {
         Assert.Equal(3UL * WorldRules.TickRateHz, PortRules.CastOffTicks);
     }
+
+    [Fact]
+    public void SafeWaterReachesThirtySquaresFromTheHarbour()
+    {
+        Assert.True(PortRules.IsSafeWater(70f, 300f, harborX: 70f, harborY: 330f));
+        Assert.False(PortRules.IsSafeWater(70f, 299f, 70f, 330f));
+    }
+
+    [Fact]
+    public void AShoalSlowsATierThreeHullAndStopsATierFive()
+    {
+        Assert.True(PortRules.CanCrossShoal(tier: 1));
+        Assert.True(PortRules.CanCrossShoal(3));
+        Assert.False(PortRules.CanCrossShoal(4));
+        Assert.False(PortRules.CanCrossShoal(5));
+    }
 }

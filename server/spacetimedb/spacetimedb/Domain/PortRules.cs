@@ -25,4 +25,31 @@ public static class PortRules
         float portY,
         float portRadius) =>
         inPort && !IsInside(destinationX, destinationY, portX, portY, portRadius);
+
+    /// <summary>
+    /// SEA_5 §10.3: no fire either way inside thirty squares of a harbour. Wide
+    /// enough that a hull leaving port is not chased out of it, narrow enough
+    /// that it is not somewhere to hide from a fight.
+    /// </summary>
+    /// <remarks>
+    /// This is a different circle from <see cref="IsInside"/>: that one takes a
+    /// per-map berth radius (the harbor object's own drawn extent, 20 squares on
+    /// Havenmere) and drives cast-off and the current in-port flag. Safe water is
+    /// the flat thirty squares SEA_5 names, so it reads
+    /// <see cref="WorldRules.HarborSafeRadiusSquares"/> -- already that value and
+    /// already used for spawn protection and NPC avoidance elsewhere -- rather
+    /// than a caller-supplied radius.
+    /// </remarks>
+    public static bool IsSafeWater(float x, float y, float harborX, float harborY) =>
+        WorldRules.IsInRange(x, y, harborX, harborY, WorldRules.HarborSafeRadiusSquares);
+
+    /// <summary>Shallow water crossable by no more than a third-rate hull (SEA_5 §10.1).</summary>
+    public const byte DeepestShoalCrossingTier = 3;
+
+    /// <summary>
+    /// Whether a hull of this tier draws little enough water to cross a shoal. A
+    /// small hull crosses it slowly (<see cref="TacticalRules.ShoalMultiplier"/>);
+    /// a fourth or fifth rate draws too much and is turned back.
+    /// </summary>
+    public static bool CanCrossShoal(byte tier) => tier <= DeepestShoalCrossingTier;
 }
