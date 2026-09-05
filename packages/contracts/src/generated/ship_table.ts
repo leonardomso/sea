@@ -24,7 +24,6 @@ export default __t.row({
   routeVersion: __t.u32().name("route_version"),
   moveWindowStartTick: __t.u64().name("move_window_start_tick"),
   movesInWindow: __t.u32().name("moves_in_window"),
-  droppedCommandCount: __t.u32().name("dropped_command_count"),
   headingDegrees: __t.f32().name("heading_degrees"),
   speed: __t.f32(),
   baseSpeedSquaresPerSecond: __t.f32().name("base_speed_squares_per_second"),

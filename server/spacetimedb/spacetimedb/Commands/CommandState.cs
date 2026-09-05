@@ -84,6 +84,7 @@ public static partial class Module
             decision = ApplyAcceptedCommand(ctx, world, ref ship, decoded, decision);
         }
 
+        RecordTrust(ctx, world.Tick, decoded.Kind, decision);
         state.LastProcessedCommandId = envelope.CommandId;
         state.LastAccepted = decision.Accepted;
         state.LastRejectionCode = (byte)decision.Rejection;

@@ -165,6 +165,71 @@ public static class TrustScoreRules
         return Math.Clamp(score + capped, MinimumScore, MaximumScore);
     }
 
+    /// <summary>
+    /// How many volleys on the grace line are allowed to go by before one is reported. A good
+    /// player kiting at the edge of her guns should cost a few points over a long fight, not a
+    /// hundred over one.
+    /// </summary>
+    public const uint EdgeOfRangeReportInterval = 10;
+
+    /// <summary>Whether this is the volley that pays for the nine before it.</summary>
+    public static bool ShouldReportEdgeOfRange(uint edgeOfRangeVolleys) =>
+        edgeOfRangeVolleys > 0 && edgeOfRangeVolleys % EdgeOfRangeReportInterval == 0;
+
+    /// <summary>
+    /// Which signal, if any, a refusal is evidence of. Most refusals are a client and a server
+    /// disagreeing about a tick and cost two points. Three are not: an order thrown away for
+    /// coming too fast, a course to a square that is not on the chart, and a shot at something
+    /// the client could see was out of range. SEA_5 12.4 counts those separately because a
+    /// client that sends them is not out of date, it is wrong about the rules.
+    /// </summary>
+    /// <returns>
+    /// <see langword="null"/> for an acceptance, which is not evidence of anything and must not
+    /// touch the score.
+    /// </returns>
+    public static TrustSignal? SignalFor(CommandRejectionCode rejection) => rejection switch
+    {
+        CommandRejectionCode.None => null,
+        CommandRejectionCode.RateLimited => TrustSignal.DroppedCommand,
+        CommandRejectionCode.InvalidCourse => TrustSignal.ImpossibleMovement,
+        CommandRejectionCode.OutOfRange => TrustSignal.ImpossibleFire,
+        _ => TrustSignal.RejectedCommand,
+    };
+
+    /// <summary>
+    /// Adds one accepted course to a captain's cadence window and says whether the twenty it
+    /// now holds are a script.
+    /// </summary>
+    /// <remarks>
+    /// The window is kept oldest-first and slides by one rather than wrapping round a write
+    /// index, so the check is the window itself and there is no unroll to get wrong. Twenty
+    /// ulongs shifted along is a hundred and sixty bytes of copy on a path that is already
+    /// writing a row.
+    /// <para>
+    /// A reported run empties the window, so one script costs five points rather than five
+    /// points for every course after the twentieth. It slides rather than resetting on every
+    /// course, which is what stops a bot from hiding a run behind one deliberate stumble.
+    /// </para>
+    /// </remarks>
+    /// <returns>How many samples the window holds afterwards; zero once a run is reported.</returns>
+    public static int RecordCourse(
+        Span<ulong> window,
+        int count,
+        ulong tick,
+        out bool metronomic)
+    {
+        if (count >= MetronomeSampleCount)
+        {
+            window[1..MetronomeSampleCount].CopyTo(window);
+            count = MetronomeSampleCount - 1;
+        }
+
+        window[count] = tick;
+        count++;
+        metronomic = IsMetronomic(window[..count]);
+        return metronomic ? 0 : count;
+    }
+
     public static TrustBand BandFor(int score)
     {
         if (score >= TrustedFloor)

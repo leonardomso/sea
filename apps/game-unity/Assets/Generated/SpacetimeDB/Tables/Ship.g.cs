@@ -92,7 +92,6 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Ship, uint> RouteVersion { get; }
         public global::SpacetimeDB.Col<Ship, ulong> MoveWindowStartTick { get; }
         public global::SpacetimeDB.Col<Ship, uint> MovesInWindow { get; }
-        public global::SpacetimeDB.Col<Ship, uint> DroppedCommandCount { get; }
         public global::SpacetimeDB.Col<Ship, float> HeadingDegrees { get; }
         public global::SpacetimeDB.Col<Ship, float> Speed { get; }
         public global::SpacetimeDB.Col<Ship, float> BaseSpeedSquaresPerSecond { get; }
@@ -156,7 +155,6 @@ namespace SpacetimeDB.Types
             RouteVersion = new global::SpacetimeDB.Col<Ship, uint>(tableName, "route_version");
             MoveWindowStartTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "move_window_start_tick");
             MovesInWindow = new global::SpacetimeDB.Col<Ship, uint>(tableName, "moves_in_window");
-            DroppedCommandCount = new global::SpacetimeDB.Col<Ship, uint>(tableName, "dropped_command_count");
             HeadingDegrees = new global::SpacetimeDB.Col<Ship, float>(tableName, "heading_degrees");
             Speed = new global::SpacetimeDB.Col<Ship, float>(tableName, "speed");
             BaseSpeedSquaresPerSecond = new global::SpacetimeDB.Col<Ship, float>(tableName, "base_speed_squares_per_second");

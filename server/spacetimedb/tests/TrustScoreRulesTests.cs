@@ -149,4 +149,134 @@ public sealed class TrustScoreRulesTests
         // SEA_5 §12: the score is evidence for a person to read, not an action.
         Assert.Equal(TrustBand.Flagged, TrustScoreRules.BandFor(0));
     }
+    /// <summary>
+    /// Drives the window the way the reducer does: one course in, the count back out.
+    /// </summary>
+    private static int Feed(Span<ulong> window, int count, ulong tick, out bool metronomic) =>
+        TrustScoreRules.RecordCourse(window, count, tick, out metronomic);
+
+    [Fact]
+    public void ARunOfTwentyPerfectCoursesIsReportedOnceAndOnceOnly()
+    {
+        Span<ulong> window = stackalloc ulong[TrustScoreRules.MetronomeSampleCount];
+        var count = 0;
+        var reports = 0;
+
+        // Forty courses exactly twelve ticks apart. That is two full windows' worth, but a
+        // reported run empties the window, so it is one accusation and not twenty-one.
+        for (var course = 0; course < 40; course++)
+        {
+            count = Feed(window, count, (ulong)(course * 12), out var metronomic);
+            if (metronomic)
+            {
+                reports++;
+                Assert.Equal(0, count);
+            }
+        }
+
+        Assert.Equal(2, reports);
+    }
+
+    [Fact]
+    public void TheWindowSaysNothingUntilItIsFull()
+    {
+        Span<ulong> window = stackalloc ulong[TrustScoreRules.MetronomeSampleCount];
+        var count = 0;
+
+        for (var course = 0; course < TrustScoreRules.MetronomeSampleCount - 1; course++)
+        {
+            count = Feed(window, count, (ulong)(course * 12), out var metronomic);
+            Assert.False(metronomic);
+        }
+
+        Assert.Equal(TrustScoreRules.MetronomeSampleCount - 1, count);
+    }
+
+    [Fact]
+    public void TheWindowSlidesRatherThanStartingOverSoAScriptCannotOutwaitIt()
+    {
+        Span<ulong> window = stackalloc ulong[TrustScoreRules.MetronomeSampleCount];
+        var count = 0;
+        var tick = 0UL;
+
+        // Five courses by a hand first, so the window does not start on a boundary a bot
+        // could have counted to. The run that follows is still caught.
+        foreach (var gap in new ulong[] { 14, 11, 16, 9, 17 })
+        {
+            tick += gap;
+            count = Feed(window, count, tick, out _);
+        }
+
+        var caught = false;
+        for (var course = 0; course < TrustScoreRules.MetronomeSampleCount; course++)
+        {
+            tick += 12;
+            count = Feed(window, count, tick, out var metronomic);
+            caught |= metronomic;
+        }
+
+        Assert.True(caught);
+    }
+
+    [Fact]
+    public void ACaptainWhoClicksLikeAPersonIsNeverAccused()
+    {
+        Span<ulong> window = stackalloc ulong[TrustScoreRules.MetronomeSampleCount];
+        var count = 0;
+        var tick = 0UL;
+        ulong[] gaps =
+        {
+            14, 11, 16, 9, 17, 7, 17, 12, 9, 17,
+            9, 17, 6, 19, 8, 15, 16, 7, 18, 13,
+            14, 11, 16, 9, 17, 7, 17, 12, 9, 17,
+        };
+
+        foreach (var gap in gaps)
+        {
+            tick += gap;
+            count = Feed(window, count, tick, out var metronomic);
+            Assert.False(metronomic);
+        }
+    }
+
+    [Theory]
+    [InlineData(CommandRejectionCode.None, null)]
+    [InlineData(CommandRejectionCode.RateLimited, TrustSignal.DroppedCommand)]
+    [InlineData(CommandRejectionCode.InvalidCourse, TrustSignal.ImpossibleMovement)]
+    [InlineData(CommandRejectionCode.OutOfRange, TrustSignal.ImpossibleFire)]
+    [InlineData(CommandRejectionCode.Reloading, TrustSignal.RejectedCommand)]
+    [InlineData(CommandRejectionCode.InPort, TrustSignal.RejectedCommand)]
+    [InlineData(CommandRejectionCode.NoPath, TrustSignal.RejectedCommand)]
+    [InlineData(CommandRejectionCode.TargetNotBoardable, TrustSignal.RejectedCommand)]
+    public void EachRefusalIsEvidenceOfExactlyOneThing(
+        CommandRejectionCode rejection,
+        TrustSignal? expected)
+    {
+        Assert.Equal(expected, TrustScoreRules.SignalFor(rejection));
+    }
+
+    /// <summary>
+    /// A course to a square that is not on the chart is not a captain being refused, it is a
+    /// client asking for a place no hull can be. SEA_5 12.4 prices those far higher, so the
+    /// two must not be answered with the same signal.
+    /// </summary>
+    [Fact]
+    public void AskingForSomewhereNoShipCouldBeCostsFiveTimesBeingRefused()
+    {
+        Assert.Equal(
+            TrustScoreRules.PenaltyFor(TrustSignal.RejectedCommand) * 5,
+            TrustScoreRules.PenaltyFor(TrustSignal.ImpossibleMovement));
+    }
+
+    [Fact]
+    public void EveryTenthVolleyOnTheGraceLineIsWorthReporting()
+    {
+        Assert.False(TrustScoreRules.ShouldReportEdgeOfRange(1u));
+        Assert.False(TrustScoreRules.ShouldReportEdgeOfRange(9u));
+        Assert.True(TrustScoreRules.ShouldReportEdgeOfRange(10u));
+        Assert.False(TrustScoreRules.ShouldReportEdgeOfRange(11u));
+        Assert.True(TrustScoreRules.ShouldReportEdgeOfRange(20u));
+        Assert.False(TrustScoreRules.ShouldReportEdgeOfRange(0u));
+    }
+
 }

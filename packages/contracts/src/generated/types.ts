@@ -382,6 +382,20 @@ export const PlayerProgression = __t.object("PlayerProgression", {
 });
 export type PlayerProgression = __Infer<typeof PlayerProgression>;
 
+export const PlayerTrust = __t.object("PlayerTrust", {
+  owner: __t.identity(),
+  score: __t.i32(),
+  droppedCommands: __t.u32(),
+  rejectedCommands: __t.u32(),
+  impossibleMovements: __t.u32(),
+  impossibleFires: __t.u32(),
+  metronomicRuns: __t.u32(),
+  edgeOfRangeVolleys: __t.u32(),
+  lastPenaltyTick: __t.u64(),
+  recentCourseTicks: __t.array(__t.u64()),
+});
+export type PlayerTrust = __Infer<typeof PlayerTrust>;
+
 export const RespawnWork = __t.object("RespawnWork", {
   shipEntityId: __t.u64(),
   isPending: __t.bool(),
@@ -429,7 +443,6 @@ export const Ship = __t.object("Ship", {
   routeVersion: __t.u32(),
   moveWindowStartTick: __t.u64(),
   movesInWindow: __t.u32(),
-  droppedCommandCount: __t.u32(),
   headingDegrees: __t.f32(),
   speed: __t.f32(),
   baseSpeedSquaresPerSecond: __t.f32(),

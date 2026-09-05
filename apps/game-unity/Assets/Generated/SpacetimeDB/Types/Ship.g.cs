@@ -39,8 +39,6 @@ namespace SpacetimeDB.Types
         public ulong MoveWindowStartTick;
         [DataMember(Name = "moves_in_window")]
         public uint MovesInWindow;
-        [DataMember(Name = "dropped_command_count")]
-        public uint DroppedCommandCount;
         [DataMember(Name = "heading_degrees")]
         public float HeadingDegrees;
         [DataMember(Name = "speed")]
@@ -150,7 +148,6 @@ namespace SpacetimeDB.Types
             uint RouteVersion,
             ulong MoveWindowStartTick,
             uint MovesInWindow,
-            uint DroppedCommandCount,
             float HeadingDegrees,
             float Speed,
             float BaseSpeedSquaresPerSecond,
@@ -213,7 +210,6 @@ namespace SpacetimeDB.Types
             this.RouteVersion = RouteVersion;
             this.MoveWindowStartTick = MoveWindowStartTick;
             this.MovesInWindow = MovesInWindow;
-            this.DroppedCommandCount = DroppedCommandCount;
             this.HeadingDegrees = HeadingDegrees;
             this.Speed = Speed;
             this.BaseSpeedSquaresPerSecond = BaseSpeedSquaresPerSecond;

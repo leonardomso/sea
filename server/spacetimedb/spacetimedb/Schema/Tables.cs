@@ -115,6 +115,52 @@ public static partial class Module
         "SELECT * FROM player_progression WHERE player_progression.owner = :sender");
 #pragma warning restore STDB_UNSTABLE
 
+    /// <summary>
+    /// How far a captain's client has drifted from the server's account of the world
+    /// (SEA_5 12.4). Six signals feed it and nothing in the game reads it: it is a sorted list
+    /// for whoever is deciding who to look at, and nothing else.
+    /// </summary>
+    /// <remarks>
+    /// Private, and not merely filtered to its owner. A captain who could watch her own score
+    /// fall could tune a cheat against it -- send one bad order, read the cost, and stay just
+    /// under whatever line she found. She cannot see this at all.
+    /// </remarks>
+    [SpacetimeDB.Table(Accessor = "PlayerTrust", Public = false)]
+    public partial struct PlayerTrust
+    {
+        [PrimaryKey]
+        public Identity Owner;
+
+        public int Score;
+
+        public uint DroppedCommands;
+        public uint RejectedCommands;
+        public uint ImpossibleMovements;
+        public uint ImpossibleFires;
+        public uint MetronomicRuns;
+
+        /// <summary>
+        /// Every volley she has landed on the grace line, not only the ones that cost her.
+        /// One in ten is reported, and the count is what decides which one.
+        /// </summary>
+        public uint EdgeOfRangeVolleys;
+
+        /// <summary>
+        /// The tick her score was last written. Recovery is worked out from it when the next
+        /// penalty lands rather than on a timer, so a captain who never trips this costs the
+        /// tick nothing at all.
+        /// </summary>
+        public ulong LastPenaltyTick;
+
+        /// <summary>
+        /// When her last twenty courses were ordered, oldest first. A fixed window rather than
+        /// a log: twenty ticks is a hundred and sixty bytes, and a run once reported empties it.
+        /// </summary>
+#pragma warning disable MA0016 // SpacetimeDB algebraic arrays require List<T> fields.
+        public List<ulong> RecentCourseTicks;
+#pragma warning restore MA0016
+    }
+
     [SpacetimeDB.Table(Accessor = "NpcAi", Public = true)]
     [SpacetimeDB.Index.BTree(Accessor = "ByDecisionDueShard", Columns = new[] { nameof(IsActive), nameof(DecisionShard), nameof(NextDecisionTick) })]
     public partial struct NpcAi

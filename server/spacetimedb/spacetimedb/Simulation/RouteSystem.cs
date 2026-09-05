@@ -39,7 +39,8 @@ public static partial class Module
         ship.MovesInWindow = used;
         if (!allowed)
         {
-            RecordTrustPenalty(ref ship, TrustScoreRules.DroppedMovePenalty);
+            // The refusal is the whole record: the command path scores every rejection it
+            // publishes, so a dropped order reaches the captain's trust row from there.
             return CommandRejectionCode.RateLimited;
         }
 
@@ -79,15 +80,6 @@ public static partial class Module
         StoreRoute(ctx, world, ref ship, route[..count]);
         return CommandRejectionCode.None;
     }
-
-    /// <summary>
-    /// Marks a command the server threw away. The count goes on the row the caller is
-    /// already holding rather than through the table, because the caller writes that row
-    /// back afterwards and a second write here would be overwritten by it. Phase 12 moves
-    /// the score itself to its own table and leaves this counter as the raw feed.
-    /// </summary>
-    private static void RecordTrustPenalty(ref Ship ship, int penalty) =>
-        ship.DroppedCommandCount += (uint)penalty;
 
     private static void StoreRoute(
         ReducerContext ctx,

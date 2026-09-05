@@ -113,6 +113,7 @@ public static partial class Module
             source.PositionY,
             defender.PositionX,
             defender.PositionY);
+        ScoreEdgeOfRangeVolley(ctx, world, source, ammunition, distance);
         var applied = ApplyDamageToShip(
             ctx,
             ships,

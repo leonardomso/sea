@@ -39,12 +39,6 @@ public static partial class Module
         /// <summary>How many courses she has been given inside that window.</summary>
         public uint MovesInWindow;
 
-        /// <summary>
-        /// How many of her commands the server has thrown away. Phase 12 turns this into
-        /// a trust score of its own; for now it is the raw feed and nothing reads it.
-        /// </summary>
-        public uint DroppedCommandCount;
-
         public float HeadingDegrees;
         public float Speed;
 
