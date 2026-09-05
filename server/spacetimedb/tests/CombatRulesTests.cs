@@ -19,23 +19,12 @@ public sealed class CombatRulesTests
     [InlineData(-135f, ArmorFace.Back)]
     public void Armour_faces_split_at_the_exact_arc_edges(float bearingDegrees, ArmorFace expected)
     {
-        // The shooter is placed on the compass the rest of the chart uses, so the bearing the
-        // fixture means is the bearing ResolveFacing reads. It used to place her with an
-        // unnegated cosine, which put every one of these cases on the opposite side of the hull.
-        //
-        // Not GeometryRules.Direction: that reads a table sampled every quarter degree, so it
-        // cannot place a shooter at 45.01 -- she lands on 45 and the case testing the far side
-        // of the edge tests the near side instead. ResolveFacing reads the bearing back through
-        // MathF.Atan2, which is exact, so placing her with exact trigonometry is what puts her
-        // where the fixture says. A boundary case has to be able to sit off the grid.
-        var (sine, cosine) = MathF.SinCos(bearingDegrees * (MathF.PI / 180f));
-
-        Assert.Equal(expected, CombatRules.ResolveFacing(
-            targetHeadingDegrees: 0f,
-            targetX: 0f,
-            targetY: 0f,
-            sourceX: sine * 10f,
-            sourceY: (0f - cosine) * 10f));
+        // FaceHit takes the bearing itself, so a boundary case sits exactly where the fixture
+        // says: nothing here is placed by walking GeometryRules.Direction's table, which samples
+        // a quarter of a degree at a time and cannot land on 45.01.
+        Assert.Equal(expected, CombatRules.FaceHit(
+            defenderHeadingDegrees: 0f,
+            bearingToAttackerDegrees: bearingDegrees));
     }
 
     [Theory]
@@ -44,28 +33,25 @@ public sealed class CombatRulesTests
     [InlineData(180f, ArmorFace.Back)]
     [InlineData(90f, ArmorFace.Sides)]
     public void Armour_faces_follow_a_heading_wrapped_past_a_full_turn(
-        float headingDegrees,
+        float defenderHeadingDegrees,
         ArmorFace expected)
     {
-        // The shooter sits due north of the target, which is the smaller y on this chart;
-        // only the target's heading moves.
-        Assert.Equal(expected, CombatRules.ResolveFacing(
-            headingDegrees,
-            targetX: 0f,
-            targetY: 0f,
-            sourceX: 0f,
-            sourceY: -10f));
+        // The attacker bears due north of the defender; only the defender's heading moves.
+        Assert.Equal(expected, CombatRules.FaceHit(defenderHeadingDegrees, bearingToAttackerDegrees: 0f));
     }
 
     [Fact]
-    public void Armour_faces_are_measured_from_the_target_position()
+    public void Armour_faces_are_measured_from_the_defender_position()
     {
-        Assert.Equal(ArmorFace.Front, CombatRules.ResolveFacing(
-            targetHeadingDegrees: 0f,
-            targetX: 10f,
-            targetY: 10f,
-            sourceX: 10f,
-            sourceY: -10f));
+        // The defender sits away from the origin; the bearing has to come off her own position,
+        // not off (0, 0), which is exactly what a call site reaches for GeometryRules.HeadingTo
+        // to do before it ever calls FaceHit.
+        var bearing = GeometryRules.HeadingTo(
+            fromX: 10f, fromY: 10f, toX: 10f, toY: -10f, fallbackHeadingDegrees: 0f);
+
+        Assert.Equal(
+            ArmorFace.Front,
+            CombatRules.FaceHit(defenderHeadingDegrees: 0f, bearingToAttackerDegrees: bearing));
     }
 
     [Theory]
@@ -78,32 +64,33 @@ public sealed class CombatRulesTests
     }
 
     /// <summary>
-    /// The one case the whole facing rule has to get right, and the one no test pinned:
-    /// north is -Y on this chart, so a shooter due north of her target sits at the smaller
-    /// Y. Every other case here was written against a source placed with an unnegated
-    /// cosine, which put "north" due south and agreed with an equally inverted
-    /// <c>ResolveFacing</c>. Two wrongs made a green suite.
+    /// The one case the whole facing rule has to get right: north is -Y on this chart, so an
+    /// attacker due north of the defender sits at the smaller Y. This reads the bearing through
+    /// <see cref="GeometryRules.HeadingTo"/>, the way every real call site does, rather than
+    /// handing <see cref="CombatRules.FaceHit"/> a bearing already worked out by hand.
     /// </summary>
     [Theory]
     [InlineData(0f, ArmorFace.Front)]
     [InlineData(90f, ArmorFace.Sides)]
     [InlineData(180f, ArmorFace.Back)]
     [InlineData(270f, ArmorFace.Sides)]
-    public void A_shot_from_due_north_reads_off_the_face_the_target_turns_to_it(
-        float targetHeadingDegrees,
+    public void A_shot_from_due_north_reads_off_the_face_the_defender_turns_to_it(
+        float defenderHeadingDegrees,
         ArmorFace expected)
     {
-        Assert.Equal(expected, CombatRules.ResolveFacing(
-            targetHeadingDegrees,
-            targetX: 200f,
-            targetY: 200f,
-            sourceX: 200f,
-            sourceY: 190f));
+        var bearing = GeometryRules.HeadingTo(
+            fromX: 200f, fromY: 200f, toX: 200f, toY: 190f, fallbackHeadingDegrees: defenderHeadingDegrees);
+
+        Assert.Equal(expected, CombatRules.FaceHit(defenderHeadingDegrees, bearing));
     }
 
     /// <summary>
     /// Facing has to answer the same compass the rest of the simulation sails by, so the
-    /// bearing it measures from is the one <see cref="GeometryRules.HeadingTo"/> gives.
+    /// bearing it measures from is the one <see cref="GeometryRules.HeadingTo"/> gives. The
+    /// attacker is placed with <see cref="GeometryRules.Direction"/>, which samples a table
+    /// every quarter degree, so the round trip back through <c>HeadingTo</c> can land up to
+    /// 0.125 degrees off the bearing that placed her -- comfortably inside the front arc for
+    /// every case here, none of which sits within 0.125 degrees of a boundary.
     /// </summary>
     [Theory]
     [InlineData(0f)]
@@ -116,13 +103,10 @@ public sealed class CombatRulesTests
         var sourceX = 200f + offsetX * 10f;
         var sourceY = 200f + offsetY * 10f;
 
-        Assert.Equal(
-            bearingDegrees,
-            GeometryRules.HeadingTo(200f, 200f, sourceX, sourceY, 0f),
-            1);
-        Assert.Equal(
-            ArmorFace.Front,
-            CombatRules.ResolveFacing(bearingDegrees, 200f, 200f, sourceX, sourceY));
+        var bearing = GeometryRules.HeadingTo(200f, 200f, sourceX, sourceY, bearingDegrees);
+
+        Assert.Equal(bearingDegrees, bearing, 1);
+        Assert.Equal(ArmorFace.Front, CombatRules.FaceHit(bearingDegrees, bearing));
     }
 
     [Fact]

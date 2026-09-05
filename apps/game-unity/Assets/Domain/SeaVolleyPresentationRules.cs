@@ -51,7 +51,7 @@ namespace Sea.Client
 
         /// <summary>
         /// The armour face a shot from <paramref name="source"/> meets, read from the target's
-        /// own heading exactly as <c>CombatRules.ResolveFacing</c> reads it server-side.
+        /// own heading exactly as <c>CombatRules.FaceHit</c> reads it server-side.
         /// </summary>
         public static string ArmorFaceAt(
             float targetHeadingDegrees,
@@ -64,7 +64,7 @@ namespace Sea.Client
                 return "sides";
             }
 
-            // The same chart compass CombatRules.ResolveFacing reads: north is -y.
+            // The same chart compass CombatRules.FaceHit reads: north is -y.
             var bearingToSource = Mathf.Atan2(delta.x, 0f - delta.y) * Mathf.Rad2Deg;
             var offset = Mathf.Abs(Mathf.DeltaAngle(targetHeadingDegrees, bearingToSource));
             if (offset <= FrontArcHalfDegrees)

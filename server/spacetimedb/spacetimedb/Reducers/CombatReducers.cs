@@ -18,12 +18,13 @@ public static partial class Module
         var ammunition = Catalog.AmmunitionByCode[source.SelectedAmmoCode] ??
             throw new InvalidOperationException("Selected ammunition definition is missing.");
 
-        var facing = CombatRules.ResolveFacing(
-            target.HeadingDegrees,
+        var bearing = GeometryRules.HeadingTo(
             target.PositionX,
             target.PositionY,
             source.PositionX,
-            source.PositionY);
+            source.PositionY,
+            target.HeadingDegrees);
+        var facing = CombatRules.FaceHit(target.HeadingDegrees, bearing);
         var damage = CombatRules.ResolveDamage(
             source.VolleyDamage,
             ammunition.DamageMultiplier,

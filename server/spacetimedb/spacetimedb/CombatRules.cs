@@ -134,33 +134,26 @@ public static class CombatRules
     }
 
     /// <summary>
-    /// The face the shooter is hitting, from the angle between the target's heading and the
-    /// bearing from the target to the shooter. There is no firing arc left in the model, so this
-    /// is the only geometry a volley needs beyond range.
+    /// Which face a shot lands on, from the angle between the defender's heading and the
+    /// bearing to whoever fired. There is no firing arc left in the model, so this is the only
+    /// geometry a volley needs beyond range.
     /// </summary>
     /// <remarks>
-    /// The bearing is <see cref="GeometryRules.HeadingTo"/> because a target's heading is a
-    /// compass bearing and the two have to be measured off the same compass. This kept its own
-    /// <c>atan2(dx, dy)</c>, unnegated, which answered south for a shooter due north; it read
-    /// correctly only because <c>SailingRules</c> steered by the same inverted compass, so a
-    /// hull's heading was wrong by exactly the amount that cancelled it.
-    /// A shot from inside the target's own hull has no bearing, and falls back to her heading:
-    /// a volley at nought range lands on the bow.
+    /// <paramref name="bearingToAttackerDegrees"/> must come from
+    /// <see cref="GeometryRules.HeadingTo"/> (defender position to attacker position, the
+    /// defender's own heading as the fallback), because a defender's heading is a compass
+    /// bearing and the two have to be measured off the same compass. This method takes the
+    /// bearing rather than the two positions so a boundary case can be pinned exactly: placing a
+    /// fixture with <see cref="GeometryRules.Direction"/> and reading the bearing back through
+    /// <see cref="GeometryRules.HeadingTo"/> cannot land on 45.01 degrees, because
+    /// <c>Direction</c> reads a table sampled every quarter degree.
+    /// A shot from inside the defender's own hull has no bearing; <c>HeadingTo</c> falls back to
+    /// her own heading there, so a volley at nought range lands on the bow.
     /// </remarks>
-    public static ArmorFace ResolveFacing(
-        float targetHeadingDegrees,
-        float targetX,
-        float targetY,
-        float sourceX,
-        float sourceY)
+    public static ArmorFace FaceHit(float defenderHeadingDegrees, float bearingToAttackerDegrees)
     {
-        var bearingToSource = GeometryRules.HeadingTo(
-            targetX,
-            targetY,
-            sourceX,
-            sourceY,
-            targetHeadingDegrees);
-        var offset = MathF.Abs(NormalizeSignedAngle(bearingToSource - targetHeadingDegrees));
+        var offset = MathF.Abs(GeometryRules.NormalizeSignedAngle(
+            bearingToAttackerDegrees - defenderHeadingDegrees));
 
         if (offset <= FrontArcHalfDegrees)
         {
@@ -253,8 +246,4 @@ public static class CombatRules
         var deltaY = targetY - sourceY;
         return MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
     }
-
-    /// <summary>Maps any angle onto [-180, 180] so a bearing offset can be compared against an arc.</summary>
-    private static float NormalizeSignedAngle(float degrees) =>
-        degrees - (360f * MathF.Round(degrees / 360f));
 }

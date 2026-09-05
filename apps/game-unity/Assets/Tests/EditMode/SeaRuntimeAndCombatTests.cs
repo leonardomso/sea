@@ -255,7 +255,7 @@ namespace Sea.Tests
         [Test]
         public void The_hud_names_the_same_armour_face_the_server_charges_for()
         {
-            // CombatRules.ResolveFacing: 45 degrees of bow, 45 of stern, the rest is beam.
+            // CombatRules.FaceHit: 45 degrees of bow, 45 of stern, the rest is beam.
             //
             // These are chart positions, where y grows south, so a shooter due north of the
             // target sits at NEGATIVE y and Vector2.up is astern. The two cases below read
