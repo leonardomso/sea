@@ -60,3 +60,6 @@ apps/game-unity/Assets/AddressableAssetsData/link.xml*
 !.vscode/settings.json
 .DS_Store
 .playwright-mcp/
+
+# Per-agent build output, so parallel task agents do not share obj/ and bin/.
+.agent-artifacts/
