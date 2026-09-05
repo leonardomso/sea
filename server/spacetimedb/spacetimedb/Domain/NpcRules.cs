@@ -45,6 +45,26 @@ public readonly record struct NpcSnapshot
     /// <summary>Whether the magazine and the one-second floor both allow a shot this decision.</summary>
     public bool CanFire { get; init; }
     public ulong DecisionSeed { get; init; }
+
+    /// <summary>The tick this decision is being taken on.</summary>
+    public ulong Tick { get; init; }
+
+    /// <summary>
+    /// The earliest tick she may plot a new course. Deciding where to go is
+    /// arithmetic; plotting the way there is A* across a four-hundred-square
+    /// grid, so the second is rationed and the first is not. A hull that has
+    /// never plotted anything carries zero here and is free to plot at once.
+    /// </summary>
+    public ulong NextReplanTick { get; init; }
+
+    /// <summary>
+    /// The earliest tick she may pick a new patrol leg (SEA_5 §11.2). Only an
+    /// idle ship reads it; a ship with a target replans off
+    /// <see cref="NextReplanTick"/> alone, because a chase that loitered would
+    /// not be a chase.
+    /// </summary>
+    public ulong NextWanderTick { get; init; }
+
     public IReadOnlyCollection<NavigationBlocker>? Blockers { get; init; }
 }
 
@@ -56,7 +76,13 @@ public readonly record struct NpcDecision(
     ulong TargetEntityId = 0,
     float DestinationX = 0f,
     float DestinationY = 0f,
-    AmmunitionCode Ammunition = AmmunitionCode.None);
+    AmmunitionCode Ammunition = AmmunitionCode.None,
+    /// <summary>
+    /// Set on the one decision that is a ship picking her own next patrol leg,
+    /// so the caller knows to restart her loiter clock. A course plotted at a
+    /// target never sets it.
+    /// </summary>
+    bool RenewsWander = false);
 
 public static class NpcRules
 {
@@ -246,13 +272,31 @@ public static class NpcRules
             return new NpcDecision(NpcActionKind.Hold);
         }
 
+        // SEA_5 11.2: an idle enemy loiters eight to twenty seconds between legs. It
+        // reads as a ship waiting on a tide rather than one that never stops, and it
+        // is what keeps a map of fifteen hostiles from asking for fifteen routes on
+        // every decision when none of them has anywhere in particular to be.
+        if (snapshot.Tick < snapshot.NextWanderTick || !MayReplan(snapshot))
+        {
+            return new NpcDecision(NpcActionKind.Hold);
+        }
+
         var roam = RoamDestination(snapshot);
         return new NpcDecision(
             NpcActionKind.SetCourse,
             DestinationX: roam.X,
             DestinationY: roam.Y,
-            Ammunition: loadout.Ammunition);
+            Ammunition: loadout.Ammunition,
+            RenewsWander: true);
     }
+
+    /// <summary>
+    /// Whether her replan clock is up. Everything that ends in a course goes through
+    /// here, so a hull that is chasing, holding a range or running all ask for A* at
+    /// the same rationed rate.
+    /// </summary>
+    private static bool MayReplan(NpcSnapshot snapshot) =>
+        snapshot.Tick >= snapshot.NextReplanTick;
 
     private static NpcDecision DecideEngagement(
         NpcSnapshot snapshot,
@@ -371,7 +415,8 @@ public static class NpcRules
         var destination = ClearPoint(Clamp(x), Clamp(y), Blockers(snapshot));
         x = destination.X;
         y = destination.Y;
-        if (snapshot.HasRoute &&
+        if (!MayReplan(snapshot) ||
+            snapshot.HasRoute &&
             CombatRules.Distance(snapshot.CourseX, snapshot.CourseY, x, y) <= RangeTolerance)
         {
             return new NpcDecision(NpcActionKind.Hold);
@@ -408,82 +453,4 @@ public static class NpcRules
     }
 
     private readonly record struct NpcLoadout(AmmunitionCode Ammunition);
-}
-
-public enum NpcIntent : byte
-{
-    Wander = 0,
-    Chase = 1,
-    Hold = 2,
-    Leash = 3,
-}
-
-/// <summary>How an enemy decides where to sail (SEA_5 §11).</summary>
-/// <remarks>
-/// The four numbers matter to each other more than they matter on their own.
-/// Aggro is inside a gun's range so an enemy is shot at before she notices;
-/// leash is well past sight so a chase is a chase and not a leash; hold at
-/// eighty per cent of range keeps her shooting without drifting into ramming
-/// distance every time the target turns.
-/// </remarks>
-public static class NpcMovementRules
-{
-    public const float WanderRadiusSquares = 25f;
-    public const float AggroRadiusSquares = 20f;
-    public const float LeashRadiusSquares = 60f;
-    public const float HoldDistanceFraction = 0.8f;
-
-    /// <summary>
-    /// Half a second. A course is only replotted this often however fast the
-    /// target moves, because A* on a four-hundred-square grid is the most
-    /// expensive thing an NPC can ask for and twice a second is enough to
-    /// follow anything on the map.
-    /// </summary>
-    public const ulong ReplanIntervalTicks = 5UL;
-
-    /// <summary>The shortest and longest an idle enemy loiters (SEA_5 §11.2).</summary>
-    public const ulong MinimumWanderWaitTicks = 80UL;
-    public const ulong MaximumWanderWaitTicks = 200UL;
-
-    public static float HoldDistanceSquares(float effectiveRangeSquares) =>
-        effectiveRangeSquares * HoldDistanceFraction;
-
-    /// <summary>
-    /// How long an idle enemy sits before picking her next spot: eight to twenty
-    /// seconds, derived from her id and how many times she has already moved.
-    /// Derived rather than rolled, so a replay of the same log wanders the same
-    /// way, and spread rather than fixed, so fifteen hostiles on one map do not
-    /// all ask for a route on the same tick.
-    /// </summary>
-    public static ulong WanderWaitTicks(ulong entityId, ulong wanderIndex)
-    {
-        var span = MaximumWanderWaitTicks - MinimumWanderWaitTicks;
-        return MinimumWanderWaitTicks + (Mix(entityId * 0x9E3779B97F4A7C15UL + wanderIndex) % (span + 1UL));
-    }
-
-    private static ulong Mix(ulong value)
-    {
-        value += 0x9E3779B97F4A7C15UL;
-        value = (value ^ (value >> 30)) * 0xBF58476D1CE4E5B9UL;
-        value = (value ^ (value >> 27)) * 0x94D049BB133111EBUL;
-        return value ^ (value >> 31);
-    }
-
-    public static NpcIntent Decide(
-        float distanceToTargetSquares,
-        float distanceFromHomeSquares,
-        float holdDistanceSquares = 0f)
-    {
-        if (distanceFromHomeSquares > LeashRadiusSquares)
-        {
-            return NpcIntent.Leash;
-        }
-
-        if (distanceToTargetSquares > AggroRadiusSquares)
-        {
-            return NpcIntent.Wander;
-        }
-
-        return distanceToTargetSquares <= holdDistanceSquares ? NpcIntent.Hold : NpcIntent.Chase;
-    }
 }

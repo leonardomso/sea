@@ -295,6 +295,9 @@ export const NpcAi = __t.object("NpcAi", {
   homeY: __t.f32(),
   leaderEntityId: __t.u64(),
   hasCalledHelp: __t.bool(),
+  nextReplanTick: __t.u64(),
+  nextWanderTick: __t.u64(),
+  wanderIndex: __t.u64(),
 });
 export type NpcAi = __Infer<typeof NpcAi>;
 

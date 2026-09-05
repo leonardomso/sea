@@ -31,6 +31,12 @@ namespace SpacetimeDB.Types
         public ulong LeaderEntityId;
         [DataMember(Name = "has_called_help")]
         public bool HasCalledHelp;
+        [DataMember(Name = "next_replan_tick")]
+        public ulong NextReplanTick;
+        [DataMember(Name = "next_wander_tick")]
+        public ulong NextWanderTick;
+        [DataMember(Name = "wander_index")]
+        public ulong WanderIndex;
 
         public NpcAi(
             ulong ShipEntityId,
@@ -41,7 +47,10 @@ namespace SpacetimeDB.Types
             float HomeX,
             float HomeY,
             ulong LeaderEntityId,
-            bool HasCalledHelp
+            bool HasCalledHelp,
+            ulong NextReplanTick,
+            ulong NextWanderTick,
+            ulong WanderIndex
         )
         {
             this.ShipEntityId = ShipEntityId;
@@ -53,6 +62,9 @@ namespace SpacetimeDB.Types
             this.HomeY = HomeY;
             this.LeaderEntityId = LeaderEntityId;
             this.HasCalledHelp = HasCalledHelp;
+            this.NextReplanTick = NextReplanTick;
+            this.NextWanderTick = NextWanderTick;
+            this.WanderIndex = WanderIndex;
         }
 
         public NpcAi()

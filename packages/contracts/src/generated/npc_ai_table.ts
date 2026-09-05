@@ -20,4 +20,7 @@ export default __t.row({
   homeY: __t.f32().name("home_y"),
   leaderEntityId: __t.u64().name("leader_entity_id"),
   hasCalledHelp: __t.bool().name("has_called_help"),
+  nextReplanTick: __t.u64().name("next_replan_tick"),
+  nextWanderTick: __t.u64().name("next_wander_tick"),
+  wanderIndex: __t.u64().name("wander_index"),
 });

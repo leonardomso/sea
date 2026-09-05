@@ -65,7 +65,7 @@ public static partial class Module
             (NpcRules.ShouldSearchForTarget(targetAvailable, aggroRange)
                 ? FindNearestPlayer(ctx, world, ship, aggroRange)
                 : default(Ship?));
-        ExecuteNpcDecision(ctx, world, ship, NpcRules.Decide(BuildNpcSnapshot(
+        var decision = NpcRules.Decide(BuildNpcSnapshot(
             ctx,
             ai,
             ship,
@@ -75,7 +75,12 @@ public static partial class Module
             targetAvailable,
             orders.AwaitingSignal,
             tick,
-            world.PatrolBlockers(ctx))));
+            world.PatrolBlockers(ctx)));
+        if (ExecuteNpcDecision(ctx, world, ship, decision))
+        {
+            StartReplanClocks(ref ai, decision, tick);
+        }
+
         ctx.Db.NpcAi.ShipEntityId.Update(ai);
     }
 
@@ -161,6 +166,9 @@ public static partial class Module
             CanFire = ship.ReadyVolleys > 0 &&
             (!ship.HasFired || tick >= ship.LastShotTick + CombatRules.FireIntervalTicks),
             DecisionSeed = ai.HomeSeed,
+            Tick = tick,
+            NextReplanTick = ai.NextReplanTick,
+            NextWanderTick = ai.NextWanderTick,
             Blockers = blockers,
         };
 
@@ -282,7 +290,13 @@ public static partial class Module
     private static bool HasInventory(ReducerContext ctx, ulong shipEntityId, string itemId) =>
         FindInventory(ctx, shipEntityId, itemId) is Inventory item && item.Quantity > 0;
 
-    private static void ExecuteNpcDecision(
+    /// <summary>
+    /// Runs an enemy's decision through the same gate a captain's click goes through,
+    /// and answers whether it ended in a course. A refusal is simply dropped: there is
+    /// nobody to tell, and a hull that cannot be given a way through holds station
+    /// this decision and is asked again on the next one.
+    /// </summary>
+    private static bool ExecuteNpcDecision(
         ReducerContext ctx,
         TickWorld world,
         Ship ship,
@@ -291,16 +305,36 @@ public static partial class Module
         var command = ToShipCommand(decision);
         if (command is null)
         {
-            return;
+            return false;
         }
 
         var decoded = DecodeCommand(command);
         var snapshot = BuildCommandSnapshot(ctx, world, ship, decoded);
         var commandDecision = CommandPolicy.Evaluate(snapshot, decoded.Kind);
-        if (commandDecision.Accepted)
+        if (!commandDecision.Accepted)
         {
-            ApplyAcceptedCommand(ctx, world, ref ship, decoded, commandDecision);
+            return false;
         }
+
+        return ApplyAcceptedCommand(ctx, world, ref ship, decoded, commandDecision).Accepted &&
+            decoded.Kind == ShipCommandKind.SetCourse;
+    }
+
+    /// <summary>
+    /// Restarts the clocks that ration A*, and only when a course was actually laid --
+    /// a hull whose way was blocked has not spent anything and is not made to wait for
+    /// it. The loiter is restarted only by a leg she chose for herself.
+    /// </summary>
+    private static void StartReplanClocks(ref NpcAi ai, NpcDecision decision, ulong tick)
+    {
+        ai.NextReplanTick = tick + NpcMovementRules.ReplanIntervalTicks;
+        if (!decision.RenewsWander)
+        {
+            return;
+        }
+
+        ai.WanderIndex++;
+        ai.NextWanderTick = tick + NpcMovementRules.WanderWaitTicks(ai.ShipEntityId, ai.WanderIndex);
     }
 
     private static ShipCommand? ToShipCommand(NpcDecision decision) => decision.Action switch
