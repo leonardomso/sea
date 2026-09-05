@@ -21,6 +21,7 @@ reports/
 **/bin/
 **/obj/
 packages/spacetimedb-unity/bin~/
+packages/spacetimedb-unity/bin~debug/
 packages/spacetimedb-unity/obj~/
 packages/spacetimedb-unity/tests~/obj~/
 

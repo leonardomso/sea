@@ -11,8 +11,10 @@ For what is actually built right now, read `docs/STATUS.md`; for the numbers
 behind it, `docs/validation/milestone-1.md`. Then read
 `docs/SEA_5_GAP_ANALYSIS.md`. It explains every difference between
 the design docs and the build and how each one is resolved. This file only
-orders the work. The four design docs `docs/SEA_1_KNOWLEDGE.md` through
-`docs/SEA_4_TECHNICAL.md` are the design of record.
+orders the work. The five design docs `docs/SEA_1_KNOWLEDGE.md` through
+`docs/SEA_5_PHYSICS.md` are the design of record, and `SEA_5_PHYSICS` is
+authoritative everywhere it speaks: `SEA_2_MATH` fills the gaps it is silent
+on, and `SEA_3_MECHANICS` says what the outcomes are.
 
 ## 1. Why the previous roadmap stopped at Phase 17
 
@@ -61,13 +63,17 @@ read as loosening them.
 
 ## 3. Units and constants shared by every milestone
 
-- One design square is 10 world units. Map 1/1 is 20 x 20 squares, which is
-  the existing 200 x 200 unit world. Chunk size stays 25 units.
+- The square is the unit. Every map is 400 x 400 squares with (0, 0) at the
+  top-left corner, and there is no world unit and no conversion: the server
+  stores squares, and the client converts once, at the boundary, to draw.
+  Chunks are 50 squares.
 - Tick is 100 ms. Seconds in the design docs convert to ticks by x10.
-- Cannon range 8 squares is 80 units. Speed 2.4 squares per second is 2.4
-  units per tick.
+- Cannon range is the cannon's, 18 squares at Tier 1 up to 30 at Tier 5.
+  A Tier 1 hull rates 5.6 squares a second.
 - All balance constants live in one `StatCaps` row seeded from JSON. Code
   never hardcodes a cap the docs list in Math section 13.2.
+- Where `SEA_5_PHYSICS` speaks it is authoritative; `SEA_2_MATH` fills the gaps
+  it is silent on, and `SEA_3_MECHANICS` says what the outcomes are.
 
 ## 4. Milestones
 
@@ -190,7 +196,7 @@ Sub-phases:
   Milestone 1 build.
 
 Measured, recorded in `docs/validation/milestone-1.md`. Passing: every suite in
-`pnpm verify` (683 server, 21 integration, 175 EditMode), the idle cost, both
+`pnpm verify` (1,087 server, 26 integration, 175 EditMode), the idle cost, both
 presentation gates (macOS 250 hulls at p95 3.87 ms, WebGL 100 at p95 5 ms), the
 four-captain shared world, command acknowledgement at 100 clients (p95 27.50 ms
 against 150 ms), and 5,000 of 5,000 clients connected with no failures at 23.9 %

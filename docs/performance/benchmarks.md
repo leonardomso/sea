@@ -198,3 +198,47 @@ rewrites the whole blob to move anything in it, and a hostile pays a fat `Ship` 
 linear scan of that blob before it can decide anything. Closing the remaining distance means
 changing that layout, not tuning constants, which is a job for the architecture pass rather than
 this one.
+
+## After the chunk-blob replication rewrite (2026-09-05) — not measured
+
+The layout change the section above called for has landed: ships are replicated
+one packed blob per chunk instead of one row per ship (`368f121` packs the
+chunk, `81b42e5` publishes it). **No performance run has been taken against it.**
+
+`pnpm verify:full` was started for exactly that purpose and was stopped, at the
+user's request, before it reached `runtime:test:scale-isolated`. Everything it
+did reach is recorded here because it is what we actually know as of this
+commit:
+
+| Gate | Result |
+| --- | --- |
+| `pnpm check` | clean |
+| `pnpm server:build` | Build finished successfully |
+| `pnpm quality:bindings` | clean |
+| `pnpm server:test` | Passed! — Failed: 0, Passed: 1,087 |
+| `pnpm server:test:integration` | Passed! — Failed: 0, Passed: 26, Skipped: 0, Duration: 9 m 33 s |
+| `pnpm runtime:test:scale-isolated` | **not run** |
+
+So the numbers in the stride-1 table above are still the current numbers of
+record: dispatch p95 37.66 ms against a 10 ms gate, p99 56.80 ms against 20 ms.
+They pre-date the rewrite. Nobody should quote them as the cost of the chunk
+blob, and nobody should assume the rewrite improved them either — the whole
+point of writing this down is that the measurement is missing. `PerformanceBudget.cs`
+keeps its original gates; nothing has been lowered.
+
+### Two suspects closed by reading rather than by measuring
+
+The profiling pass listed three candidates for the remaining tick cost. Two of
+them turned out to be already correct, and reading the code was enough to say so:
+
+- **`ContentCatalog.LandMaskFor` rebuilding a mask per call.** It does not.
+  `ContentCatalogMasks` builds every mask once into a static dictionary and
+  hands back the shared instance.
+- **`ChunkBlob.Set` dirtying a chunk for a hull that did not move.** It does
+  not. `Set` packs the hull into a stack buffer and compares it against the
+  bytes already in the slot, returning without touching `IsDirty` when they
+  match.
+
+The third, `NpcMovementRules.ReplanIntervalTicks = 5` (A* every half second per
+hostile), is still unmeasured and still the live candidate. It should be
+profiled, not guessed at, when the re-baseline run above is taken.
