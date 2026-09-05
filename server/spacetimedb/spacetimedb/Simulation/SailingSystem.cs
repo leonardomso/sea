@@ -277,24 +277,20 @@ public static partial class Module
     /// </summary>
     private static void ApplyCurrentDrift(ref ShipKinematics ship, float deltaSeconds)
     {
+        // Asked here rather than inside the rule so a hull in still water never looks the
+        // mask up at all, which is most hulls on most ticks.
         if (ship.CurrentVelocityX == 0f && ship.CurrentVelocityY == 0f)
         {
             return;
         }
 
-        var driftedX = Math.Clamp(
-            ship.PositionX + ship.CurrentVelocityX * deltaSeconds,
-            WorldRules.MapMin,
-            WorldRules.MapMax);
-        var driftedY = Math.Clamp(
-            ship.PositionY + ship.CurrentVelocityY * deltaSeconds,
-            WorldRules.MapMin,
-            WorldRules.MapMax);
-        if (ContentCatalog.LandMaskFor(ship.MapId).IsLand(driftedX, driftedY))
-        {
-            return;
-        }
-
+        var (driftedX, driftedY) = DriftRules.Drift(
+            ship.PositionX,
+            ship.PositionY,
+            ship.CurrentVelocityX,
+            ship.CurrentVelocityY,
+            deltaSeconds,
+            ContentCatalog.LandMaskFor(ship.MapId));
         ship.PositionX = driftedX;
         ship.PositionY = driftedY;
     }
