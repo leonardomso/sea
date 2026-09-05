@@ -142,7 +142,7 @@ public sealed class CombatRulesTests
     [Fact]
     public void Fire_admission_rejects_a_target_beyond_the_range_it_was_given()
     {
-        var request = ValidFireRequest() with { TargetX = 0f, TargetY = 34f, RangeUnits = 33f };
+        var request = ValidFireRequest() with { TargetX = 0f, TargetY = 34f, RangeSquares = 33f };
 
         Assert.Equal(FireRejection.OutOfRange, CombatRules.ValidateFire(request));
     }
@@ -150,9 +150,32 @@ public sealed class CombatRulesTests
     [Fact]
     public void Fire_admission_accepts_a_target_exactly_on_the_range_ring()
     {
-        var request = ValidFireRequest() with { TargetX = 0f, TargetY = 34f, RangeUnits = 34f };
+        var request = ValidFireRequest() with { TargetX = 0f, TargetY = 34f, RangeSquares = 34f };
 
         Assert.Equal(FireRejection.None, CombatRules.ValidateFire(request));
+    }
+
+    /// <summary>
+    /// SEA_5 7.2: the trigger is pulled against the ring plus half a square, so a
+    /// target that steps out of reach between the click and the tick is still hit.
+    /// The firing path used to compare against the bare ring and lose the shot.
+    /// </summary>
+    [Theory]
+    [InlineData(24.4f, FireRejection.None)]
+    [InlineData(24.5f, FireRejection.None)]
+    [InlineData(24.6f, FireRejection.OutOfRange)]
+    public void Fire_admission_allows_half_a_square_of_grace_on_the_edge(
+        float distanceSquares,
+        FireRejection expected)
+    {
+        var request = ValidFireRequest() with
+        {
+            TargetX = 0f,
+            TargetY = distanceSquares,
+            RangeSquares = 24f,
+        };
+
+        Assert.Equal(expected, CombatRules.ValidateFire(request));
     }
 
     [Fact]
@@ -364,6 +387,6 @@ public sealed class CombatRulesTests
         SourceY = 0f,
         TargetX = -10f,
         TargetY = 0f,
-        RangeUnits = 60f,
+        RangeSquares = 60f,
     };
 }

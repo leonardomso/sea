@@ -54,7 +54,12 @@ public readonly record struct FireRequest
     public float SourceY { get; init; }
     public float TargetX { get; init; }
     public float TargetY { get; init; }
-    public float RangeUnits { get; init; }
+
+    /// <summary>
+    /// How far this volley reaches, in squares: the gun's rating with her fit's
+    /// bonus capped in and the shot's own multiplier already applied.
+    /// </summary>
+    public float RangeSquares { get; init; }
 }
 
 /// <summary>One ship's magazine: volleys ready to fire, and progress towards the next one.</summary>
@@ -123,12 +128,15 @@ public static class CombatRules
             return FireRejection.FiringTooFast;
         }
 
-        return WorldRules.IsInRange(
-            request.SourceX,
-            request.SourceY,
-            request.TargetX,
-            request.TargetY,
-            request.RangeUnits)
+        // SEA_5 7.2's half-square of grace, which only RangeRules knows about. The
+        // check used to be a bare circle test and lost every shot at the edge.
+        return RangeRules.IsWithinRange(
+            GeometryRules.Distance(
+                request.SourceX,
+                request.SourceY,
+                request.TargetX,
+                request.TargetY),
+            request.RangeSquares)
             ? FireRejection.None
             : FireRejection.OutOfRange;
     }

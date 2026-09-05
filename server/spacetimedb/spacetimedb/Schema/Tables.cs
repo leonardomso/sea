@@ -84,7 +84,7 @@ public static partial class Module
         public uint VolleyDamage;
         public uint ReloadTicks;
         public uint MagazineSize;
-        public float RangeUnits;
+        public float RangeSquares;
         public float ArmorFront;
         public float ArmorSides;
         public float ArmorBack;

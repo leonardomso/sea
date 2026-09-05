@@ -49,7 +49,7 @@ export default __t.row({
   volleyDamage: __t.u32().name("volley_damage"),
   reloadTicks: __t.u32().name("reload_ticks"),
   magazineSize: __t.u32().name("magazine_size"),
-  rangeUnits: __t.f32().name("range_units"),
+  rangeSquares: __t.f32().name("range_squares"),
   armorFront: __t.f32().name("armor_front"),
   armorSides: __t.f32().name("armor_sides"),
   armorBack: __t.f32().name("armor_back"),

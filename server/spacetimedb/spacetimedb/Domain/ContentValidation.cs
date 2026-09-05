@@ -234,10 +234,16 @@ public static partial class ContentCatalog
 
             NotEmpty(npc.Id, "family", npc.Family, errors);
             NotEmpty(npc.Id, "behavior", npc.Behavior, errors);
-            // 11 squares is the old WorldRules.VisionRadius of 110 units, unchanged in
-            // strength: the left side moved to squares with the conversion and the bound
-            // had to follow. Phase 6 replaces it with RangeRules.ViewDistanceSquares.
-            PositiveAtMost(npc.Id, "desired range", npc.DesiredRangeSquares, 11f, errors);
+            // A hull that wants to fight from beyond the horizon is not fighting. The
+            // bound was 11 squares, which was the old 110-unit sight radius carried
+            // across the conversion unchanged -- a third of the shortest gun on the
+            // chart, so it refused every doctrine SEA_5 7.1 makes possible.
+            PositiveAtMost(
+                npc.Id,
+                "desired range",
+                npc.DesiredRangeSquares,
+                RangeRules.ViewDistanceSquares,
+                errors);
             Positive(npc.Id, "experience reward", npc.ExperienceReward, errors);
         }
     }

@@ -430,7 +430,7 @@ export const Ship = __t.object("Ship", {
   volleyDamage: __t.u32(),
   reloadTicks: __t.u32(),
   magazineSize: __t.u32(),
-  rangeUnits: __t.f32(),
+  rangeSquares: __t.f32(),
   armorFront: __t.f32(),
   armorSides: __t.f32(),
   armorBack: __t.f32(),
