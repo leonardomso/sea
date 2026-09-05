@@ -121,6 +121,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Ship, float> ArmorFront { get; }
         public global::SpacetimeDB.Col<Ship, float> ArmorSides { get; }
         public global::SpacetimeDB.Col<Ship, float> ArmorBack { get; }
+        public global::SpacetimeDB.Col<Ship, byte> HullTier { get; }
         public global::SpacetimeDB.Col<Ship, uint> ReadyVolleys { get; }
         public global::SpacetimeDB.Col<Ship, uint> ReloadProgressTicks { get; }
         public global::SpacetimeDB.Col<Ship, float> RepairAmount { get; }
@@ -178,6 +179,7 @@ namespace SpacetimeDB.Types
             ArmorFront = new global::SpacetimeDB.Col<Ship, float>(tableName, "armor_front");
             ArmorSides = new global::SpacetimeDB.Col<Ship, float>(tableName, "armor_sides");
             ArmorBack = new global::SpacetimeDB.Col<Ship, float>(tableName, "armor_back");
+            HullTier = new global::SpacetimeDB.Col<Ship, byte>(tableName, "hull_tier");
             ReadyVolleys = new global::SpacetimeDB.Col<Ship, uint>(tableName, "ready_volleys");
             ReloadProgressTicks = new global::SpacetimeDB.Col<Ship, uint>(tableName, "reload_progress_ticks");
             RepairAmount = new global::SpacetimeDB.Col<Ship, float>(tableName, "repair_amount");

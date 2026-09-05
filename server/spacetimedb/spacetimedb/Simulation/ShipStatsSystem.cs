@@ -71,6 +71,7 @@ public static partial class Module
     /// </param>
     private static void ApplyStatSheet(ref Ship ship, ShipStatSheet sheet, bool restock)
     {
+        ship.HullTier = sheet.Tier;
         ship.VolleyDamage = sheet.VolleyDamage;
         ship.ReloadTicks = CombatRules.ReloadTicks(sheet.ReloadMilliseconds);
         ship.MagazineSize = sheet.Magazine;

@@ -7,7 +7,9 @@ public static partial class Module
     /// A click is blocked only when it lands inland and there is no water within the
     /// nudge radius SEA_5 4.1.2 allows. Water the click cannot be sailed to -- the far
     /// side of an isthmus, a lake -- is not blocked here; that is the search's answer,
-    /// and it is NO_PATH.
+    /// and it is NO_PATH. "Inland" is read off the chart her draught puts her on, so a
+    /// fourth rate clicking on a shoal is nudged to deep water instead of accepted and
+    /// then refused by a search that cannot cross it.
     /// </summary>
     private static CommandSnapshot CourseSnapshot(
         Ship ship,
@@ -18,12 +20,14 @@ public static partial class Module
         return snapshot with
         {
             CourseValid = WorldRules.IsValidMove(command.X, command.Y),
-            DestinationBlocked = !ContentCatalog.LandMaskFor(ship.MapId).TryNearestWater(
-                clampedX,
-                clampedY,
-                PathfindingRules.NudgeSearchSquares,
-                out _,
-                out _),
+            DestinationBlocked = !ContentCatalog
+                .RoutingMaskFor(ship.MapId, ship.HullTier, ship.PositionX, ship.PositionY)
+                .TryNearestWater(
+                    clampedX,
+                    clampedY,
+                    PathfindingRules.NudgeSearchSquares,
+                    out _,
+                    out _),
         };
     }
 

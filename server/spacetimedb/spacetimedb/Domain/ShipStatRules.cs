@@ -134,7 +134,14 @@ public readonly record struct ShipStatSheet(
     uint RepairChannelMilliseconds,
     float CombatPowerUsed,
     float CombatPowerInactive,
-    float FightScore);
+    float FightScore,
+
+    /// <summary>
+    /// The rate of the hull under the fit. Nothing in the sheet is derived from it -- it rides
+    /// along because how much water she draws is a fact about the hull, and the pathfinder needs
+    /// it on the ship row rather than through a join with the dock tables.
+    /// </summary>
+    byte Tier);
 
 public static class ShipStatRules
 {
@@ -202,7 +209,8 @@ public static class ShipStatRules
             stats.RepairChannelMilliseconds,
             (float)used / PowerScale,
             (float)inactive / PowerScale,
-            FightScore(stats, baseline));
+            FightScore(stats, baseline),
+            loadout.Hull.Tier);
     }
 
     public static float SustainedDps(ShipStatSheet sheet) => Dps(sheet.VolleyDamage, sheet.ReloadMilliseconds);

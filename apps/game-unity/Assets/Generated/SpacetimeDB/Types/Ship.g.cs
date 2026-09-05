@@ -97,6 +97,8 @@ namespace SpacetimeDB.Types
         public float ArmorSides;
         [DataMember(Name = "armor_back")]
         public float ArmorBack;
+        [DataMember(Name = "hull_tier")]
+        public byte HullTier;
         [DataMember(Name = "ready_volleys")]
         public uint ReadyVolleys;
         [DataMember(Name = "reload_progress_ticks")]
@@ -165,6 +167,7 @@ namespace SpacetimeDB.Types
             float ArmorFront,
             float ArmorSides,
             float ArmorBack,
+            byte HullTier,
             uint ReadyVolleys,
             uint ReloadProgressTicks,
             float RepairAmount,
@@ -221,6 +224,7 @@ namespace SpacetimeDB.Types
             this.ArmorFront = ArmorFront;
             this.ArmorSides = ArmorSides;
             this.ArmorBack = ArmorBack;
+            this.HullTier = HullTier;
             this.ReadyVolleys = ReadyVolleys;
             this.ReloadProgressTicks = ReloadProgressTicks;
             this.RepairAmount = RepairAmount;

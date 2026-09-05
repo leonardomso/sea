@@ -89,6 +89,14 @@ public static partial class Module
         public float ArmorSides;
         public float ArmorBack;
 
+        /// <summary>
+        /// The rate of her hull, which is how much water she draws: a fourth rate cannot cross
+        /// a shoal, so her course is plotted on a chart with the shallows filled in. On the row
+        /// for the same reason the combat sheet is -- plotting a course must not join the dock
+        /// tables to find out what she is.
+        /// </summary>
+        public byte HullTier;
+
         // The magazine itself. Reload advances every tick whether or not the ship is firing.
         public uint ReadyVolleys;
         public uint ReloadProgressTicks;

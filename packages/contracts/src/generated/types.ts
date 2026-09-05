@@ -458,6 +458,7 @@ export const Ship = __t.object("Ship", {
   armorFront: __t.f32(),
   armorSides: __t.f32(),
   armorBack: __t.f32(),
+  hullTier: __t.u8(),
   readyVolleys: __t.u32(),
   reloadProgressTicks: __t.u32(),
   repairAmount: __t.f32(),

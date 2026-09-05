@@ -172,6 +172,7 @@ public static partial class Module
     {
         var stats = Catalog.NpcStatsByArchetypeCode[(byte)definition.Code];
         var ship = CreateShip(entityId, definition.Id, "npc", spawn.X, spawn.Y);
+        ship.HullTier = definition.Tier;
         ship.BaseSpeedSquaresPerSecond = stats.MaximumSpeedSquares;
         ship.Hull = stats.MaximumHull;
         ship.MaxHull = stats.MaximumHull;

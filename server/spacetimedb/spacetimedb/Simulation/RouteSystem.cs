@@ -43,7 +43,13 @@ public static partial class Module
             return CommandRejectionCode.RateLimited;
         }
 
-        var mask = ContentCatalog.LandMaskFor(ship.MapId);
+        // A hull that draws too much water is routed round the shallows rather than into
+        // them, so the search and the nudge that feeds it read the same chart she will sail.
+        var mask = ContentCatalog.RoutingMaskFor(
+            ship.MapId,
+            ship.HullTier,
+            ship.PositionX,
+            ship.PositionY);
         var (clampedX, clampedY) = WorldRules.ClampToMap(requestedX, requestedY);
         if (!mask.TryNearestWater(
                 clampedX,

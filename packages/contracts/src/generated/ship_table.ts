@@ -53,6 +53,7 @@ export default __t.row({
   armorFront: __t.f32().name("armor_front"),
   armorSides: __t.f32().name("armor_sides"),
   armorBack: __t.f32().name("armor_back"),
+  hullTier: __t.u8().name("hull_tier"),
   readyVolleys: __t.u32().name("ready_volleys"),
   reloadProgressTicks: __t.u32().name("reload_progress_ticks"),
   repairAmount: __t.f32().name("repair_amount"),
