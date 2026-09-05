@@ -2,7 +2,8 @@
 
 The admin panel uses TanStack Start and TanStack Router. It is a local
 operational view, not a gameplay client and not part of the authoritative
-combat path.
+combat path. It is read-only today: it queries the SpacetimeDB SQL endpoint
+and cannot write anything. Admin writes are Milestone 5 work.
 
 The root Docker Compose stack runs its production build. For host-side UI
 iteration:

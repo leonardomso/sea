@@ -12,7 +12,6 @@ import {
 
 export default __t.row({
   owner: __t.identity().primaryKey(),
-  level: __t.u32(),
-  experience: __t.u64(),
+  mapRank: __t.u8().name("map_rank"),
   gold: __t.u32(),
 });

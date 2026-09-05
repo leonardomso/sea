@@ -74,9 +74,10 @@ namespace Sea.Editor
         public static string ExpectedAddress(string slotId) => slotId switch
         {
             SeaOwnedAssetSlots.PlayerShip or
-            SeaOwnedAssetSlots.PatrolShip or
-            SeaOwnedAssetSlots.RaiderShip or
-            SeaOwnedAssetSlots.GunshipShip => ShipAddress,
+            SeaOwnedAssetSlots.SkiffShip or
+            SeaOwnedAssetSlots.ReefCrabShip or
+            SeaOwnedAssetSlots.FancyShip or
+            SeaOwnedAssetSlots.RedMaryShip => ShipAddress,
             SeaOwnedAssetSlots.ShipMaterial => MaterialAddress,
             _ => string.Empty,
         };
@@ -155,9 +156,10 @@ namespace Sea.Editor
         private static string AssetPath(string slotId) => slotId switch
         {
             SeaOwnedAssetSlots.PlayerShip or
-            SeaOwnedAssetSlots.PatrolShip or
-            SeaOwnedAssetSlots.RaiderShip or
-            SeaOwnedAssetSlots.GunshipShip => ShipModelPath,
+            SeaOwnedAssetSlots.SkiffShip or
+            SeaOwnedAssetSlots.ReefCrabShip or
+            SeaOwnedAssetSlots.FancyShip or
+            SeaOwnedAssetSlots.RedMaryShip => ShipModelPath,
             SeaOwnedAssetSlots.ShipMaterial => ShipMaterialPath,
             _ => string.Empty,
         };

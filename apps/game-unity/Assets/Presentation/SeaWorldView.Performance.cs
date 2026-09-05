@@ -13,10 +13,10 @@ namespace Sea.Client
 
         internal void SeedSyntheticPerformanceFleet(int count)
         {
-            var cameraTransform = Camera.main != null ? Camera.main.transform : null;
+            var cameraTransform = ChartCameraTransform();
             var center = cameraTransform == null
                 ? Vector2.zero
-                : new Vector2(cameraTransform.position.x, cameraTransform.position.z);
+                : SeaChartCoordinates.ToChart(cameraTransform.position);
             for (var index = 0; index < count; index++)
             {
                 var position = SeaRuntimeValidationRules.SyntheticFleetPosition(
@@ -34,18 +34,19 @@ namespace Sea.Client
                     DestinationY = position.y,
                     HeadingDegrees = index * 17f % 360f,
                     Speed = 5f,
-                    MaximumSpeed = 8f,
+                    BaseSpeedSquaresPerSecond = 8f,
+                    EffectiveSpeedSquaresPerSecond = 8f,
                     IsMoving = true,
                     IsActive = true,
                     IsAlive = true,
                     Hull = 750,
                     MaxHull = 1_000,
-                    Sails = 500,
-                    MaxSails = 500,
-                    Cannons = 400,
-                    MaxCannons = 400,
-                    Crew = 300,
-                    MaxCrew = 300,
+                    MagazineSize = 3,
+                    ReadyVolleys = 3,
+                    ReloadTicks = 30,
+                    ArmorFront = 0.25f,
+                    ArmorSides = 0.1f,
+                    ArmorBack = 0.05f,
                 });
             }
 

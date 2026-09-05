@@ -24,10 +24,12 @@ namespace Sea.Client
             interestConnection.WorldObjectLeftInterest += RemoveWorldObjectPresentation;
             interestConnection.ShipChanged += HandleShipChanged;
             interestConnection.ShipMovementChanged += HandleShipMovementChanged;
+            interestConnection.ChunkMovementChanged += HandleChunkMovementChanged;
             interestConnection.ShipMovementLeftInterest += HandleShipMovementRemoved;
             interestConnection.WorldObjectChanged += HandleWorldObjectChanged;
             interestConnection.VolleyChanged += HandleVolleyChanged;
             interestConnection.VolleyLeftInterest += HandleVolleyRemoved;
+            interestConnection.HitLanded += HandleHitLanded;
             interestConnection.WorldTickChanged += HandleWorldTickChanged;
             interestConnection.LootChanged += HandleLootChanged;
             interestConnection.LootLeftInterest += HandleLootRemoved;
@@ -45,10 +47,12 @@ namespace Sea.Client
             interestConnection.WorldObjectLeftInterest -= RemoveWorldObjectPresentation;
             interestConnection.ShipChanged -= HandleShipChanged;
             interestConnection.ShipMovementChanged -= HandleShipMovementChanged;
+            interestConnection.ChunkMovementChanged -= HandleChunkMovementChanged;
             interestConnection.ShipMovementLeftInterest -= HandleShipMovementRemoved;
             interestConnection.WorldObjectChanged -= HandleWorldObjectChanged;
             interestConnection.VolleyChanged -= HandleVolleyChanged;
             interestConnection.VolleyLeftInterest -= HandleVolleyRemoved;
+            interestConnection.HitLanded -= HandleHitLanded;
             interestConnection.WorldTickChanged -= HandleWorldTickChanged;
             interestConnection.LootChanged -= HandleLootChanged;
             interestConnection.LootLeftInterest -= HandleLootRemoved;
@@ -107,6 +111,7 @@ namespace Sea.Client
             shipRows.Clear();
             movementRows.Clear();
             targets.Clear();
+            snapshotClock = null;
             volleyRows.Clear();
             relevantEndpointIds.Clear();
             localShip = null;
@@ -117,14 +122,14 @@ namespace Sea.Client
                 targetRing.SetActive(false);
             }
 
-            if (courseLine != null)
+            if (ownShipRing != null)
             {
-                courseLine.gameObject.SetActive(false);
+                ownShipRing.SetActive(false);
             }
 
-            if (destinationRing != null)
+            if (coursePing != null)
             {
-                destinationRing.gameObject.SetActive(false);
+                coursePing.gameObject.SetActive(false);
             }
 
             combatPresenter?.Reset();
@@ -147,6 +152,10 @@ namespace Sea.Client
             }
         }
 
-        private static Vector3 ToWorld(float x, float y, float height) => new(x, height, y);
+        // The chart's own flip lives in SeaChartCoordinates and nowhere else. This drew the
+        // world upside down while it read `new(x, height, y)`: chart y grows south, world z
+        // draws up the screen, and nothing turned one into the other.
+        private static Vector3 ToWorld(float x, float y, float height) =>
+            SeaChartCoordinates.ToWorld(x, y, height);
     }
 }

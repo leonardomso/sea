@@ -3,29 +3,14 @@ using Xunit;
 
 namespace Sea.Server.Tests;
 
-public sealed class NpcRulesTests
+public sealed partial class NpcRulesTests
 {
-    [Fact]
-    public void Neutral_patrol_roams_until_it_has_been_attacked()
-    {
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Patrol) with
-        {
-            CandidateTargetId = 42,
-        });
-
-        Assert.Equal(NpcActionKind.SetCourse, decision.Action);
-        Assert.Equal(0ul, decision.TargetEntityId);
-    }
-
     [Theory]
-    [InlineData(ShipArchetypeCode.Raider, AmmunitionCode.Chain, WeakPointCode.Sails)]
-    [InlineData(ShipArchetypeCode.Gunship, AmmunitionCode.Incendiary, WeakPointCode.Hull)]
-    public void Hostile_archetypes_acquire_players_with_their_tactical_loadout(
-        ShipArchetypeCode archetype,
-        AmmunitionCode ammunition,
-        WeakPointCode weakPoint)
+    [InlineData(AmmunitionCode.Chain)]
+    [InlineData(AmmunitionCode.Incendiary)]
+    public void Hostiles_acquire_players_with_their_preferred_shot(AmmunitionCode ammunition)
     {
-        var decision = NpcRules.Decide(Snapshot(archetype) with
+        var decision = NpcRules.Decide(Snapshot(preferred: ammunition) with
         {
             CandidateTargetId = 42,
         });
@@ -33,52 +18,77 @@ public sealed class NpcRulesTests
         Assert.Equal(NpcActionKind.SelectTarget, decision.Action);
         Assert.Equal(42ul, decision.TargetEntityId);
         Assert.Equal(ammunition, decision.Ammunition);
-        Assert.Equal(weakPoint, decision.WeakPoint);
     }
 
     [Fact]
-    public void Raider_closes_range_and_gunship_retreats_when_too_close()
+    public void A_hull_closes_to_her_holding_range_and_never_opens_it()
     {
-        var raider = NpcRules.Decide(Snapshot(ShipArchetypeCode.Raider) with
+        var closing = NpcRules.Decide(Snapshot(BoardingRange) with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 40f,
-            TargetX = 40f,
+            TargetX = ShipX + 40f,
         });
-        var gunship = NpcRules.Decide(Snapshot(ShipArchetypeCode.Gunship) with
+        var crowded = NpcRules.Decide(Snapshot() with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 12f,
-            TargetX = 12f,
+            TargetX = ShipX + 12f,
         });
 
-        Assert.Equal(NpcActionKind.SetCourse, raider.Action);
-        Assert.True(raider.DestinationX > 0f);
-        Assert.Equal(NpcActionKind.SetCourse, gunship.Action);
-        Assert.True(gunship.DestinationX < 0f);
+        // SEA_5 11.4: sail toward it when further, stop when closer. She wants eighteen and
+        // has forty, so she runs twenty-two squares in.
+        Assert.Equal(NpcActionKind.SetCourse, closing.Action);
+        Assert.Equal(ShipX + 22f, closing.DestinationX, 3);
+
+        // The other wants forty-eight and has twelve. She used to back thirty-six squares out,
+        // which is the one thing the same paragraph forbids: never sail away from a target
+        // except to go home. She holds what she has and keeps shooting.
+        Assert.Equal(NpcActionKind.Fire, crowded.Action);
+    }
+
+    [Theory]
+    [InlineData(ShipX + 22f, NpcActionKind.Hold)]
+    [InlineData(ShipX + 10f, NpcActionKind.SetCourse)]
+    public void Npc_keeps_a_course_that_already_ends_at_its_holding_point(
+        float courseX,
+        NpcActionKind expected)
+    {
+        var decision = NpcRules.Decide(Snapshot(BoardingRange) with
+        {
+            TargetEntityId = 42,
+            TargetAvailable = true,
+            DistanceToTarget = 40f,
+            TargetX = ShipX + 40f,
+            HasRoute = true,
+            CourseX = courseX,
+        });
+
+        Assert.Equal(expected, decision.Action);
     }
 
     [Fact]
-    public void Npc_stops_its_previous_course_after_entering_the_combat_range_band()
+    public void Npc_at_range_with_an_empty_magazine_holds_its_station()
     {
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Patrol) with
+        var decision = NpcRules.Decide(Snapshot() with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 45f,
-            TargetX = 45f,
-            HasCourse = true,
+            TargetX = ShipX + 45f,
+            HasRoute = true,
+            CanFire = false,
         });
 
-        Assert.Equal(NpcActionKind.StopCourse, decision.Action);
+        Assert.Equal(NpcActionKind.Hold, decision.Action);
     }
 
     [Fact]
     public void Damaged_npc_repairs_before_taking_an_offensive_action()
     {
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Gunship) with
+        var decision = NpcRules.Decide(Snapshot(preferred: AmmunitionCode.Incendiary) with
         {
             Hull = 20,
             HasRepairKit = true,
@@ -102,54 +112,30 @@ public sealed class NpcRulesTests
     }
 
     [Fact]
-    public void Broadside_decision_is_deterministic_for_the_same_snapshot()
+    public void Fire_decision_is_deterministic_for_the_same_snapshot()
     {
-        var snapshot = Snapshot(ShipArchetypeCode.Gunship) with
+        var snapshot = Snapshot(preferred: AmmunitionCode.Incendiary) with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 48f,
-            TargetX = -48f,
+            TargetX = ShipX - 48f,
             HeadingDegrees = 0f,
             SelectedAmmunition = AmmunitionCode.Incendiary,
-            PortReady = true,
-            StarboardReady = true,
+            CanFire = true,
         };
 
         Assert.Equal(NpcRules.Decide(snapshot), NpcRules.Decide(snapshot));
-        Assert.Equal(NpcActionKind.FirePort, NpcRules.Decide(snapshot).Action);
-    }
-
-    [Fact]
-    public void Fixed_seed_roaming_replays_and_stays_inside_the_chart()
-    {
-        var first = NpcRules.RoamDestination(seed: 99, decisionTick: 500);
-        var replay = NpcRules.RoamDestination(seed: 99, decisionTick: 500);
-
-        Assert.Equal(first, replay);
-        Assert.InRange(first.X, WorldRules.MapMin, WorldRules.MapMax);
-        Assert.InRange(first.Y, WorldRules.MapMin, WorldRules.MapMax);
-    }
-
-    [Theory]
-    [InlineData(0, true)]
-    [InlineData(1, false)]
-    [InlineData(8, false)]
-    public void Automatic_aggro_limits_hostile_fan_in(
-        int currentAttackers,
-        bool expected)
-    {
-        Assert.Equal(expected, NpcRules.HasAutomaticAggroCapacity(currentAttackers));
+        Assert.Equal(NpcActionKind.Fire, NpcRules.Decide(snapshot).Action);
     }
 
     [Theory]
     [InlineData(false, ShipMode.Operational)]
     [InlineData(true, ShipMode.Sunk)]
     [InlineData(true, ShipMode.Repairing)]
-    [InlineData(true, ShipMode.Boarding)]
     public void InactiveOrNonOperationalNpcHolds(bool active, ShipMode mode)
     {
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Raider) with
+        var decision = NpcRules.Decide(Snapshot(BoardingRange) with
         {
             Active = active,
             Mode = mode,
@@ -159,20 +145,9 @@ public sealed class NpcRulesTests
     }
 
     [Fact]
-    public void RoamingNpcKeepsItsExistingCourse()
-    {
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Patrol) with
-        {
-            HasCourse = true,
-        });
-
-        Assert.Equal(NpcActionKind.Hold, decision.Action);
-    }
-
-    [Fact]
     public void LostTargetIsClearedBeforeAnotherAction()
     {
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Gunship) with
+        var decision = NpcRules.Decide(Snapshot(preferred: AmmunitionCode.Incendiary) with
         {
             TargetEntityId = 42,
             TargetAvailable = false,
@@ -196,12 +171,12 @@ public sealed class NpcRulesTests
     [Fact]
     public void NpcSelectsItsLoadoutBeforeFiring()
     {
-        var decision = NpcRules.Decide(Snapshot(ShipArchetypeCode.Gunship) with
+        var decision = NpcRules.Decide(Snapshot(preferred: AmmunitionCode.Incendiary) with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 48,
-            TargetX = -48,
+            TargetX = ShipX - 48f,
             SelectedAmmunition = AmmunitionCode.Round,
         });
 
@@ -210,47 +185,268 @@ public sealed class NpcRulesTests
     }
 
     [Fact]
-    public void StarboardArcFiresAndUnavailableArcsTurn()
+    public void AShipAtRangeFiresWhenLoadedAndOtherwiseHolds()
     {
-        var starboard = Snapshot(ShipArchetypeCode.Patrol) with
+        var starboard = Snapshot() with
         {
             TargetEntityId = 42,
             TargetAvailable = true,
             DistanceToTarget = 45,
-            TargetX = 45,
+            TargetX = ShipX + 45f,
             SelectedAmmunition = AmmunitionCode.Round,
-            PortReady = false,
-            StarboardReady = true,
+            CanFire = true,
         };
 
-        Assert.Equal(NpcActionKind.FireStarboard, NpcRules.Decide(starboard).Action);
-        Assert.Equal(NpcActionKind.SetCourse,
-            NpcRules.Decide(starboard with { StarboardReady = false }).Action);
+        Assert.Equal(NpcActionKind.Fire, NpcRules.Decide(starboard).Action);
+        Assert.Equal(NpcActionKind.Hold,
+            NpcRules.Decide(starboard with { CanFire = false }).Action);
     }
 
-    private static NpcSnapshot Snapshot(ShipArchetypeCode archetype) => new()
+    [Fact]
+    public void Hold_range_point_inside_an_island_is_steered_to_open_water()
     {
-        Archetype = archetype,
-        Active = true,
-        Mode = ShipMode.Operational,
-        X = 0f,
-        Y = 0f,
-        Hull = 100,
-        MaximumHull = 100,
-        DesiredRange = archetype == ShipArchetypeCode.Raider ? 18f : 48f,
-        SelectedAmmunition = AmmunitionCode.Round,
-        PreferredAmmunition = archetype switch
+        // A boarder mid-chart, target 40 squares east, island squarely on the 22-square
+        // hold point.
+        var island = new NavigationBlocker(ShipX + 22f, ShipY, 10f);
+        var decision = NpcRules.Decide(Snapshot(BoardingRange) with
         {
-            ShipArchetypeCode.Raider => AmmunitionCode.Chain,
-            ShipArchetypeCode.Gunship => AmmunitionCode.Incendiary,
-            _ => AmmunitionCode.Round,
-        },
-        PreferredWeakPoint = archetype == ShipArchetypeCode.Raider
-            ? WeakPointCode.Sails
-            : WeakPointCode.Hull,
-        PortReady = true,
-        StarboardReady = true,
-        DecisionSeed = 99,
-        DecisionTick = 500,
-    };
+            TargetEntityId = 42,
+            TargetAvailable = true,
+            DistanceToTarget = 40f,
+            TargetX = ShipX + 40f,
+            Blockers = [island],
+        });
+
+        Assert.Equal(NpcActionKind.SetCourse, decision.Action);
+        Assert.False(NavigationRules.IsDestinationBlocked(
+            decision.DestinationX,
+            decision.DestinationY,
+            [island]));
+    }
+
+    [Fact]
+    public void Target_that_opens_the_disengage_range_is_let_go()
+    {
+        var chasing = Snapshot(BoardingRange) with
+        {
+            TargetEntityId = 42,
+            TargetAvailable = true,
+            DistanceToTarget = NpcRules.DisengageRange + 1f,
+            TargetX = ShipX + NpcRules.DisengageRange + 1f,
+        };
+
+        Assert.Equal(NpcActionKind.ClearTarget, NpcRules.Decide(chasing).Action);
+        Assert.NotEqual(
+            NpcActionKind.ClearTarget,
+            NpcRules.Decide(chasing with
+            {
+                DistanceToTarget = NpcRules.DisengageRange,
+                TargetX = ShipX + NpcRules.DisengageRange,
+            }).Action);
+    }
+
+    [Fact]
+    public void A_ship_hunts_wherever_its_patrol_route_has_taken_it()
+    {
+        // The old rule only let a ship look for a target inside a bubble around its spawn,
+        // which made every hostile far from home harmless scenery.
+        Assert.True(NpcRules.ShouldSearchForTarget(false, 40f));
+        Assert.False(NpcRules.ShouldSearchForTarget(true, 40f));
+        Assert.False(NpcRules.ShouldSearchForTarget(false, 0f));
+    }
+
+    /// <summary>
+    /// Where the fixture hull lies: the middle of the chart. She used to lie at (0,0), which
+    /// was the middle of the old centre-origin world and is now its north-west corner, so
+    /// every hold-range point that fell west or north of her was silently pulled back to the
+    /// edge by <c>NpcRules.Clamp</c> and the test read the clamp rather than the rule. From
+    /// the middle there is room on all four sides for the longest leg any of these cases plots.
+    /// </summary>
+    internal const float ShipX = (WorldRules.MapMin + WorldRules.MapMax) / 2f;
+    internal const float ShipY = ShipX;
+
+    /// <summary>The range a hull that wants to be alongside holds.</summary>
+    internal const float BoardingRange = 18f;
+
+    /// <summary>The range a hull that would rather shoot holds.</summary>
+    internal const float GunneryRange = 48f;
+
+    // Nothing about a decision depends on which enemy it is any more: how close it wants to be
+    // and what it loads are the whole of its character, so a snapshot is built from those.
+    internal static NpcSnapshot Snapshot(
+        float desiredRange = GunneryRange,
+        AmmunitionCode preferred = AmmunitionCode.Round) => new()
+        {
+            Active = true,
+            Mode = ShipMode.Operational,
+            X = ShipX,
+            Y = ShipY,
+            // The mark and the standing course both start on top of her, so a case that sets
+            // only an X puts them due east or west of her the way it did when the hull and
+            // both of them lay on the origin together. A bare 0 here is now a corner of the
+            // chart two hundred squares away, which is how three of these cases came to read
+            // the edge clamp instead of the rule they were written for.
+            TargetX = ShipX,
+            TargetY = ShipY,
+            CourseX = ShipX,
+            CourseY = ShipY,
+            Hull = 100,
+            MaximumHull = 100,
+            DesiredRange = desiredRange,
+            SelectedAmmunition = AmmunitionCode.Round,
+            PreferredAmmunition = preferred,
+            CanFire = true,
+            DecisionSeed = 99,
+        };
+
+    [Theory]
+    [InlineData(true, 25u, 100u, true)]
+    [InlineData(true, 26u, 100u, false)]
+    [InlineData(false, 1u, 100u, false)]
+    [InlineData(true, 0u, 0u, false)]
+    public void Only_a_hull_that_runs_runs_and_only_at_a_quarter(
+        bool fleesWhenCrippled,
+        uint hull,
+        uint maximumHull,
+        bool expected)
+    {
+        Assert.Equal(expected, NpcRules.ShouldFlee(fleesWhenCrippled, hull, maximumHull));
+    }
+
+    [Fact]
+    public void A_crippled_sea_dog_breaks_contact_before_it_patches_itself()
+    {
+        // It is at a quarter hull with a kit aboard, so both the flee rule and the repair rule
+        // want this decision. Repairing under the guns that crippled it is how it dies.
+        var decision = NpcRules.Decide(Snapshot(BoardingRange) with
+        {
+            Hull = 25,
+            HasRepairKit = true,
+            FleesWhenCrippled = true,
+            TargetEntityId = 42,
+            TargetAvailable = true,
+            DistanceToTarget = 20f,
+            TargetX = ShipX + 20f,
+        });
+
+        Assert.Equal(NpcActionKind.SetCourse, decision.Action);
+        Assert.True(
+            CombatRules.Distance(
+                decision.DestinationX,
+                decision.DestinationY,
+                ShipX + 20f,
+                ShipY) >
+            NpcRules.DisengageRange);
+    }
+
+    [Theory]
+    [InlineData(true, false, 50u, 100u, true)]
+    [InlineData(true, false, 51u, 100u, false)]
+    [InlineData(true, true, 10u, 100u, false)]
+    [InlineData(false, false, 10u, 100u, false)]
+    public void The_signal_goes_up_at_half_a_hull_and_only_once(
+        bool callsForHelp,
+        bool alreadyCalled,
+        uint hull,
+        uint maximumHull,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            NpcRules.ShouldCallForHelp(callsForHelp, alreadyCalled, hull, maximumHull));
+    }
+
+    [Fact]
+    public void An_escort_lies_at_its_mooring_until_its_captain_calls()
+    {
+        var moored = Snapshot(BoardingRange) with
+        {
+            AwaitingSignal = true,
+            CandidateTargetId = 42,
+        };
+
+        Assert.Equal(NpcActionKind.Hold, NpcRules.Decide(moored).Action);
+        Assert.Equal(
+            NpcActionKind.SelectTarget,
+            NpcRules.Decide(moored with { AwaitingSignal = false }).Action);
+    }
+
+    [Theory]
+    [InlineData(100UL, 50UL, 80f, true)]
+    [InlineData(50UL, 50UL, 80f, false)]
+    [InlineData(0UL, 50UL, 30f, true)]
+    [InlineData(0UL, 50UL, 30.5f, false)]
+    public void Shielded_or_harbored_players_are_never_npc_targets(
+        ulong invulnerableUntilTick,
+        ulong tick,
+        float distanceFromHarbor,
+        bool expected)
+    {
+        Assert.Equal(
+            expected,
+            NpcRules.IsProtectedFromNpcs(invulnerableUntilTick, tick, distanceFromHarbor));
+    }
+
+    [Fact]
+    public void TheFourDistancesAreTheOnesSeaFiveNames()
+    {
+        Assert.Equal(25f, NpcMovementRules.WanderRadiusSquares, 4);
+        Assert.Equal(20f, NpcMovementRules.AggroRadiusSquares, 4);
+        Assert.Equal(60f, NpcMovementRules.LeashRadiusSquares, 4);
+        Assert.Equal(0.8f, NpcMovementRules.HoldDistanceFraction, 4);
+    }
+
+    [Fact]
+    public void ANpcChasesAShipInsideAggro()
+    {
+        Assert.Equal(
+            NpcIntent.Chase,
+            NpcMovementRules.Decide(distanceToTargetSquares: 15f, distanceFromHomeSquares: 10f));
+    }
+
+    [Fact]
+    public void ANpcTooFarFromHomeGoesHomeWhateverIsChasingHer()
+    {
+        Assert.Equal(
+            NpcIntent.Leash,
+            NpcMovementRules.Decide(distanceToTargetSquares: 5f, distanceFromHomeSquares: 61f));
+    }
+
+    [Fact]
+    public void ANpcHoldsAtEightyPerCentOfHerRangeRatherThanClosingToTouch()
+    {
+        var hold = NpcMovementRules.HoldDistanceSquares(effectiveRangeSquares: 20f);
+
+        Assert.Equal(16f, hold, 4);
+        Assert.Equal(NpcIntent.Hold, NpcMovementRules.Decide(16f, 10f, holdDistanceSquares: 16f));
+    }
+
+    [Fact]
+    public void ANpcReplansTwiceASecondAtMost()
+    {
+        Assert.Equal(5UL, NpcMovementRules.ReplanIntervalTicks);
+    }
+
+    [Fact]
+    public void AnIdleNpcPicksANewSpotEveryEightToTwentySeconds()
+    {
+        for (var entityId = 1UL; entityId <= 200UL; entityId++)
+        {
+            var wait = NpcMovementRules.WanderWaitTicks(entityId, wanderIndex: 3UL);
+
+            Assert.InRange(wait, 80UL, 200UL);
+        }
+    }
+
+    [Fact]
+    public void TwoNpcsDoNotAllPickTheirNextSpotOnTheSameTick()
+    {
+        var waits = new HashSet<ulong>();
+        for (var entityId = 1UL; entityId <= 50UL; entityId++)
+        {
+            waits.Add(NpcMovementRules.WanderWaitTicks(entityId, 0UL));
+        }
+
+        Assert.True(waits.Count > 10);
+    }
 }

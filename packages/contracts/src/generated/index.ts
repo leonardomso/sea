@@ -36,35 +36,43 @@ import {
 // Import all reducer arg schemas
 import IssueShipCommandReducer from "./issue_ship_command_reducer";
 import LoadPlayerReducer from "./load_player_reducer";
-import UpgradeCannonReducer from "./upgrade_cannon_reducer";
 
 // Import all procedure arg schemas
 
 // Import all table schema definitions
-import AbilityDefinitionRow from "./ability_definition_table";
-import AmmoDefinitionRow from "./ammo_definition_table";
+import AmmoDefRow from "./ammo_def_table";
+import CannonDefRow from "./cannon_def_table";
+import ChunkMovementRow from "./chunk_movement_table";
 import CombatEventRow from "./combat_event_table";
 import CommandResultEventRow from "./command_result_event_table";
 import CooldownRow from "./cooldown_table";
 import CurrentZoneRow from "./current_zone_table";
+import EffectRow from "./effect_table";
 import EncounterRewardRow from "./encounter_reward_table";
 import EncounterRewardEventRow from "./encounter_reward_event_table";
 import EnvironmentStateRow from "./environment_state_table";
+import HitEventRow from "./hit_event_table";
+import HullRow from "./hull_table";
+import HullDefRow from "./hull_def_table";
 import InventoryRow from "./inventory_table";
-import LevelDefinitionRow from "./level_definition_table";
 import LootRow from "./loot_table";
+import MapCrossingOfferRow from "./map_crossing_offer_table";
+import MapDefRow from "./map_def_table";
 import NpcAiRow from "./npc_ai_table";
-import NpcDefinitionRow from "./npc_definition_table";
+import NpcDefRow from "./npc_def_table";
 import PlayerClockRow from "./player_clock_table";
 import PlayerCommandStateRow from "./player_command_state_table";
 import PlayerOwnershipRow from "./player_ownership_table";
 import PlayerProgressionRow from "./player_progression_table";
 import RespawnWorkRow from "./respawn_work_table";
+import SectorRow from "./sector_table";
 import ShipRow from "./ship_table";
 import ShipChannelRow from "./ship_channel_table";
 import ShipMovementRow from "./ship_movement_table";
-import ShipStatusRow from "./ship_status_table";
+import ShipRouteRow from "./ship_route_table";
+import ShipStatsRow from "./ship_stats_table";
 import SimulationTelemetryRow from "./simulation_telemetry_table";
+import StatCapsRow from "./stat_caps_table";
 import VolleyRow from "./volley_table";
 import WorldObjectRow from "./world_object_table";
 import WorldStateRow from "./world_state_table";
@@ -73,36 +81,48 @@ import WorldStateRow from "./world_state_table";
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
-  abilityDefinition: __table({
-    name: 'ability_definition',
+  ammoDef: __table({
+    name: 'ammo_def',
     indexes: [
-      { accessor: 'AbilityCode', name: 'ability_definition_ability_code_idx_btree', algorithm: 'btree', columns: [
-        'abilityCode',
-      ] },
-      { accessor: 'AbilityId', name: 'ability_definition_ability_id_idx_btree', algorithm: 'btree', columns: [
-        'abilityId',
-      ] },
-    ],
-    constraints: [
-      { name: 'ability_definition_ability_code_key', constraint: 'unique', columns: ['abilityCode'] },
-      { name: 'ability_definition_ability_id_key', constraint: 'unique', columns: ['abilityId'] },
-    ],
-  }, AbilityDefinitionRow),
-  ammoDefinition: __table({
-    name: 'ammo_definition',
-    indexes: [
-      { accessor: 'AmmoCode', name: 'ammo_definition_ammo_code_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'AmmoCode', name: 'ammo_def_ammo_code_idx_btree', algorithm: 'btree', columns: [
         'ammoCode',
       ] },
-      { accessor: 'AmmoId', name: 'ammo_definition_ammo_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'AmmoId', name: 'ammo_def_ammo_id_idx_btree', algorithm: 'btree', columns: [
         'ammoId',
       ] },
     ],
     constraints: [
-      { name: 'ammo_definition_ammo_code_key', constraint: 'unique', columns: ['ammoCode'] },
-      { name: 'ammo_definition_ammo_id_key', constraint: 'unique', columns: ['ammoId'] },
+      { name: 'ammo_def_ammo_code_key', constraint: 'unique', columns: ['ammoCode'] },
+      { name: 'ammo_def_ammo_id_key', constraint: 'unique', columns: ['ammoId'] },
     ],
-  }, AmmoDefinitionRow),
+  }, AmmoDefRow),
+  cannonDef: __table({
+    name: 'cannon_def',
+    indexes: [
+      { accessor: 'CannonDefId', name: 'cannon_def_cannon_def_id_idx_btree', algorithm: 'btree', columns: [
+        'cannonDefId',
+      ] },
+    ],
+    constraints: [
+      { name: 'cannon_def_cannon_def_id_key', constraint: 'unique', columns: ['cannonDefId'] },
+    ],
+  }, CannonDefRow),
+  chunkMovement: __table({
+    name: 'chunk_movement',
+    indexes: [
+      { accessor: 'Id', name: 'chunk_movement_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+      { accessor: 'ByMapAndChunk', name: 'chunk_movement_map_id_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
+        'mapId',
+        'chunkX',
+        'chunkY',
+      ] },
+    ],
+    constraints: [
+      { name: 'chunk_movement_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, ChunkMovementRow),
   combatEvent: __table({
     name: 'combat_event',
     indexes: [
@@ -157,6 +177,28 @@ const tablesSchema = __schema({
       { name: 'current_zone_zone_id_key', constraint: 'unique', columns: ['zoneId'] },
     ],
   }, CurrentZoneRow),
+  effect: __table({
+    name: 'effect',
+    indexes: [
+      { accessor: 'EffectId', name: 'effect_effect_id_idx_btree', algorithm: 'btree', columns: [
+        'effectId',
+      ] },
+      { accessor: 'ByEffectDue', name: 'effect_is_active_next_process_tick_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+        'nextProcessTick',
+      ] },
+      { accessor: 'ByShipEffect', name: 'effect_ship_entity_id_effect_code_idx_btree', algorithm: 'btree', columns: [
+        'shipEntityId',
+        'effectCode',
+      ] },
+      { accessor: 'ByShip', name: 'effect_ship_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'shipEntityId',
+      ] },
+    ],
+    constraints: [
+      { name: 'effect_effect_id_key', constraint: 'unique', columns: ['effectId'] },
+    ],
+  }, EffectRow),
   encounterReward: __table({
     name: 'encounter_reward',
     indexes: [
@@ -197,6 +239,39 @@ const tablesSchema = __schema({
       { name: 'environment_state_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, EnvironmentStateRow),
+  hitEvent: __table({
+    name: 'hit_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, HitEventRow),
+  hull: __table({
+    name: 'hull',
+    indexes: [
+      { accessor: 'HullId', name: 'hull_hull_id_idx_btree', algorithm: 'btree', columns: [
+        'hullId',
+      ] },
+      { accessor: 'ByOwner', name: 'hull_owner_idx_btree', algorithm: 'btree', columns: [
+        'owner',
+      ] },
+    ],
+    constraints: [
+      { name: 'hull_hull_id_key', constraint: 'unique', columns: ['hullId'] },
+    ],
+  }, HullRow),
+  hullDef: __table({
+    name: 'hull_def',
+    indexes: [
+      { accessor: 'HullDefId', name: 'hull_def_hull_def_id_idx_btree', algorithm: 'btree', columns: [
+        'hullDefId',
+      ] },
+    ],
+    constraints: [
+      { name: 'hull_def_hull_def_id_key', constraint: 'unique', columns: ['hullDefId'] },
+    ],
+  }, HullDefRow),
   inventory: __table({
     name: 'inventory',
     indexes: [
@@ -215,24 +290,9 @@ const tablesSchema = __schema({
       { name: 'inventory_inventory_id_key', constraint: 'unique', columns: ['inventoryId'] },
     ],
   }, InventoryRow),
-  levelDefinition: __table({
-    name: 'level_definition',
-    indexes: [
-      { accessor: 'Level', name: 'level_definition_level_idx_btree', algorithm: 'btree', columns: [
-        'level',
-      ] },
-    ],
-    constraints: [
-      { name: 'level_definition_level_key', constraint: 'unique', columns: ['level'] },
-    ],
-  }, LevelDefinitionRow),
   loot: __table({
     name: 'loot',
     indexes: [
-      { accessor: 'ByChunk', name: 'loot_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
-        'chunkX',
-        'chunkY',
-      ] },
       { accessor: 'ByActiveChunk', name: 'loot_is_active_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
         'isActive',
         'chunkX',
@@ -242,9 +302,6 @@ const tablesSchema = __schema({
         'isActive',
         'expiresAtTick',
       ] },
-      { accessor: 'ByActive', name: 'loot_is_active_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
-      ] },
       { accessor: 'LootId', name: 'loot_loot_id_idx_btree', algorithm: 'btree', columns: [
         'lootId',
       ] },
@@ -253,6 +310,32 @@ const tablesSchema = __schema({
       { name: 'loot_loot_id_key', constraint: 'unique', columns: ['lootId'] },
     ],
   }, LootRow),
+  mapCrossingOffer: __table({
+    name: 'map_crossing_offer',
+    indexes: [
+      { accessor: 'EntityId', name: 'map_crossing_offer_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'entityId',
+      ] },
+    ],
+    constraints: [
+      { name: 'map_crossing_offer_entity_id_key', constraint: 'unique', columns: ['entityId'] },
+    ],
+  }, MapCrossingOfferRow),
+  mapDef: __table({
+    name: 'map_def',
+    indexes: [
+      { accessor: 'Code', name: 'map_def_code_idx_btree', algorithm: 'btree', columns: [
+        'code',
+      ] },
+      { accessor: 'MapId', name: 'map_def_map_id_idx_btree', algorithm: 'btree', columns: [
+        'mapId',
+      ] },
+    ],
+    constraints: [
+      { name: 'map_def_code_key', constraint: 'unique', columns: ['code'] },
+      { name: 'map_def_map_id_key', constraint: 'unique', columns: ['mapId'] },
+    ],
+  }, MapDefRow),
   npcAi: __table({
     name: 'npc_ai',
     indexes: [
@@ -269,21 +352,21 @@ const tablesSchema = __schema({
       { name: 'npc_ai_ship_entity_id_key', constraint: 'unique', columns: ['shipEntityId'] },
     ],
   }, NpcAiRow),
-  npcDefinition: __table({
-    name: 'npc_definition',
+  npcDef: __table({
+    name: 'npc_def',
     indexes: [
-      { accessor: 'ArchetypeCode', name: 'npc_definition_archetype_code_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'ArchetypeCode', name: 'npc_def_archetype_code_idx_btree', algorithm: 'btree', columns: [
         'archetypeCode',
       ] },
-      { accessor: 'NpcId', name: 'npc_definition_npc_id_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'NpcId', name: 'npc_def_npc_id_idx_btree', algorithm: 'btree', columns: [
         'npcId',
       ] },
     ],
     constraints: [
-      { name: 'npc_definition_archetype_code_key', constraint: 'unique', columns: ['archetypeCode'] },
-      { name: 'npc_definition_npc_id_key', constraint: 'unique', columns: ['npcId'] },
+      { name: 'npc_def_archetype_code_key', constraint: 'unique', columns: ['archetypeCode'] },
+      { name: 'npc_def_npc_id_key', constraint: 'unique', columns: ['npcId'] },
     ],
-  }, NpcDefinitionRow),
+  }, NpcDefRow),
   playerClock: __table({
     name: 'player_clock',
     indexes: [
@@ -347,15 +430,25 @@ const tablesSchema = __schema({
       { name: 'respawn_work_ship_entity_id_key', constraint: 'unique', columns: ['shipEntityId'] },
     ],
   }, RespawnWorkRow),
+  sector: __table({
+    name: 'sector',
+    indexes: [
+      { accessor: 'ByMap', name: 'sector_map_id_idx_btree', algorithm: 'btree', columns: [
+        'mapId',
+      ] },
+      { accessor: 'SectorId', name: 'sector_sector_id_idx_btree', algorithm: 'btree', columns: [
+        'sectorId',
+      ] },
+    ],
+    constraints: [
+      { name: 'sector_sector_id_key', constraint: 'unique', columns: ['sectorId'] },
+    ],
+  }, SectorRow),
   ship: __table({
     name: 'ship',
     indexes: [
       { accessor: 'EntityId', name: 'ship_entity_id_idx_btree', algorithm: 'btree', columns: [
         'entityId',
-      ] },
-      { accessor: 'ByEnvironmentExposureHazardShard', name: 'ship_environment_exposure_code_hazard_shard_idx_btree', algorithm: 'btree', columns: [
-        'environmentExposureCode',
-        'hazardShard',
       ] },
       { accessor: 'ByEnvironmentExposure', name: 'ship_environment_exposure_code_idx_btree', algorithm: 'btree', columns: [
         'environmentExposureCode',
@@ -365,21 +458,8 @@ const tablesSchema = __schema({
         'chunkX',
         'chunkY',
       ] },
-      { accessor: 'ByActiveChunkShard', name: 'ship_is_active_chunk_x_chunk_y_movement_shard_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
-        'chunkX',
-        'chunkY',
-        'movementShard',
-      ] },
-      { accessor: 'ByActive', name: 'ship_is_active_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
-      ] },
-      { accessor: 'ByMoving', name: 'ship_is_moving_idx_btree', algorithm: 'btree', columns: [
-        'isMoving',
-      ] },
-      { accessor: 'ByMovingShard', name: 'ship_is_moving_movement_shard_idx_btree', algorithm: 'btree', columns: [
-        'isMoving',
-        'movementShard',
+      { accessor: 'ByReloading', name: 'ship_is_reloading_idx_btree', algorithm: 'btree', columns: [
+        'isReloading',
       ] },
       { accessor: 'ByTarget', name: 'ship_target_entity_id_idx_btree', algorithm: 'btree', columns: [
         'targetEntityId',
@@ -392,9 +472,6 @@ const tablesSchema = __schema({
   shipChannel: __table({
     name: 'ship_channel',
     indexes: [
-      { accessor: 'ByActive', name: 'ship_channel_is_active_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
-      ] },
       { accessor: 'ByChannelDue', name: 'ship_channel_is_active_next_process_tick_idx_btree', algorithm: 'btree', columns: [
         'isActive',
         'nextProcessTick',
@@ -413,47 +490,45 @@ const tablesSchema = __schema({
       { accessor: 'EntityId', name: 'ship_movement_entity_id_idx_btree', algorithm: 'btree', columns: [
         'entityId',
       ] },
-      { accessor: 'ByActiveChunkHazardShard', name: 'ship_movement_is_active_chunk_x_chunk_y_hazard_shard_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
-        'chunkX',
-        'chunkY',
-        'hazardShard',
-      ] },
       { accessor: 'ByActiveChunk', name: 'ship_movement_is_active_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
         'isActive',
         'chunkX',
         'chunkY',
+      ] },
+      { accessor: 'ByActiveFaction', name: 'ship_movement_is_active_faction_code_idx_btree', algorithm: 'btree', columns: [
+        'isActive',
+        'factionCode',
       ] },
     ],
     constraints: [
       { name: 'ship_movement_entity_id_key', constraint: 'unique', columns: ['entityId'] },
     ],
   }, ShipMovementRow),
-  shipStatus: __table({
-    name: 'ship_status',
+  shipRoute: __table({
+    name: 'ship_route',
     indexes: [
-      { accessor: 'ByActive', name: 'ship_status_is_active_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
-      ] },
-      { accessor: 'ByStatusDue', name: 'ship_status_is_active_next_process_tick_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
-        'nextProcessTick',
-      ] },
-      { accessor: 'ByShip', name: 'ship_status_ship_entity_id_idx_btree', algorithm: 'btree', columns: [
-        'shipEntityId',
-      ] },
-      { accessor: 'ByShipStatus', name: 'ship_status_ship_entity_id_status_code_idx_btree', algorithm: 'btree', columns: [
-        'shipEntityId',
-        'statusCode',
-      ] },
-      { accessor: 'StatusId', name: 'ship_status_status_id_idx_btree', algorithm: 'btree', columns: [
-        'statusId',
+      { accessor: 'EntityId', name: 'ship_route_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'entityId',
       ] },
     ],
     constraints: [
-      { name: 'ship_status_status_id_key', constraint: 'unique', columns: ['statusId'] },
+      { name: 'ship_route_entity_id_key', constraint: 'unique', columns: ['entityId'] },
     ],
-  }, ShipStatusRow),
+  }, ShipRouteRow),
+  shipStats: __table({
+    name: 'ship_stats',
+    indexes: [
+      { accessor: 'HullId', name: 'ship_stats_hull_id_idx_btree', algorithm: 'btree', columns: [
+        'hullId',
+      ] },
+      { accessor: 'ByOwner', name: 'ship_stats_owner_idx_btree', algorithm: 'btree', columns: [
+        'owner',
+      ] },
+    ],
+    constraints: [
+      { name: 'ship_stats_hull_id_key', constraint: 'unique', columns: ['hullId'] },
+    ],
+  }, ShipStatsRow),
   simulationTelemetry: __table({
     name: 'simulation_telemetry',
     indexes: [
@@ -465,22 +540,23 @@ const tablesSchema = __schema({
       { name: 'simulation_telemetry_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, SimulationTelemetryRow),
+  statCaps: __table({
+    name: 'stat_caps',
+    indexes: [
+      { accessor: 'Id', name: 'stat_caps_id_idx_btree', algorithm: 'btree', columns: [
+        'id',
+      ] },
+    ],
+    constraints: [
+      { name: 'stat_caps_id_key', constraint: 'unique', columns: ['id'] },
+    ],
+  }, StatCapsRow),
   volley: __table({
     name: 'volley',
     indexes: [
-      { accessor: 'ByChunk', name: 'volley_chunk_x_chunk_y_idx_btree', algorithm: 'btree', columns: [
-        'chunkX',
-        'chunkY',
-      ] },
-      { accessor: 'ByActive', name: 'volley_is_active_idx_btree', algorithm: 'btree', columns: [
+      { accessor: 'ByVolleyExpiry', name: 'volley_is_active_expires_at_tick_idx_btree', algorithm: 'btree', columns: [
         'isActive',
-      ] },
-      { accessor: 'ByImpactDue', name: 'volley_is_active_impact_at_tick_idx_btree', algorithm: 'btree', columns: [
-        'isActive',
-        'impactAtTick',
-      ] },
-      { accessor: 'ByTarget', name: 'volley_target_entity_id_idx_btree', algorithm: 'btree', columns: [
-        'targetEntityId',
+        'expiresAtTick',
       ] },
       { accessor: 'VolleyId', name: 'volley_volley_id_idx_btree', algorithm: 'btree', columns: [
         'volleyId',
@@ -526,7 +602,6 @@ const tablesSchema = __schema({
 const reducersSchema = __reducers(
   __reducerSchema("issue_ship_command", IssueShipCommandReducer),
   __reducerSchema("load_player", LoadPlayerReducer),
-  __reducerSchema("upgrade_cannon", UpgradeCannonReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */
@@ -535,10 +610,12 @@ const proceduresSchema = __procedures(
 
 type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "tables"> & {
   tables: typeof tablesSchema.schemaType.tables & {
-    /** @deprecated Use `abilityDefinition` instead. This alias will be removed in the next major version. */
-    readonly "AbilityDefinition": Omit<typeof tablesSchema.schemaType.tables["abilityDefinition"], "accessorName"> & { readonly accessorName: "AbilityDefinition" };
-    /** @deprecated Use `ammoDefinition` instead. This alias will be removed in the next major version. */
-    readonly "AmmoDefinition": Omit<typeof tablesSchema.schemaType.tables["ammoDefinition"], "accessorName"> & { readonly accessorName: "AmmoDefinition" };
+    /** @deprecated Use `ammoDef` instead. This alias will be removed in the next major version. */
+    readonly "AmmoDef": Omit<typeof tablesSchema.schemaType.tables["ammoDef"], "accessorName"> & { readonly accessorName: "AmmoDef" };
+    /** @deprecated Use `cannonDef` instead. This alias will be removed in the next major version. */
+    readonly "CannonDef": Omit<typeof tablesSchema.schemaType.tables["cannonDef"], "accessorName"> & { readonly accessorName: "CannonDef" };
+    /** @deprecated Use `chunkMovement` instead. This alias will be removed in the next major version. */
+    readonly "ChunkMovement": Omit<typeof tablesSchema.schemaType.tables["chunkMovement"], "accessorName"> & { readonly accessorName: "ChunkMovement" };
     /** @deprecated Use `combatEvent` instead. This alias will be removed in the next major version. */
     readonly "CombatEvent": Omit<typeof tablesSchema.schemaType.tables["combatEvent"], "accessorName"> & { readonly accessorName: "CombatEvent" };
     /** @deprecated Use `commandResultEvent` instead. This alias will be removed in the next major version. */
@@ -547,22 +624,32 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "Cooldown": Omit<typeof tablesSchema.schemaType.tables["cooldown"], "accessorName"> & { readonly accessorName: "Cooldown" };
     /** @deprecated Use `currentZone` instead. This alias will be removed in the next major version. */
     readonly "CurrentZone": Omit<typeof tablesSchema.schemaType.tables["currentZone"], "accessorName"> & { readonly accessorName: "CurrentZone" };
+    /** @deprecated Use `effect` instead. This alias will be removed in the next major version. */
+    readonly "Effect": Omit<typeof tablesSchema.schemaType.tables["effect"], "accessorName"> & { readonly accessorName: "Effect" };
     /** @deprecated Use `encounterReward` instead. This alias will be removed in the next major version. */
     readonly "EncounterReward": Omit<typeof tablesSchema.schemaType.tables["encounterReward"], "accessorName"> & { readonly accessorName: "EncounterReward" };
     /** @deprecated Use `encounterRewardEvent` instead. This alias will be removed in the next major version. */
     readonly "EncounterRewardEvent": Omit<typeof tablesSchema.schemaType.tables["encounterRewardEvent"], "accessorName"> & { readonly accessorName: "EncounterRewardEvent" };
     /** @deprecated Use `environmentState` instead. This alias will be removed in the next major version. */
     readonly "EnvironmentState": Omit<typeof tablesSchema.schemaType.tables["environmentState"], "accessorName"> & { readonly accessorName: "EnvironmentState" };
+    /** @deprecated Use `hitEvent` instead. This alias will be removed in the next major version. */
+    readonly "HitEvent": Omit<typeof tablesSchema.schemaType.tables["hitEvent"], "accessorName"> & { readonly accessorName: "HitEvent" };
+    /** @deprecated Use `hull` instead. This alias will be removed in the next major version. */
+    readonly "Hull": Omit<typeof tablesSchema.schemaType.tables["hull"], "accessorName"> & { readonly accessorName: "Hull" };
+    /** @deprecated Use `hullDef` instead. This alias will be removed in the next major version. */
+    readonly "HullDef": Omit<typeof tablesSchema.schemaType.tables["hullDef"], "accessorName"> & { readonly accessorName: "HullDef" };
     /** @deprecated Use `inventory` instead. This alias will be removed in the next major version. */
     readonly "Inventory": Omit<typeof tablesSchema.schemaType.tables["inventory"], "accessorName"> & { readonly accessorName: "Inventory" };
-    /** @deprecated Use `levelDefinition` instead. This alias will be removed in the next major version. */
-    readonly "LevelDefinition": Omit<typeof tablesSchema.schemaType.tables["levelDefinition"], "accessorName"> & { readonly accessorName: "LevelDefinition" };
     /** @deprecated Use `loot` instead. This alias will be removed in the next major version. */
     readonly "Loot": Omit<typeof tablesSchema.schemaType.tables["loot"], "accessorName"> & { readonly accessorName: "Loot" };
+    /** @deprecated Use `mapCrossingOffer` instead. This alias will be removed in the next major version. */
+    readonly "MapCrossingOffer": Omit<typeof tablesSchema.schemaType.tables["mapCrossingOffer"], "accessorName"> & { readonly accessorName: "MapCrossingOffer" };
+    /** @deprecated Use `mapDef` instead. This alias will be removed in the next major version. */
+    readonly "MapDef": Omit<typeof tablesSchema.schemaType.tables["mapDef"], "accessorName"> & { readonly accessorName: "MapDef" };
     /** @deprecated Use `npcAi` instead. This alias will be removed in the next major version. */
     readonly "NpcAi": Omit<typeof tablesSchema.schemaType.tables["npcAi"], "accessorName"> & { readonly accessorName: "NpcAi" };
-    /** @deprecated Use `npcDefinition` instead. This alias will be removed in the next major version. */
-    readonly "NpcDefinition": Omit<typeof tablesSchema.schemaType.tables["npcDefinition"], "accessorName"> & { readonly accessorName: "NpcDefinition" };
+    /** @deprecated Use `npcDef` instead. This alias will be removed in the next major version. */
+    readonly "NpcDef": Omit<typeof tablesSchema.schemaType.tables["npcDef"], "accessorName"> & { readonly accessorName: "NpcDef" };
     /** @deprecated Use `playerClock` instead. This alias will be removed in the next major version. */
     readonly "PlayerClock": Omit<typeof tablesSchema.schemaType.tables["playerClock"], "accessorName"> & { readonly accessorName: "PlayerClock" };
     /** @deprecated Use `playerCommandState` instead. This alias will be removed in the next major version. */
@@ -573,16 +660,22 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "PlayerProgression": Omit<typeof tablesSchema.schemaType.tables["playerProgression"], "accessorName"> & { readonly accessorName: "PlayerProgression" };
     /** @deprecated Use `respawnWork` instead. This alias will be removed in the next major version. */
     readonly "RespawnWork": Omit<typeof tablesSchema.schemaType.tables["respawnWork"], "accessorName"> & { readonly accessorName: "RespawnWork" };
+    /** @deprecated Use `sector` instead. This alias will be removed in the next major version. */
+    readonly "Sector": Omit<typeof tablesSchema.schemaType.tables["sector"], "accessorName"> & { readonly accessorName: "Sector" };
     /** @deprecated Use `ship` instead. This alias will be removed in the next major version. */
     readonly "Ship": Omit<typeof tablesSchema.schemaType.tables["ship"], "accessorName"> & { readonly accessorName: "Ship" };
     /** @deprecated Use `shipChannel` instead. This alias will be removed in the next major version. */
     readonly "ShipChannel": Omit<typeof tablesSchema.schemaType.tables["shipChannel"], "accessorName"> & { readonly accessorName: "ShipChannel" };
     /** @deprecated Use `shipMovement` instead. This alias will be removed in the next major version. */
     readonly "ShipMovement": Omit<typeof tablesSchema.schemaType.tables["shipMovement"], "accessorName"> & { readonly accessorName: "ShipMovement" };
-    /** @deprecated Use `shipStatus` instead. This alias will be removed in the next major version. */
-    readonly "ShipStatus": Omit<typeof tablesSchema.schemaType.tables["shipStatus"], "accessorName"> & { readonly accessorName: "ShipStatus" };
+    /** @deprecated Use `shipRoute` instead. This alias will be removed in the next major version. */
+    readonly "ShipRoute": Omit<typeof tablesSchema.schemaType.tables["shipRoute"], "accessorName"> & { readonly accessorName: "ShipRoute" };
+    /** @deprecated Use `shipStats` instead. This alias will be removed in the next major version. */
+    readonly "ShipStats": Omit<typeof tablesSchema.schemaType.tables["shipStats"], "accessorName"> & { readonly accessorName: "ShipStats" };
     /** @deprecated Use `simulationTelemetry` instead. This alias will be removed in the next major version. */
     readonly "SimulationTelemetry": Omit<typeof tablesSchema.schemaType.tables["simulationTelemetry"], "accessorName"> & { readonly accessorName: "SimulationTelemetry" };
+    /** @deprecated Use `statCaps` instead. This alias will be removed in the next major version. */
+    readonly "StatCaps": Omit<typeof tablesSchema.schemaType.tables["statCaps"], "accessorName"> & { readonly accessorName: "StatCaps" };
     /** @deprecated Use `volley` instead. This alias will be removed in the next major version. */
     readonly "Volley": Omit<typeof tablesSchema.schemaType.tables["volley"], "accessorName"> & { readonly accessorName: "Volley" };
     /** @deprecated Use `worldObject` instead. This alias will be removed in the next major version. */
@@ -607,30 +700,39 @@ const REMOTE_MODULE = {
 >;
 
 const tableAccessorAliases = {
-  "AbilityDefinition": "abilityDefinition",
-  "AmmoDefinition": "ammoDefinition",
+  "AmmoDef": "ammoDef",
+  "CannonDef": "cannonDef",
+  "ChunkMovement": "chunkMovement",
   "CombatEvent": "combatEvent",
   "CommandResultEvent": "commandResultEvent",
   "Cooldown": "cooldown",
   "CurrentZone": "currentZone",
+  "Effect": "effect",
   "EncounterReward": "encounterReward",
   "EncounterRewardEvent": "encounterRewardEvent",
   "EnvironmentState": "environmentState",
+  "HitEvent": "hitEvent",
+  "Hull": "hull",
+  "HullDef": "hullDef",
   "Inventory": "inventory",
-  "LevelDefinition": "levelDefinition",
   "Loot": "loot",
+  "MapCrossingOffer": "mapCrossingOffer",
+  "MapDef": "mapDef",
   "NpcAi": "npcAi",
-  "NpcDefinition": "npcDefinition",
+  "NpcDef": "npcDef",
   "PlayerClock": "playerClock",
   "PlayerCommandState": "playerCommandState",
   "PlayerOwnership": "playerOwnership",
   "PlayerProgression": "playerProgression",
   "RespawnWork": "respawnWork",
+  "Sector": "sector",
   "Ship": "ship",
   "ShipChannel": "shipChannel",
   "ShipMovement": "shipMovement",
-  "ShipStatus": "shipStatus",
+  "ShipRoute": "shipRoute",
+  "ShipStats": "shipStats",
   "SimulationTelemetry": "simulationTelemetry",
+  "StatCaps": "statCaps",
   "Volley": "volley",
   "WorldObject": "worldObject",
   "WorldState": "worldState",
@@ -654,10 +756,12 @@ function __withTableAccessorAliases<T extends object>(target: T, freeze = false)
 
 type __DbViewBase = __DbConnectionImpl<typeof REMOTE_MODULE>["db"];
 export type DbView = __DbViewBase & {
-  /** @deprecated Use `abilityDefinition` instead. This alias will be removed in the next major version. */
-  readonly "AbilityDefinition": __DbViewBase["abilityDefinition"];
-  /** @deprecated Use `ammoDefinition` instead. This alias will be removed in the next major version. */
-  readonly "AmmoDefinition": __DbViewBase["ammoDefinition"];
+  /** @deprecated Use `ammoDef` instead. This alias will be removed in the next major version. */
+  readonly "AmmoDef": __DbViewBase["ammoDef"];
+  /** @deprecated Use `cannonDef` instead. This alias will be removed in the next major version. */
+  readonly "CannonDef": __DbViewBase["cannonDef"];
+  /** @deprecated Use `chunkMovement` instead. This alias will be removed in the next major version. */
+  readonly "ChunkMovement": __DbViewBase["chunkMovement"];
   /** @deprecated Use `combatEvent` instead. This alias will be removed in the next major version. */
   readonly "CombatEvent": __DbViewBase["combatEvent"];
   /** @deprecated Use `commandResultEvent` instead. This alias will be removed in the next major version. */
@@ -666,22 +770,32 @@ export type DbView = __DbViewBase & {
   readonly "Cooldown": __DbViewBase["cooldown"];
   /** @deprecated Use `currentZone` instead. This alias will be removed in the next major version. */
   readonly "CurrentZone": __DbViewBase["currentZone"];
+  /** @deprecated Use `effect` instead. This alias will be removed in the next major version. */
+  readonly "Effect": __DbViewBase["effect"];
   /** @deprecated Use `encounterReward` instead. This alias will be removed in the next major version. */
   readonly "EncounterReward": __DbViewBase["encounterReward"];
   /** @deprecated Use `encounterRewardEvent` instead. This alias will be removed in the next major version. */
   readonly "EncounterRewardEvent": __DbViewBase["encounterRewardEvent"];
   /** @deprecated Use `environmentState` instead. This alias will be removed in the next major version. */
   readonly "EnvironmentState": __DbViewBase["environmentState"];
+  /** @deprecated Use `hitEvent` instead. This alias will be removed in the next major version. */
+  readonly "HitEvent": __DbViewBase["hitEvent"];
+  /** @deprecated Use `hull` instead. This alias will be removed in the next major version. */
+  readonly "Hull": __DbViewBase["hull"];
+  /** @deprecated Use `hullDef` instead. This alias will be removed in the next major version. */
+  readonly "HullDef": __DbViewBase["hullDef"];
   /** @deprecated Use `inventory` instead. This alias will be removed in the next major version. */
   readonly "Inventory": __DbViewBase["inventory"];
-  /** @deprecated Use `levelDefinition` instead. This alias will be removed in the next major version. */
-  readonly "LevelDefinition": __DbViewBase["levelDefinition"];
   /** @deprecated Use `loot` instead. This alias will be removed in the next major version. */
   readonly "Loot": __DbViewBase["loot"];
+  /** @deprecated Use `mapCrossingOffer` instead. This alias will be removed in the next major version. */
+  readonly "MapCrossingOffer": __DbViewBase["mapCrossingOffer"];
+  /** @deprecated Use `mapDef` instead. This alias will be removed in the next major version. */
+  readonly "MapDef": __DbViewBase["mapDef"];
   /** @deprecated Use `npcAi` instead. This alias will be removed in the next major version. */
   readonly "NpcAi": __DbViewBase["npcAi"];
-  /** @deprecated Use `npcDefinition` instead. This alias will be removed in the next major version. */
-  readonly "NpcDefinition": __DbViewBase["npcDefinition"];
+  /** @deprecated Use `npcDef` instead. This alias will be removed in the next major version. */
+  readonly "NpcDef": __DbViewBase["npcDef"];
   /** @deprecated Use `playerClock` instead. This alias will be removed in the next major version. */
   readonly "PlayerClock": __DbViewBase["playerClock"];
   /** @deprecated Use `playerCommandState` instead. This alias will be removed in the next major version. */
@@ -692,16 +806,22 @@ export type DbView = __DbViewBase & {
   readonly "PlayerProgression": __DbViewBase["playerProgression"];
   /** @deprecated Use `respawnWork` instead. This alias will be removed in the next major version. */
   readonly "RespawnWork": __DbViewBase["respawnWork"];
+  /** @deprecated Use `sector` instead. This alias will be removed in the next major version. */
+  readonly "Sector": __DbViewBase["sector"];
   /** @deprecated Use `ship` instead. This alias will be removed in the next major version. */
   readonly "Ship": __DbViewBase["ship"];
   /** @deprecated Use `shipChannel` instead. This alias will be removed in the next major version. */
   readonly "ShipChannel": __DbViewBase["shipChannel"];
   /** @deprecated Use `shipMovement` instead. This alias will be removed in the next major version. */
   readonly "ShipMovement": __DbViewBase["shipMovement"];
-  /** @deprecated Use `shipStatus` instead. This alias will be removed in the next major version. */
-  readonly "ShipStatus": __DbViewBase["shipStatus"];
+  /** @deprecated Use `shipRoute` instead. This alias will be removed in the next major version. */
+  readonly "ShipRoute": __DbViewBase["shipRoute"];
+  /** @deprecated Use `shipStats` instead. This alias will be removed in the next major version. */
+  readonly "ShipStats": __DbViewBase["shipStats"];
   /** @deprecated Use `simulationTelemetry` instead. This alias will be removed in the next major version. */
   readonly "SimulationTelemetry": __DbViewBase["simulationTelemetry"];
+  /** @deprecated Use `statCaps` instead. This alias will be removed in the next major version. */
+  readonly "StatCaps": __DbViewBase["statCaps"];
   /** @deprecated Use `volley` instead. This alias will be removed in the next major version. */
   readonly "Volley": __DbViewBase["volley"];
   /** @deprecated Use `worldObject` instead. This alias will be removed in the next major version. */
@@ -712,10 +832,12 @@ export type DbView = __DbViewBase & {
 
 type __TablesBase = __QueryBuilder<typeof tablesSchema.schemaType>;
 export type Tables = __TablesBase & {
-  /** @deprecated Use `abilityDefinition` instead. This alias will be removed in the next major version. */
-  readonly "AbilityDefinition": __TablesBase["abilityDefinition"];
-  /** @deprecated Use `ammoDefinition` instead. This alias will be removed in the next major version. */
-  readonly "AmmoDefinition": __TablesBase["ammoDefinition"];
+  /** @deprecated Use `ammoDef` instead. This alias will be removed in the next major version. */
+  readonly "AmmoDef": __TablesBase["ammoDef"];
+  /** @deprecated Use `cannonDef` instead. This alias will be removed in the next major version. */
+  readonly "CannonDef": __TablesBase["cannonDef"];
+  /** @deprecated Use `chunkMovement` instead. This alias will be removed in the next major version. */
+  readonly "ChunkMovement": __TablesBase["chunkMovement"];
   /** @deprecated Use `combatEvent` instead. This alias will be removed in the next major version. */
   readonly "CombatEvent": __TablesBase["combatEvent"];
   /** @deprecated Use `commandResultEvent` instead. This alias will be removed in the next major version. */
@@ -724,22 +846,32 @@ export type Tables = __TablesBase & {
   readonly "Cooldown": __TablesBase["cooldown"];
   /** @deprecated Use `currentZone` instead. This alias will be removed in the next major version. */
   readonly "CurrentZone": __TablesBase["currentZone"];
+  /** @deprecated Use `effect` instead. This alias will be removed in the next major version. */
+  readonly "Effect": __TablesBase["effect"];
   /** @deprecated Use `encounterReward` instead. This alias will be removed in the next major version. */
   readonly "EncounterReward": __TablesBase["encounterReward"];
   /** @deprecated Use `encounterRewardEvent` instead. This alias will be removed in the next major version. */
   readonly "EncounterRewardEvent": __TablesBase["encounterRewardEvent"];
   /** @deprecated Use `environmentState` instead. This alias will be removed in the next major version. */
   readonly "EnvironmentState": __TablesBase["environmentState"];
+  /** @deprecated Use `hitEvent` instead. This alias will be removed in the next major version. */
+  readonly "HitEvent": __TablesBase["hitEvent"];
+  /** @deprecated Use `hull` instead. This alias will be removed in the next major version. */
+  readonly "Hull": __TablesBase["hull"];
+  /** @deprecated Use `hullDef` instead. This alias will be removed in the next major version. */
+  readonly "HullDef": __TablesBase["hullDef"];
   /** @deprecated Use `inventory` instead. This alias will be removed in the next major version. */
   readonly "Inventory": __TablesBase["inventory"];
-  /** @deprecated Use `levelDefinition` instead. This alias will be removed in the next major version. */
-  readonly "LevelDefinition": __TablesBase["levelDefinition"];
   /** @deprecated Use `loot` instead. This alias will be removed in the next major version. */
   readonly "Loot": __TablesBase["loot"];
+  /** @deprecated Use `mapCrossingOffer` instead. This alias will be removed in the next major version. */
+  readonly "MapCrossingOffer": __TablesBase["mapCrossingOffer"];
+  /** @deprecated Use `mapDef` instead. This alias will be removed in the next major version. */
+  readonly "MapDef": __TablesBase["mapDef"];
   /** @deprecated Use `npcAi` instead. This alias will be removed in the next major version. */
   readonly "NpcAi": __TablesBase["npcAi"];
-  /** @deprecated Use `npcDefinition` instead. This alias will be removed in the next major version. */
-  readonly "NpcDefinition": __TablesBase["npcDefinition"];
+  /** @deprecated Use `npcDef` instead. This alias will be removed in the next major version. */
+  readonly "NpcDef": __TablesBase["npcDef"];
   /** @deprecated Use `playerClock` instead. This alias will be removed in the next major version. */
   readonly "PlayerClock": __TablesBase["playerClock"];
   /** @deprecated Use `playerCommandState` instead. This alias will be removed in the next major version. */
@@ -750,16 +882,22 @@ export type Tables = __TablesBase & {
   readonly "PlayerProgression": __TablesBase["playerProgression"];
   /** @deprecated Use `respawnWork` instead. This alias will be removed in the next major version. */
   readonly "RespawnWork": __TablesBase["respawnWork"];
+  /** @deprecated Use `sector` instead. This alias will be removed in the next major version. */
+  readonly "Sector": __TablesBase["sector"];
   /** @deprecated Use `ship` instead. This alias will be removed in the next major version. */
   readonly "Ship": __TablesBase["ship"];
   /** @deprecated Use `shipChannel` instead. This alias will be removed in the next major version. */
   readonly "ShipChannel": __TablesBase["shipChannel"];
   /** @deprecated Use `shipMovement` instead. This alias will be removed in the next major version. */
   readonly "ShipMovement": __TablesBase["shipMovement"];
-  /** @deprecated Use `shipStatus` instead. This alias will be removed in the next major version. */
-  readonly "ShipStatus": __TablesBase["shipStatus"];
+  /** @deprecated Use `shipRoute` instead. This alias will be removed in the next major version. */
+  readonly "ShipRoute": __TablesBase["shipRoute"];
+  /** @deprecated Use `shipStats` instead. This alias will be removed in the next major version. */
+  readonly "ShipStats": __TablesBase["shipStats"];
   /** @deprecated Use `simulationTelemetry` instead. This alias will be removed in the next major version. */
   readonly "SimulationTelemetry": __TablesBase["simulationTelemetry"];
+  /** @deprecated Use `statCaps` instead. This alias will be removed in the next major version. */
+  readonly "StatCaps": __TablesBase["statCaps"];
   /** @deprecated Use `volley` instead. This alias will be removed in the next major version. */
   readonly "Volley": __TablesBase["volley"];
   /** @deprecated Use `worldObject` instead. This alias will be removed in the next major version. */

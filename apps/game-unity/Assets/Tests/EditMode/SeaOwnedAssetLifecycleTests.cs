@@ -48,50 +48,40 @@ namespace Sea.Tests
         }
 
         [Test]
-        public void Owned_ship_model_and_procedural_lods_share_scale_and_forward_axis()
+        public void Owned_ship_model_is_scaled_to_the_requested_footprint()
         {
             var catalog = SeaOwnedAssetEditorLifecycle.EnsureCatalog();
             var modelPath = AssetDatabase.GUIDToAssetPath(
                 catalog.Require(SeaOwnedAssetSlots.PlayerShip).AssetGuid);
             var model = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
-            var near = SeaShipVisualFactory.Create(
+            var ship = SeaShipVisualFactory.Create(
                 model,
-                "Near LOD",
+                "Apricum",
                 targetFootprint: 10f,
                 modelYawOffsetDegrees: 270f);
-            var medium = SeaShipVisualFactory.CreateMediumLod("Medium LOD", 10f);
-            var distant = SeaShipVisualFactory.CreateDistantLod("Distant LOD", 10f);
 
-            AssertFootprint(near, 10f);
-            AssertFootprint(medium, 10f);
-            AssertFootprint(distant, 10f);
-            Assert.That(Vector3.Dot(near.transform.forward, medium.transform.forward),
-                Is.GreaterThan(0.999f));
-            Assert.That(Vector3.Dot(near.transform.forward, distant.transform.forward),
-                Is.GreaterThan(0.999f));
+            AssertFootprint(ship, 10f);
 
-            Object.DestroyImmediate(near);
-            Object.DestroyImmediate(medium);
-            Object.DestroyImmediate(distant);
+            Object.DestroyImmediate(ship);
         }
 
         [Test]
         public void Npc_archetypes_have_distinct_owned_material_variants()
         {
-            var patrol = SeaShipVariantPolicy.Tint(factionCode: 2, archetypeCode: 1);
-            var raider = SeaShipVariantPolicy.Tint(factionCode: 2, archetypeCode: 2);
-            var gunship = SeaShipVariantPolicy.Tint(factionCode: 2, archetypeCode: 3);
+            var skiff = SeaShipVariantPolicy.Tint(factionCode: 2, archetypeCode: 1);
+            var crab = SeaShipVariantPolicy.Tint(factionCode: 2, archetypeCode: 2);
+            var fancy = SeaShipVariantPolicy.Tint(factionCode: 2, archetypeCode: 3);
+            var mary = SeaShipVariantPolicy.Tint(factionCode: 2, archetypeCode: 4);
 
-            Assert.That(patrol, Is.Not.EqualTo(raider));
-            Assert.That(raider, Is.Not.EqualTo(gunship));
-            Assert.That(gunship, Is.Not.EqualTo(patrol));
+            Assert.That(new[] { skiff, crab, fancy, mary }, Is.Unique);
             Assert.That(SeaShipVariantPolicy.Tint(1, 0), Is.EqualTo(Color.white));
         }
 
         [TestCase(1, 0, SeaOwnedShipRole.Player)]
-        [TestCase(2, 1, SeaOwnedShipRole.Patrol)]
-        [TestCase(2, 2, SeaOwnedShipRole.Raider)]
-        [TestCase(2, 3, SeaOwnedShipRole.Gunship)]
+        [TestCase(2, 1, SeaOwnedShipRole.Skiff)]
+        [TestCase(2, 2, SeaOwnedShipRole.ReefCrab)]
+        [TestCase(2, 3, SeaOwnedShipRole.Fancy)]
+        [TestCase(2, 4, SeaOwnedShipRole.RedMary)]
         public void Every_ship_kind_resolves_to_its_replaceable_catalog_slot(
             byte factionCode,
             byte archetypeCode,

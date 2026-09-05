@@ -3,93 +3,311 @@ using Xunit;
 
 namespace Sea.Server.Tests;
 
+// One row per validation rule: a catalog that breaks exactly that rule and the message it must
+// produce. The message is matched in full so a mislabelled field is caught as well as a missing check.
 public sealed class ContentValidationTests
 {
-    [Fact]
-    public void InvalidContentReportsEveryIndependentDefinitionError()
+    private static readonly GameContent Catalog = ContentCatalog.CreateDefault();
+    /// <summary>
+    /// Havenmere with her crossings taken off. Most fixtures below stand one chart on its own,
+    /// and an exit to a chart that is not in the list would then be a fault of the fixture
+    /// rather than of the rule under test. The exit rules have their own cases.
+    /// </summary>
+    private static readonly MapContent Map = Catalog.Maps[0] with { Exits = [] };
+
+    public static TheoryData<string, GameContent> RejectedContent => new()
     {
-        var invalid = new CombatContent
+        { "StatCaps: damage bonus cap must be positive.", Caps(caps => caps with { DamageBonusCap = 0f }) },
+        { "StatCaps: hit point bonus cap must be positive.", Caps(caps => caps with { HitPointBonusCap = 0f }) },
+        { "StatCaps: armor points cap must be positive.", Caps(caps => caps with { ArmorPointsCap = 0f }) },
+        { "StatCaps: speed bonus cap must be positive.", Caps(caps => caps with { SpeedBonusCap = 0f }) },
+        { "StatCaps: turn bonus cap must be positive.", Caps(caps => caps with { TurnBonusCap = 0f }) },
+        { "StatCaps: repair amount bonus cap must be positive.", Caps(caps => caps with { RepairAmountBonusCap = 0f }) },
+        { "StatCaps: combat power budget must be positive.", Caps(caps => caps with { CombatPowerBudget = 0f }) },
+        { "StatCaps: combat power armor weight must be positive.", Caps(caps => caps with { CombatPowerArmorWeight = 0f }) },
+        { "StatCaps: reload floor must be positive.", Caps(caps => caps with { ReloadFloorSeconds = 0f }) },
+        { "StatCaps: fire minimum interval must be positive.", Caps(caps => caps with { FireMinIntervalSeconds = 0f }) },
+        { "StatCaps: magazine refill idle seconds must be positive.", Caps(caps => caps with { MagazineRefillIdleSeconds = 0f }) },
+        { "StatCaps: burn per second must be positive.", Caps(caps => caps with { BurnPerSecond = 0f }) },
+        { "StatCaps: burn duration must be positive.", Caps(caps => caps with { BurnDurationSeconds = 0f }) },
+        { "StatCaps: repair channel must be positive.", Caps(caps => caps with { RepairChannelSeconds = 0f }) },
+        { "StatCaps: repair cooldown must be positive.", Caps(caps => caps with { RepairCooldownSeconds = 0f }) },
+        { "StatCaps: repair fatigue must be positive.", Caps(caps => caps with { RepairFatigue = 0f }) },
+        { "StatCaps: repair fatigue window must be positive.", Caps(caps => caps with { RepairFatigueWindowSeconds = 0f }) },
+        { "StatCaps: repair cancel threshold must be positive.", Caps(caps => caps with { RepairCancelThreshold = 0f }) },
+        { "StatCaps: kit heal amount must be positive.", Caps(caps => caps with { KitHealAmount = 0f }) },
+        { "StatCaps: kit cooldown must be positive.", Caps(caps => caps with { KitCooldownSeconds = 0f }) },
+        { "StatCaps: respawn seconds must be positive.", Caps(caps => caps with { RespawnSeconds = 0f }) },
+        { "StatCaps: spawn shield seconds must be positive.", Caps(caps => caps with { SpawnShieldSeconds = 0f }) },
+        { "StatCaps: magazine bonus cap must be positive.", Caps(caps => caps with { MagazineBonusCap = 0 }) },
+        { "StatCaps: range bonus cap must be positive.", Caps(caps => caps with { RangeBonusCapSquares = 0 }) },
+        { "StatCaps: gold base must be positive.", Caps(caps => caps with { GoldBase = 0 }) },
+        { "StatCaps: reload bonus cap must be between 0 and 1.", Caps(caps => caps with { ReloadBonusCap = 0f }) },
+        { "StatCaps: repair channel bonus cap must be between 0 and 1.", Caps(caps => caps with { RepairChannelBonusCap = 1f }) },
+        { "StatCaps: repair base amount must be between 0 and 1.", Caps(caps => caps with { RepairBaseAmount = 1f }) },
+        { "StatCaps: burn heal multiplier must not be negative.", Caps(caps => caps with { BurnHealMultiplier = -1f }) },
+        { "StatCaps: NPC hit point multipliers must have 6 entries.", Caps(caps => caps with { NpcHitPointMultipliers = [1f] }) },
+        { "StatCaps: NPC dps multipliers for tier 3 must be positive.", Caps(caps => caps with { NpcDpsMultipliers = [1f, 1f, 0f, 1f, 1f, 1f] }) },
+        { "StatCaps: NPC armor by tier must have 6 entries.", Caps(caps => caps with { NpcArmorByTier = [0.1f] }) },
+        { "StatCaps: NPC armor for tier 6 must be between 0 and 0.45.", Caps(caps => caps with { NpcArmorByTier = [0.1f, 0.1f, 0.15f, 0.2f, 0.2f, 0.9f] }) },
+        { "StatCaps: gold growth must be above 1.", Caps(caps => caps with { GoldGrowth = 1f }) },
+        { "At least one hull is required.", Catalog with { Hulls = [] } },
+        { "Duplicate hull id 'hull_t1'.", Catalog with { Hulls = [Catalog.Hulls[0], Catalog.Hulls[0]] } },
+        { "hull id is empty.", Hull(hull => hull with { Id = " " }) },
+        { "hull_t1: name is empty.", Hull(hull => hull with { Name = "" }) },
+        { "hull_t1: front armor must be between 0 and 0.45.", Hull(hull => hull with { ArmorFront = 1f }) },
+        { "hull_t1: side armor must be between 0 and 0.45.", Hull(hull => hull with { ArmorSides = 1f }) },
+        { "hull_t1: back armor must be between 0 and 0.45.", Hull(hull => hull with { ArmorBack = 1f }) },
+        { "hull_t1: cannon slots must be positive.", Hull(hull => hull with { CannonSlots = 0 }) },
+        { "hull_t1: magazine must be positive.", Hull(hull => hull with { Magazine = 0 }) },
+        { "hull_t1: tier must be positive.", Hull(hull => hull with { Tier = 0 }) },
+        { "hull_t1: turn rate must be positive.", Hull(hull => hull with { TurnDegreesPerSecond = 0f }) },
+        { "hull_t1: map rank required must be positive.", Hull(hull => hull with { MapRankRequired = 0 }) },
+        { "At least one cannon is required.", Catalog with { Cannons = [] } },
+        { "Duplicate cannon id 'cannon_t1'.", Catalog with { Cannons = [Catalog.Cannons[0], Catalog.Cannons[0]] } },
+        { "cannon id is empty.", Cannon(cannon => cannon with { Id = "" }) },
+        { "cannon_t1: name is empty.", Cannon(cannon => cannon with { Name = "" }) },
+        { "cannon_t1: damage must be positive.", Cannon(cannon => cannon with { Damage = 0 }) },
+        { "cannon_t1: range must be positive.", Cannon(cannon => cannon with { RangeSquares = 0 }) },
+        { "cannon_t1: tier must be positive.", Cannon(cannon => cannon with { Tier = 0 }) },
+        { "cannon_t1: reload 1.23s is below the floor 1.5s.", Cannon(cannon => cannon with { ReloadSeconds = 1.234f }) },
+        { "At least one ammunition is required.", Catalog with { Ammunition = [] } },
+        { "round: name is empty.", Ammunition(ammo => ammo with { Name = "" }) },
+        { "round: ammunition code must not be None.", Ammunition(ammo => ammo with { Code = AmmunitionCode.None }) },
+        { "round_copy: duplicate ammunition code 'Round'.", Catalog with { Ammunition = [Catalog.Ammunition[0], Catalog.Ammunition[0] with { Id = "round_copy" }] } },
+        { "round: damage multiplier must be positive.", Ammunition(ammo => ammo with { DamageMultiplier = 0f }) },
+        { "round: reload multiplier must be positive.", Ammunition(ammo => ammo with { ReloadMultiplier = 0f }) },
+        { "round: range penalty must not be negative.", Ammunition(ammo => ammo with { RangePenaltySquares = -1f }) },
+        { "round: effect magnitude must not be negative.", Ammunition(ammo => ammo with { EffectMagnitude = -1f }) },
+        { "round: effect duration must not be negative.", Ammunition(ammo => ammo with { EffectDurationSeconds = -1f }) },
+        { "At least one npc is required.", Catalog with { Npcs = [] } },
+        { "Duplicate npc id 'skiff'.", Catalog with { Npcs = [Catalog.Npcs[0], Catalog.Npcs[0]] } },
+        { "npc id is empty.", Npc(npc => npc with { Id = "" }) },
+        { "skiff: name is empty.", Npc(npc => npc with { Name = "" }) },
+        { "skiff: npc code must not be PlayerSloop.", Npc(npc => npc with { Code = ShipArchetypeCode.PlayerSloop }) },
+        { "skiff: code 'RedMary' does not match the id.", Npc(npc => npc with { Code = ShipArchetypeCode.RedMary }) },
+        { "skiff: tier 0 is outside the table's 1 to 6.", Npc(npc => npc with { Tier = 0 }) },
+        { "skiff: tier 7 is outside the table's 1 to 6.", Npc(npc => npc with { Tier = 7 }) },
+        { "skiff: kind 'kraken' is neither a ship nor a monster.", Npc(npc => npc with { Kind = "kraken" }) },
+        { "skiff: family is empty.", Npc(npc => npc with { Family = " " }) },
+        { "skiff: behavior is empty.", Npc(npc => npc with { Behavior = "" }) },
+        { "skiff: desired range must be between 0 and 60.", Npc(npc => npc with { DesiredRangeSquares = 61f }) },
+        { "skiff: experience reward must be positive.", Npc(npc => npc with { ExperienceReward = 0 }) },
+        { "Map 1: map rank must be positive.", Catalog with { Maps = [Map with { Code = "", MapRank = 0 }] } },
+        { "Map 2: map rank must be positive.", Catalog with { Maps = [Map, Map with { MapId = 2, MapRank = 0 }] } },
+        { "Map 1/1: object 1: radius must be positive.", WorldObject(item => item with { Radius = 0f }) },
+
+        // A chart's exits are the only content that talks about another chart, so they are the
+        // only content that can strand a captain somewhere she cannot leave.
+        { "Map 1/1: exit edge 'up' is not a border of the chart.", Exits(("up", 2)) },
+        { "Map 1/1: exit east is authored twice.", Exits(("east", 2), ("east", 2)) },
+        { "Map 1/1: exit east leads to map 9, which does not exist.", Exits(("east", 9)) },
+        { "Map 1/1: exit east leads back to its own chart.", Exits(("east", 1)) },
         {
-            Ammunition =
-            [
-                Ammunition("", float.NaN),
-                Ammunition("duplicate", 0),
-                Ammunition("duplicate", 1),
-            ],
-            Abilities =
-            [
-                Ability("", 0, 0),
-                Ability("duplicate", 1, 1),
-                Ability("duplicate", 1, 1),
-            ],
-            Npcs =
-            [
-                Npc("", 0, 0, 0, 0, 0, 0),
-                Npc("duplicate", 1, 1, 1, 1, 1, 1),
-                Npc("duplicate", 1, 1, 1, 1, 1, 1),
-            ],
-        };
+            "Map 1/1: exit east leads to map 2, which has no exit west coming back.",
+            Catalog with
+            {
+                Maps =
+                [
+                    Map with { Exits = [new MapExitContent { Edge = "east", ToMapId = 2 }] },
+                    Map with { MapId = 2, Code = "1/2", Exits = [] },
+                ],
+            }
+        },
+    };
 
-        var errors = ContentCatalog.Validate(invalid);
+    /// <summary>One chart on its own, carrying exactly the exits named.</summary>
+    private static GameContent Exits(params (string Edge, byte ToMapId)[] exits) => Catalog with
+    {
+        Maps =
+        [
+            Map with
+            {
+                Exits = [.. exits.Select(exit => new MapExitContent
+                {
+                    Edge = exit.Edge,
+                    ToMapId = exit.ToMapId,
+                })],
+            },
+        ],
+    };
 
-        Assert.Contains(errors, error => error.Contains("ammunition id is empty",
-            StringComparison.Ordinal));
-        Assert.Contains(errors, error => error.Contains("Duplicate ammunition",
-            StringComparison.Ordinal));
-        Assert.Contains(errors, error => error.Contains("invalid range multiplier",
-            StringComparison.Ordinal));
-        Assert.Contains(errors, error => error.Contains("positive timing",
-            StringComparison.Ordinal));
-        Assert.Contains(errors, error => error.Contains("invalid combat or reward",
-            StringComparison.Ordinal));
+    public static TheoryData<string, GameContent> AcceptedContent => new()
+    {
+        { "a heading on the far edge of the circle", WorldObject(item => item with { DirectionDegrees = 360f }) },
+        { "an unarmoured hull face", Hull(hull => hull with { ArmorFront = 0f }) },
+        { "a reload exactly on the floor", Cannon(cannon => cannon with { ReloadSeconds = Catalog.StatCaps.ReloadFloorSeconds }) },
+    };
+
+    [Theory]
+    [MemberData(nameof(RejectedContent))]
+    public void Broken_content_reports_the_rule_it_breaks(string expected, GameContent content)
+    {
+        Assert.Contains(expected, ContentCatalog.Validate(content), StringComparer.Ordinal);
+    }
+
+    [Theory]
+    [MemberData(nameof(AcceptedContent))]
+    public void Boundary_content_is_accepted(string description, GameContent content)
+    {
+        Assert.NotEmpty(description);
+        Assert.Empty(ContentCatalog.Validate(content));
     }
 
     [Fact]
-    public void NullContentIsRejected()
+    public void EveryMapIsFourHundredSquaresOnASide()
     {
-        Assert.Throws<ArgumentNullException>(() => ContentCatalog.Validate(null!));
+        foreach (var map in Catalog.Maps)
+        {
+            Assert.Equal(400, map.Width);
+            Assert.Equal(400, map.Height);
+        }
     }
 
-    private static AmmunitionContent Ammunition(string id, float range) => new()
+    /// <summary>
+    /// The mask is generated from the same blocking objects the publish-time gate at
+    /// ContentValidation.Maps.cs:192 checks, so a shape's own centre has to be land in both.
+    /// This is the regression for the maps.json defect the mask replaced: terrainRows used to be
+    /// a stale hand-authored grid that quietly disagreed with the authored circles on 5,406 of
+    /// 160,000 squares, and nothing noticed because the old gate only ever checked one square.
+    /// </summary>
+    [Fact]
+    public void TheGeneratedMaskAgreesWithTheAuthoredIslandsAndReefs()
     {
-        Id = id,
-        Code = AmmunitionCode.Round,
-        HullDamage = 1,
-        SailDamage = 1,
-        CannonDamage = 1,
-        CrewDamage = 1,
-        RangeMultiplier = range,
-        AppliedStatus = "none",
-        AppliedStatusCode = StatusCode.None,
-    };
-
-    private static AbilityContent Ability(string id, uint cooldown, uint duration) => new()
-    {
-        Id = id,
-        Code = AbilityCode.Brace,
-        CooldownTicks = cooldown,
-        DurationTicks = duration,
-    };
-
-    private static NpcContent Npc(
-        string id,
-        float range,
-        float speed,
-        uint hull,
-        uint damage,
-        uint gold,
-        ulong experience) => new()
+        foreach (var map in Catalog.Maps)
         {
-            Id = id,
-            Code = ShipArchetypeCode.Patrol,
-            AggroRange = 0,
-            DesiredRange = range,
-            MaximumSpeed = speed,
-            Hull = hull,
-            CannonDamage = damage,
-            PreferredAmmunition = AmmunitionCode.Round,
-            PreferredWeakPoint = WeakPointCode.Hull,
-            GoldReward = gold,
-            ExperienceReward = experience,
-        };
+            var mask = ContentCatalog.LandMaskFor(map.MapId);
+            foreach (var shape in map.Objects)
+            {
+                if (shape.Kind is not ("island" or "reef"))
+                {
+                    continue;
+                }
+
+                Assert.True(
+                    mask.IsLand(shape.X, shape.Y),
+                    $"{map.Code}: the centre of {shape.Kind} at ({shape.X}, {shape.Y}) is not land in the mask");
+            }
+        }
+    }
+
+    /// <summary>
+    /// A shoal slows a hull; it does not block one, so it must never set a mask bit even though
+    /// it is authored the same way an island or a reef is (a kind, a centre, a radius).
+    /// </summary>
+    [Fact]
+    public void AShoalNeverSetsTheMask()
+    {
+        foreach (var map in Catalog.Maps)
+        {
+            var mask = ContentCatalog.LandMaskFor(map.MapId);
+            foreach (var shape in map.Objects)
+            {
+                if (!string.Equals(shape.Kind, "shoal", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                Assert.False(
+                    mask.IsLand(shape.X, shape.Y),
+                    $"{map.Code}: shoal {shape.EntityId} at ({shape.X}, {shape.Y}) is land in the mask");
+            }
+        }
+    }
+
+    /// <summary>
+    /// The mask and the terrain grid are two representations of the same rasterising pass
+    /// (scripts/lib/rasterize-maps.mjs), so every square has to agree between the two: the mask
+    /// bit set if and only if the terrain symbol is land.
+    /// </summary>
+    [Fact]
+    public void TheMaskAndTheTerrainGridAgreeOnEverySquare()
+    {
+        foreach (var map in Catalog.Maps)
+        {
+            var mask = ContentCatalog.LandMaskFor(map.MapId);
+            for (var y = 0; y < map.Height; y++)
+            {
+                for (var x = 0; x < map.Width; x++)
+                {
+                    var isLandTerrain = SectorRules.TerrainAt(map, x, y) == TerrainCode.Land;
+                    Assert.True(
+                        mask.IsLandCell(x, y) == isLandTerrain,
+                        $"{map.Code}: mask and terrain disagree at ({x}, {y})");
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void EveryHarbourSitsOnOpenWater()
+    {
+        foreach (var map in Catalog.Maps)
+        {
+            Assert.False(
+                ContentCatalog.LandMaskFor(map.MapId).IsLand(map.PortX, map.PortY),
+                $"{map.Code}: the harbour is inside land");
+        }
+    }
+
+    [Fact]
+    public void NoWorldObjectSitsOutsideItsMap()
+    {
+        // Against the map's own grid, not against WorldRules.IsInsideMap. The two agree
+        // only while every map is the full 400 squares, which is true today and is exactly
+        // what makes the weaker assertion look sufficient: a map declaring 200x200 with an
+        // object at (350, 350) would pass IsInsideMap and be off its own chart. They also
+        // disagree at the far edge, where IsInsideMap is closed and the sector grid is
+        // half-open, so IsInsideMap accepts an x of 400 that ValidateObjects rejects.
+        // SectorRules.Contains is what the publish gate actually uses; assert on that.
+        foreach (var map in Catalog.Maps)
+        {
+            foreach (var worldObject in map.Objects)
+            {
+                Assert.True(
+                    SectorRules.Contains(map, worldObject.X, worldObject.Y),
+                    $"{map.Code} object {worldObject.EntityId} ({worldObject.Kind}) at " +
+                    $"({worldObject.X}, {worldObject.Y}) is off the {map.Width}x{map.Height} map");
+            }
+        }
+    }
+
+    [Fact]
+    public void TheTerrainGridIsAsWideAndTallAsTheMapSaysItIs()
+    {
+        // The expansion in Step 4 is mechanical, so the way it goes wrong is off-by-a-block
+        // rather than subtly wrong: one short row, or four hundred rows of twenty characters.
+        foreach (var map in Catalog.Maps)
+        {
+            Assert.Equal(map.Height, map.TerrainRows.Count);
+            Assert.All(map.TerrainRows, row => Assert.Equal(map.Width, row.Length));
+        }
+    }
+
+    [Fact]
+    public void A_negative_object_radius_reports_only_the_positivity_rule()
+    {
+        var errors = ContentCatalog.Validate(WorldObject(item => item with { Radius = -1f }));
+
+        var radius = Assert.Single(errors, error => error.StartsWith("Map 1/1: object 1: radius", StringComparison.Ordinal));
+        Assert.Equal("Map 1/1: object 1: radius must be positive.", radius);
+    }
+
+    private static GameContent Caps(Func<StatCapsContent, StatCapsContent> change) =>
+        Catalog with { StatCaps = change(Catalog.StatCaps) };
+
+    private static GameContent Hull(Func<HullContent, HullContent> change) =>
+        Catalog with { Hulls = [change(Catalog.Hulls[0])] };
+
+    private static GameContent Cannon(Func<CannonContent, CannonContent> change) =>
+        Catalog with { Cannons = [change(Catalog.Cannons[0])] };
+
+    private static GameContent Ammunition(Func<AmmunitionContent, AmmunitionContent> change) =>
+        Catalog with { Ammunition = [change(Catalog.Ammunition[0])] };
+
+    private static GameContent Npc(Func<NpcContent, NpcContent> change) =>
+        Catalog with { Npcs = [change(Catalog.Npcs[0])] };
+
+    private static GameContent WorldObject(Func<WorldObjectContent, WorldObjectContent> change) =>
+        Catalog with { Maps = [Map with { Objects = [change(Map.Objects[0])] }] };
 }

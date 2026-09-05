@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$project_root/scripts/lib/local-ports.sh"
 runtime_directory="$(mktemp -d)"
 metrics_before="$runtime_directory/metrics-before.txt"
 metrics_after="$runtime_directory/metrics-after.txt"
 cpu_samples="$runtime_directory/cpu-samples.txt"
 tick_interval_usec=10000
 database_identity="$(curl --fail --silent --max-time 3 \
-  http://127.0.0.1:3000/v1/database/sea-local/identity)"
+  "$SEA_SPACETIME_LOCAL_URL/v1/database/sea-local/identity")"
 
 cleanup() {
   rm -rf "$runtime_directory"
@@ -31,9 +33,9 @@ metric_value() {
   ' "$metric_file"
 }
 
-curl --fail --silent --max-time 3 http://127.0.0.1:3000/v1/metrics >"$metrics_before"
+curl --fail --silent --max-time 3 "$SEA_SPACETIME_LOCAL_URL/v1/metrics" >"$metrics_before"
 sleep 3
-curl --fail --silent --max-time 3 http://127.0.0.1:3000/v1/metrics >"$metrics_after"
+curl --fail --silent --max-time 3 "$SEA_SPACETIME_LOCAL_URL/v1/metrics" >"$metrics_after"
 
 time_before="$(metric_value "$metrics_before" reducer_wasm_time_usec)"
 time_after="$(metric_value "$metrics_after" reducer_wasm_time_usec)"

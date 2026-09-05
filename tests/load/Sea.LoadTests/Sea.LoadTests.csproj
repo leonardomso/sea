@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="../../../apps/game-unity/Assets/Networking/SeaWorldContract.cs" Link="Client/SeaWorldContract.cs" />
     <Compile Include="../../../apps/game-unity/Assets/Generated/SpacetimeDB/**/*.cs"
              Link="Generated/SpacetimeDB/%(RecursiveDir)%(Filename)%(Extension)" />
     <ProjectReference Include="../../../packages/spacetimedb-unity/SpacetimeDB.ClientSDK.csproj" />

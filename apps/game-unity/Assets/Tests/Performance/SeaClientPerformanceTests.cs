@@ -15,6 +15,7 @@ namespace Sea.Tests.Performance
         private static readonly ProfilerMarker InterpolationMarker =
             new("Sea.Tests.Interpolation250");
         private readonly GameObject[] ships = new GameObject[ShipCount];
+        private readonly SeaMotionTimeline[] timelines = new SeaMotionTimeline[ShipCount];
         private NativeArray<float2> positions;
         private NativeArray<float> squaredDistances;
 
@@ -24,6 +25,9 @@ namespace Sea.Tests.Performance
             for (var index = 0; index < ships.Length; index++)
             {
                 ships[index] = new GameObject($"Performance Ship {index}");
+                timelines[index] = new SeaMotionTimeline();
+                timelines[index].Push(10, new Vector3(index, 0f, index), index % 360);
+                timelines[index].Push(11, new Vector3(index + 1f, 0f, index), index % 360 + 5f);
             }
 
             positions = new NativeArray<float2>(ShipCount, Allocator.Persistent);
@@ -55,13 +59,10 @@ namespace Sea.Tests.Performance
                     {
                         for (var index = 0; index < ships.Length; index++)
                         {
-                            SeaShipMotion.Step(
-                                ships[index].transform,
-                                new Vector3(index, 0f, index),
-                                index % 360,
-                                1f / 60f,
-                                8f,
-                                720f);
+                            var sample = timelines[index].Sample(10.5d);
+                            ships[index].transform.SetPositionAndRotation(
+                                sample.Position,
+                                Quaternion.Euler(0f, sample.HeadingDegrees, 0f));
                         }
                     }
                 })

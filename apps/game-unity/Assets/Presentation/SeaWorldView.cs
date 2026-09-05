@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using SpacetimeDB.Types;
 using Unity.Collections;
@@ -18,14 +19,24 @@ namespace Sea.Client
 
         [SerializeField] private SeaConnectionController connection;
         [SerializeField] private Shader fogShader;
-        [SerializeField] private float presentationMovementSpeed = 18f;
-        [SerializeField] private float turnSpeedDegrees = 720f;
         [SerializeField] private float modelYawOffset = 270f;
 
         private const float ShipFootprint = 10f;
         private const int MaximumTrackedShipRows = 6000;
         private const int MainChartFogLayer = 8;
-        public const float VisionRadius = 44f;
+        // A Unity plane is ten units across per unit of scale. The water and fog reach one camera
+        // margin past each map edge, because the camera stays centred on a ship sailing along the
+        // edge and would otherwise frame the void beyond it. They are laid on the middle of the
+        // map to do it: the span moved to 480 when the map's origin moved to its north-west
+        // corner, but the planes stayed on the origin, so they covered -240..240 and left
+        // everything east or south of 240 -- most of the chart -- drawing over nothing.
+        private const float MapPlaneSpan =
+            SeaChartCoordinates.MapMaximum - SeaChartCoordinates.MapMinimum
+            + (2f * SeaChartCameraRules.MapMargin);
+        private static readonly Vector3 MapPlaneScale = new(
+            MapPlaneSpan / 10f,
+            1f,
+            MapPlaneSpan / 10f);
         public const float WaterSurfaceHeight = -0.35f;
         public const float ShipRootHeight = -0.43f;
 
@@ -33,7 +44,8 @@ namespace Sea.Client
         private readonly Dictionary<ulong, GameObject> mapGeometry = new();
         private readonly SeaRowRegistry<ulong, Ship> shipRows = new();
         private readonly SeaRowRegistry<ulong, Volley> volleyRows = new();
-        private readonly Dictionary<ulong, SeaInterpolationBuffer> targets = new();
+        private readonly Dictionary<ulong, SeaMotionTimeline> targets = new();
+        private SeaSnapshotClock snapshotClock;
         private readonly Dictionary<ulong, SeaShipFeedback> shipFeedback = new();
         private readonly List<SeaVisibilityCandidate> visibilityCandidates = new(256);
         private readonly HashSet<ulong> desiredPresentations = new();
@@ -44,6 +56,7 @@ namespace Sea.Client
         private GameObject playerObject;
         private SeaShipFeedback playerFeedback;
         private GameObject targetRing;
+        private GameObject ownShipRing;
         private Material waterMaterial;
         private Material sandMaterial;
         private Material rockMaterial;
@@ -58,20 +71,23 @@ namespace Sea.Client
         private Material shoalMaterial;
         private Material stormMaterial;
         private Material healthMaterial;
-        private Material silhouetteMaterial;
         private Material targetMaterial;
+        private Material ownShipMaterial;
         private SeaCombatPresenter combatPresenter;
+        private Func<ulong, Transform> findShipTransform;
+        private Func<ulong, SeaShipFeedback> findShipFeedback;
         private ulong playerEntityId;
         private ulong worldTick;
         private Ship localShip;
-        private Vector3 previousVisibilityOrigin = new(float.PositiveInfinity, 0f, 0f);
+        private Transform chartCameraTransform;
+        private Vector2 previousVisibilityOrigin = new(float.PositiveInfinity, 0f);
         private bool visibilityDirty = true;
-        private LineRenderer courseLine;
-        private LineRenderer destinationRing;
+        private LineRenderer coursePing;
+        private float coursePingStartedAt;
+        private Vector3 coursePingCenter;
 
         public Shader FogShader => fogShader;
         public float ModelYawOffset => modelYawOffset;
-        public float PresentationTurnSpeed => turnSpeedDegrees;
 
         public bool TryGetPlayerPresentationPosition(out Vector3 position)
         {
@@ -90,10 +106,25 @@ namespace Sea.Client
             fogShader = shader;
         }
 
-        public void ConfigureDependencies(SeaConnectionController connectionController)
+        public void ConfigureDependencies(
+            SeaConnectionController connectionController,
+            Camera chartCamera)
         {
             connection = connectionController;
+            chartCameraTransform = chartCamera != null ? chartCamera.transform : null;
             BindInterestCallbacks(connectionController);
+        }
+
+        // Camera.main tags-searches the scene on every call, so the composer hands the
+        // chart camera over and the search only runs when nothing was wired.
+        private Transform ChartCameraTransform()
+        {
+            if (chartCameraTransform == null && Camera.main != null)
+            {
+                chartCameraTransform = Camera.main.transform;
+            }
+
+            return chartCameraTransform;
         }
 
         private void Awake()
@@ -162,7 +193,7 @@ namespace Sea.Client
             }
 
             fogMaterial = new Material(fogShader) { name = "Player Vision Fog" };
-            fogMaterial.SetFloat("_VisionRadius", VisionRadius);
+            fogMaterial.SetFloat("_VisionRadius", SeaPresentationRules.VisionRadius);
             fogMaterial.SetFloat("_FadeWidth", 12f);
             fogMaterial.SetColor("_FogColor", new Color(0.015f, 0.05f, 0.065f, 0.96f));
             cannonballMaterial = SeaMaterialFactory.Create(new Color(0.04f, 0.035f, 0.03f, 1f));
@@ -173,34 +204,34 @@ namespace Sea.Client
             stormMaterial = SeaMaterialFactory.CreateTransparent(
                 new Color(0.10f, 0.14f, 0.18f, 0.82f));
             healthMaterial = SeaMaterialFactory.Create(Color.white);
-            silhouetteMaterial = SeaMaterialFactory.Create(Color.white);
             targetMaterial = SeaMaterialFactory.Create(new Color(1f, 0.85f, 0.25f, 1f));
+            ownShipMaterial = SeaMaterialFactory.Create(new Color(0.2f, 0.9f, 0.35f, 1f));
             combatPresenter = new SeaCombatPresenter(cannonballMaterial, combatEffectMaterial);
+            // Cached once: the drain runs every frame and a fresh delegate there would allocate
+            // on every one of them.
+            findShipTransform = FindShipTransform;
+            findShipFeedback = FindShipFeedback;
         }
 
         private void CreateWater()
         {
-            var water = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            water.name = "Water Surface";
-            water.transform.position = new Vector3(0f, WaterSurfaceHeight, 0f);
-            water.transform.localScale = new Vector3(26f, 1f, 26f);
-            water.GetComponent<Renderer>().sharedMaterial = waterMaterial;
-            Destroy(water.GetComponent<Collider>());
-            CreateCourseIndicator();
+            var water = SeaPrimitive.Create(PrimitiveType.Plane, "Water Surface", waterMaterial);
+            water.transform.position = new Vector3(
+                SeaChartCoordinates.MapCentre, WaterSurfaceHeight, SeaChartCoordinates.MapCentre);
+            water.transform.localScale = MapPlaneScale;
+            CreateCoursePing();
         }
 
         private void CreateFog()
         {
-            var fog = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            fog.name = "Player Vision Fog";
+            var fog = SeaPrimitive.Create(PrimitiveType.Plane, "Player Vision Fog", fogMaterial);
             fog.layer = MainChartFogLayer;
-            fog.transform.position = new Vector3(0f, 8f, 0f);
-            fog.transform.localScale = new Vector3(26f, 1f, 26f);
+            fog.transform.position = new Vector3(
+                SeaChartCoordinates.MapCentre, 8f, SeaChartCoordinates.MapCentre);
+            fog.transform.localScale = MapPlaneScale;
             var renderer = fog.GetComponent<Renderer>();
-            renderer.sharedMaterial = fogMaterial;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
-            Destroy(fog.GetComponent<Collider>());
         }
 
         private void SyncCombatPresentation()
@@ -229,37 +260,109 @@ namespace Sea.Client
             }
 
             combatPresenter.EndFrame();
-        }
-
-        private Transform FindShipTransform(ulong entityId)
-        {
-            if (entityId == playerEntityId)
-            {
-                return playerObject != null ? playerObject.transform : null;
-            }
-
-            return entities.TryGetValue(entityId, out var ship) ? ship.transform : null;
+            combatPresenter.DrainHits(findShipTransform, findShipFeedback);
         }
 
         private void UpdateEntityTransforms()
         {
+            if (snapshotClock == null)
+            {
+                return;
+            }
+
+            var serverTick = snapshotClock.ServerTick(Time.realtimeSinceStartupAsDouble);
+            var renderTick = SeaSnapshotClock.RenderTickFrom(serverTick);
+            var deltaSeconds = Time.deltaTime;
             foreach (var target in targets)
             {
-                if (entities.TryGetValue(target.Key, out var entityObject) &&
-                    shipRows.TryGetValue(target.Key, out var ship))
+                if (!target.Value.HasSamples ||
+                    !entities.TryGetValue(target.Key, out var entityObject))
                 {
-                    var sample = target.Value.Sample(
-                        Time.realtimeSinceStartupAsDouble,
-                        interpolationDelay: 0.1d);
-                    SeaShipMotion.Step(
-                        entityObject.transform,
-                        sample.Position,
-                        sample.HeadingDegrees,
-                        Time.deltaTime,
-                        Mathf.Max(presentationMovementSpeed, ship.Speed * 1.5f),
-                        turnSpeedDegrees);
+                    continue;
                 }
+
+                var motion = target.Key == playerEntityId &&
+                    TryPredictLocalShip(serverTick, deltaSeconds, out var predicted)
+                        ? predicted
+                        : ToMotion(target.Value.Sample(renderTick));
+                entityObject.transform.SetPositionAndRotation(
+                    motion.Position,
+                    Quaternion.Euler(0f, motion.HeadingDegrees, 0f));
             }
+        }
+
+        private static SeaPredictedMotion ToMotion(SeaInterpolationSample sample) =>
+            new(sample.Position, sample.HeadingDegrees);
+
+        // The ship the player steers is drawn where the server has already agreed she is
+        // heading, not a render delay behind it, so a click turns the hull on the frame it is
+        // made. She walks the route the server sent her with the rule the server walks it with
+        // (SEA_5 12.2), which is why there is nothing here to keep in step by hand.
+        private readonly SeaLocalShipPrediction prediction = new();
+        private ulong predictedSnapshotTick;
+        private float secondsSincePredictionUpdate;
+
+        private bool TryPredictLocalShip(
+            double serverTick,
+            float deltaSeconds,
+            out SeaPredictedMotion motion)
+        {
+            motion = default;
+            if (localShip == null || !movementRows.TryGetValue(playerEntityId, out var movement))
+            {
+                return false;
+            }
+
+            var tickRate = connection.WorldTickRate > 0
+                ? connection.WorldTickRate
+                : SeaSnapshotClock.DefaultTickRate;
+            if (movement.SnapshotTick != predictedSnapshotTick)
+            {
+                predictedSnapshotTick = movement.SnapshotTick;
+                secondsSincePredictionUpdate =
+                    (float)Math.Max(0d, (serverTick - movement.SnapshotTick) / tickRate);
+                var route = connection.Connection?.Db.ShipRoute.EntityId.Find(playerEntityId);
+                prediction.OnServerUpdate(
+                    new Vector2(movement.PositionX, movement.PositionY),
+                    movement.HeadingDegrees,
+                    movement.Speed,
+                    ToChartRoute(route),
+                    route?.Version ?? 0u);
+            }
+
+            // Past the budget this would be guessing rather than reckoning: the server has
+            // missed five ticks, and running further ahead only makes the correction worse.
+            var budget = SeaLocalShipPrediction.MaximumPredictionSeconds -
+                secondsSincePredictionUpdate;
+            var step = Mathf.Clamp(deltaSeconds, 0f, Mathf.Max(0f, budget));
+            secondsSincePredictionUpdate += step;
+            prediction.Advance(step);
+            motion = new SeaPredictedMotion(
+                ToWorld(prediction.Position.x, prediction.Position.y, ShipRootHeight),
+                prediction.DrawnHeadingDegrees);
+            return true;
+        }
+
+        /// <summary>
+        /// The route row read as the list of chart points the prediction walks. Null rather than
+        /// an empty array when there is no course: a ship with nowhere to go must not be walked
+        /// anywhere, and the rule reads the two the same way.
+        /// </summary>
+        private static Vector2[] ToChartRoute(ShipRoute route)
+        {
+            if (route == null || route.PointsX == null || route.PointsX.Count == 0 ||
+                route.PointsX.Count != route.PointsY.Count)
+            {
+                return null;
+            }
+
+            var points = new Vector2[route.PointsX.Count];
+            for (var index = 0; index < points.Length; index++)
+            {
+                points[index] = new Vector2(route.PointsX[index], route.PointsY[index]);
+            }
+
+            return points;
         }
 
         private GameObject CreateShip(string name, Ship row)
@@ -276,65 +379,69 @@ namespace Sea.Client
             return ship;
         }
 
-        private void CreateCourseIndicator()
+        private void CreateCoursePing()
         {
-            var routeObject = new GameObject("Plotted Course");
-            courseLine = routeObject.AddComponent<LineRenderer>();
-            courseLine.sharedMaterial = SeaMaterialFactory.CreateTransparent(
-                new Color(0.91f, 0.72f, 0.39f, 0.58f));
-            courseLine.positionCount = 2;
-            courseLine.startWidth = 0.13f;
-            courseLine.endWidth = 0.04f;
-            courseLine.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-
-            var markerObject = new GameObject("Course Destination");
-            destinationRing = markerObject.AddComponent<LineRenderer>();
-            destinationRing.sharedMaterial = courseLine.sharedMaterial;
-            destinationRing.loop = true;
-            destinationRing.positionCount = 40;
-            destinationRing.startWidth = 0.14f;
-            destinationRing.endWidth = 0.14f;
-            destinationRing.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            courseLine.gameObject.SetActive(false);
-            destinationRing.gameObject.SetActive(false);
+            var pingObject = new GameObject("Course Ping");
+            coursePing = pingObject.AddComponent<LineRenderer>();
+            coursePing.sharedMaterial = SeaMaterialFactory.CreateTransparent(
+                new Color(0.91f, 0.72f, 0.39f, 1f));
+            coursePing.loop = true;
+            coursePing.positionCount = SeaClickPingRules.Segments;
+            coursePing.startWidth = 0.16f;
+            coursePing.endWidth = 0.16f;
+            coursePing.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            coursePing.gameObject.SetActive(false);
         }
 
-        private void UpdateCourseIndicator(Ship ship)
+        /// <summary>
+        /// Answers a click on the water where it was made, without waiting for the server to
+        /// confirm the course: the ring is feedback on the order, not a picture of the route.
+        /// </summary>
+        public void PingChartPosition(Vector2 destination)
         {
-            var show = ship.HasCourse && playerObject != null;
-            courseLine.gameObject.SetActive(show);
-            destinationRing.gameObject.SetActive(show);
-            if (!show)
+            if (coursePing == null)
             {
                 return;
             }
 
-            var start = playerObject.transform.position + Vector3.up * 0.18f;
-            var destination = ToWorld(ship.DestinationX, ship.DestinationY, 0.08f);
-            courseLine.positionCount = ship.HasWaypoint ? 3 : 2;
-            courseLine.SetPosition(0, start);
-            if (ship.HasWaypoint)
+            coursePingCenter = ToWorld(destination.x, destination.y, 0.08f);
+            coursePingStartedAt = Time.time;
+            coursePing.gameObject.SetActive(true);
+        }
+
+        private void UpdateCoursePing()
+        {
+            if (coursePing == null || !coursePing.gameObject.activeSelf)
             {
-                courseLine.SetPosition(1, ToWorld(ship.WaypointX, ship.WaypointY, 0.08f));
-                courseLine.SetPosition(2, destination);
+                return;
             }
-            else
+
+            var elapsed = Time.time - coursePingStartedAt;
+            if (!SeaClickPingRules.IsAlive(elapsed))
             {
-                courseLine.SetPosition(1, destination);
+                coursePing.gameObject.SetActive(false);
+                return;
             }
-            const float markerRadius = 1.55f;
-            for (var index = 0; index < destinationRing.positionCount; index++)
+
+            var radius = SeaClickPingRules.RadiusAt(elapsed);
+            var color = new Color(0.97f, 0.85f, 0.55f, SeaClickPingRules.AlphaAt(elapsed));
+            coursePing.startColor = color;
+            coursePing.endColor = color;
+            for (var index = 0; index < coursePing.positionCount; index++)
             {
-                var angle = index * Mathf.PI * 2f / destinationRing.positionCount;
-                destinationRing.SetPosition(
+                coursePing.SetPosition(
                     index,
-                    destination + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * markerRadius);
+                    SeaClickPingRules.SegmentPosition(coursePingCenter, index, radius));
             }
         }
 
         private void UpdateTargetRing(Ship ship)
         {
-            if (ship.TargetEntityId == 0 || !entities.TryGetValue(ship.TargetEntityId, out var selectedObject))
+            if (ship.TargetEntityId == 0 ||
+                !entities.TryGetValue(ship.TargetEntityId, out var selectedObject) ||
+                !SeaPresentationRules.IsInVision(Vector3.Distance(
+                    PlayerWorldPosition(),
+                    selectedObject.transform.position)))
             {
                 if (targetRing != null)
                 {
@@ -344,20 +451,41 @@ namespace Sea.Client
                 return;
             }
 
-            if (targetRing == null)
+            targetRing ??= CreateRing("Selected Target Ring", 4.5f, targetMaterial);
+            PlaceRing(targetRing, selectedObject);
+        }
+
+        // The green disc marks the player's own ship so it reads at a glance among NPCs.
+        private void UpdateOwnShipRing()
+        {
+            if (playerObject == null)
             {
-                targetRing = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                targetRing.name = "Selected Target Ring";
-                targetRing.transform.localScale = new Vector3(4.5f, 0.04f, 4.5f);
-                targetRing.GetComponent<Renderer>().sharedMaterial = targetMaterial;
-                Destroy(targetRing.GetComponent<Collider>());
+                if (ownShipRing != null)
+                {
+                    ownShipRing.SetActive(false);
+                }
+
+                return;
             }
 
-            targetRing.SetActive(selectedObject.activeSelf);
-            targetRing.transform.position = new Vector3(
-                selectedObject.transform.position.x,
+            ownShipRing ??= CreateRing("Own Ship Ring", 5.5f, ownShipMaterial);
+            PlaceRing(ownShipRing, playerObject);
+        }
+
+        private GameObject CreateRing(string name, float diameter, Material material)
+        {
+            var ring = SeaPrimitive.Create(PrimitiveType.Cylinder, name, material);
+            ring.transform.localScale = new Vector3(diameter, 0.04f, diameter);
+            return ring;
+        }
+
+        private static void PlaceRing(GameObject ring, GameObject ship)
+        {
+            ring.SetActive(ship.activeSelf);
+            ring.transform.position = new Vector3(
+                ship.transform.position.x,
                 WaterSurfaceHeight + 0.025f,
-                selectedObject.transform.position.z);
+                ship.transform.position.z);
         }
 
     }

@@ -16,17 +16,18 @@ public sealed class ReducerIntegrationTests
         client.LoadPlayer();
         var before = client.OwnedShip();
 
-        var result = client.IssueBroadside(commandId: 1);
+        var result = client.IssueFire(commandId: 1);
         var after = client.OwnedShip();
 
         Assert.False(result.Accepted);
-        Assert.Equal(12, result.RejectionCode);
+        Assert.Equal(11, result.RejectionCode);
         Assert.False(result.IsDuplicate);
         Assert.Null(client.UnhandledReducerError);
         Assert.Equal(before.EntityId, after.EntityId);
         Assert.Equal(before.Hull, after.Hull);
         Assert.Equal(before.TargetEntityId, after.TargetEntityId);
-        Assert.Equal(before.NextPortFireTick, after.NextPortFireTick);
+        Assert.Equal(before.ReadyVolleys, after.ReadyVolleys);
+        Assert.Equal(before.ReloadProgressTicks, after.ReloadProgressTicks);
     }
 
     [Fact]
@@ -37,10 +38,8 @@ public sealed class ReducerIntegrationTests
         var clock = client.OwnedClock();
         var start = client.OwnedShip();
 
-        var destinationX = MathF.Abs(start.PositionX) > 1f || MathF.Abs(start.PositionY) > 1f
-            ? 0f
-            : 20f;
-        var course = client.IssueSetCourse(1, destinationX, 0f);
+        var mark = client.OpenWater();
+        var course = client.IssueSetCourse(1, mark.X, mark.Y);
         Assert.True(
             course.Accepted,
             $"SetCourse was rejected with code {course.RejectionCode}.");
@@ -61,7 +60,11 @@ public sealed class ReducerIntegrationTests
         using var client = IntegrationClient.Connect();
         client.LoadPlayer();
 
-        var first = client.IssueSetCourse(commandId: 1, x: 10f, y: 10f);
+        // Only the first course has to be sailable. The duplicate is answered by its command
+        // id and the stale one by the sequence, both before the water is ever looked at, so the
+        // marks they carry are deliberately somewhere a course would never be accepted.
+        var mark = client.OpenWater();
+        var first = client.IssueSetCourse(commandId: 1, x: mark.X, y: mark.Y);
         var afterFirst = client.OwnedShip();
         var duplicate = client.IssueSetCourse(commandId: 1, x: -10f, y: -10f);
         var afterDuplicate = client.OwnedShip();
@@ -89,19 +92,25 @@ public sealed class ReducerIntegrationTests
         using var fourth = IntegrationClient.Connect();
         var clients = new[] { first, second, third, fourth };
 
+        Assert.All(clients, client => client.LoadPlayer());
+        var rendezvous = first.OpenWater();
         foreach (var client in clients)
         {
-            client.LoadPlayer();
-            var course = client.IssueSetCourse(1, 0f, 0f);
+            var course = client.IssueSetCourse(1, rendezvous.X, rendezvous.Y);
             Assert.True(
                 course.Accepted,
                 $"SetCourse was rejected with code {course.RejectionCode}.");
         }
 
-        PumpAllUntil(clients, () => clients.All(client => client.IsNear(0f, 0f, 14f)));
+        // Four hulls that stop on the same mark are four hulls in the same chunk, which is the
+        // whole point: the window each of them then asks for is one chunk and its neighbours.
+        PumpAllUntil(
+            clients,
+            () => clients.All(client => client.IsNear(rendezvous.X, rendezvous.Y, 14f)));
         foreach (var client in clients)
         {
-            client.SubscribeSpatial(chunkX: 4, chunkY: 4, radius: 1);
+            var berth = client.OwnedShip();
+            client.SubscribeSpatial(berth.ChunkX, berth.ChunkY, radius: 1);
         }
 
         var expectedPlayerShips = clients
@@ -111,22 +120,32 @@ public sealed class ReducerIntegrationTests
             expectedPlayerShips.IsSubsetOf(client.VisiblePlayerShipIds())));
         var target = second.OwnedShip().EntityId;
         Assert.True(first.IssueSelectTarget(2, target).Accepted);
-        Assert.Equal(8, first.IssueBroadside(3).RejectionCode);
+        Assert.Equal(8, first.IssueFire(3).RejectionCode);
+
+        // Hooks are turned down for the same reason the guns are: the other hull belongs to a
+        // player, and SEA_5 9.1 keeps boarding to hostiles.
         Assert.Equal(8, first.IssueBoarding(4).RejectionCode);
-        Assert.All(clients, client => Assert.True(client.HasOnlyBoundedSpatialRows(3, 5)));
+        Assert.All(clients, client => Assert.True(client.HasOnlyBoundedSpatialRows()));
     }
 
     [Fact]
-    public void TwelveNpcShipsSeedAndBeginDeterministicRoaming()
+    public void TheHostileRosterSeedsAndBeginsDeterministicRoaming()
     {
         using var client = IntegrationClient.Connect();
+
+        // An empty world skips its dispatch, so the NPCs only roam once a player is
+        // loaded. Connecting a socket is not enough on its own.
+        client.LoadPlayer();
         client.SubscribeNpcWorld();
         var initial = client.NpcPositions();
 
-        Assert.Equal(12, initial.Count);
-        Assert.Equal(4, client.NpcCount(1));
-        Assert.Equal(4, client.NpcCount(2));
+        // Twelve patrol slots, every fifth of them a veteran, plus the named captain and the
+        // two escorts moored beside her: five skiffs, five reef crabs, four fancies, one Red Mary.
+        Assert.Equal(15, initial.Count);
+        Assert.Equal(5, client.NpcCount(1));
+        Assert.Equal(5, client.NpcCount(2));
         Assert.Equal(4, client.NpcCount(3));
+        Assert.Equal(1, client.NpcCount(4));
 
         PumpAllUntil([client], () =>
         {
@@ -137,7 +156,7 @@ public sealed class ReducerIntegrationTests
                  MathF.Abs(pair.Value.Y - position.Y) > 0.01f));
         });
 
-        Assert.Equal(12, client.NpcAiCount());
+        Assert.Equal(15, client.NpcAiCount());
         Assert.Null(client.UnhandledReducerError);
     }
 

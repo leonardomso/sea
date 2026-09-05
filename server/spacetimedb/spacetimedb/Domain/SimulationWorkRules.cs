@@ -4,46 +4,54 @@ public static class SimulationWorkRules
 {
     public const bool ShipsBlockMovement = false;
     public const ulong PeriodicEffectIntervalTicks = 5;
-    public const byte MovementShardCount = 64;
-    public const byte HazardShardCount = 16;
+    public const byte MovementShardCount = 8;
+    // A ship's motion is recomputed on the tick it happens. Sailing half the fleet per tick
+    // halved the shard rows a tick touched, but it also meant every hull's published position
+    // was up to 200ms old before it left the server, and a captain feels that on every click.
+    // The saving was throughput we do not need at the fleet sizes we actually sail.
+    public const byte MovementShardStride = 1;
     public const byte NpcShardCount = 4;
     public const byte CurrentRefreshBucketCount = 16;
     public const byte LootPickupBucketCount = 10;
-    public const byte MovementReducerRateHz = 5;
-    public const byte NpcReducerRateHz = 2;
-    public const byte DispatchRateHz = 100;
-    public const byte DispatchSlotsPerWorldTick = 10;
     public const byte MaximumMovementCatchUpTicks = 8;
-    public const byte MovementSnapshotPartitionCount = 1;
-    public const ushort MovementSnapshotDispatchIntervalMilliseconds = 16;
-    public const byte HazardDispatchRateHz = 32;
-    public const ushort IdleDispatchIntervalMilliseconds = 100;
-    public const ushort IdleBackgroundIntervalMilliseconds = 1_000;
+    public const ulong HazardIntervalTicks = 5;
     public const ulong TelemetrySampleIntervalTicks = 100;
+
+    // Flip on to log a "PROF <phase>" line after every dispatch phase; feed the module
+    // logs to scripts/profile-dispatch.mjs for per-phase timings.
+    public static bool ProfileDispatchPhases => false;
 
     public static bool ShouldSampleTelemetry(ulong tick) =>
         tick > 0 && tick % TelemetrySampleIntervalTicks == 0;
 
-    public static double DispatchIntervalMilliseconds(bool hasConnectedPlayers) =>
-        hasConnectedPlayers
-            ? 1000d / DispatchRateHz
-            : IdleDispatchIntervalMilliseconds;
+    // Reducers execute one at a time per database, so the whole world tick runs as a
+    // single transaction: splitting it into finer timers only multiplies commit and
+    // subscription overhead without adding parallelism.
+    //
+    // The interval is fixed for the lifetime of the schedule: SpacetimeDB binds a
+    // scheduled row's interval when the row is inserted, so rewriting ScheduleAt later
+    // leaves the host firing at the interval it was created with. The dispatch timer is
+    // therefore always created at the play interval and an idle world skips its work
+    // instead of slowing the timer down.
+    public static double DispatchIntervalMilliseconds => 1000d / WorldRules.TickRateHz;
 
-    public static double SnapshotIntervalMilliseconds(bool hasConnectedPlayers) =>
-        hasConnectedPlayers
-            ? MovementSnapshotDispatchIntervalMilliseconds
-            : IdleBackgroundIntervalMilliseconds;
+    // Nobody is watching an empty world, so the dispatch returns before it touches the
+    // clock: the simulation resumes on the tick the first player connects.
+    public static bool ShouldAdvanceWorld(uint connectedPlayerCount) =>
+        connectedPlayerCount > 0;
 
-    public static double HazardIntervalMilliseconds(bool hasConnectedPlayers) =>
-        hasConnectedPlayers
-            ? 1000d / HazardDispatchRateHz
-            : IdleBackgroundIntervalMilliseconds;
+    // A tick sails half the fleet. A shard integrates every tick it sat out when its turn
+    // comes round, so the water is the same either way; what halves is the number of rows a
+    // tick touches, which is the whole of its cost. A course set between a shard's turns
+    // waits out the remainder of the stride, so a command bites within a tick of the ack.
+    public static bool ShouldAdvanceMovementShard(byte shardId, ulong tick) =>
+        (ulong)(shardId % MovementShardStride) == tick % MovementShardStride;
+
+    public static bool ShouldApplyHazards(ulong tick) =>
+        tick % HazardIntervalTicks == 0;
 
     public static byte MovementShard(ulong shipEntityId) =>
         (byte)(shipEntityId % MovementShardCount);
-
-    public static byte HazardShard(byte movementShard) =>
-        (byte)(movementShard % HazardShardCount);
 
     public static byte NpcShard(ulong shipEntityId) =>
         (byte)(shipEntityId % NpcShardCount);
@@ -54,28 +62,13 @@ public static class SimulationWorkRules
     public static bool ShouldProcessLootPickup(ulong shipEntityId, ulong tick) =>
         IsStaggeredWorkDue(shipEntityId, tick, LootPickupBucketCount);
 
-    public static byte MovementSnapshotShard(ushort cursor) =>
-        (byte)(cursor / MovementSnapshotPartitionCount);
-
-    public static byte MovementSnapshotPartition(ushort cursor) =>
-        (byte)(cursor % MovementSnapshotPartitionCount);
-
-    public static ushort NextMovementSnapshotCursor(ushort cursor) =>
-        (ushort)((cursor + 1) %
-            (MovementShardCount * MovementSnapshotPartitionCount));
-
-    public static bool IsInMovementSnapshotPartition(int index, byte partition) =>
-        index >= 0 && partition < MovementSnapshotPartitionCount &&
-        index % MovementSnapshotPartitionCount == partition;
-
-    public static WorldObjectCode HazardKind(byte cursor) =>
-        cursor < HazardShardCount ? WorldObjectCode.Storm : WorldObjectCode.Shoal;
-
-    public static byte HazardDispatchShard(byte cursor) =>
-        (byte)(cursor % HazardShardCount);
-
-    public static byte NextHazardCursor(byte cursor) =>
-        (byte)((cursor + 1) % (2 * HazardShardCount));
+    // A shard that had nothing to sail last tick has nothing to catch up on: a ship
+    // that just joined it starts sailing now instead of replaying the idle gap.
+    public static ulong FirstMovementTick(
+        ulong lastSimulatedTick,
+        ulong currentTick,
+        bool shardWasIdle) =>
+        shardWasIdle ? currentTick : FirstMovementTick(lastSimulatedTick, currentTick);
 
     public static ulong FirstMovementTick(ulong lastSimulatedTick, ulong currentTick)
     {
@@ -107,24 +100,6 @@ public static class SimulationWorkRules
         return currentTick > ulong.MaxValue - delta
             ? ulong.MaxValue
             : currentTick + delta;
-    }
-
-    public static ulong StatusInterval(StatusCode code) => code switch
-    {
-        StatusCode.Burning or StatusCode.Flooding => WorldRules.TickRateHz,
-        StatusCode.EmergencyPump => PeriodicEffectIntervalTicks,
-        _ => ulong.MaxValue,
-    };
-
-    public static ulong NextStatusProcessTick(
-        StatusCode code,
-        ulong currentTick,
-        ulong expiresAtTick)
-    {
-        var interval = StatusInterval(code);
-        return interval == ulong.MaxValue
-            ? expiresAtTick
-            : Math.Min(expiresAtTick, NextPeriodicTick(currentTick, interval));
     }
 
     private static bool IsStaggeredWorkDue(

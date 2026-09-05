@@ -23,8 +23,7 @@ namespace Sea.Client
             {
                 var angle = index * 2.399963f;
                 var distance = radius * (0.16f + index % 4 * 0.09f);
-                var canopy = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                canopy.name = $"Canopy {index + 1}";
+                var canopy = SeaPrimitive.Create(PrimitiveType.Sphere, $"Canopy {index + 1}", land);
                 canopy.transform.SetParent(root.transform, false);
                 canopy.transform.localPosition = new Vector3(
                     Mathf.Cos(angle) * distance,
@@ -36,7 +35,6 @@ namespace Sea.Client
                     canopyScale * 0.58f,
                     canopyScale);
                 canopy.transform.localRotation = Quaternion.Euler(0f, index * 41f, 0f);
-                PreparePrimitive(canopy, land);
             }
 
             return root;
@@ -57,8 +55,7 @@ namespace Sea.Client
             {
                 var angle = index * Mathf.PI * 0.4f + 0.35f;
                 var distance = radius * (0.22f + index % 2 * 0.2f);
-                var stone = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                stone.name = $"Reef Rock {index + 1}";
+                var stone = SeaPrimitive.Create(PrimitiveType.Sphere, $"Reef Rock {index + 1}", rock);
                 stone.transform.SetParent(root.transform, false);
                 stone.transform.localPosition = new Vector3(
                     Mathf.Cos(angle) * distance,
@@ -66,7 +63,6 @@ namespace Sea.Client
                     Mathf.Sin(angle) * distance);
                 var stoneScale = radius * (0.24f + index % 3 * 0.045f);
                 stone.transform.localScale = new Vector3(stoneScale, stoneScale * 0.32f, stoneScale);
-                PreparePrimitive(stone, rock);
             }
 
             return root;
@@ -85,12 +81,10 @@ namespace Sea.Client
             CreateLayer(root.transform, "Harbor Waters", radius * 2f, 0.06f, -0.1f, shallows);
             for (var index = -1; index <= 1; index++)
             {
-                var pier = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                pier.name = $"Pier {index + 2}";
+                var pier = SeaPrimitive.Create(PrimitiveType.Cube, $"Pier {index + 2}", dock);
                 pier.transform.SetParent(root.transform, false);
                 pier.transform.localPosition = new Vector3(index * 2.1f, 0.2f, 0f);
                 pier.transform.localScale = new Vector3(1.2f, 0.35f, radius * 1.55f);
-                PreparePrimitive(pier, dock);
             }
 
             return root;
@@ -108,8 +102,7 @@ namespace Sea.Client
             CreateLayer(root.transform, "Shoal Water", radius * 2f, 0.025f, -0.14f, shallows);
             for (var index = 0; index < 4; index++)
             {
-                var ripple = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-                ripple.name = $"Shoal Ripple {index + 1}";
+                var ripple = SeaPrimitive.Create(PrimitiveType.Cylinder, $"Shoal Ripple {index + 1}", shallows);
                 ripple.transform.SetParent(root.transform, false);
                 ripple.transform.localPosition = new Vector3(
                     Mathf.Cos(index * 1.7f) * radius * 0.35f,
@@ -119,7 +112,6 @@ namespace Sea.Client
                     radius * (0.32f + index * 0.04f),
                     0.012f,
                     radius * 0.09f);
-                PreparePrimitive(ripple, shallows);
             }
 
             return root;
@@ -138,8 +130,7 @@ namespace Sea.Client
             {
                 var angle = index * 2.399963f;
                 var distance = radius * (0.12f + index % 3 * 0.12f);
-                var cloud = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                cloud.name = $"Storm Cloud {index + 1}";
+                var cloud = SeaPrimitive.Create(PrimitiveType.Sphere, $"Storm Cloud {index + 1}", cloudMaterial);
                 cloud.transform.SetParent(root.transform, false);
                 cloud.transform.localPosition = new Vector3(
                     Mathf.Cos(angle) * distance,
@@ -147,7 +138,6 @@ namespace Sea.Client
                     Mathf.Sin(angle) * distance);
                 var size = radius * (0.32f + index % 3 * 0.045f);
                 cloud.transform.localScale = new Vector3(size * 1.55f, size * 0.62f, size);
-                PreparePrimitive(cloud, cloudMaterial);
             }
 
             return root;
@@ -161,29 +151,10 @@ namespace Sea.Client
             float y,
             Material material)
         {
-            var layer = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            layer.name = name;
+            var layer = SeaPrimitive.Create(PrimitiveType.Cylinder, name, material);
             layer.transform.SetParent(parent, false);
             layer.transform.localPosition = new Vector3(0f, y, 0f);
             layer.transform.localScale = new Vector3(diameter, height, diameter);
-            PreparePrimitive(layer, material);
-        }
-
-        private static void PreparePrimitive(GameObject primitive, Material material)
-        {
-            primitive.GetComponent<Renderer>().sharedMaterial = material;
-            var collider = primitive.GetComponent<Collider>();
-            if (collider != null)
-            {
-                if (Application.isPlaying)
-                {
-                    UnityEngine.Object.Destroy(collider);
-                }
-                else
-                {
-                    UnityEngine.Object.DestroyImmediate(collider);
-                }
-            }
         }
 
         private static void ValidateRadius(float radius)

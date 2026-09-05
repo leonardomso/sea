@@ -2,6 +2,7 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$project_root/scripts/lib/local-ports.sh"
 database_name="sea-scale-smoke-$$"
 state_relative=".cache/spacetime-scale-smoke-$$"
 state_directory="$project_root/$state_relative"
@@ -27,9 +28,14 @@ sample_interval="${SEA_TICK_SAMPLE_INTERVAL_SECONDS:-0.1}"
 load_evidence_output="${SEA_LOAD_EVIDENCE_OUTPUT:-}"
 server_evidence_output="${SEA_SERVER_EVIDENCE_OUTPUT:-}"
 spacetime_container="${SEA_SPACETIME_CONTAINER:-}"
-load_server="http://host.docker.internal:3000"
+# The control plane answers over the same host the load is pounding, and a query that
+# returns a row per client is slower the more clients there are. A slow answer is not a
+# verdict on the server, so these reads wait longer and treat a timeout as a missing
+# sample rather than as the end of the run.
+control_timeout="${SEA_CONTROL_PLANE_TIMEOUT:-30}"
+load_server="$SEA_SPACETIME_DOCKER_URL"
 if [ -n "${SEA_DOCKER_NETWORK:-}" ]; then
-  load_server="http://$spacetime_container:3000"
+  load_server="http://$spacetime_container:3000" # container network: internal port
 fi
 mkdir -p "$runtime_directory"
 
@@ -44,7 +50,7 @@ cleanup() {
   fi
   SPACETIME_STATE_RELATIVE="$state_relative" \
     "$project_root/scripts/spacetime.sh" delete "$database_name" \
-      --server http://host.docker.internal:3000 --yes >/dev/null 2>&1 || true
+      --server "$SEA_SPACETIME_DOCKER_URL" --yes >/dev/null 2>&1 || true
   rm -rf "$state_directory"
   if [ "${SEA_KEEP_PERF_ARTIFACTS:-0}" = "1" ]; then
     mkdir -p "$project_root/Build/performance"
@@ -81,16 +87,17 @@ metric_value() {
 }
 
 metrics_snapshot() {
-  curl --fail --silent --max-time 3 http://127.0.0.1:3000/v1/metrics
+  curl --fail --silent --max-time "$control_timeout" \
+    "$SEA_SPACETIME_LOCAL_URL/v1/metrics" || true
 }
 
 active_ship_count() {
   local response
-  if ! response="$(curl --fail --silent --max-time 5 \
+  if ! response="$(curl --fail --silent --max-time "$control_timeout" \
     --request POST \
     --header "content-type: text/plain" \
     --data "SELECT * FROM ship WHERE is_moving = true" \
-    "http://127.0.0.1:3000/v1/database/$database_name/sql")"; then
+    "$SEA_SPACETIME_LOCAL_URL/v1/database/$database_name/sql")"; then
     echo 0
     return
   fi
@@ -99,21 +106,26 @@ active_ship_count() {
 }
 
 simulation_telemetry() {
-  curl --fail --silent --max-time 3 \
+  curl --fail --silent --max-time "$control_timeout" \
     --request POST \
     --header "content-type: text/plain" \
     --data "SELECT * FROM simulation_telemetry WHERE id = 1" \
-    "http://127.0.0.1:3000/v1/database/$database_name/sql"
+    "$SEA_SPACETIME_LOCAL_URL/v1/database/$database_name/sql"
 }
 
 table_count() {
   local table_name="$1"
-  curl --fail --silent --max-time 5 \
+  local response
+  if ! response="$(curl --fail --silent --max-time "$control_timeout" \
     --request POST \
     --header "content-type: text/plain" \
     --data "SELECT * FROM $table_name" \
-    "http://127.0.0.1:3000/v1/database/$database_name/sql" |
-    node "$project_root/scripts/lib/sql-result.mjs"
+    "$SEA_SPACETIME_LOCAL_URL/v1/database/$database_name/sql")"; then
+    echo 0
+    return
+  fi
+
+  printf '%s' "$response" | node "$project_root/scripts/lib/sql-result.mjs"
 }
 
 print_load_diagnostics() {
@@ -132,15 +144,15 @@ sample_container_resources() {
   done
 }
 
-curl --fail --silent --max-time 2 http://127.0.0.1:3000/v1/ping >/dev/null
+curl --fail --silent --max-time 2 "$SEA_SPACETIME_LOCAL_URL/v1/ping" >/dev/null
 SPACETIME_STATE_RELATIVE="$state_relative" \
   "$project_root/scripts/spacetime.sh" publish "$database_name" \
-    --server http://host.docker.internal:3000 \
+    --server "$SEA_SPACETIME_DOCKER_URL" \
     --yes \
     --module-path server/spacetimedb/spacetimedb >/dev/null
 
-database_identity="$(curl --fail --silent --max-time 3 \
-  "http://127.0.0.1:3000/v1/database/$database_name/identity")"
+database_identity="$(curl --fail --silent --max-time "$control_timeout" \
+  "$SEA_SPACETIME_LOCAL_URL/v1/database/$database_name/identity")"
 "$project_root/scripts/dotnet10.sh" build \
   tests/load/Sea.LoadTests/Sea.LoadTests.csproj >/dev/null
 SEA_LOAD_DATABASE="$database_name" \
@@ -198,14 +210,10 @@ fi
 sample_container_resources "$resource_samples" "$duration" &
 resource_pid=$!
 
-  reducer_labels=(dispatch snapshot hazard)
-  reducer_names=(
-    run_simulation_dispatch
-    run_movement_snapshot_dispatch
-    run_hazard_dispatch
-  )
+  reducer_labels=(dispatch)
+  reducer_names=(run_simulation_dispatch)
 minimum_samples=$((sample_iterations < 20 ? sample_iterations : 20))
-  reducer_minimums=("$minimum_samples" "$minimum_samples" "$minimum_samples")
+  reducer_minimums=("$minimum_samples")
 previous_times=()
 previous_ticks=()
 sample_files=()

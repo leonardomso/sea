@@ -21,6 +21,11 @@ const contentTypes = new Map([
   [".wasm", "application/wasm"],
 ]);
 
+const contentEncodings = new Map([
+  [".br", "br"],
+  [".gz", "gzip"],
+]);
+
 function sendFile(request, response) {
   const pathname = new URL(request.url, "http://127.0.0.1").pathname;
   const relative = pathname === "/" ? "index.html" : decodeURIComponent(pathname.slice(1));
@@ -30,10 +35,15 @@ function sendFile(request, response) {
     return;
   }
 
-  const compressed = extname(path) === ".br";
-  const sourceExtension = compressed ? extname(path.slice(0, -3)) : extname(path);
+  // Unity ships the player pre-compressed and the loader will not decompress it itself: a
+  // .gz or .br payload served without its Content-Encoding arrives as bytes the runtime
+  // cannot parse, and the player never boots. Content-Length goes with it because the
+  // loader's progress bar and its cache both ask for it.
+  const encoding = contentEncodings.get(extname(path));
+  const sourceExtension = encoding ? extname(path.slice(0, -3)) : extname(path);
   response.setHeader("Content-Type", contentTypes.get(sourceExtension) ?? "application/octet-stream");
-  if (compressed) response.setHeader("Content-Encoding", "br");
+  response.setHeader("Content-Length", statSync(path).size);
+  if (encoding) response.setHeader("Content-Encoding", encoding);
   createReadStream(path).pipe(response);
 }
 

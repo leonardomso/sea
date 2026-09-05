@@ -2,6 +2,7 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$project_root/scripts/lib/local-ports.sh"
 compose_file="$project_root/infra/docker-compose.yml"
 container_name="sea-performance-spacetimedb-$$"
 network_name="sea-performance-network-$$"
@@ -55,7 +56,7 @@ fi
 docker run --detach --rm \
   --name "$container_name" \
   --network "$network_name" \
-  --publish 3000:3000 \
+  --publish "$SPACETIME_PORT:3000" \
   "$spacetime_image" \
   --root-dir=/tmp/spacetimedb \
   start \
@@ -63,7 +64,7 @@ docker run --detach --rm \
 
 for _ in {1..60}; do
   if curl --fail --silent --max-time 2 \
-    http://127.0.0.1:3000/v1/ping >/dev/null 2>&1; then
+    "$SEA_SPACETIME_LOCAL_URL/v1/ping" >/dev/null 2>&1; then
     if SEA_DOCKER_NETWORK="$network_name" \
       SEA_SPACETIME_CONTAINER="$container_name" \
       "$@"; then

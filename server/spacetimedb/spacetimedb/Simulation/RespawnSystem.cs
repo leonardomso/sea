@@ -9,22 +9,31 @@ public static partial class Module
         ulong tick)
     {
         var player = ship.FactionCode == (byte)FactionCode.Player;
+        // How long the sea stays empty is the enemy's own, not one number for all of them: a
+        // common is back inside half a minute, a named captain is an appointment.
         ship.RespawnAtTick = tick + (player
             ? RespawnRules.PlayerDelayTicks
-            : RespawnRules.NpcDelayTicks);
-        var work = ctx.Db.RespawnWork.ShipEntityId.Find(ship.EntityId) ?? new RespawnWork
+            : Catalog.NpcStatsByArchetypeCode[ship.ArchetypeCode].RespawnDelayTicks);
+        // An NPC is handed its home berth the moment it sinks. A player has to ask for one, and
+        // only the wrecks that have asked are pending, so a player who never answers -- who closed
+        // the tab on the seabed -- is not sailed back out on their behalf.
+        var option = player ? RespawnOptionCode.Unchosen : RespawnOptionCode.HomePort;
+        if (ctx.Db.RespawnWork.ShipEntityId.Find(ship.EntityId) is RespawnWork work)
         {
-            ShipEntityId = ship.EntityId,
-        };
-        work.IsPending = true;
-        work.RespawnAtTick = ship.RespawnAtTick;
-        if (ctx.Db.RespawnWork.ShipEntityId.Find(ship.EntityId) is null)
-        {
-            ctx.Db.RespawnWork.Insert(work);
+            work.IsPending = !player;
+            work.OptionCode = (byte)option;
+            work.RespawnAtTick = ship.RespawnAtTick;
+            ctx.Db.RespawnWork.ShipEntityId.Update(work);
         }
         else
         {
-            ctx.Db.RespawnWork.ShipEntityId.Update(work);
+            ctx.Db.RespawnWork.Insert(new RespawnWork
+            {
+                ShipEntityId = ship.EntityId,
+                IsPending = !player,
+                OptionCode = (byte)option,
+                RespawnAtTick = ship.RespawnAtTick,
+            });
         }
 
         if (!player)
@@ -40,6 +49,7 @@ public static partial class Module
 
     private static void ProcessRespawns(
         ReducerContext ctx,
+        TickWorld world,
         ShipTickBuffer ships,
         ulong tick)
     {
@@ -54,16 +64,18 @@ public static partial class Module
 
             var spawn = FindSafeRespawn(
                 ctx,
+                ship,
                 ship.EntityId ^ work.RespawnAtTick ^ ship.EncounterId);
-            RestoreShipForRespawn(ctx, ref ship, spawn, tick);
+            RestoreShipForRespawn(ctx, world, ref ship, spawn, tick);
             ships.Stage(ship);
             ctx.Db.RespawnWork.ShipEntityId.Delete(work.ShipEntityId);
-            AppendEvent(ctx, ship.EntityId, "ship_respawned", "");
+            AppendEvent(ctx, tick, ship.EntityId, "ship_respawned", "");
         }
     }
 
     private static void RestoreShipForRespawn(
         ReducerContext ctx,
+        TickWorld world,
         ref Ship ship,
         SpawnPoint spawn,
         ulong tick)
@@ -72,63 +84,90 @@ public static partial class Module
         var restored = RespawnRules.Restore(player, ship.MaxHull, tick);
         ship.PositionX = spawn.X;
         ship.PositionY = spawn.Y;
-        ship.DestinationX = spawn.X;
-        ship.DestinationY = spawn.Y;
-        ship.WaypointX = spawn.X;
-        ship.WaypointY = spawn.Y;
-        ship.HasWaypoint = false;
-        ship.HasCourse = false;
-        ship.IsStopping = false;
-        ship.IsMoving = false;
-        ship.Speed = 0f;
+        ClearRoute(ctx, ref ship);
         ship.CurrentVelocityX = 0f;
         ship.CurrentVelocityY = 0f;
         ship.ChunkX = SpatialRules.ChunkCoordinate(spawn.X);
         ship.ChunkY = SpatialRules.ChunkCoordinate(spawn.Y);
+        ship.IsInPort = world.Harbor(ctx) is WorldObject harbor && PortRules.IsInside(
+            spawn.X,
+            spawn.Y,
+            harbor.PositionX,
+            harbor.PositionY,
+            harbor.Radius);
         ship.TargetEntityId = 0;
         ship.IsEngaged = false;
         ship.IsActive = true;
         ship.IsAlive = true;
         ship.ModeCode = (byte)ShipMode.Operational;
         ship.MovementStatusMask = 0;
+        ship.MovementSlowMagnitude = 0f;
         ship.EnvironmentExposureCode = 0;
         ship.Hull = restored.Hull;
-        ship.Sails = ship.MaxSails;
-        ship.Cannons = ship.MaxCannons;
-        ship.Crew = ship.MaxCrew;
+
+        // A ship comes back with its guns loaded; the fire interval is the only thing between it
+        // and its first volley.
+        ship.ReadyVolleys = ship.MagazineSize;
+        ship.ReloadProgressTicks = 0;
+        ship.IsReloading = false;
+        ship.HasFired = false;
+        ship.LastShotTick = 0;
         ship.RespawnAtTick = 0;
         ship.InvulnerableUntilTick = restored.InvulnerableUntilTick;
+        RestoreCrewForRespawn(ref ship, tick);
         ClearRespawnState(ctx, ship.EntityId);
-        if (!player && ctx.Db.NpcAi.ShipEntityId.Find(ship.EntityId) is NpcAi ai)
+        ClearHealLog(ctx, ship.EntityId);
+        if (!player)
         {
-            ship.EncounterId = AllocateEntityId(ctx);
-            if (ctx.Db.NpcDefinition.ArchetypeCode.Find(ship.ArchetypeCode) is not
-                NpcDefinition definition)
-            {
-                throw new InvalidOperationException("Respawning NPC definition is missing.");
-            }
-
-            OpenNpcEncounter(
-                ctx,
-                ship,
-                definition.GoldReward,
-                definition.ExperienceReward,
-                tick);
-            ai.IsActive = true;
-            ai.NextDecisionTick = tick + NpcRules.DecisionIntervalTicks;
-            ctx.Db.NpcAi.ShipEntityId.Update(ai);
+            ReopenNpcEncounter(ctx, ref ship, tick);
         }
+    }
+
+    /// <summary>
+    /// A fresh crew, and none of the boarding clocks the last life ran out. A ship that was still
+    /// safe from hooks when she sank does not come back safe: the immunity is there so one victim
+    /// is not taken twice over, and the hull that surfaces is not the one that was taken.
+    /// </summary>
+    private static void RestoreCrewForRespawn(ref Ship ship, ulong tick)
+    {
+        ship.Hands = ship.MaxHands;
+        ship.HandsRecoveredAtTick = tick;
+        ship.BoardCooldownUntilTick = 0;
+        ship.BoardImmuneUntilTick = 0;
+        ship.WeaponSilencedUntilTick = 0;
+    }
+
+    /// <summary>
+    /// A respawned NPC is a fresh bounty: it gets a new encounter id so the contributions from the
+    /// fight that sank it cannot be paid out twice.
+    /// </summary>
+    private static void ReopenNpcEncounter(ReducerContext ctx, ref Ship ship, ulong tick)
+    {
+        if (ctx.Db.NpcAi.ShipEntityId.Find(ship.EntityId) is not NpcAi ai)
+        {
+            return;
+        }
+
+        ship.EncounterId = AllocateEntityId(ctx);
+        var definition = Catalog.NpcByArchetypeCode[ship.ArchetypeCode] ??
+            throw new InvalidOperationException("Respawning NPC definition is missing.");
+
+        OpenNpcEncounter(
+            ctx,
+            ship,
+            Catalog.NpcStatsByArchetypeCode[ship.ArchetypeCode].GoldReward,
+            definition.ExperienceReward,
+            tick);
+        ai.IsActive = true;
+        // A fresh hull has a fresh signal to send, and its escorts go back to their mooring.
+        ai.HasCalledHelp = false;
+        ai.NextDecisionTick = tick + NpcRules.DecisionIntervalTicks;
+        ctx.Db.NpcAi.ShipEntityId.Update(ai);
     }
 
     private static void ClearRespawnState(ReducerContext ctx, ulong shipEntityId)
     {
-        var statusIds = ctx.Db.ShipStatus.ByShip.Filter(shipEntityId)
-            .Select(status => status.StatusId)
-            .ToArray();
-        foreach (var statusId in statusIds)
-        {
-            ctx.Db.ShipStatus.StatusId.Delete(statusId);
-        }
+        ClearEffects(ctx, shipEntityId);
 
         if (ctx.Db.ShipChannel.ShipEntityId.Find(shipEntityId) is not null)
         {

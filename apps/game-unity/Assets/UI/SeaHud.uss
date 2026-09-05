@@ -108,8 +108,8 @@
 .header-tools {
     position: absolute;
     left: 50%;
-    margin-left: -105px;
-    width: 210px;
+    margin-left: -125px;
+    width: 250px;
     height: 36px;
     flex-direction: row;
     align-items: center;
@@ -136,6 +136,11 @@
     color: var(--sailcloth);
 }
 
+.header-tool.selected {
+    border-color: var(--sea-glass);
+    color: var(--sea-glass);
+}
+
 .header-status {
     margin-left: auto;
     width: 310px;
@@ -156,12 +161,55 @@
     letter-spacing: 1.2px;
 }
 
+/* The wind is read at a glance: the arrow points where it blows, the number says how hard. */
+.wind-dial {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 2px;
+}
+
+.wind-arrow {
+    width: 14px;
+    color: var(--sea-glass);
+    font-size: 13px;
+    -unity-text-align: middle-center;
+    margin-right: 6px;
+}
+
+/* One dot per volley the racks hold; a filled dot is a volley that can leave now. */
+.magazine-dots {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 3px;
+}
+
+.magazine-dot {
+    width: 6px;
+    height: 6px;
+    margin-left: 2px;
+    margin-right: 2px;
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: var(--line-strong);
+    background-color: var(--tar);
+}
+
+.magazine-dot.loaded { background-color: var(--sea-glass); }
+
 .coordinate-ruler {
     position: absolute;
     color: #d2ac72aa;
     font-size: 8px;
     -unity-font-style: bold;
     letter-spacing: 0.6px;
+}
+
+/* Three characters wide. The ruler runs A to AN and 1 to 40, so a mark is at most two
+   glyphs, and a fixed field keeps "AN" sitting over the same cell edge "A" sat over instead
+   of nudging its neighbours along as the chart is pulled out. */
+.coordinate-mark {
+    min-width: 18px;
+    -unity-text-align: middle-center;
 }
 
 .top-coordinate-ruler {
@@ -198,7 +246,7 @@
     top: 74px;
     right: 12px;
     width: 220px;
-    height: 154px;
+    height: 220px;
     border-left-width: 2px;
     border-right-width: 2px;
     border-top-width: 2px;
@@ -234,8 +282,7 @@
     background-color: #10323966;
 }
 
-.port-side { border-right-width: 1px; border-right-color: var(--line-soft); }
-.starboard-side { border-left-width: 1px; border-left-color: var(--line-soft); }
+.fire-control { border-left-width: 1px; border-left-color: var(--line-soft); }
 .broadside-side.ready { background-color: #61bfa626; }
 
 .key-cap {
@@ -269,9 +316,6 @@
 .unity-progress-bar__progress { background-color: var(--sea-glass); border-width: 0; }
 .unity-progress-bar__title { display: none; }
 .hull-bar .unity-progress-bar__progress { background-color: var(--crimson); }
-.sails-bar .unity-progress-bar__progress { background-color: var(--sea-glass); }
-.cannon-bar .unity-progress-bar__progress { background-color: var(--bronze); }
-.xp-bar .unity-progress-bar__progress { background-color: var(--bronze-bright); }
 
 .bottom-deck {
     position: absolute;
@@ -284,7 +328,9 @@
     justify-content: center;
 }
 
-.player-ledger { position: absolute; left: 0; bottom: 0; width: 210px; height: 95px; padding: 8px; }
+.player-ledger { position: absolute; left: 0; bottom: 0; width: 210px; padding: 8px; }
+.ledger-heading .instrument-value { width: auto; margin-left: 4px; }
+.ledger-heading .data-label { flex-grow: 1; -unity-text-align: middle-right; font-size: 9px; }
 .ledger-heading, .meter-heading, .rail-heading { flex-direction: row; justify-content: space-between; align-items: center; }
 .meter-heading { margin-top: 6px; }
 .player-meter { height: 10px; margin-top: 3px; }
@@ -353,6 +399,7 @@
 }
 
 .coordinate-dialog { width: 410px; padding: 18px; }
+.wreck-dialog { width: 410px; padding: 18px; }
 .dialog-title { color: var(--sailcloth); font-size: 17px; -unity-font-style: bold; letter-spacing: 1.5px; }
 .chart-input { margin-top: 15px; height: 38px; color: var(--sailcloth); font-size: 15px; -unity-font-style: bold; }
 .chart-input .unity-text-input { background-color: var(--tar); border-width: 1px; border-color: var(--line-soft); padding-left: 10px; }

@@ -19,8 +19,6 @@ namespace SpacetimeDB.Types
         public ulong Tick;
         [DataMember(Name = "next_entity_id")]
         public ulong NextEntityId;
-        [DataMember(Name = "active_loot_count")]
-        public uint ActiveLootCount;
         [DataMember(Name = "connected_player_count")]
         public uint ConnectedPlayerCount;
 
@@ -28,14 +26,12 @@ namespace SpacetimeDB.Types
             uint Id,
             ulong Tick,
             ulong NextEntityId,
-            uint ActiveLootCount,
             uint ConnectedPlayerCount
         )
         {
             this.Id = Id;
             this.Tick = Tick;
             this.NextEntityId = NextEntityId;
-            this.ActiveLootCount = ActiveLootCount;
             this.ConnectedPlayerCount = ConnectedPlayerCount;
         }
 

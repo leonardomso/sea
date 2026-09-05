@@ -1,3 +1,5 @@
+using System.Linq;
+using Sea.Client;
 using Sea.LoadTests;
 using Xunit;
 
@@ -39,5 +41,14 @@ public sealed class LoadSubscriptionPlanTests
         Assert.Throws<ArgumentException>(() => LoadSubscriptionPlan.ActiveShip(42, ""));
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             LoadSubscriptionPlan.ActiveShip(0, "0x1234"));
+    }
+
+    [Fact]
+    public void PlansSatisfyTheWorldContract()
+    {
+        var queries = LoadSubscriptionPlan.Ownership("0x1234").Concat(LoadSubscriptionPlan.ActiveShip(42, "0x1234")).ToList();
+
+        SeaWorldContract.Require(queries);
+        Assert.NotEmpty(SeaWorldContract.Violations("SELECT * FROM player_ship"));
     }
 }

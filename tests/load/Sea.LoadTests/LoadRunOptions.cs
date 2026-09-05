@@ -24,7 +24,7 @@ public sealed record LoadRunOptions(
         Validate(clients, active, rampSeconds, setupSeconds, measureSeconds);
         return new LoadRunOptions(
             Environment.GetEnvironmentVariable("SEA_LOAD_SERVER") ??
-                "http://host.docker.internal:3000",
+                "http://host.docker.internal:43000",
             database,
             clients,
             active,

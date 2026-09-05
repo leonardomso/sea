@@ -1,4 +1,4 @@
 {
   "module-path": "./spacetimedb",
-  "server": "http://host.docker.internal:3000"
+  "server": "http://host.docker.internal:43000"
 }

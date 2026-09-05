@@ -40,8 +40,8 @@ namespace Sea.Bootstrap
         private void Compose()
         {
             chartCamera?.ConfigureDependencies(connection, world);
-            game?.ConfigureDependencies(connection, mainCamera);
-            world?.ConfigureDependencies(connection);
+            game?.ConfigureDependencies(connection, mainCamera, world);
+            world?.ConfigureDependencies(connection, mainCamera);
             validationProbe?.ConfigureDependencies(connection, world);
             hud?.ConfigureDependencies(connection, game, input);
             input?.ConfigureDependencies(game, chartCamera, hud);

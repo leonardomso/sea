@@ -23,38 +23,34 @@ namespace SpacetimeDB.Types
         public float PositionX;
         [DataMember(Name = "position_y")]
         public float PositionY;
+        [DataMember(Name = "map_id")]
+        public byte MapId;
         [DataMember(Name = "destination_x")]
         public float DestinationX;
         [DataMember(Name = "destination_y")]
         public float DestinationY;
-        [DataMember(Name = "waypoint_x")]
-        public float WaypointX;
-        [DataMember(Name = "waypoint_y")]
-        public float WaypointY;
-        [DataMember(Name = "has_waypoint")]
-        public bool HasWaypoint;
+        [DataMember(Name = "route_index")]
+        public int RouteIndex;
+        [DataMember(Name = "has_route")]
+        public bool HasRoute;
+        [DataMember(Name = "route_version")]
+        public uint RouteVersion;
+        [DataMember(Name = "move_window_start_tick")]
+        public ulong MoveWindowStartTick;
+        [DataMember(Name = "moves_in_window")]
+        public uint MovesInWindow;
         [DataMember(Name = "heading_degrees")]
         public float HeadingDegrees;
         [DataMember(Name = "speed")]
         public float Speed;
-        [DataMember(Name = "maximum_speed")]
-        public float MaximumSpeed;
-        [DataMember(Name = "acceleration")]
-        public float Acceleration;
-        [DataMember(Name = "deceleration")]
-        public float Deceleration;
-        [DataMember(Name = "turn_rate_degrees")]
-        public float TurnRateDegrees;
-        [DataMember(Name = "has_course")]
-        public bool HasCourse;
-        [DataMember(Name = "is_stopping")]
-        public bool IsStopping;
+        [DataMember(Name = "base_speed_squares_per_second")]
+        public float BaseSpeedSquaresPerSecond;
+        [DataMember(Name = "effective_speed_squares_per_second")]
+        public float EffectiveSpeedSquaresPerSecond;
         [DataMember(Name = "is_moving")]
         public bool IsMoving;
         [DataMember(Name = "movement_shard")]
         public byte MovementShard;
-        [DataMember(Name = "hazard_shard")]
-        public byte HazardShard;
         [DataMember(Name = "is_active")]
         public bool IsActive;
         [DataMember(Name = "is_alive")]
@@ -65,6 +61,8 @@ namespace SpacetimeDB.Types
         public byte ModeCode;
         [DataMember(Name = "movement_status_mask")]
         public byte MovementStatusMask;
+        [DataMember(Name = "movement_slow_magnitude")]
+        public float MovementSlowMagnitude;
         [DataMember(Name = "environment_exposure_code")]
         public byte EnvironmentExposureCode;
         [DataMember(Name = "current_velocity_x")]
@@ -79,38 +77,62 @@ namespace SpacetimeDB.Types
         public ulong TargetEntityId;
         [DataMember(Name = "selected_ammo_code")]
         public byte SelectedAmmoCode;
-        [DataMember(Name = "selected_weak_point_code")]
-        public byte SelectedWeakPointCode;
         [DataMember(Name = "hull")]
         public uint Hull;
         [DataMember(Name = "max_hull")]
         public uint MaxHull;
-        [DataMember(Name = "sails")]
-        public uint Sails;
-        [DataMember(Name = "max_sails")]
-        public uint MaxSails;
-        [DataMember(Name = "cannons")]
-        public uint Cannons;
-        [DataMember(Name = "max_cannons")]
-        public uint MaxCannons;
-        [DataMember(Name = "crew")]
-        public uint Crew;
-        [DataMember(Name = "max_crew")]
-        public uint MaxCrew;
-        [DataMember(Name = "cannon_damage")]
-        public uint CannonDamage;
-        [DataMember(Name = "cannon_cooldown_ticks")]
-        public uint CannonCooldownTicks;
-        [DataMember(Name = "next_port_fire_tick")]
-        public ulong NextPortFireTick;
-        [DataMember(Name = "next_starboard_fire_tick")]
-        public ulong NextStarboardFireTick;
+        [DataMember(Name = "volley_damage")]
+        public uint VolleyDamage;
+        [DataMember(Name = "reload_ticks")]
+        public uint ReloadTicks;
+        [DataMember(Name = "magazine_size")]
+        public uint MagazineSize;
+        [DataMember(Name = "range_squares")]
+        public float RangeSquares;
+        [DataMember(Name = "armor_front")]
+        public float ArmorFront;
+        [DataMember(Name = "armor_sides")]
+        public float ArmorSides;
+        [DataMember(Name = "armor_back")]
+        public float ArmorBack;
+        [DataMember(Name = "hull_tier")]
+        public byte HullTier;
+        [DataMember(Name = "ready_volleys")]
+        public uint ReadyVolleys;
+        [DataMember(Name = "reload_progress_ticks")]
+        public uint ReloadProgressTicks;
+        [DataMember(Name = "repair_amount")]
+        public float RepairAmount;
+        [DataMember(Name = "repair_channel_ticks")]
+        public uint RepairChannelTicks;
+        [DataMember(Name = "is_reloading")]
+        public bool IsReloading;
+        [DataMember(Name = "has_fired")]
+        public bool HasFired;
+        [DataMember(Name = "last_shot_tick")]
+        public ulong LastShotTick;
+        [DataMember(Name = "last_combat_tick")]
+        public ulong LastCombatTick;
         [DataMember(Name = "respawn_at_tick")]
         public ulong RespawnAtTick;
         [DataMember(Name = "invulnerable_until_tick")]
         public ulong InvulnerableUntilTick;
         [DataMember(Name = "encounter_id")]
         public ulong EncounterId;
+        [DataMember(Name = "is_in_port")]
+        public bool IsInPort;
+        [DataMember(Name = "hands")]
+        public uint Hands;
+        [DataMember(Name = "max_hands")]
+        public uint MaxHands;
+        [DataMember(Name = "hands_recovered_at_tick")]
+        public ulong HandsRecoveredAtTick;
+        [DataMember(Name = "board_cooldown_until_tick")]
+        public ulong BoardCooldownUntilTick;
+        [DataMember(Name = "board_immune_until_tick")]
+        public ulong BoardImmuneUntilTick;
+        [DataMember(Name = "weapon_silenced_until_tick")]
+        public ulong WeaponSilencedUntilTick;
 
         public Ship(
             ulong EntityId,
@@ -118,27 +140,26 @@ namespace SpacetimeDB.Types
             byte FactionCode,
             float PositionX,
             float PositionY,
+            byte MapId,
             float DestinationX,
             float DestinationY,
-            float WaypointX,
-            float WaypointY,
-            bool HasWaypoint,
+            int RouteIndex,
+            bool HasRoute,
+            uint RouteVersion,
+            ulong MoveWindowStartTick,
+            uint MovesInWindow,
             float HeadingDegrees,
             float Speed,
-            float MaximumSpeed,
-            float Acceleration,
-            float Deceleration,
-            float TurnRateDegrees,
-            bool HasCourse,
-            bool IsStopping,
+            float BaseSpeedSquaresPerSecond,
+            float EffectiveSpeedSquaresPerSecond,
             bool IsMoving,
             byte MovementShard,
-            byte HazardShard,
             bool IsActive,
             bool IsAlive,
             bool IsEngaged,
             byte ModeCode,
             byte MovementStatusMask,
+            float MovementSlowMagnitude,
             byte EnvironmentExposureCode,
             float CurrentVelocityX,
             float CurrentVelocityY,
@@ -146,22 +167,34 @@ namespace SpacetimeDB.Types
             int ChunkY,
             ulong TargetEntityId,
             byte SelectedAmmoCode,
-            byte SelectedWeakPointCode,
             uint Hull,
             uint MaxHull,
-            uint Sails,
-            uint MaxSails,
-            uint Cannons,
-            uint MaxCannons,
-            uint Crew,
-            uint MaxCrew,
-            uint CannonDamage,
-            uint CannonCooldownTicks,
-            ulong NextPortFireTick,
-            ulong NextStarboardFireTick,
+            uint VolleyDamage,
+            uint ReloadTicks,
+            uint MagazineSize,
+            float RangeSquares,
+            float ArmorFront,
+            float ArmorSides,
+            float ArmorBack,
+            byte HullTier,
+            uint ReadyVolleys,
+            uint ReloadProgressTicks,
+            float RepairAmount,
+            uint RepairChannelTicks,
+            bool IsReloading,
+            bool HasFired,
+            ulong LastShotTick,
+            ulong LastCombatTick,
             ulong RespawnAtTick,
             ulong InvulnerableUntilTick,
-            ulong EncounterId
+            ulong EncounterId,
+            bool IsInPort,
+            uint Hands,
+            uint MaxHands,
+            ulong HandsRecoveredAtTick,
+            ulong BoardCooldownUntilTick,
+            ulong BoardImmuneUntilTick,
+            ulong WeaponSilencedUntilTick
         )
         {
             this.EntityId = EntityId;
@@ -169,27 +202,26 @@ namespace SpacetimeDB.Types
             this.FactionCode = FactionCode;
             this.PositionX = PositionX;
             this.PositionY = PositionY;
+            this.MapId = MapId;
             this.DestinationX = DestinationX;
             this.DestinationY = DestinationY;
-            this.WaypointX = WaypointX;
-            this.WaypointY = WaypointY;
-            this.HasWaypoint = HasWaypoint;
+            this.RouteIndex = RouteIndex;
+            this.HasRoute = HasRoute;
+            this.RouteVersion = RouteVersion;
+            this.MoveWindowStartTick = MoveWindowStartTick;
+            this.MovesInWindow = MovesInWindow;
             this.HeadingDegrees = HeadingDegrees;
             this.Speed = Speed;
-            this.MaximumSpeed = MaximumSpeed;
-            this.Acceleration = Acceleration;
-            this.Deceleration = Deceleration;
-            this.TurnRateDegrees = TurnRateDegrees;
-            this.HasCourse = HasCourse;
-            this.IsStopping = IsStopping;
+            this.BaseSpeedSquaresPerSecond = BaseSpeedSquaresPerSecond;
+            this.EffectiveSpeedSquaresPerSecond = EffectiveSpeedSquaresPerSecond;
             this.IsMoving = IsMoving;
             this.MovementShard = MovementShard;
-            this.HazardShard = HazardShard;
             this.IsActive = IsActive;
             this.IsAlive = IsAlive;
             this.IsEngaged = IsEngaged;
             this.ModeCode = ModeCode;
             this.MovementStatusMask = MovementStatusMask;
+            this.MovementSlowMagnitude = MovementSlowMagnitude;
             this.EnvironmentExposureCode = EnvironmentExposureCode;
             this.CurrentVelocityX = CurrentVelocityX;
             this.CurrentVelocityY = CurrentVelocityY;
@@ -197,22 +229,34 @@ namespace SpacetimeDB.Types
             this.ChunkY = ChunkY;
             this.TargetEntityId = TargetEntityId;
             this.SelectedAmmoCode = SelectedAmmoCode;
-            this.SelectedWeakPointCode = SelectedWeakPointCode;
             this.Hull = Hull;
             this.MaxHull = MaxHull;
-            this.Sails = Sails;
-            this.MaxSails = MaxSails;
-            this.Cannons = Cannons;
-            this.MaxCannons = MaxCannons;
-            this.Crew = Crew;
-            this.MaxCrew = MaxCrew;
-            this.CannonDamage = CannonDamage;
-            this.CannonCooldownTicks = CannonCooldownTicks;
-            this.NextPortFireTick = NextPortFireTick;
-            this.NextStarboardFireTick = NextStarboardFireTick;
+            this.VolleyDamage = VolleyDamage;
+            this.ReloadTicks = ReloadTicks;
+            this.MagazineSize = MagazineSize;
+            this.RangeSquares = RangeSquares;
+            this.ArmorFront = ArmorFront;
+            this.ArmorSides = ArmorSides;
+            this.ArmorBack = ArmorBack;
+            this.HullTier = HullTier;
+            this.ReadyVolleys = ReadyVolleys;
+            this.ReloadProgressTicks = ReloadProgressTicks;
+            this.RepairAmount = RepairAmount;
+            this.RepairChannelTicks = RepairChannelTicks;
+            this.IsReloading = IsReloading;
+            this.HasFired = HasFired;
+            this.LastShotTick = LastShotTick;
+            this.LastCombatTick = LastCombatTick;
             this.RespawnAtTick = RespawnAtTick;
             this.InvulnerableUntilTick = InvulnerableUntilTick;
             this.EncounterId = EncounterId;
+            this.IsInPort = IsInPort;
+            this.Hands = Hands;
+            this.MaxHands = MaxHands;
+            this.HandsRecoveredAtTick = HandsRecoveredAtTick;
+            this.BoardCooldownUntilTick = BoardCooldownUntilTick;
+            this.BoardImmuneUntilTick = BoardImmuneUntilTick;
+            this.WeaponSilencedUntilTick = WeaponSilencedUntilTick;
         }
 
         public Ship()

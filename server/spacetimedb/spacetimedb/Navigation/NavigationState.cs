@@ -3,20 +3,88 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    private static SpawnPoint FindSafeSpawn(ReducerContext ctx, ulong seed)
+    private static SpawnPoint FindSafeSpawn(ReducerContext ctx, ulong seed) =>
+        FindHarborBerth(ctx, SpawnBlockers(ctx), seed);
+
+    private static SpawnPoint FindHarborBerth(
+        ReducerContext ctx,
+        List<SpawnBlocker> blockers,
+        ulong seed)
     {
-        var blockers = new List<SpawnBlocker>();
-        foreach (var worldObject in UnsafeSpawnWorldObjects(ctx))
+        if (FindHarbor(ctx) is not WorldObject harbor)
         {
-            if (worldObject.IsActive && worldObject.BlocksMovement)
-            {
-                blockers.Add(new SpawnBlocker(
-                    worldObject.PositionX,
-                    worldObject.PositionY,
-                    worldObject.Radius));
-            }
+            return FindSafeSpawn(blockers, seed);
         }
 
+        // A ship comes back moored, inside the circle that shelters it, so putting to sea is a
+        // decision it has to make rather than the state it wakes up in.
+        if (SpawnRules.TryFindSafePositionNear(
+                seed,
+                harbor.PositionX,
+                harbor.PositionY,
+                harbor.Radius,
+                blockers,
+                out var berth))
+        {
+            return berth;
+        }
+
+        // Only a quay fouled by the chart itself pushes a newcomer into the water outside it.
+        blockers.Add(new SpawnBlocker(harbor.PositionX, harbor.PositionY, harbor.Radius));
+        if (!SpawnRules.TryFindSafePositionNear(
+                seed,
+                harbor.PositionX,
+                harbor.PositionY,
+                WorldRules.HarborSafeRadiusSquares,
+                blockers,
+                out var point))
+        {
+            throw new InvalidOperationException("No safe harbor berth is available.");
+        }
+
+        return point;
+    }
+
+    private static WorldObject? FindHarbor(ReducerContext ctx)
+    {
+        foreach (var harbor in ctx.Db.WorldObject.ByActiveKind.Filter(
+                     (true, (byte)WorldObjectCode.Harbor)))
+        {
+            return harbor;
+        }
+
+        return null;
+    }
+
+    private static SpawnPoint FindSafeRespawn(ReducerContext ctx, Ship ship, ulong seed)
+    {
+        var blockers = SpawnBlockers(ctx);
+        if (ship.FactionCode == (byte)FactionCode.Player)
+        {
+            return FindHarborBerth(ctx, blockers, seed);
+        }
+
+        if (ctx.Db.NpcAi.ShipEntityId.Find(ship.EntityId) is NpcAi ai &&
+            SpawnRules.TryFindSafePositionNear(
+                seed,
+                ai.HomeX,
+                ai.HomeY,
+                NpcRules.HomeAnchorRadius,
+                blockers,
+                out var home))
+        {
+            return home;
+        }
+
+        return FindSafeSpawn(blockers, seed);
+    }
+
+    /// <summary>
+    /// Spawns many ships at once (world seeding) by scanning the blocking world objects once and
+    /// reusing the list, instead of rebuilding it per ship.
+    /// </summary>
+    private static SpawnPoint FindSafeSpawn(IReadOnlyList<SpawnBlocker> blockers, ulong seed)
+    {
         if (!SpawnRules.TryFindSafePosition(seed, blockers, out var point))
         {
             throw new InvalidOperationException("No safe player spawn is available.");
@@ -25,33 +93,19 @@ public static partial class Module
         return point;
     }
 
-    private static SpawnPoint FindSafeRespawn(ReducerContext ctx, ulong seed)
+    // Land, reefs and hazards alike are kept clear of every spawn and respawn.
+    private static List<SpawnBlocker> SpawnBlockers(ReducerContext ctx)
     {
         var blockers = new List<SpawnBlocker>();
-        foreach (var kind in new[]
-                 {
-                     WorldObjectCode.Island,
-                     WorldObjectCode.Reef,
-                     WorldObjectCode.Storm,
-                     WorldObjectCode.Shoal,
-                 })
+        foreach (var worldObject in UnsafeSpawnWorldObjects(ctx))
         {
-            foreach (var worldObject in ctx.Db.WorldObject.ByActiveKind.Filter(
-                         (true, (byte)kind)))
-            {
-                blockers.Add(new SpawnBlocker(
-                    worldObject.PositionX,
-                    worldObject.PositionY,
-                    worldObject.Radius));
-            }
+            blockers.Add(new SpawnBlocker(
+                worldObject.PositionX,
+                worldObject.PositionY,
+                worldObject.Radius));
         }
 
-        if (!SpawnRules.TryFindSafePosition(seed, blockers, out var point))
-        {
-            throw new InvalidOperationException("No safe respawn position is available.");
-        }
-
-        return point;
+        return blockers;
     }
 
     private static List<NavigationBlocker> NavigationBlockers(ReducerContext ctx)
@@ -130,41 +184,6 @@ public static partial class Module
                 worldObject.PositionY,
                 worldObject.Radius));
         }
-    }
-
-    private static void ConfigureNavigationWaypoint(
-        ref Ship ship,
-        IReadOnlyCollection<NavigationBlocker> blockers)
-    {
-        ship.HasWaypoint = NavigationRules.TryFindDetour(
-            ship.PositionX,
-            ship.PositionY,
-            ship.DestinationX,
-            ship.DestinationY,
-            blockers,
-            out var waypoint);
-        ship.WaypointX = ship.HasWaypoint ? waypoint.X : ship.DestinationX;
-        ship.WaypointY = ship.HasWaypoint ? waypoint.Y : ship.DestinationY;
-    }
-
-    private static void ConfigureNavigationWaypoint(
-        ref ShipKinematics ship,
-        IReadOnlyCollection<NavigationBlocker> blockers)
-    {
-        ship.HasWaypoint = NavigationRules.TryFindDetour(
-            ship.PositionX,
-            ship.PositionY,
-            ship.DestinationX,
-            ship.DestinationY,
-            blockers,
-            out var waypoint);
-        ship.WaypointX = ship.HasWaypoint ? waypoint.X : ship.DestinationX;
-        ship.WaypointY = ship.HasWaypoint ? waypoint.Y : ship.DestinationY;
-        ship.DesiredHeadingDegrees = SailingRules.DesiredHeading(
-            ship.PositionX,
-            ship.PositionY,
-            ship.WaypointX,
-            ship.WaypointY);
     }
 
     private static ulong IdentitySeed(Identity identity)

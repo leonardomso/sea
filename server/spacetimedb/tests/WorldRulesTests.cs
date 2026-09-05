@@ -5,23 +5,48 @@ namespace Sea.Server.Tests;
 
 public sealed class WorldRulesTests
 {
-    [Theory]
-    [InlineData(-100, -100)]
-    [InlineData(0, 0)]
-    [InlineData(100, 100)]
-    public void IsInsideMap_accepts_positions_within_bounds(float x, float y)
+    [Fact]
+    public void TheMapIsFourHundredSquaresOnASide()
     {
-        Assert.True(WorldRules.IsInsideMap(x, y));
+        // A tripwire, not a behaviour test: 400 is a number SEA_5 §3.1 picked and nothing
+        // reads MapSizeSquares yet. MapMin and MapMax are not asserted here because
+        // InsideTheMapIsZeroToFourHundredOnBothAxes below fails the moment either moves.
+        Assert.Equal(400f, WorldRules.MapSizeSquares);
+    }
+
+    [Fact]
+    public void ATickIsATenthOfASecond()
+    {
+        Assert.Equal(0.1f, WorldRules.SecondsPerTick);
     }
 
     [Theory]
-    [InlineData(-100.01f, 0)]
-    [InlineData(100.01f, 0)]
-    [InlineData(0, -100.01f)]
-    [InlineData(0, 100.01f)]
+    [InlineData(0f, 0f, true)]
+    [InlineData(400f, 400f, true)]
+    [InlineData(-0.01f, 200f, false)]
+    [InlineData(400.01f, 200f, false)]
+    [InlineData(200f, -0.01f, false)]
+    [InlineData(200f, 400.01f, false)]
+    public void InsideTheMapIsZeroToFourHundredOnBothAxes(float x, float y, bool expected)
+    {
+        Assert.Equal(expected, WorldRules.IsInsideMap(x, y));
+    }
+
+    [Fact]
+    public void ClampToMapPullsAPointBackInside()
+    {
+        var (x, y) = WorldRules.ClampToMap(-5f, 900f);
+
+        // Math.Clamp hands back the bound itself, so these are exact. Replay hashes
+        // floats bit for bit, and a tolerance is the one thing that would hide drift.
+        Assert.Equal(0f, x);
+        Assert.Equal(400f, y);
+    }
+
+    [Theory]
     [InlineData(float.NaN, 0)]
     [InlineData(0, float.PositiveInfinity)]
-    public void IsInsideMap_rejects_invalid_positions(float x, float y)
+    public void IsInsideMap_rejects_non_finite_positions(float x, float y)
     {
         Assert.False(WorldRules.IsInsideMap(x, y));
     }
@@ -35,11 +60,7 @@ public sealed class WorldRulesTests
         Assert.Equal(25u, WorldRules.InitialCannonDamage);
         Assert.Equal(100u, WorldRules.EnemyInitialHealth);
         Assert.Equal(20u, WorldRules.InitialCannonCooldownTicks);
-        Assert.Equal(60f, WorldRules.CannonRange);
         Assert.Equal(100u, WorldRules.EnemyGoldReward);
-        Assert.Equal(1u, WorldRules.InitialProgressionLevel);
-        Assert.Equal(0u, WorldRules.InitialCannonUpgradeLevel);
-        Assert.Equal(12f, WorldRules.PlayerShipSpeed);
     }
 
     [Fact]
@@ -62,23 +83,6 @@ public sealed class WorldRulesTests
         Assert.True(step.Arrived);
     }
 
-    [Theory]
-    [InlineData("island", 35f, 20f, 12f, 35f, 20f)]
-    [InlineData("reef", -30f, -25f, 10f, -39f, -25f)]
-    public void IsBlocked_rejects_points_inside_blocking_geometry(string kind, float entityX, float entityY, float radius, float x, float y)
-    {
-        Assert.True(WorldRules.IsBlocked(kind, entityX, entityY, radius, x, y));
-    }
-
-    [Theory]
-    [InlineData("harbor", 0f, 0f, 8f, 0f, 0f)]
-    [InlineData("training_target", 45f, -10f, 15f, 45f, -10f)]
-    [InlineData("island", 35f, 20f, 12f, 48f, 20f)]
-    public void IsBlocked_allows_non_blocking_or_distant_points(string kind, float entityX, float entityY, float radius, float x, float y)
-    {
-        Assert.False(WorldRules.IsBlocked(kind, entityX, entityY, radius, x, y));
-    }
-
     [Fact]
     public void IsInRange_uses_inclusive_distance()
     {
@@ -96,21 +100,6 @@ public sealed class WorldRulesTests
     }
 
     [Theory]
-    [InlineData(0u, 100u)]
-    [InlineData(1u, 200u)]
-    [InlineData(2u, 300u)]
-    public void CannonUpgradeCost_is_deterministic(uint level, uint expected)
-    {
-        Assert.Equal(expected, WorldRules.CannonUpgradeCost(level));
-    }
-
-    [Fact]
-    public void CannonDamageAfterUpgrade_adds_the_fixed_upgrade_bonus()
-    {
-        Assert.Equal(35u, WorldRules.CannonDamageAfterUpgrade(25, 2));
-    }
-
-    [Theory]
     [InlineData(PlayerLoadSource.ClientLifecycle, false)]
     [InlineData(PlayerLoadSource.ExplicitLoad, true)]
     public void Player_creation_is_reserved_for_explicit_loads(
@@ -118,19 +107,6 @@ public sealed class WorldRulesTests
         bool expected)
     {
         Assert.Equal(expected, PlayerConnectionRules.MayCreatePlayer(source));
-    }
-
-    [Theory]
-    [InlineData(-100f, 0)]
-    [InlineData(-75.01f, 0)]
-    [InlineData(-75f, 1)]
-    [InlineData(0f, 4)]
-    [InlineData(100f, 7)]
-    public void ChunkCoordinate_partitions_the_map_into_bounded_cells(
-        float position,
-        int expected)
-    {
-        Assert.Equal(expected, SpatialRules.ChunkCoordinate(position));
     }
 
     [Theory]
@@ -150,20 +126,8 @@ public sealed class WorldRulesTests
         var content = ContentCatalog.CreateDefault();
 
         Assert.Equal(4, content.Ammunition.Count);
-        Assert.Equal(4, content.Abilities.Count);
-        Assert.Equal(3, content.Npcs.Count);
+        Assert.Equal(4, content.Npcs.Count);
         Assert.Empty(ContentCatalog.Validate(content));
-    }
-
-    [Theory]
-    [InlineData(WorldObjectCode.Island, true)]
-    [InlineData(WorldObjectCode.Reef, true)]
-    [InlineData(WorldObjectCode.Harbor, false)]
-    [InlineData(WorldObjectCode.Shoal, false)]
-    [InlineData(WorldObjectCode.Storm, false)]
-    public void TypedWorldObjectsOwnCollisionBehavior(WorldObjectCode kind, bool expected)
-    {
-        Assert.Equal(expected, WorldRules.IsBlocked(kind, 0, 0, 5, 0, 0));
     }
 
     [Theory]
@@ -174,60 +138,5 @@ public sealed class WorldRulesTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             WorldRules.AdvanceTowards(0, 0, 1, 1, maximumDistance));
-    }
-
-    [Fact]
-    public void CheckedUpgradeArithmeticRejectsOverflow()
-    {
-        Assert.Throws<OverflowException>(() => WorldRules.CannonUpgradeCost(uint.MaxValue));
-        Assert.Throws<OverflowException>(() =>
-            WorldRules.CannonDamageAfterUpgrade(uint.MaxValue, 1));
-    }
-
-    [Fact]
-    public void SpatialBoundsClampAndRejectInvalidValues()
-    {
-        Assert.Equal(new ChunkBounds(0, 7, 0, 7),
-            SpatialRules.BoundsAround(0, 0, 500));
-        Assert.Equal(new ChunkBounds(0, 7, 0, 7),
-            SpatialRules.BoundsForSegment(-100, 100, 100, -100, 0));
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            SpatialRules.BoundsAround(0, 0, float.NaN));
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            SpatialRules.ChunkCoordinate(float.PositiveInfinity));
-    }
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(78)]
-    public void CoordinateColumnsRejectOutOfRangeIndexes(int column)
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            ChartCoordinates.ColumnLabel(column));
-        Assert.Throws<ArgumentOutOfRangeException>(() =>
-            ChartCoordinates.CellCenter(column, 0));
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("A")]
-    [InlineData("AAA")]
-    [InlineData("A!")]
-    [InlineData("ZZ")]
-    public void InvalidCoordinateColumnLabelsAreRejected(string? label)
-    {
-        Assert.False(ChartCoordinates.TryColumnIndex(label, out _));
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("AA")]
-    [InlineData("AA nope")]
-    [InlineData("AA -1")]
-    [InlineData("AA 61")]
-    public void InvalidCoordinateCellsAreRejected(string coordinate)
-    {
-        Assert.False(ChartCoordinates.TryCellCenter(coordinate, out _));
     }
 }

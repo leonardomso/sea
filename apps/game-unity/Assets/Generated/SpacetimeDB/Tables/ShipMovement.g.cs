@@ -26,15 +26,6 @@ namespace SpacetimeDB.Types
 
             public readonly EntityIdUniqueIndex EntityId;
 
-            public sealed class ByActiveChunkHazardShardIndex : BTreeIndexBase<(bool IsActive, int ChunkX, int ChunkY, byte HazardShard)>
-            {
-                protected override (bool IsActive, int ChunkX, int ChunkY, byte HazardShard) GetKey(ShipMovement row) => (row.IsActive, row.ChunkX, row.ChunkY, row.HazardShard);
-
-                public ByActiveChunkHazardShardIndex(ShipMovementHandle table) : base(table) { }
-            }
-
-            public readonly ByActiveChunkHazardShardIndex ByActiveChunkHazardShard;
-
             public sealed class ByActiveChunkIndex : BTreeIndexBase<(bool IsActive, int ChunkX, int ChunkY)>
             {
                 protected override (bool IsActive, int ChunkX, int ChunkY) GetKey(ShipMovement row) => (row.IsActive, row.ChunkX, row.ChunkY);
@@ -44,11 +35,20 @@ namespace SpacetimeDB.Types
 
             public readonly ByActiveChunkIndex ByActiveChunk;
 
+            public sealed class ByActiveFactionIndex : BTreeIndexBase<(bool IsActive, byte FactionCode)>
+            {
+                protected override (bool IsActive, byte FactionCode) GetKey(ShipMovement row) => (row.IsActive, row.FactionCode);
+
+                public ByActiveFactionIndex(ShipMovementHandle table) : base(table) { }
+            }
+
+            public readonly ByActiveFactionIndex ByActiveFaction;
+
             internal ShipMovementHandle(DbConnection conn) : base(conn)
             {
                 EntityId = new(this);
-                ByActiveChunkHazardShard = new(this);
                 ByActiveChunk = new(this);
+                ByActiveFaction = new(this);
             }
 
             protected override object GetPrimaryKey(ShipMovement row) => row.EntityId;
@@ -60,6 +60,8 @@ namespace SpacetimeDB.Types
     public sealed class ShipMovementCols
     {
         public global::SpacetimeDB.Col<ShipMovement, ulong> EntityId { get; }
+        public global::SpacetimeDB.Col<ShipMovement, byte> FactionCode { get; }
+        public global::SpacetimeDB.Col<ShipMovement, byte> MapId { get; }
         public global::SpacetimeDB.Col<ShipMovement, float> PositionX { get; }
         public global::SpacetimeDB.Col<ShipMovement, float> PositionY { get; }
         public global::SpacetimeDB.Col<ShipMovement, float> HeadingDegrees { get; }
@@ -68,7 +70,6 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<ShipMovement, bool> IsActive { get; }
         public global::SpacetimeDB.Col<ShipMovement, bool> IsAlive { get; }
         public global::SpacetimeDB.Col<ShipMovement, byte> MovementShard { get; }
-        public global::SpacetimeDB.Col<ShipMovement, byte> HazardShard { get; }
         public global::SpacetimeDB.Col<ShipMovement, int> ChunkX { get; }
         public global::SpacetimeDB.Col<ShipMovement, int> ChunkY { get; }
         public global::SpacetimeDB.Col<ShipMovement, ulong> SnapshotTick { get; }
@@ -76,6 +77,8 @@ namespace SpacetimeDB.Types
         public ShipMovementCols(string tableName)
         {
             EntityId = new global::SpacetimeDB.Col<ShipMovement, ulong>(tableName, "entity_id");
+            FactionCode = new global::SpacetimeDB.Col<ShipMovement, byte>(tableName, "faction_code");
+            MapId = new global::SpacetimeDB.Col<ShipMovement, byte>(tableName, "map_id");
             PositionX = new global::SpacetimeDB.Col<ShipMovement, float>(tableName, "position_x");
             PositionY = new global::SpacetimeDB.Col<ShipMovement, float>(tableName, "position_y");
             HeadingDegrees = new global::SpacetimeDB.Col<ShipMovement, float>(tableName, "heading_degrees");
@@ -84,7 +87,6 @@ namespace SpacetimeDB.Types
             IsActive = new global::SpacetimeDB.Col<ShipMovement, bool>(tableName, "is_active");
             IsAlive = new global::SpacetimeDB.Col<ShipMovement, bool>(tableName, "is_alive");
             MovementShard = new global::SpacetimeDB.Col<ShipMovement, byte>(tableName, "movement_shard");
-            HazardShard = new global::SpacetimeDB.Col<ShipMovement, byte>(tableName, "hazard_shard");
             ChunkX = new global::SpacetimeDB.Col<ShipMovement, int>(tableName, "chunk_x");
             ChunkY = new global::SpacetimeDB.Col<ShipMovement, int>(tableName, "chunk_y");
             SnapshotTick = new global::SpacetimeDB.Col<ShipMovement, ulong>(tableName, "snapshot_tick");
@@ -94,16 +96,16 @@ namespace SpacetimeDB.Types
     public sealed class ShipMovementIxCols
     {
         public global::SpacetimeDB.IxCol<ShipMovement, ulong> EntityId { get; }
+        public global::SpacetimeDB.IxCol<ShipMovement, byte> FactionCode { get; }
         public global::SpacetimeDB.IxCol<ShipMovement, bool> IsActive { get; }
-        public global::SpacetimeDB.IxCol<ShipMovement, byte> HazardShard { get; }
         public global::SpacetimeDB.IxCol<ShipMovement, int> ChunkX { get; }
         public global::SpacetimeDB.IxCol<ShipMovement, int> ChunkY { get; }
 
         public ShipMovementIxCols(string tableName)
         {
             EntityId = new global::SpacetimeDB.IxCol<ShipMovement, ulong>(tableName, "entity_id");
+            FactionCode = new global::SpacetimeDB.IxCol<ShipMovement, byte>(tableName, "faction_code");
             IsActive = new global::SpacetimeDB.IxCol<ShipMovement, bool>(tableName, "is_active");
-            HazardShard = new global::SpacetimeDB.IxCol<ShipMovement, byte>(tableName, "hazard_shard");
             ChunkX = new global::SpacetimeDB.IxCol<ShipMovement, int>(tableName, "chunk_x");
             ChunkY = new global::SpacetimeDB.IxCol<ShipMovement, int>(tableName, "chunk_y");
         }

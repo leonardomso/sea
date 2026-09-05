@@ -17,7 +17,7 @@ public static partial class Module
             Tick = 0,
             TickRateHz = WorldRules.TickRateHz,
             NextEntityId = 1000,
-            ContentVersion = 4,
+            ContentVersion = 5,
         });
         ctx.Db.SimulationClock.Insert(new SimulationClock
         {
@@ -26,10 +26,6 @@ public static partial class Module
             NextEntityId = 1000,
         });
         ctx.Db.SimulationTelemetry.Insert(new SimulationTelemetry { Id = 1 });
-        ctx.Db.SimulationDispatchState.Insert(new SimulationDispatchState { Id = 1 });
-        ctx.Db.MovementSnapshotDispatchState.Insert(
-            new MovementSnapshotDispatchState { Id = 1 });
-        ctx.Db.HazardDispatchState.Insert(new HazardDispatchState { Id = 1 });
         SeedContent(ctx);
         SeedWorld(ctx);
         SeedNavigationField(ctx);
@@ -42,18 +38,7 @@ public static partial class Module
         ctx.Db.SimulationDispatchTimer.Insert(new SimulationDispatchTimer
         {
             ScheduledAt = new ScheduleAt.Interval(
-                TimeSpan.FromMilliseconds(
-                    SimulationWorkRules.DispatchIntervalMilliseconds(false))),
-        });
-        ctx.Db.MovementSnapshotDispatchTimer.Insert(new MovementSnapshotDispatchTimer
-        {
-            ScheduledAt = new ScheduleAt.Interval(TimeSpan.FromMilliseconds(
-                SimulationWorkRules.SnapshotIntervalMilliseconds(false))),
-        });
-        ctx.Db.HazardDispatchTimer.Insert(new HazardDispatchTimer
-        {
-            ScheduledAt = new ScheduleAt.Interval(TimeSpan.FromMilliseconds(
-                SimulationWorkRules.HazardIntervalMilliseconds(false))),
+                TimeSpan.FromMilliseconds(SimulationWorkRules.DispatchIntervalMilliseconds)),
         });
         for (byte shardId = 0; shardId < SimulationWorkRules.MovementShardCount; shardId++)
         {
@@ -84,7 +69,9 @@ public static partial class Module
         if (ctx.Db.PlayerOwnership.Owner.Find(ctx.Sender) is PlayerOwnership ownership)
         {
             SetLoadedConnectionState(ctx, ref ownership, true);
-            EnsureProgression(ctx, ctx.Sender);
+            EnsurePlayerProgression(ctx, ctx.Sender);
+            EnsurePlayerAccount(ctx, ctx.Sender);
+            EnsureHull(ctx, ctx.Sender, ownership.ShipEntityId);
             EnsureCommandState(ctx, ctx.Sender, ownership.ShipEntityId);
             SynchronizePlayerClock(ctx, ctx.Sender);
             return;
@@ -93,8 +80,19 @@ public static partial class Module
         var entityId = AllocateEntityId(ctx);
         var spawn = FindSafeSpawn(ctx, IdentitySeed(ctx.Sender));
         var ship = CreateShip(entityId, "player_sloop", "player", spawn.X, spawn.Y);
+        var tick = CurrentSimulationTick(ctx);
+        ship.InvulnerableUntilTick = RespawnRules.PlayerProtectionUntil(tick);
+
+        // A new hull is berthed inside the port, and only the sailing shard ever crosses the
+        // harbour mouth, so the flag has to be true before the ship has moved at all.
+        ship.IsInPort = FindHarbor(ctx) is WorldObject harbor && PortRules.IsInside(
+            spawn.X,
+            spawn.Y,
+            harbor.PositionX,
+            harbor.PositionY,
+            harbor.Radius);
         ctx.Db.Ship.Insert(ship);
-        InsertShipMovement(ctx, ship);
+        InsertShipMovement(ctx, ship, tick);
         ctx.Db.PlayerOwnership.Insert(new PlayerOwnership
         {
             Owner = ctx.Sender,
@@ -102,16 +100,12 @@ public static partial class Module
             IsConnected = true,
         });
         AdjustConnectedPlayerCount(ctx, 1);
-        ctx.Db.PlayerProgression.Insert(new PlayerProgression
-        {
-            Owner = ctx.Sender,
-            Level = 1,
-            Experience = 0,
-            Gold = 0,
-        });
+        EnsurePlayerProgression(ctx, ctx.Sender);
+        EnsurePlayerAccount(ctx, ctx.Sender);
+        EnsureHull(ctx, ctx.Sender, entityId);
         EnsureCommandState(ctx, ctx.Sender, entityId);
         SeedPlayerInventory(ctx, entityId);
-        AppendEvent(ctx, entityId, "player_loaded", $"entity_id={entityId}");
+        AppendEvent(ctx, tick, entityId, "player_loaded", $"entity_id={entityId}");
         SynchronizePlayerClock(ctx, ctx.Sender);
     }
 
@@ -135,4 +129,83 @@ public static partial class Module
         }
     }
 
+    private static void EnsurePlayerProgression(ReducerContext ctx, Identity owner)
+    {
+        if (ctx.Db.PlayerProgression.Owner.Find(owner) is null)
+        {
+            ctx.Db.PlayerProgression.Insert(new PlayerProgression
+            {
+                Owner = owner,
+                MapRank = 1,
+                Gold = 0,
+            });
+        }
+    }
+
+    private static void EnsurePlayerAccount(ReducerContext ctx, Identity owner)
+    {
+        if (ctx.Db.PlayerAccount.Owner.Find(owner) is null)
+        {
+            ctx.Db.PlayerAccount.Insert(new PlayerAccount
+            {
+                Owner = owner,
+                AccountId = "",
+            });
+        }
+    }
+
+    /// <summary>
+    /// Ensures the player owns a starter hull and that every owned hull's <see cref="ShipStats"/> row
+    /// reflects it. Login seeding lives here, next to <see cref="EnsurePlayerProgression"/> and
+    /// <see cref="EnsurePlayerAccount"/>, not in the tick pipeline.
+    /// </summary>
+    private static void EnsureHull(ReducerContext ctx, Identity owner, ulong shipEntityId)
+    {
+        // 1a seeds exactly one hull; this loop already has the shape 1c's dock needs once a player
+        // can own several.
+        var owned = false;
+        foreach (var existing in ctx.Db.Hull.ByOwner.Filter(owner))
+        {
+            // Logging back in must not hand a damaged ship a free repair, so the sheet lands on
+            // the row without restocking it.
+            PublishStatSheet(ctx, shipEntityId, RecomputeShipStats(ctx, existing), restock: false);
+            owned = true;
+        }
+
+        if (owned)
+        {
+            return;
+        }
+
+        var hull = ctx.Db.Hull.Insert(new Hull
+        {
+            HullId = 0,
+            Owner = owner,
+            HullDefId = Catalog.StarterHull.Id,
+            Name = Catalog.StarterHull.Name,
+            CannonDefId = Catalog.StarterCannon.Id,
+            CannonCount = Catalog.StarterHull.CannonSlots,
+        });
+        PublishStatSheet(ctx, shipEntityId, RecomputeShipStats(ctx, hull), restock: true);
+    }
+
+    /// <summary>
+    /// Copies a freshly computed stat sheet onto the live <see cref="Ship"/> row. The fat row
+    /// carries the combat numbers outright so the tick never joins the dock tables to fire a
+    /// volley; kinematics are untouched, so this needs no movement republication.
+    /// </summary>
+    private static void PublishStatSheet(
+        ReducerContext ctx,
+        ulong shipEntityId,
+        ShipStatSheet sheet,
+        bool restock)
+    {
+        if (ctx.Db.Ship.EntityId.Find(shipEntityId) is not Ship ship)
+        {
+            return;
+        }
+
+        ApplyStatSheet(ref ship, sheet, restock);
+        ctx.Db.Ship.EntityId.Update(ship);
+    }
 }

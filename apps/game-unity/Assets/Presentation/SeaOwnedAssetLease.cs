@@ -19,7 +19,7 @@ namespace Sea.Client
                 throw new ArgumentNullException(nameof(models));
             }
 
-            var validatedModels = new Dictionary<SeaOwnedShipRole, GameObject>(4);
+            var validatedModels = new Dictionary<SeaOwnedShipRole, GameObject>(SeaOwnedAssetPolicy.ShipRoleCount);
             foreach (SeaOwnedShipRole role in Enum.GetValues(typeof(SeaOwnedShipRole)))
             {
                 if (!models.TryGetValue(role, out var model) || model == null)
@@ -51,9 +51,10 @@ namespace Sea.Client
         private static readonly SeaOwnedShipRole[] ShipRoles =
         {
             SeaOwnedShipRole.Player,
-            SeaOwnedShipRole.Patrol,
-            SeaOwnedShipRole.Raider,
-            SeaOwnedShipRole.Gunship,
+            SeaOwnedShipRole.Skiff,
+            SeaOwnedShipRole.ReefCrab,
+            SeaOwnedShipRole.Fancy,
+            SeaOwnedShipRole.RedMary,
         };
 
         private readonly AsyncOperationHandle<GameObject>[] shipHandles =

@@ -13,6 +13,7 @@ unity test apps/game-unity --mode EditMode --output apps/game-unity/Build/test-r
 "$project_root/scripts/test-unity-playmode.sh"
 "$project_root/scripts/test-unity-performance.sh"
 unity build apps/game-unity --target WebGL --execute-method Sea.Editor.SeaBuild.PerformWebGLBuild --output-path apps/game-unity/Build/WebGL --no-tail
+node "$project_root/scripts/test-webgl-presentation-performance.mjs"
 unity build apps/game-unity --target StandaloneOSX --execute-method Sea.Editor.SeaBuild.PerformMacOSBuild --output-path apps/game-unity/Build/Sea.app --no-tail
 "$project_root/scripts/test-unity-presentation-performance.sh"
 "$project_root/scripts/test-unity-runtime.sh"

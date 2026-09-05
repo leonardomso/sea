@@ -1,0 +1,56 @@
+{
+  "ammunition": [
+    {
+      "id": "round",
+      "code": "Round",
+      "name": "Round Shot",
+      "damageMultiplier": 1.0,
+      "reloadMultiplier": 1.0,
+      "goldPerVolley": 10,
+      "effect": "None",
+      "effectMagnitude": 0,
+      "effectDurationSeconds": 0,
+      "rangeLimitSquares": 0,
+      "rangePenaltySquares": 0
+    },
+    {
+      "id": "chain",
+      "code": "Chain",
+      "name": "Chain Shot",
+      "damageMultiplier": 0.7,
+      "reloadMultiplier": 1.0,
+      "goldPerVolley": 40,
+      "effect": "Slow",
+      "effectMagnitude": 0.3,
+      "effectDurationSeconds": 4,
+      "rangeLimitSquares": 0,
+      "rangePenaltySquares": 2
+    },
+    {
+      "id": "grapeshot",
+      "code": "Grapeshot",
+      "name": "Grape Shot",
+      "damageMultiplier": 0.6,
+      "reloadMultiplier": 0.9,
+      "goldPerVolley": 40,
+      "effect": "SlowReload",
+      "effectMagnitude": 0.5,
+      "effectDurationSeconds": 3,
+      "rangeLimitSquares": 4,
+      "rangePenaltySquares": 11
+    },
+    {
+      "id": "incendiary",
+      "code": "Incendiary",
+      "name": "Fire Shot",
+      "damageMultiplier": 0.85,
+      "reloadMultiplier": 1.1,
+      "goldPerVolley": 60,
+      "effect": "Burn",
+      "effectMagnitude": 0.006,
+      "effectDurationSeconds": 5,
+      "rangeLimitSquares": 0,
+      "rangePenaltySquares": 4
+    }
+  ]
+}

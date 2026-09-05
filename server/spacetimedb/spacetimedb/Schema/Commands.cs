@@ -28,11 +28,7 @@ public static partial class Module
     }
 
     [SpacetimeDB.Type]
-    public partial struct FireBroadsideCommand
-    {
-        public string Side;
-        public string WeakPoint;
-    }
+    public partial struct FireCommand;
 
     [SpacetimeDB.Type]
     public partial struct ActivateAbilityCommand
@@ -50,17 +46,41 @@ public static partial class Module
     public partial struct CancelChannelCommand;
 
     [SpacetimeDB.Type]
+    public partial struct UseRepairKitCommand;
+
+    /// <summary>
+    /// Which berth a wreck comes back at. Havenmere offers one, so the option is a byte rather
+    /// than a name: later ports add values without changing the command.
+    /// </summary>
+    [SpacetimeDB.Type]
+    public partial struct ChooseRespawnCommand
+    {
+        public byte OptionCode;
+    }
+
+    /// <summary>
+    /// Answering the crossing prompt. Which chart she is going to is not sent: the offer
+    /// standing on the server says so, and a captain who could name the chart could name one
+    /// she was never offered.
+    /// </summary>
+    [SpacetimeDB.Type]
+    public partial struct ChangeMapCommand;
+
+    [SpacetimeDB.Type]
     public partial record ShipCommand : TaggedEnum<(
         SetCourseCommand SetCourse,
         StopCourseCommand StopCourse,
         SelectTargetCommand SelectTarget,
         ClearTargetCommand ClearTarget,
         SetAmmoCommand SetAmmo,
-        FireBroadsideCommand FireBroadside,
+        FireCommand Fire,
         ActivateAbilityCommand ActivateAbility,
         StartRepairCommand StartRepair,
         StartBoardingCommand StartBoarding,
-        CancelChannelCommand CancelChannel)>;
+        CancelChannelCommand CancelChannel,
+        UseRepairKitCommand UseRepairKit,
+        ChooseRespawnCommand ChooseRespawn,
+        ChangeMapCommand ChangeMap)>;
 
     [SpacetimeDB.Type]
     public partial struct CommandEnvelope

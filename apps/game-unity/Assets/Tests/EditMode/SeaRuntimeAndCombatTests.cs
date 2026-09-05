@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Sea.Client;
-using SpacetimeDB;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -17,19 +16,28 @@ namespace Sea.Tests
         [Test]
         public void Client_chart_coordinates_match_the_server_contract()
         {
-            Assert.That(SeaChartCoordinates.TryCellCenter("AX 59", out var center), Is.True);
-            Assert.That(center.Column, Is.EqualTo(23));
-            Assert.That(center.Row, Is.EqualTo(59));
-            Assert.That(SeaChartCoordinates.LabelAt(center.X, center.Y), Is.EqualTo("AX 59"));
-            Assert.That(SeaChartCoordinates.LabelAt(-99.9f, 99.9f), Is.EqualTo("AA 0"));
-            Assert.That(SeaChartCoordinates.LabelAt(99.9f, -99.9f), Is.EqualTo("CZ 60"));
+            // The client's grid is the server's grid: forty ruler cells of ten squares on a
+            // side, columns lettered from A and rows spoken from 1, counted from the
+            // north-west corner, with no flip against the world's own top-left-origin,
+            // south-growing y axis. Indices are zero-based on both sides; only the spoken
+            // row number is offset.
+            Assert.That(SeaChartCoordinates.TryCellCenter("N6", out var center), Is.True);
+            Assert.That(center.Column, Is.EqualTo(13));
+            Assert.That(center.Row, Is.EqualTo(5));
+            Assert.That(center.X, Is.EqualTo(135f).Within(0.001f));
+            Assert.That(center.Y, Is.EqualTo(55f).Within(0.001f));
+            Assert.That(SeaChartCoordinates.LabelAt(center.X, center.Y), Is.EqualTo("N6"));
+            Assert.That(SeaChartCoordinates.LabelAt(0.1f, 0.1f), Is.EqualTo("A1"));
+            Assert.That(SeaChartCoordinates.LabelAt(399.9f, 399.9f), Is.EqualTo("AN40"));
+            Assert.That(SeaChartCoordinates.TryCellCenter("AO1", out _), Is.False);
+            Assert.That(SeaChartCoordinates.TryCellCenter("A0", out _), Is.False);
         }
 
         [Test]
         public void Chart_camera_rules_clamp_zoom_and_do_not_issue_ship_commands()
         {
-            Assert.That(SeaChartCameraRules.ClampZoom(5f), Is.EqualTo(20f));
-            Assert.That(SeaChartCameraRules.ClampZoom(100f), Is.EqualTo(80f));
+            Assert.That(SeaChartCameraRules.ClampZoom(5f), Is.EqualTo(12f));
+            Assert.That(SeaChartCameraRules.ClampZoom(100f), Is.EqualTo(45f));
             Assert.That(SeaChartCameraRules.PanDelta(1f, -1f, 20f, 0.5f),
                 Is.EqualTo(new Vector3(10f, 0f, -10f)));
         }
@@ -44,15 +52,63 @@ namespace Sea.Tests
             var gameplay = controls.FindActionMap("Gameplay", throwIfNotFound: true);
             var requiredActions = new[]
             {
-                "Point", "SetCourse", "StopCourse", "PanChart", "ZoomChart", "RecenterChart",
-                "OpenNavigator", "CycleTargetNext", "CycleTargetPrevious", "ClearTarget", "Pause",
-                "FirePort", "FireStarboard", "AimHull", "AimSails", "AimCannons", "AmmoRound",
-                "AmmoChain", "AmmoGrapeshot", "AmmoIncendiary", "FullSail", "Brace",
-                "EmergencyPump", "SmokeScreen", "Repair", "Board",
+                "Point", "SetCourse", "StopCourse", "PanChart", "ZoomChart", "DragChart", "RecenterChart",
+                "OpenNavigator", "CycleTargetNext", "CycleTargetPrevious", "ClearTarget",
+                "Fire", "AmmoRound", "AmmoChain", "AmmoGrapeshot", "AmmoIncendiary", "Repair",
+                "RepairKit", "Board", "Ram", "Ability1", "Ability2", "Ability3", "Ability4",
+                "PvpFlag",
             };
 
             Assert.That(gameplay.actions.Select(action => action.name), Is.EquivalentTo(requiredActions));
             Assert.That(controls.FindActionMap("Menu", throwIfNotFound: true), Is.Not.Null);
+        }
+
+        /// <summary>
+        /// Mechanics section 1.1 is the contract a captain learns once: left click sails, Q or
+        /// Space fires, Tab takes a target, Escape lets it go, R repairs and 1 to 4 load the
+        /// racks. There is no steering key and no full-speed key, because there is no steering.
+        /// </summary>
+        [Test]
+        public void Default_bindings_are_the_ones_the_mechanics_sheet_promises()
+        {
+            var gameplay = AssetDatabase
+                .LoadAssetAtPath<InputActionAsset>("Assets/Input/SeaControls.inputactions")
+                .FindActionMap("Gameplay", throwIfNotFound: true);
+
+            var expected = new (string Action, string[] Paths)[]
+            {
+                ("SetCourse", new[] { "<Mouse>/leftButton" }),
+                ("StopCourse", new[] { "<Mouse>/rightButton" }),
+                ("DragChart", new[] { "<Mouse>/middleButton" }),
+                ("RecenterChart", new[] { "<Keyboard>/home" }),
+                ("CycleTargetNext", new[] { "<Keyboard>/tab" }),
+                ("ClearTarget", new[] { "<Keyboard>/escape" }),
+                ("Fire", new[] { "<Keyboard>/q", "<Keyboard>/space" }),
+                ("AmmoRound", new[] { "<Keyboard>/1" }),
+                ("AmmoChain", new[] { "<Keyboard>/2" }),
+                ("AmmoGrapeshot", new[] { "<Keyboard>/3" }),
+                ("AmmoIncendiary", new[] { "<Keyboard>/4" }),
+                ("Repair", new[] { "<Keyboard>/r" }),
+                ("Board", new[] { "<Keyboard>/e" }),
+                ("Ram", new[] { "<Keyboard>/f" }),
+                ("PvpFlag", new[] { "<Keyboard>/p" }),
+            };
+
+            foreach (var (name, paths) in expected)
+            {
+                var action = gameplay.FindAction(name, throwIfNotFound: true);
+                Assert.That(
+                    action.bindings.Where(binding => !binding.isComposite)
+                        .Select(binding => binding.path),
+                    Is.EquivalentTo(paths),
+                    name);
+            }
+
+            // Steering is the server's business; the keyboard only pans the chart.
+            var wasd = gameplay.FindAction("PanChart", throwIfNotFound: true).bindings
+                .Select(binding => binding.path);
+            Assert.That(wasd, Contains.Item("<Keyboard>/w"));
+            Assert.That(wasd, Contains.Item("<Keyboard>/s"));
         }
 
         [Test]
@@ -66,6 +122,8 @@ namespace Sea.Tests
                 "Assets/Generated/SpacetimeDB/Reducers/MoveTo.g.cs"), Is.False);
             Assert.That(File.Exists(
                 "Assets/Generated/SpacetimeDB/Reducers/FireBroadside.g.cs"), Is.False);
+            Assert.That(File.Exists(
+                "Assets/Generated/SpacetimeDB/Types/FireBroadsideCommand.g.cs"), Is.False);
         }
 
         [Test]
@@ -75,9 +133,10 @@ namespace Sea.Tests
             {
                 "SetCourseCommand.g.cs", "StopCourseCommand.g.cs",
                 "SelectTargetCommand.g.cs", "ClearTargetCommand.g.cs",
-                "SetAmmoCommand.g.cs", "FireBroadsideCommand.g.cs",
+                "SetAmmoCommand.g.cs", "FireCommand.g.cs",
                 "ActivateAbilityCommand.g.cs", "StartRepairCommand.g.cs",
                 "StartBoardingCommand.g.cs", "CancelChannelCommand.g.cs",
+                "UseRepairKitCommand.g.cs", "ChooseRespawnCommand.g.cs",
             };
 
             Assert.That(commands.All(file => File.Exists(
@@ -89,9 +148,40 @@ namespace Sea.Tests
         {
             Assert.That(SeaCommandResultText.Rejection(1), Is.EqualTo("stale command"));
             Assert.That(SeaCommandResultText.Rejection(6), Is.EqualTo("destination blocked"));
-            Assert.That(SeaCommandResultText.Rejection(18),
-                Is.EqualTo("target outside firing arc"));
+            Assert.That(SeaCommandResultText.Rejection(13),
+                Is.EqualTo("magazine reloading"));
+            Assert.That(SeaCommandResultText.Rejection(21), Is.EqualTo("not available yet"));
+            Assert.That(SeaCommandResultText.Rejection(28),
+                Is.EqualTo("target is not damaged enough to board"));
+            Assert.That(SeaCommandResultText.Rejection(31),
+                Is.EqualTo("boarders have spiked the guns"));
             Assert.That(SeaCommandResultText.Rejection(255), Is.EqualTo("rejection code 255"));
+        }
+
+        [Test]
+        public void Primitives_share_unity_meshes_without_colliders()
+        {
+            foreach (var type in new[]
+            {
+                PrimitiveType.Sphere,
+                PrimitiveType.Cube,
+                PrimitiveType.Cylinder,
+                PrimitiveType.Plane,
+                PrimitiveType.Quad,
+                PrimitiveType.Capsule,
+            })
+            {
+                var primitive = SeaPrimitive.Create(type, type.ToString(), null);
+                var reference = GameObject.CreatePrimitive(type);
+
+                Assert.That(
+                    primitive.GetComponent<MeshFilter>().sharedMesh,
+                    Is.SameAs(reference.GetComponent<MeshFilter>().sharedMesh),
+                    type.ToString());
+                Assert.That(primitive.GetComponent<Collider>(), Is.Null);
+                Object.DestroyImmediate(primitive);
+                Object.DestroyImmediate(reference);
+            }
         }
 
         [Test]
@@ -148,16 +238,44 @@ namespace Sea.Tests
         }
 
         [Test]
-        public void Broadside_effects_spawn_on_the_ordered_side()
+        public void Muzzle_smoke_follows_the_bearing_to_the_target()
         {
-            Assert.That(SeaVolleyPresentationRules.LocalSideOffset("port", 3f),
-                Is.EqualTo(new Vector3(-3f, 0f, 0f)));
-            Assert.That(SeaVolleyPresentationRules.LocalSideOffset("starboard", 3f),
-                Is.EqualTo(new Vector3(3f, 0f, 0f)));
-            Assert.That(SeaVolleyPresentationRules.IsInsideBroadsideArc(
-                Vector2.zero, 0f, Vector2.left * 10f, "port"), Is.True);
-            Assert.That(SeaVolleyPresentationRules.IsInsideBroadsideArc(
-                Vector2.zero, 0f, Vector2.right * 10f, "port"), Is.False);
+            // The offset is local to the firing ship, so a target dead ahead puts the smoke on
+            // the bow whatever the ship is heading; a beam target puts it out on that side.
+            var ahead = SeaVolleyPresentationRules.LocalMuzzleOffset(
+                90f, Vector2.zero, Vector2.right * 10f, 3f);
+            Assert.That(ahead.z, Is.EqualTo(3f).Within(0.001f));
+            Assert.That(ahead.x, Is.EqualTo(0f).Within(0.001f));
+
+            var starboard = SeaVolleyPresentationRules.LocalMuzzleOffset(
+                0f, Vector2.zero, Vector2.right * 10f, 3f);
+            Assert.That(starboard.x, Is.EqualTo(3f).Within(0.001f));
+
+            var port = SeaVolleyPresentationRules.LocalMuzzleOffset(
+                0f, Vector2.zero, Vector2.left * 10f, 3f);
+            Assert.That(port.x, Is.EqualTo(-3f).Within(0.001f));
+        }
+
+        [Test]
+        public void The_hud_names_the_same_armour_face_the_server_charges_for()
+        {
+            // CombatRules.FaceHit: 45 degrees of bow, 45 of stern, the rest is beam.
+            //
+            // These are chart positions, where y grows south, so a shooter due north of the
+            // target sits at NEGATIVE y and Vector2.up is astern. The two cases below read
+            // upside down for that reason and used to be written the other way round, which
+            // passed only while heading 0 sailed south.
+            var north = new Vector2(0f, -10f);
+            var south = new Vector2(0f, 10f);
+
+            Assert.That(SeaVolleyPresentationRules.ArmorFaceAt(
+                0f, Vector2.zero, north), Is.EqualTo("front"));
+            Assert.That(SeaVolleyPresentationRules.ArmorFaceAt(
+                0f, Vector2.zero, south), Is.EqualTo("back"));
+            Assert.That(SeaVolleyPresentationRules.ArmorFaceAt(
+                0f, Vector2.zero, Vector2.right * 10f), Is.EqualTo("sides"));
+            Assert.That(SeaVolleyPresentationRules.ArmorFaceAt(
+                0f, Vector2.zero, Vector2.zero), Is.EqualTo("sides"));
         }
 
         [Test]
@@ -242,69 +360,6 @@ namespace Sea.Tests
             Object.DestroyImmediate(controls);
         }
 
-        [Test]
-        public void Combat_hud_view_model_formats_player_target_and_reload_state()
-        {
-            var model = SeaHudViewModel.From(new SeaHudSnapshot
-            {
-                IsReady = true,
-                Coordinate = "AX 59",
-                HeadingDegrees = 275f,
-                Speed = 12.5f,
-                Hull = 750,
-                MaxHull = 1000,
-                Experience = 1250,
-                CurrentLevelExperience = 1000,
-                NextLevelExperience = 2000,
-                TargetName = "RAIDER 7",
-                TargetHull = 300,
-                TargetMaxHull = 600,
-                TargetSails = 100,
-                TargetMaxSails = 400,
-                TargetCannons = 50,
-                TargetMaxCannons = 200,
-                PortReloadRemainingSeconds = 2f,
-                ReloadDurationSeconds = 4f,
-                StarboardReloadRemainingSeconds = 0f,
-            });
-
-            Assert.That(model.HullProgress, Is.EqualTo(0.75f));
-            Assert.That(model.ExperienceProgress, Is.EqualTo(0.25f));
-            Assert.That(model.HullText, Is.EqualTo("750 / 1,000"));
-            Assert.That(model.NavigationText, Is.EqualTo("AX 59  •  275°  •  12.5 KN"));
-            Assert.That(model.HasTarget, Is.True);
-            Assert.That(model.TargetHullProgress, Is.EqualTo(0.5f));
-            Assert.That(model.TargetSailsProgress, Is.EqualTo(0.25f));
-            Assert.That(model.TargetCannonsProgress, Is.EqualTo(0.25f));
-            Assert.That(model.PortReloadProgress, Is.EqualTo(0.5f));
-            Assert.That(model.StarboardReady, Is.True);
-        }
-
-        [Test]
-        public void Runtime_hud_contains_the_locked_chart_combat_instruments()
-        {
-            var document = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/SeaHud.uxml");
-            Assert.That(document, Is.Not.Null);
-            var root = document.CloneTree();
-
-            var requiredElements = new[]
-            {
-                "connection-status", "navigation-readout", "gold-label", "diamond-label",
-                "top-coordinate-ruler", "left-coordinate-ruler",
-                "player-hull", "player-experience",
-                "mini-map-frame",
-                "target-frame", "target-hull", "target-sails", "target-cannons",
-                "port-broadside", "starboard-broadside", "weak-point-rail", "ammo-rail",
-                "ability-rail", "status-strip", "channel-progress", "coordinate-navigator",
-                "chart-menu", "rebind-list",
-            };
-
-            Assert.That(requiredElements.All(name => root.Q(name) != null), Is.True);
-            Assert.That(root.Q<Button>("aim-hull").text, Is.EqualTo("1"));
-            Assert.That(root.Q<Button>("ability-full-sail").text, Is.EqualTo("Z"));
-            Assert.That(root.Q<Button>("port-broadside"), Is.Not.Null);
-            Assert.That(root.Q<Button>("starboard-broadside"), Is.Not.Null);
-        }
 
         [Test]
         public void Main_scene_hosts_the_input_system_and_runtime_hud_document()
@@ -348,89 +403,6 @@ namespace Sea.Tests
             Assert.That(runtimeSources.Any(source => source.Contains("void OnGUI(")), Is.False);
             Assert.That(runtimeSources.Any(source => source.Contains("Input.Get")), Is.False);
         }
-
-        [Test]
-        public void Auth_token_store_can_clear_a_stale_local_identity()
-        {
-            const string testKey = "sea.tests.identity-token";
-            var tokens = new SeaAuthTokenStore(testKey);
-            tokens.Save("stale-token");
-
-            tokens.Clear();
-
-            Assert.That(tokens.Token, Is.Empty);
-        }
-
-        [Test]
-        public void Unauthorized_cached_identity_is_cleared_and_retried_anonymously()
-        {
-            var decision = SeaConnectionRecoveryPolicy.Decide(
-                new WebSocketUpgradeException(401, "Unauthorized"),
-                attemptedWithToken: true,
-                transientFailureCount: 0);
-
-            Assert.That(decision.Action, Is.EqualTo(SeaConnectionRecoveryAction.ClearIdentityAndRetry));
-            Assert.That(decision.DelaySeconds, Is.Zero);
-        }
-
-        [Test]
-        public void Unauthorized_anonymous_connection_stops_retrying()
-        {
-            var decision = SeaConnectionRecoveryPolicy.Decide(
-                new WebSocketUpgradeException(401, "Unauthorized"),
-                attemptedWithToken: false,
-                transientFailureCount: 0);
-
-            Assert.That(decision.Action, Is.EqualTo(SeaConnectionRecoveryAction.Stop));
-        }
-
-        [Test]
-        public void Transient_connection_failures_use_bounded_backoff()
-        {
-            var first = SeaConnectionRecoveryPolicy.Decide(
-                new System.TimeoutException("offline"),
-                attemptedWithToken: false,
-                transientFailureCount: 0);
-            var repeated = SeaConnectionRecoveryPolicy.Decide(
-                new System.TimeoutException("offline"),
-                attemptedWithToken: false,
-                transientFailureCount: 20);
-
-            Assert.That(first.Action, Is.EqualTo(SeaConnectionRecoveryAction.RetryAfterDelay));
-            Assert.That(first.DelaySeconds, Is.EqualTo(2f));
-            Assert.That(repeated.DelaySeconds, Is.EqualTo(30f));
-        }
-
-        [Test]
-        public void Missing_database_is_a_permanent_connection_failure()
-        {
-            var decision = SeaConnectionRecoveryPolicy.Decide(
-                new WebSocketUpgradeException(404, "Not Found"),
-                attemptedWithToken: false,
-                transientFailureCount: 0);
-
-            Assert.That(decision.Action, Is.EqualTo(SeaConnectionRecoveryAction.Stop));
-        }
-
-        [Test]
-        public void World_material_factory_always_returns_a_runtime_material()
-        {
-            var material = SeaMaterialFactory.Create(Color.white);
-
-            Assert.That(material, Is.Not.Null);
-            Object.DestroyImmediate(material);
-        }
-
-        [TestCase(new[] { "game", "-seaDatabaseName", "sea-smoke" }, "sea-smoke")]
-        [TestCase(new[] { "game", "-seaDatabaseName=sea-smoke" }, "sea-smoke")]
-        [TestCase(new[] { "game" }, "sea-local")]
-        public void Runtime_database_can_be_isolated_by_command_line(
-            string[] arguments,
-            string expected)
-        {
-            Assert.That(SeaClientOptions.DatabaseName(arguments, "sea-local"), Is.EqualTo(expected));
-        }
-
     }
 }
 #endif

@@ -8,9 +8,7 @@ import { type Infer as __Infer } from "spacetimedb";
 // Import all reducer arg schemas
 import IssueShipCommandReducer from "../issue_ship_command_reducer";
 import LoadPlayerReducer from "../load_player_reducer";
-import UpgradeCannonReducer from "../upgrade_cannon_reducer";
 
 export type IssueShipCommandParams = __Infer<typeof IssueShipCommandReducer>;
 export type LoadPlayerParams = __Infer<typeof LoadPlayerReducer>;
-export type UpgradeCannonParams = __Infer<typeof UpgradeCannonReducer>;
 

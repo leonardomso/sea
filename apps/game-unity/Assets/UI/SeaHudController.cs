@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using SpacetimeDB.Types;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -19,17 +17,33 @@ namespace Sea.Client
         private VisualElement hudRoot;
         private VisualElement connectionBeacon;
         private VisualElement targetFrame;
-        private VisualElement portBroadside;
-        private VisualElement starboardBroadside;
+        private VisualElement fireControl;
         private VisualElement coordinateNavigator;
         private VisualElement chartMenu;
         private VisualElement miniMapFrame;
+        private VisualElement wreckPrompt;
+        private VisualElement crossingPrompt;
         private ScrollView rebindList;
         private TextField coordinateInput;
         private Label coordinateError;
         private Camera chartCamera;
-        private readonly Label[] topCoordinateLabels = new Label[9];
-        private readonly Label[] leftCoordinateLabels = new Label[7];
+        private SeaChartCameraController chartCameraController;
+        private bool recenterOffered;
+        // One slot per ruler cell on each edge -- ten squares to a cell -- so a chart pulled
+        // all the way out reads 1 to 40.
+        private readonly Label[] topCoordinateLabels = new Label[SeaChartCoordinates.ColumnCount];
+        private readonly Label[] leftCoordinateLabels = new Label[SeaChartCoordinates.RowCount];
+
+        // The racks never hold more than the hull's magazine plus the rigging bonus.
+        private readonly VisualElement[] magazineDots = new VisualElement[6];
+        private Label windArrow;
+
+        // Apply() touches ~26 named elements per rebuild; memoising the query results
+        // keeps the HUD off the visual-tree walk once the document is built.
+        private readonly Dictionary<string, Label> labelCache = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, ProgressBar> progressCache = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, Button> buttonCache = new(StringComparer.Ordinal);
+
         public void Configure(StyleSheet hudStyleSheet)
         {
             styleSheet = hudStyleSheet;
@@ -79,6 +93,41 @@ namespace Sea.Client
                     UpdateCoordinateRulers();
                 }
             }
+
+            OfferRecenter();
+        }
+
+        // The recenter tool lights up only while the camera has been pushed off the ship.
+        private void OfferRecenter()
+        {
+            var offer = chartCameraController != null && !chartCameraController.IsFollowingPlayer;
+            if (offer != recenterOffered)
+            {
+                recenterOffered = offer;
+                SelectButton("recenter-button", offer);
+            }
+        }
+
+        // The minimap camera renders inside the HUD frame, whatever the panel scale is.
+        private void FitMiniMapCamera()
+        {
+            var miniMapCamera = GetComponent<SeaChartCameraController>()?.MiniMapCamera;
+            if (miniMapCamera == null || root?.panel == null)
+            {
+                return;
+            }
+
+            var bound = miniMapFrame.worldBound;
+            var style = miniMapFrame.resolvedStyle;
+            var inner = new Rect(
+                bound.x + style.borderLeftWidth,
+                bound.y + style.borderTopWidth,
+                bound.width - style.borderLeftWidth - style.borderRightWidth,
+                bound.height - style.borderTopWidth - style.borderBottomWidth);
+            miniMapCamera.pixelRect = SeaMiniMapRules.ScreenPixelRect(
+                inner,
+                root.panel.visualTree.worldBound.height,
+                Screen.height);
         }
 
         public bool IsPointerOverInterface(Vector2 screenPosition)
@@ -142,19 +191,26 @@ namespace Sea.Client
             }
 
             hudRoot.userData = this;
+            labelCache.Clear();
+            progressCache.Clear();
+            buttonCache.Clear();
+            ammoLabelsApplied = false;
             root.pickingMode = PickingMode.Ignore;
             hudRoot.pickingMode = PickingMode.Ignore;
             connectionBeacon = root.Q("connection-beacon");
             targetFrame = root.Q("target-frame");
-            portBroadside = root.Q("port-broadside");
-            starboardBroadside = root.Q("starboard-broadside");
+            wreckPrompt = root.Q("wreck-prompt");
+            crossingPrompt = root.Q("crossing-prompt");
+            fireControl = root.Q("fire-control");
             coordinateNavigator = root.Q("coordinate-navigator");
             chartMenu = root.Q("chart-menu");
             miniMapFrame = root.Q("mini-map-frame");
+            miniMapFrame.RegisterCallback<GeometryChangedEvent>(_ => FitMiniMapCamera());
             rebindList = root.Q<ScrollView>("rebind-list");
             coordinateInput = root.Q<TextField>("coordinate-input");
             coordinateError = root.Q<Label>("coordinate-error");
             chartCamera = Camera.main;
+            chartCameraController = GetComponent<SeaChartCameraController>();
             for (var index = 0; index < topCoordinateLabels.Length; index++)
             {
                 topCoordinateLabels[index] = root.Q<Label>($"top-coordinate-{index}");
@@ -165,178 +221,45 @@ namespace Sea.Client
                 leftCoordinateLabels[index] = root.Q<Label>($"left-coordinate-{index}");
             }
 
+            for (var index = 0; index < magazineDots.Length; index++)
+            {
+                magazineDots[index] = root.Q($"magazine-dot-{index}");
+            }
+
+            windArrow = root.Q<Label>("wind-arrow");
+
+            HookButton("recenter-button", () => chartCameraController?.Recenter());
             HookButton("navigator-button", OpenCoordinateNavigator);
             HookButton("menu-button", () => input?.SetMenuOpen(true));
             HookButton("menu-close", () => input?.SetMenuOpen(false));
             HookButton("resume-button", () => input?.SetMenuOpen(false));
             HookButton("coordinate-submit", SubmitCoordinate);
             HookButton("coordinate-cancel", CloseCoordinateNavigator);
-            HookButton("aim-hull", () => game?.SetSelectedWeakPoint("hull"));
-            HookButton("aim-sails", () => game?.SetSelectedWeakPoint("sails"));
-            HookButton("aim-cannons", () => game?.SetSelectedWeakPoint("cannons"));
             HookButton("ammo-round", () => game?.SetSelectedAmmo("round"));
             HookButton("ammo-chain", () => game?.SetSelectedAmmo("chain"));
             HookButton("ammo-grapeshot", () => game?.SetSelectedAmmo("grapeshot"));
             HookButton("ammo-incendiary", () => game?.SetSelectedAmmo("incendiary"));
-            HookButton("port-broadside", () => game?.FireBroadside("port"));
-            HookButton("starboard-broadside", () => game?.FireBroadside("starboard"));
-            HookButton("ability-full-sail", () => game?.ActivateAbility("full_sail"));
-            HookButton("ability-brace", () => game?.ActivateAbility("brace"));
-            HookButton("ability-pump", () => game?.ActivateAbility("emergency_pump"));
-            HookButton("ability-smoke", () => game?.ActivateAbility("smoke_screen"));
+            HookButton("fire-control", () => game?.Fire());
             HookButton("repair", () => game?.ToggleRepair());
-            HookButton("board", () => game?.ToggleBoarding());
+            HookButton("repair-kit", () => game?.UseRepairKit());
+            HookButton("respawn-button", () => game?.ChooseHomePortRespawn());
+            HookButton("crossing-button", () => game?.ConfirmMapCrossing());
             coordinateInput.RegisterCallback<KeyDownEvent>(HandleCoordinateKey);
             hudDirty.Mark();
         }
-
-        private SeaHudSnapshot CaptureSnapshot()
-        {
-            var snapshot = new SeaHudSnapshot
-            {
-                IsReady = connection?.IsSubscribed == true,
-                ConnectionStatus = connection?.Status ?? "CONTROLLER MISSING",
-                LastAction = game?.LastAction ?? "Waiting for chart link.",
-            };
-
-            if (game == null || !game.TryGetLocalShip(out var ship))
-            {
-                return snapshot;
-            }
-
-            snapshot.Coordinate = SeaChartCoordinates.LabelAt(ship.PositionX, ship.PositionY);
-            snapshot.HeadingDegrees = ship.HeadingDegrees;
-            snapshot.Speed = ship.Speed;
-            snapshot.Hull = ship.Hull;
-            snapshot.MaxHull = ship.MaxHull;
-            snapshot.SelectedAmmo = game.SelectedAmmoId;
-            snapshot.SelectedWeakPoint = game.SelectedWeakPoint;
-
-            var progression = connection.Connection.Db.PlayerProgression.Owner.Find(connection.LocalIdentity);
-            if (progression != null)
-            {
-                snapshot.Level = progression.Level;
-                snapshot.Experience = progression.Experience;
-                snapshot.Gold = progression.Gold;
-                if (connection.TryGetLevelThreshold(progression.Level, out var currentThreshold))
-                {
-                    snapshot.CurrentLevelExperience = currentThreshold;
-                }
-
-                if (connection.TryGetLevelThreshold(progression.Level + 1, out var nextThreshold))
-                {
-                    snapshot.NextLevelExperience = nextThreshold;
-                }
-
-                if (snapshot.NextLevelExperience == 0)
-                {
-                    snapshot.NextLevelExperience = Math.Max(snapshot.Experience, snapshot.CurrentLevelExperience);
-                }
-            }
-
-            snapshot.AmmoQuantity = connection.Connection.Db.Inventory.ByShip
-                .Filter(ship.EntityId)
-                .FirstOrDefault(item => item.ItemId == game.SelectedAmmoId)?.Quantity ?? 0;
-
-            var world = connection.Connection.Db.WorldState.Id.Find(1);
-            if (world != null)
-            {
-                var tickRate = connection.WorldTickRate;
-                var worldTick = connection.CurrentWorldTick;
-                snapshot.ReloadDurationSeconds = (float)ship.CannonCooldownTicks / tickRate;
-                snapshot.PortReloadRemainingSeconds = RemainingSeconds(ship.NextPortFireTick, worldTick, tickRate);
-                snapshot.StarboardReloadRemainingSeconds = RemainingSeconds(ship.NextStarboardFireTick, worldTick, tickRate);
-            }
-
-            var targetId = ship.TargetEntityId != 0 ? ship.TargetEntityId : game.SelectedTargetId;
-            var target = targetId == 0 ? null : connection.Connection.Db.Ship.EntityId.Find(targetId);
-            if (target != null && target.IsAlive)
-            {
-                snapshot.TargetName = $"{ArchetypeName(target.ArchetypeCode)}  {target.EntityId}";
-                snapshot.TargetHull = target.Hull;
-                snapshot.TargetMaxHull = target.MaxHull;
-                snapshot.TargetSails = target.Sails;
-                snapshot.TargetMaxSails = target.MaxSails;
-                snapshot.TargetCannons = target.Cannons;
-                snapshot.TargetMaxCannons = target.MaxCannons;
-                var range = Vector2.Distance(
-                    new Vector2(ship.PositionX, ship.PositionY),
-                    new Vector2(target.PositionX, target.PositionY));
-                snapshot.TargetRange = range;
-            }
-
-            var statuses = new List<string>();
-            foreach (var status in connection.Connection.Db.ShipStatus.ByShip.Filter(ship.EntityId))
-            {
-                if (status.IsActive)
-                {
-                    statuses.Add(status.Stacks > 1
-                        ? $"{status.StatusType.ToUpperInvariant()} ×{status.Stacks}"
-                        : status.StatusType.ToUpperInvariant());
-                }
-            }
-
-            snapshot.StatusText = statuses.Count == 0 ? "CLEAR" : string.Join("  •  ", statuses);
-            if (world != null)
-            {
-                var channel = connection.Connection.Db.ShipChannel.ShipEntityId.Find(ship.EntityId);
-                if (channel != null && channel.IsActive)
-                {
-                    snapshot.ProgressText = channel.ChannelType == "repair"
-                        ? "REPAIRING"
-                        : $"BOARDING  •  TARGET {channel.TargetEntityId}";
-                    snapshot.Progress = SeaTacticalPresentationRules.ChannelProgress(
-                        channel.StartedAtTick,
-                        channel.CompletesAtTick,
-                        connection.CurrentWorldTick);
-                }
-
-                foreach (var cooldown in connection.Connection.Db.Cooldown.ByShip.Filter(ship.EntityId))
-                {
-                    var seconds = RemainingSeconds(
-                        cooldown.ReadyAtTick,
-                        connection.CurrentWorldTick,
-                        connection.WorldTickRate);
-                    switch (cooldown.CooldownType)
-                    {
-                        case "full_sail":
-                            snapshot.FullSailCooldownSeconds = seconds;
-                            break;
-                        case "brace":
-                            snapshot.BraceCooldownSeconds = seconds;
-                            break;
-                        case "emergency_pump":
-                            snapshot.PumpCooldownSeconds = seconds;
-                            break;
-                        case "smoke_screen":
-                            snapshot.SmokeCooldownSeconds = seconds;
-                            break;
-                    }
-                }
-            }
-
-            return snapshot;
-        }
-
-        private static string ArchetypeName(byte code) => code switch
-        {
-            1 => "PATROL",
-            2 => "RAIDER",
-            3 => "GUNSHIP",
-            _ => "SHIP",
-        };
 
         private void Apply(SeaHudViewModel model)
         {
             SetText("connection-status", model.ConnectionStatus.ToUpperInvariant());
             SetText("navigation-readout", model.NavigationText);
-            SetText("level-label", model.LevelText);
-            SetText("gold-label", model.GoldText + " ¤");
+            SetText("map-rank-label", model.MapRankText);
+            SetText("gold-label", model.GoldText);
+            SetText("ship-loadout", model.ShipText);
+            SetText("volley-text", model.VolleyText);
+            SetText("combat-power-label", model.CombatPowerText);
             SetText("hull-text", model.HullText);
-            SetText("experience-text", model.ExperienceText);
             SetText("last-action", model.LastAction);
             SetProgress("player-hull", model.HullProgress);
-            SetProgress("player-experience", model.ExperienceProgress);
             connectionBeacon?.EnableInClassList("ready", model.IsReady);
 
             targetFrame?.EnableInClassList("hidden", !model.HasTarget);
@@ -345,23 +268,17 @@ namespace Sea.Client
                 SetText("target-name", model.TargetName);
                 SetText("target-range", model.TargetRangeText);
                 SetText("target-hull-text", model.TargetHullText);
-                SetText("target-sails-text", model.TargetSailsText);
-                SetText("target-cannons-text", model.TargetCannonsText);
+                SetText("target-armor-text", model.TargetArmorText);
                 SetProgress("target-hull", model.TargetHullProgress);
-                SetProgress("target-sails", model.TargetSailsProgress);
-                SetProgress("target-cannons", model.TargetCannonsProgress);
             }
 
-            SetProgress("port-reload", model.PortReloadProgress);
-            SetProgress("starboard-reload", model.StarboardReloadProgress);
-            SetText("port-reload-text", model.PortReloadText);
-            SetText("starboard-reload-text", model.StarboardReloadText);
-            portBroadside?.EnableInClassList("ready", model.PortReady);
-            starboardBroadside?.EnableInClassList("ready", model.StarboardReady);
-            SetText("ammo-count", $"{model.SelectedAmmo} • {model.AmmoQuantity}");
-            SelectButton("aim-hull", model.SelectedWeakPoint == "HULL");
-            SelectButton("aim-sails", model.SelectedWeakPoint == "SAILS");
-            SelectButton("aim-cannons", model.SelectedWeakPoint == "CANNONS");
+            SetProgress("reload-gauge", model.ReloadProgress);
+            SetText("reload-text", model.ReloadText);
+            SetText("magazine-text", model.MagazineText);
+            ApplyMagazineDots(model);
+            ApplyWind(model);
+            fireControl?.EnableInClassList("ready", model.IsLoaded);
+            SetText("ammo-count", $"{model.SelectedAmmoLabel} • {model.AmmoQuantity}");
             SelectButton("ammo-round", model.SelectedAmmo == "ROUND");
             SelectButton("ammo-chain", model.SelectedAmmo == "CHAIN");
             SelectButton("ammo-grapeshot", model.SelectedAmmo == "GRAPESHOT");
@@ -369,15 +286,52 @@ namespace Sea.Client
             SetText("status-text", model.StatusText);
             SetText("channel-label", string.IsNullOrWhiteSpace(model.ProgressText) ? "NO ACTIVE ORDER" : model.ProgressText);
             SetProgress("channel-progress", model.Progress);
-            SetAbilityCooldown("ability-full-sail", "Z", model.FullSailCooldownSeconds);
-            SetAbilityCooldown("ability-brace", "X", model.BraceCooldownSeconds);
-            SetAbilityCooldown("ability-pump", "C", model.PumpCooldownSeconds);
-            SetAbilityCooldown("ability-smoke", "V", model.SmokeCooldownSeconds);
+            SetAbilityCooldown("repair", "R", model.RepairCooldownSeconds);
+            SetAbilityCooldown("repair-kit", "K", model.RepairKitCooldownSeconds);
+
+            // A wreck has one order left to give, so the chart is covered until it gives it.
+            wreckPrompt?.EnableInClassList("hidden", !model.IsSunk);
+            SetText("wreck-text", model.WreckText);
+            ButtonFor("respawn-button")?.EnableInClassList("hidden", !model.CanChooseBerth);
+
+            // A border asks the same way, and the hull is held against it until it is answered,
+            // so nothing is lost by covering the chart while she decides.
+            crossingPrompt?.EnableInClassList("hidden", !model.HasCrossingOffer);
+            SetText("crossing-text", model.CrossingText);
+        }
+
+        /// <summary>
+        /// A dot per volley the racks hold, filled while that volley can leave. Counting dots is
+        /// faster in a fight than reading "2 / 3", so the pair stays only as the exact figure.
+        /// </summary>
+        private void ApplyMagazineDots(SeaHudViewModel model)
+        {
+            for (var index = 0; index < magazineDots.Length; index++)
+            {
+                var dot = magazineDots[index];
+                if (dot == null)
+                {
+                    continue;
+                }
+
+                dot.EnableInClassList("hidden", index >= model.MagazineSize);
+                dot.EnableInClassList("loaded", index < model.ReadyVolleys);
+            }
+        }
+
+        private void ApplyWind(SeaHudViewModel model)
+        {
+            SetText("wind-text", model.WindText);
+            if (windArrow != null)
+            {
+                windArrow.style.rotate = new StyleRotate(
+                    new Rotate(new Angle(model.WindRotationDegrees, AngleUnit.Degree)));
+            }
         }
 
         private void SetAbilityCooldown(string name, string binding, float seconds)
         {
-            var button = root?.Q<Button>(name);
+            var button = ButtonFor(name);
             if (button == null)
             {
                 return;
@@ -463,7 +417,7 @@ namespace Sea.Client
 
         private void HookButton(string name, Action callback)
         {
-            var button = root.Q<Button>(name);
+            var button = ButtonFor(name);
             if (button != null)
             {
                 button.clicked += callback;
@@ -472,8 +426,8 @@ namespace Sea.Client
 
         private void SetText(string name, string value)
         {
-            var label = root.Q<Label>(name);
-            if (label != null && label.text != value)
+            var label = LabelFor(name);
+            if (label != null && !string.Equals(label.text, value, StringComparison.Ordinal))
             {
                 label.text = value;
             }
@@ -481,7 +435,7 @@ namespace Sea.Client
 
         private void SetProgress(string name, float value)
         {
-            var progress = root.Q<ProgressBar>(name);
+            var progress = ProgressFor(name);
             if (progress != null && !Mathf.Approximately(progress.value, value))
             {
                 progress.value = value;
@@ -490,8 +444,26 @@ namespace Sea.Client
 
         private void SelectButton(string name, bool selected)
         {
-            root.Q<Button>(name)?.EnableInClassList("selected", selected);
+            ButtonFor(name)?.EnableInClassList("selected", selected);
         }
 
+        private Label LabelFor(string name) => Cached(labelCache, name);
+
+        private ProgressBar ProgressFor(string name) => Cached(progressCache, name);
+
+        private Button ButtonFor(string name) => Cached(buttonCache, name);
+
+        private TElement Cached<TElement>(Dictionary<string, TElement> cache, string name)
+            where TElement : VisualElement
+        {
+            if (cache.TryGetValue(name, out var element))
+            {
+                return element;
+            }
+
+            element = root?.Q<TElement>(name);
+            cache[name] = element;
+            return element;
+        }
     }
 }

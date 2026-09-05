@@ -7,17 +7,20 @@ namespace Sea.Client
 {
     public sealed partial class SeaRuntimeValidationProbe
     {
+        private const float ProgressionLootRadius = 12f;
+
         private bool progressionEnabledForThisRun;
         private bool progressionBaselineCaptured;
         private bool progressionSunkObserved;
         private bool progressionLootObserved;
+        private bool progressionLootRowConsumed;
         private bool progressionLootStopRequested;
         private bool combatValidated;
-        private ulong progressionInitialExperience;
         private uint progressionInitialGold;
         private ulong progressionInitialEncounterId;
         private Vector2 progressionSinkPosition;
         private SubscriptionHandle progressionTargetSubscription;
+        private RemoteTables.LootHandle.RowEventHandler progressionLootRemoved;
 
         private bool ObserveProgressionTarget(Ship player, Ship target)
         {
@@ -27,12 +30,10 @@ namespace Sea.Client
             }
 
             CaptureProgressionBaseline(target);
-            if (!target.IsActive || !target.IsAlive)
+            if (!progressionSunkObserved && (!target.IsActive || !target.IsAlive))
             {
                 progressionSunkObserved = true;
                 progressionSinkPosition = LivePosition(target);
-                SailToProgressionLoot(player);
-                return true;
             }
 
             if (!progressionSunkObserved)
@@ -40,18 +41,23 @@ namespace Sea.Client
                 return false;
             }
 
-            var progression = connection.Connection.Db.PlayerProgression.Owner.Find(
-                connection.LocalIdentity);
-            if (progressionLootObserved && progression != null &&
-                progression.Experience > progressionInitialExperience &&
-                progression.Gold > progressionInitialGold &&
-                target.EncounterId != progressionInitialEncounterId)
+            // A common is back on the water thirty seconds after she goes down, which is
+            // less time than a wreck site takes to comb. Sailing for the loot has to
+            // outlive the respawn or the run waits for a purse that nobody is sailing to.
+            if (!progressionLootObserved)
+            {
+                SailToProgressionLoot(player);
+                return true;
+            }
+
+            if (target.EncounterId != progressionInitialEncounterId)
             {
                 progressionEnabledForThisRun = false;
                 combatEnabledForThisRun = false;
+                ReleaseProgressionLootWatch();
                 MarkRuntimeMilestone(SeaRuntimeMilestone.Progression);
                 Debug.Log(
-                    "Sea runtime observed NPC sinking, atomic loot, XP, and NPC respawn.",
+                    "Sea runtime observed NPC sinking, atomic loot, gold, and NPC respawn.",
                     this);
             }
 
@@ -72,9 +78,10 @@ namespace Sea.Client
                 return;
             }
 
-            progressionInitialExperience = progression.Experience;
             progressionInitialGold = progression.Gold;
             progressionInitialEncounterId = target.EncounterId;
+            progressionLootRemoved = HandleProgressionLootRemoved;
+            connection.Connection.Db.Loot.OnDelete += progressionLootRemoved;
             progressionTargetSubscription = connection.Connection.SubscriptionBuilder()
                 .Subscribe(new[]
                 {
@@ -84,11 +91,42 @@ namespace Sea.Client
             progressionBaselineCaptured = true;
         }
 
+        // Gold alone cannot prove the loot path: encounter settlement credits gold too.
+        // The milestone only counts once the loot row dropped by the sunk NPC is gone
+        // from the wreck site and the purse has grown.
+        private void HandleProgressionLootRemoved(EventContext _context, Loot loot)
+        {
+            if (progressionSunkObserved &&
+                Vector2.Distance(
+                    progressionSinkPosition,
+                    new Vector2(loot.PositionX, loot.PositionY)) <= ProgressionLootRadius)
+            {
+                progressionLootRowConsumed = true;
+            }
+        }
+
+        private void ReleaseProgressionLootWatch()
+        {
+            if (progressionLootRemoved == null)
+            {
+                return;
+            }
+
+            var db = connection == null ? null : connection.Connection?.Db;
+            if (db != null)
+            {
+                db.Loot.OnDelete -= progressionLootRemoved;
+            }
+
+            progressionLootRemoved = null;
+        }
+
         private void SailToProgressionLoot(Ship player)
         {
             var progression = connection.Connection.Db.PlayerProgression.Owner.Find(
                 connection.LocalIdentity);
-            if (progression != null && progression.Gold > progressionInitialGold)
+            if (progressionLootRowConsumed && progression != null &&
+                progression.Gold > progressionInitialGold)
             {
                 progressionLootObserved = true;
                 if (!progressionLootStopRequested)

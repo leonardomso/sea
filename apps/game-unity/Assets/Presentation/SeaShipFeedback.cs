@@ -10,7 +10,8 @@ namespace Sea.Client
         private Quaternion baseLocalRotation;
         private float phase;
         private float normalizedSpeed;
-        private float broadsideRecoil;
+        private float volleyRecoil;
+        private float hitShock;
 
         public static bool ShouldEmitWake(float speed, float maximumSpeed) =>
             maximumSpeed > 0f && speed / maximumSpeed >= 0.04f;
@@ -44,7 +45,8 @@ namespace Sea.Client
         public void ResetPresentation()
         {
             normalizedSpeed = 0f;
-            broadsideRecoil = 0f;
+            volleyRecoil = 0f;
+            hitShock = 0f;
             if (visual != null)
             {
                 visual.localPosition = baseLocalPosition;
@@ -78,14 +80,28 @@ namespace Sea.Client
             }
         }
 
-        public void PlayBroadside(string side)
+        /// <summary>
+        /// The magazine bears in every direction, so the recoil kicks away from wherever the
+        /// guns actually spoke: <paramref name="lateralBias"/> is the muzzle's local sideways
+        /// component, +1 to starboard and -1 to port.
+        /// </summary>
+        public void PlayVolley(float lateralBias)
         {
-            broadsideRecoil = string.Equals(
-                side,
-                "port",
-                System.StringComparison.OrdinalIgnoreCase)
-                ? 1f
-                : -1f;
+            volleyRecoil = -Mathf.Clamp(lateralBias, -1f, 1f);
+        }
+
+        /// <summary>
+        /// The hull takes a ball: she is pushed down into the water and her bow comes up.
+        /// <paramref name="shock"/> is nothing to a full jolt, and a heavier one does not
+        /// overwrite a lighter one that is still shaking her out.
+        /// </summary>
+        public void PlayHit(float shock)
+        {
+            var jolt = Mathf.Clamp01(shock);
+            if (jolt > hitShock)
+            {
+                hitShock = jolt;
+            }
         }
 
         private void LateUpdate()
@@ -99,13 +115,14 @@ namespace Sea.Client
             var heave = Mathf.Sin(time * 1.35f) * (0.06f + normalizedSpeed * 0.025f);
             var roll = Mathf.Sin(time * 1.05f) * (0.55f + normalizedSpeed * 0.45f);
             var pitch = Mathf.Sin(time * 1.62f + 0.8f) * (0.35f + normalizedSpeed * 0.25f);
-            visual.localPosition = baseLocalPosition + Vector3.up * heave +
-                Vector3.right * (broadsideRecoil * 0.22f);
+            visual.localPosition = baseLocalPosition + Vector3.up * (heave - hitShock * 0.20f) +
+                Vector3.right * (volleyRecoil * 0.22f);
             visual.localRotation = baseLocalRotation * Quaternion.Euler(
-                pitch,
+                pitch - hitShock * 4.4f,
                 0f,
-                roll + broadsideRecoil * 2.6f);
-            broadsideRecoil = Mathf.MoveTowards(broadsideRecoil, 0f, Time.deltaTime * 4.8f);
+                roll + volleyRecoil * 2.6f);
+            volleyRecoil = Mathf.MoveTowards(volleyRecoil, 0f, Time.deltaTime * 4.8f);
+            hitShock = Mathf.MoveTowards(hitShock, 0f, Time.deltaTime * 3.2f);
         }
 
         private TrailRenderer CreateWake(string name, float localX, Material material)
@@ -131,14 +148,11 @@ namespace Sea.Client
 
         private void CreateWaterlineShadow(Material material)
         {
-            var shadow = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            shadow.name = "Waterline Contact";
+            var shadow = SeaPrimitive.Create(PrimitiveType.Cylinder, "Waterline Contact", material);
             shadow.transform.SetParent(transform, false);
             var localWaterHeight = SeaWorldView.WaterSurfaceHeight - SeaWorldView.ShipRootHeight;
             shadow.transform.localPosition = new Vector3(0f, localWaterHeight + 0.008f, 0f);
             shadow.transform.localScale = new Vector3(3.2f, 0.008f, 7.8f);
-            shadow.GetComponent<Renderer>().sharedMaterial = material;
-            Destroy(shadow.GetComponent<Collider>());
         }
     }
 }

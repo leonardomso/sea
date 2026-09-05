@@ -26,15 +26,6 @@ namespace SpacetimeDB.Types
 
             public readonly EntityIdUniqueIndex EntityId;
 
-            public sealed class ByEnvironmentExposureHazardShardIndex : BTreeIndexBase<(byte EnvironmentExposureCode, byte HazardShard)>
-            {
-                protected override (byte EnvironmentExposureCode, byte HazardShard) GetKey(Ship row) => (row.EnvironmentExposureCode, row.HazardShard);
-
-                public ByEnvironmentExposureHazardShardIndex(ShipHandle table) : base(table) { }
-            }
-
-            public readonly ByEnvironmentExposureHazardShardIndex ByEnvironmentExposureHazardShard;
-
             public sealed class ByEnvironmentExposureIndex : BTreeIndexBase<byte>
             {
                 protected override byte GetKey(Ship row) => row.EnvironmentExposureCode;
@@ -53,41 +44,14 @@ namespace SpacetimeDB.Types
 
             public readonly ByActiveChunkIndex ByActiveChunk;
 
-            public sealed class ByActiveChunkShardIndex : BTreeIndexBase<(bool IsActive, int ChunkX, int ChunkY, byte MovementShard)>
+            public sealed class ByReloadingIndex : BTreeIndexBase<bool>
             {
-                protected override (bool IsActive, int ChunkX, int ChunkY, byte MovementShard) GetKey(Ship row) => (row.IsActive, row.ChunkX, row.ChunkY, row.MovementShard);
+                protected override bool GetKey(Ship row) => row.IsReloading;
 
-                public ByActiveChunkShardIndex(ShipHandle table) : base(table) { }
+                public ByReloadingIndex(ShipHandle table) : base(table) { }
             }
 
-            public readonly ByActiveChunkShardIndex ByActiveChunkShard;
-
-            public sealed class ByActiveIndex : BTreeIndexBase<bool>
-            {
-                protected override bool GetKey(Ship row) => row.IsActive;
-
-                public ByActiveIndex(ShipHandle table) : base(table) { }
-            }
-
-            public readonly ByActiveIndex ByActive;
-
-            public sealed class ByMovingIndex : BTreeIndexBase<bool>
-            {
-                protected override bool GetKey(Ship row) => row.IsMoving;
-
-                public ByMovingIndex(ShipHandle table) : base(table) { }
-            }
-
-            public readonly ByMovingIndex ByMoving;
-
-            public sealed class ByMovingShardIndex : BTreeIndexBase<(bool IsMoving, byte MovementShard)>
-            {
-                protected override (bool IsMoving, byte MovementShard) GetKey(Ship row) => (row.IsMoving, row.MovementShard);
-
-                public ByMovingShardIndex(ShipHandle table) : base(table) { }
-            }
-
-            public readonly ByMovingShardIndex ByMovingShard;
+            public readonly ByReloadingIndex ByReloading;
 
             public sealed class ByTargetIndex : BTreeIndexBase<ulong>
             {
@@ -101,13 +65,9 @@ namespace SpacetimeDB.Types
             internal ShipHandle(DbConnection conn) : base(conn)
             {
                 EntityId = new(this);
-                ByEnvironmentExposureHazardShard = new(this);
                 ByEnvironmentExposure = new(this);
                 ByActiveChunk = new(this);
-                ByActiveChunkShard = new(this);
-                ByActive = new(this);
-                ByMoving = new(this);
-                ByMovingShard = new(this);
+                ByReloading = new(this);
                 ByTarget = new(this);
             }
 
@@ -124,27 +84,26 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Ship, byte> FactionCode { get; }
         public global::SpacetimeDB.Col<Ship, float> PositionX { get; }
         public global::SpacetimeDB.Col<Ship, float> PositionY { get; }
+        public global::SpacetimeDB.Col<Ship, byte> MapId { get; }
         public global::SpacetimeDB.Col<Ship, float> DestinationX { get; }
         public global::SpacetimeDB.Col<Ship, float> DestinationY { get; }
-        public global::SpacetimeDB.Col<Ship, float> WaypointX { get; }
-        public global::SpacetimeDB.Col<Ship, float> WaypointY { get; }
-        public global::SpacetimeDB.Col<Ship, bool> HasWaypoint { get; }
+        public global::SpacetimeDB.Col<Ship, int> RouteIndex { get; }
+        public global::SpacetimeDB.Col<Ship, bool> HasRoute { get; }
+        public global::SpacetimeDB.Col<Ship, uint> RouteVersion { get; }
+        public global::SpacetimeDB.Col<Ship, ulong> MoveWindowStartTick { get; }
+        public global::SpacetimeDB.Col<Ship, uint> MovesInWindow { get; }
         public global::SpacetimeDB.Col<Ship, float> HeadingDegrees { get; }
         public global::SpacetimeDB.Col<Ship, float> Speed { get; }
-        public global::SpacetimeDB.Col<Ship, float> MaximumSpeed { get; }
-        public global::SpacetimeDB.Col<Ship, float> Acceleration { get; }
-        public global::SpacetimeDB.Col<Ship, float> Deceleration { get; }
-        public global::SpacetimeDB.Col<Ship, float> TurnRateDegrees { get; }
-        public global::SpacetimeDB.Col<Ship, bool> HasCourse { get; }
-        public global::SpacetimeDB.Col<Ship, bool> IsStopping { get; }
+        public global::SpacetimeDB.Col<Ship, float> BaseSpeedSquaresPerSecond { get; }
+        public global::SpacetimeDB.Col<Ship, float> EffectiveSpeedSquaresPerSecond { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsMoving { get; }
         public global::SpacetimeDB.Col<Ship, byte> MovementShard { get; }
-        public global::SpacetimeDB.Col<Ship, byte> HazardShard { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsActive { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsAlive { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsEngaged { get; }
         public global::SpacetimeDB.Col<Ship, byte> ModeCode { get; }
         public global::SpacetimeDB.Col<Ship, byte> MovementStatusMask { get; }
+        public global::SpacetimeDB.Col<Ship, float> MovementSlowMagnitude { get; }
         public global::SpacetimeDB.Col<Ship, byte> EnvironmentExposureCode { get; }
         public global::SpacetimeDB.Col<Ship, float> CurrentVelocityX { get; }
         public global::SpacetimeDB.Col<Ship, float> CurrentVelocityY { get; }
@@ -152,22 +111,34 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Ship, int> ChunkY { get; }
         public global::SpacetimeDB.Col<Ship, ulong> TargetEntityId { get; }
         public global::SpacetimeDB.Col<Ship, byte> SelectedAmmoCode { get; }
-        public global::SpacetimeDB.Col<Ship, byte> SelectedWeakPointCode { get; }
         public global::SpacetimeDB.Col<Ship, uint> Hull { get; }
         public global::SpacetimeDB.Col<Ship, uint> MaxHull { get; }
-        public global::SpacetimeDB.Col<Ship, uint> Sails { get; }
-        public global::SpacetimeDB.Col<Ship, uint> MaxSails { get; }
-        public global::SpacetimeDB.Col<Ship, uint> Cannons { get; }
-        public global::SpacetimeDB.Col<Ship, uint> MaxCannons { get; }
-        public global::SpacetimeDB.Col<Ship, uint> Crew { get; }
-        public global::SpacetimeDB.Col<Ship, uint> MaxCrew { get; }
-        public global::SpacetimeDB.Col<Ship, uint> CannonDamage { get; }
-        public global::SpacetimeDB.Col<Ship, uint> CannonCooldownTicks { get; }
-        public global::SpacetimeDB.Col<Ship, ulong> NextPortFireTick { get; }
-        public global::SpacetimeDB.Col<Ship, ulong> NextStarboardFireTick { get; }
+        public global::SpacetimeDB.Col<Ship, uint> VolleyDamage { get; }
+        public global::SpacetimeDB.Col<Ship, uint> ReloadTicks { get; }
+        public global::SpacetimeDB.Col<Ship, uint> MagazineSize { get; }
+        public global::SpacetimeDB.Col<Ship, float> RangeSquares { get; }
+        public global::SpacetimeDB.Col<Ship, float> ArmorFront { get; }
+        public global::SpacetimeDB.Col<Ship, float> ArmorSides { get; }
+        public global::SpacetimeDB.Col<Ship, float> ArmorBack { get; }
+        public global::SpacetimeDB.Col<Ship, byte> HullTier { get; }
+        public global::SpacetimeDB.Col<Ship, uint> ReadyVolleys { get; }
+        public global::SpacetimeDB.Col<Ship, uint> ReloadProgressTicks { get; }
+        public global::SpacetimeDB.Col<Ship, float> RepairAmount { get; }
+        public global::SpacetimeDB.Col<Ship, uint> RepairChannelTicks { get; }
+        public global::SpacetimeDB.Col<Ship, bool> IsReloading { get; }
+        public global::SpacetimeDB.Col<Ship, bool> HasFired { get; }
+        public global::SpacetimeDB.Col<Ship, ulong> LastShotTick { get; }
+        public global::SpacetimeDB.Col<Ship, ulong> LastCombatTick { get; }
         public global::SpacetimeDB.Col<Ship, ulong> RespawnAtTick { get; }
         public global::SpacetimeDB.Col<Ship, ulong> InvulnerableUntilTick { get; }
         public global::SpacetimeDB.Col<Ship, ulong> EncounterId { get; }
+        public global::SpacetimeDB.Col<Ship, bool> IsInPort { get; }
+        public global::SpacetimeDB.Col<Ship, uint> Hands { get; }
+        public global::SpacetimeDB.Col<Ship, uint> MaxHands { get; }
+        public global::SpacetimeDB.Col<Ship, ulong> HandsRecoveredAtTick { get; }
+        public global::SpacetimeDB.Col<Ship, ulong> BoardCooldownUntilTick { get; }
+        public global::SpacetimeDB.Col<Ship, ulong> BoardImmuneUntilTick { get; }
+        public global::SpacetimeDB.Col<Ship, ulong> WeaponSilencedUntilTick { get; }
 
         public ShipCols(string tableName)
         {
@@ -176,27 +147,26 @@ namespace SpacetimeDB.Types
             FactionCode = new global::SpacetimeDB.Col<Ship, byte>(tableName, "faction_code");
             PositionX = new global::SpacetimeDB.Col<Ship, float>(tableName, "position_x");
             PositionY = new global::SpacetimeDB.Col<Ship, float>(tableName, "position_y");
+            MapId = new global::SpacetimeDB.Col<Ship, byte>(tableName, "map_id");
             DestinationX = new global::SpacetimeDB.Col<Ship, float>(tableName, "destination_x");
             DestinationY = new global::SpacetimeDB.Col<Ship, float>(tableName, "destination_y");
-            WaypointX = new global::SpacetimeDB.Col<Ship, float>(tableName, "waypoint_x");
-            WaypointY = new global::SpacetimeDB.Col<Ship, float>(tableName, "waypoint_y");
-            HasWaypoint = new global::SpacetimeDB.Col<Ship, bool>(tableName, "has_waypoint");
+            RouteIndex = new global::SpacetimeDB.Col<Ship, int>(tableName, "route_index");
+            HasRoute = new global::SpacetimeDB.Col<Ship, bool>(tableName, "has_route");
+            RouteVersion = new global::SpacetimeDB.Col<Ship, uint>(tableName, "route_version");
+            MoveWindowStartTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "move_window_start_tick");
+            MovesInWindow = new global::SpacetimeDB.Col<Ship, uint>(tableName, "moves_in_window");
             HeadingDegrees = new global::SpacetimeDB.Col<Ship, float>(tableName, "heading_degrees");
             Speed = new global::SpacetimeDB.Col<Ship, float>(tableName, "speed");
-            MaximumSpeed = new global::SpacetimeDB.Col<Ship, float>(tableName, "maximum_speed");
-            Acceleration = new global::SpacetimeDB.Col<Ship, float>(tableName, "acceleration");
-            Deceleration = new global::SpacetimeDB.Col<Ship, float>(tableName, "deceleration");
-            TurnRateDegrees = new global::SpacetimeDB.Col<Ship, float>(tableName, "turn_rate_degrees");
-            HasCourse = new global::SpacetimeDB.Col<Ship, bool>(tableName, "has_course");
-            IsStopping = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_stopping");
+            BaseSpeedSquaresPerSecond = new global::SpacetimeDB.Col<Ship, float>(tableName, "base_speed_squares_per_second");
+            EffectiveSpeedSquaresPerSecond = new global::SpacetimeDB.Col<Ship, float>(tableName, "effective_speed_squares_per_second");
             IsMoving = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_moving");
             MovementShard = new global::SpacetimeDB.Col<Ship, byte>(tableName, "movement_shard");
-            HazardShard = new global::SpacetimeDB.Col<Ship, byte>(tableName, "hazard_shard");
             IsActive = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_active");
             IsAlive = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_alive");
             IsEngaged = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_engaged");
             ModeCode = new global::SpacetimeDB.Col<Ship, byte>(tableName, "mode_code");
             MovementStatusMask = new global::SpacetimeDB.Col<Ship, byte>(tableName, "movement_status_mask");
+            MovementSlowMagnitude = new global::SpacetimeDB.Col<Ship, float>(tableName, "movement_slow_magnitude");
             EnvironmentExposureCode = new global::SpacetimeDB.Col<Ship, byte>(tableName, "environment_exposure_code");
             CurrentVelocityX = new global::SpacetimeDB.Col<Ship, float>(tableName, "current_velocity_x");
             CurrentVelocityY = new global::SpacetimeDB.Col<Ship, float>(tableName, "current_velocity_y");
@@ -204,48 +174,56 @@ namespace SpacetimeDB.Types
             ChunkY = new global::SpacetimeDB.Col<Ship, int>(tableName, "chunk_y");
             TargetEntityId = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "target_entity_id");
             SelectedAmmoCode = new global::SpacetimeDB.Col<Ship, byte>(tableName, "selected_ammo_code");
-            SelectedWeakPointCode = new global::SpacetimeDB.Col<Ship, byte>(tableName, "selected_weak_point_code");
             Hull = new global::SpacetimeDB.Col<Ship, uint>(tableName, "hull");
             MaxHull = new global::SpacetimeDB.Col<Ship, uint>(tableName, "max_hull");
-            Sails = new global::SpacetimeDB.Col<Ship, uint>(tableName, "sails");
-            MaxSails = new global::SpacetimeDB.Col<Ship, uint>(tableName, "max_sails");
-            Cannons = new global::SpacetimeDB.Col<Ship, uint>(tableName, "cannons");
-            MaxCannons = new global::SpacetimeDB.Col<Ship, uint>(tableName, "max_cannons");
-            Crew = new global::SpacetimeDB.Col<Ship, uint>(tableName, "crew");
-            MaxCrew = new global::SpacetimeDB.Col<Ship, uint>(tableName, "max_crew");
-            CannonDamage = new global::SpacetimeDB.Col<Ship, uint>(tableName, "cannon_damage");
-            CannonCooldownTicks = new global::SpacetimeDB.Col<Ship, uint>(tableName, "cannon_cooldown_ticks");
-            NextPortFireTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "next_port_fire_tick");
-            NextStarboardFireTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "next_starboard_fire_tick");
+            VolleyDamage = new global::SpacetimeDB.Col<Ship, uint>(tableName, "volley_damage");
+            ReloadTicks = new global::SpacetimeDB.Col<Ship, uint>(tableName, "reload_ticks");
+            MagazineSize = new global::SpacetimeDB.Col<Ship, uint>(tableName, "magazine_size");
+            RangeSquares = new global::SpacetimeDB.Col<Ship, float>(tableName, "range_squares");
+            ArmorFront = new global::SpacetimeDB.Col<Ship, float>(tableName, "armor_front");
+            ArmorSides = new global::SpacetimeDB.Col<Ship, float>(tableName, "armor_sides");
+            ArmorBack = new global::SpacetimeDB.Col<Ship, float>(tableName, "armor_back");
+            HullTier = new global::SpacetimeDB.Col<Ship, byte>(tableName, "hull_tier");
+            ReadyVolleys = new global::SpacetimeDB.Col<Ship, uint>(tableName, "ready_volleys");
+            ReloadProgressTicks = new global::SpacetimeDB.Col<Ship, uint>(tableName, "reload_progress_ticks");
+            RepairAmount = new global::SpacetimeDB.Col<Ship, float>(tableName, "repair_amount");
+            RepairChannelTicks = new global::SpacetimeDB.Col<Ship, uint>(tableName, "repair_channel_ticks");
+            IsReloading = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_reloading");
+            HasFired = new global::SpacetimeDB.Col<Ship, bool>(tableName, "has_fired");
+            LastShotTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "last_shot_tick");
+            LastCombatTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "last_combat_tick");
             RespawnAtTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "respawn_at_tick");
             InvulnerableUntilTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "invulnerable_until_tick");
             EncounterId = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "encounter_id");
+            IsInPort = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_in_port");
+            Hands = new global::SpacetimeDB.Col<Ship, uint>(tableName, "hands");
+            MaxHands = new global::SpacetimeDB.Col<Ship, uint>(tableName, "max_hands");
+            HandsRecoveredAtTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "hands_recovered_at_tick");
+            BoardCooldownUntilTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "board_cooldown_until_tick");
+            BoardImmuneUntilTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "board_immune_until_tick");
+            WeaponSilencedUntilTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "weapon_silenced_until_tick");
         }
     }
 
     public sealed class ShipIxCols
     {
         public global::SpacetimeDB.IxCol<Ship, ulong> EntityId { get; }
-        public global::SpacetimeDB.IxCol<Ship, bool> IsMoving { get; }
-        public global::SpacetimeDB.IxCol<Ship, byte> MovementShard { get; }
-        public global::SpacetimeDB.IxCol<Ship, byte> HazardShard { get; }
         public global::SpacetimeDB.IxCol<Ship, bool> IsActive { get; }
         public global::SpacetimeDB.IxCol<Ship, byte> EnvironmentExposureCode { get; }
         public global::SpacetimeDB.IxCol<Ship, int> ChunkX { get; }
         public global::SpacetimeDB.IxCol<Ship, int> ChunkY { get; }
         public global::SpacetimeDB.IxCol<Ship, ulong> TargetEntityId { get; }
+        public global::SpacetimeDB.IxCol<Ship, bool> IsReloading { get; }
 
         public ShipIxCols(string tableName)
         {
             EntityId = new global::SpacetimeDB.IxCol<Ship, ulong>(tableName, "entity_id");
-            IsMoving = new global::SpacetimeDB.IxCol<Ship, bool>(tableName, "is_moving");
-            MovementShard = new global::SpacetimeDB.IxCol<Ship, byte>(tableName, "movement_shard");
-            HazardShard = new global::SpacetimeDB.IxCol<Ship, byte>(tableName, "hazard_shard");
             IsActive = new global::SpacetimeDB.IxCol<Ship, bool>(tableName, "is_active");
             EnvironmentExposureCode = new global::SpacetimeDB.IxCol<Ship, byte>(tableName, "environment_exposure_code");
             ChunkX = new global::SpacetimeDB.IxCol<Ship, int>(tableName, "chunk_x");
             ChunkY = new global::SpacetimeDB.IxCol<Ship, int>(tableName, "chunk_y");
             TargetEntityId = new global::SpacetimeDB.IxCol<Ship, ulong>(tableName, "target_entity_id");
+            IsReloading = new global::SpacetimeDB.IxCol<Ship, bool>(tableName, "is_reloading");
         }
     }
 }

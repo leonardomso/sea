@@ -17,30 +17,22 @@ namespace SpacetimeDB.Types
         public uint Id;
         [DataMember(Name = "seed")]
         public ulong Seed;
-        [DataMember(Name = "wind_epoch")]
-        public ulong WindEpoch;
+        [DataMember(Name = "wind_band")]
+        public ulong WindBand;
         [DataMember(Name = "wind_direction_degrees")]
         public float WindDirectionDegrees;
-        [DataMember(Name = "wind_strength")]
-        public float WindStrength;
-        [DataMember(Name = "next_wind_change_tick")]
-        public ulong NextWindChangeTick;
 
         public EnvironmentState(
             uint Id,
             ulong Seed,
-            ulong WindEpoch,
-            float WindDirectionDegrees,
-            float WindStrength,
-            ulong NextWindChangeTick
+            ulong WindBand,
+            float WindDirectionDegrees
         )
         {
             this.Id = Id;
             this.Seed = Seed;
-            this.WindEpoch = WindEpoch;
+            this.WindBand = WindBand;
             this.WindDirectionDegrees = WindDirectionDegrees;
-            this.WindStrength = WindStrength;
-            this.NextWindChangeTick = NextWindChangeTick;
         }
 
         public EnvironmentState()

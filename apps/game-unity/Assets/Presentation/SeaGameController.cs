@@ -8,18 +8,22 @@ namespace Sea.Client
     {
         [SerializeField] private SeaConnectionController connection;
         [SerializeField] private Camera worldCamera;
+        [SerializeField] private SeaWorldView worldView;
         [SerializeField] private float movePlaneHeight;
+
+        /// <summary>Mirrors <c>RespawnOptionCode.HomePort</c>; the port is the only berth.</summary>
+        private const byte HomePortRespawn = 1;
 
         public ulong SelectedTargetId => TryGetLocalShip(out var ship) ? ship.TargetEntityId : 0;
         public string SelectedAmmoId => TryGetLocalShip(out var ship)
             ? AmmoId(ship.SelectedAmmoCode)
             : "round";
-        public string SelectedWeakPoint { get; private set; } = "hull";
         private string localAction = "Click water to set course.";
         public string LastAction => string.IsNullOrEmpty(connection?.CommandStatus)
             ? localAction
             : connection.CommandStatus;
         public bool IsReady => connection?.Connection != null && connection.IsSubscribed;
+        public bool IsSunk => TryGetLocalShip(out var ship) && !ship.IsAlive;
 
         private static string AmmoId(byte code) => code switch
         {
@@ -29,10 +33,14 @@ namespace Sea.Client
             _ => "round",
         };
 
-        public void ConfigureDependencies(SeaConnectionController connectionController, Camera camera)
+        public void ConfigureDependencies(
+            SeaConnectionController connectionController,
+            Camera camera,
+            SeaWorldView view = null)
         {
             connection = connectionController;
             worldCamera = camera;
+            worldView = view;
         }
 
         private void Awake() => worldCamera ??= Camera.main;
@@ -59,7 +67,7 @@ namespace Sea.Client
                 return;
             }
 
-            var destination = SeaChartCoordinates.ClampToMap(new Vector2(point.x, point.z));
+            var destination = SeaChartCoordinates.ClampToMap(SeaChartCoordinates.ToChart(point));
             foreach (var worldObject in connection.Connection.Db.WorldObject.Iter())
             {
                 if (worldObject.IsActive && worldObject.BlocksMovement &&
@@ -73,6 +81,9 @@ namespace Sea.Client
                 }
             }
 
+            // Ping before issuing, so the click is answered on the frame it was made rather
+            // than a round trip later.
+            worldView?.PingChartPosition(destination);
             Issue(
                 new ShipCommand.SetCourse(new SetCourseCommand(destination.x, destination.y)),
                 $"Set course to {SeaChartCoordinates.LabelAt(destination.x, destination.y)}");
@@ -110,12 +121,28 @@ namespace Sea.Client
                 return;
             }
 
-            enemies.Sort((left, right) => left.EntityId.CompareTo(right.EntityId));
+            // Tab takes the nearest hostile first and works outwards, which is the order a
+            // captain would pick them in; ties fall back to the entity id so the ring is stable.
+            var origin = TryGetLocalShip(out var self)
+                ? new Vector2(self.PositionX, self.PositionY)
+                : Vector2.zero;
+            enemies.Sort((left, right) =>
+            {
+                var comparison = SquaredRange(left, origin).CompareTo(SquaredRange(right, origin));
+                return comparison != 0 ? comparison : left.EntityId.CompareTo(right.EntityId);
+            });
             var current = enemies.FindIndex(enemy => enemy.EntityId == SelectedTargetId);
             var next = current < 0
                 ? direction < 0 ? enemies.Count - 1 : 0
                 : (current + (direction < 0 ? -1 : 1) + enemies.Count) % enemies.Count;
             SelectTarget(enemies[next].EntityId);
+        }
+
+        private static float SquaredRange(Ship ship, Vector2 origin)
+        {
+            var dx = ship.PositionX - origin.x;
+            var dy = ship.PositionY - origin.y;
+            return (dx * dx) + (dy * dy);
         }
 
         public void SelectTarget(ulong entityId)
@@ -145,7 +172,7 @@ namespace Sea.Client
             error = string.Empty;
             if (!SeaChartCoordinates.TryCellCenter(coordinate, out var cell))
             {
-                error = "Enter AA 0 through CZ 60.";
+                error = "Enter A1 through AN40.";
                 return false;
             }
 
@@ -155,6 +182,7 @@ namespace Sea.Client
                 return false;
             }
 
+            worldView?.PingChartPosition(new Vector2(cell.X, cell.Y));
             Issue(
                 new ShipCommand.SetCourse(new SetCourseCommand(cell.X, cell.Y)),
                 $"Set course to {SeaChartCoordinates.LabelAt(cell.X, cell.Y)}");
@@ -173,13 +201,12 @@ namespace Sea.Client
                 $"Select {ammoId} shot");
         }
 
-        public void SetSelectedWeakPoint(string weakPoint)
-        {
-            SelectedWeakPoint = weakPoint;
-            localAction = $"Gunners aim for {weakPoint.ToUpperInvariant()}.";
-        }
-
-        public void FireBroadside(string side)
+        /// <summary>
+        /// Guns bear in every direction now, so firing is one command with no side and no aim
+        /// point: the server picks the armour face from where this ship sits relative to its
+        /// target.
+        /// </summary>
+        public void Fire()
         {
             if (!IsReady)
             {
@@ -193,23 +220,46 @@ namespace Sea.Client
                 return;
             }
 
-            Issue(
-                new ShipCommand.FireBroadside(
-                    new FireBroadsideCommand(side, SelectedWeakPoint)),
-                $"Fire {side} broadside");
+            Issue(new ShipCommand.Fire(new FireCommand()), "Fire");
         }
 
-        public void ActivateAbility(string abilityId)
+        /// <summary>
+        /// Whether a held fire key has anything to send: a volley in the racks and something to
+        /// send it at. Asking here keeps the repeat off the wire when the server would refuse it.
+        /// </summary>
+        public bool CanFireNow =>
+            IsReady &&
+            TryGetLocalShip(out var ship) &&
+            ship.IsAlive &&
+            ship.ReadyVolleys > 0 &&
+            ship.TargetEntityId != 0;
+
+        /// <summary>
+        /// Throws the hooks. The gate is the server's -- four squares, a target already at half
+        /// her hull, half this crew still standing and neither cooldown running -- so the client
+        /// only refuses what it can see for itself, which is having aimed at nothing. Everything
+        /// else comes back as a refusal the captain can read.
+        /// </summary>
+        public void StartBoarding()
         {
             if (!IsReady)
             {
                 return;
             }
 
-            Issue(
-                new ShipCommand.ActivateAbility(new ActivateAbilityCommand(abilityId)),
-                $"Activate {abilityId.Replace('_', ' ')}");
+            if (SelectedTargetId == 0 &&
+                (!TryGetLocalShip(out var ship) || ship.TargetEntityId == 0))
+            {
+                localAction = "Select a target before boarding.";
+                return;
+            }
+
+            Issue(new ShipCommand.StartBoarding(new StartBoardingCommand()), "Board");
         }
+
+        /// <summary>A key the mechanics sheet reserves but Milestone 1 does not answer yet.</summary>
+        public void ReportUnavailable(string feature) =>
+            localAction = SeaCommandResultText.NotAvailableYet(feature);
 
         public void ToggleRepair()
         {
@@ -228,21 +278,51 @@ namespace Sea.Client
             Issue(new ShipCommand.StartRepair(new StartRepairCommand()), "Start repair");
         }
 
-        public void ToggleBoarding()
+        /// <summary>
+        /// The kit is a crate opened on deck rather than a manoeuvre, so it is the one repair a
+        /// ship already channelling -- or already under fire -- can still reach for. It keeps a
+        /// slot of its own because it answers a different question than the channel does.
+        /// </summary>
+        public void UseRepairKit()
         {
-            if (!TryGetLocalShip(out var ship))
+            if (!IsReady)
             {
                 return;
             }
 
-            var channel = connection.Connection.Db.ShipChannel.ShipEntityId.Find(ship.EntityId);
-            if (channel != null && channel.IsActive && channel.ChannelType == "boarding")
+            Issue(new ShipCommand.UseRepairKit(new UseRepairKitCommand()), "Use repair kit");
+        }
+
+        /// <summary>
+        /// Port Lowell is the only berth on the chart, so the choice is really a confirmation --
+        /// but the wreck stays on the seabed until it is given, which is what keeps a player who
+        /// closed the tab from being sailed back out on their behalf.
+        /// </summary>
+        public void ChooseHomePortRespawn()
+        {
+            if (!IsReady)
             {
-                Issue(new ShipCommand.CancelChannel(new CancelChannelCommand()), "Cancel boarding");
                 return;
             }
 
-            Issue(new ShipCommand.StartBoarding(new StartBoardingCommand()), "Start boarding");
+            Issue(
+                new ShipCommand.ChooseRespawn(new ChooseRespawnCommand(HomePortRespawn)),
+                "Return to Port Lowell");
+        }
+
+        /// <summary>
+        /// Answering the border prompt of SEA_5 10.2. Which chart she is going to is not sent:
+        /// the offer standing on the server says so, and the server rejects the order outright
+        /// if no offer is standing, so a stale prompt cannot sail her anywhere.
+        /// </summary>
+        public void ConfirmMapCrossing()
+        {
+            if (!IsReady)
+            {
+                return;
+            }
+
+            Issue(new ShipCommand.ChangeMap(new ChangeMapCommand()), "Sail on to the next chart");
         }
 
         public bool TryGetLocalShip(out Ship ship)
@@ -263,11 +343,13 @@ namespace Sea.Client
             return ship != null;
         }
 
-        private ulong? FindEnemyAt(Vector3 point)
+        private ulong? FindEnemyAt(Vector3 worldPoint)
         {
             const float selectionRadius = 7f;
             var closestDistance = selectionRadius * selectionRadius;
             ulong? closestId = null;
+            // The ships come off the wire in chart space; the click arrives in world space.
+            var point = SeaChartCoordinates.ToChart(worldPoint);
 
             foreach (var enemy in connection.Connection.Db.Ship.Iter())
             {
@@ -277,8 +359,8 @@ namespace Sea.Client
                 }
 
                 var dx = point.x - enemy.PositionX;
-                var dz = point.z - enemy.PositionY;
-                var squaredDistance = dx * dx + dz * dz;
+                var dy = point.y - enemy.PositionY;
+                var squaredDistance = dx * dx + dy * dy;
                 if (squaredDistance <= closestDistance)
                 {
                     closestDistance = squaredDistance;

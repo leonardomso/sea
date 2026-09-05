@@ -72,12 +72,9 @@ namespace Sea.Client
 
         private GameObject CreateLootPresentation()
         {
-            var loot = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            loot.name = "Pooled Loot";
+            var loot = SeaPrimitive.Create(PrimitiveType.Cube, "Pooled Loot", lootMaterial);
             loot.transform.localScale = new Vector3(1.1f, 0.55f, 0.8f);
             loot.transform.rotation = Quaternion.Euler(0f, 25f, 0f);
-            loot.GetComponent<Renderer>().sharedMaterial = lootMaterial;
-            Destroy(loot.GetComponent<Collider>());
             return loot;
         }
 

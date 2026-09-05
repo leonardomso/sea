@@ -15,23 +15,19 @@ namespace SpacetimeDB.Types
     {
         [DataMember(Name = "owner")]
         public SpacetimeDB.Identity Owner;
-        [DataMember(Name = "level")]
-        public uint Level;
-        [DataMember(Name = "experience")]
-        public ulong Experience;
+        [DataMember(Name = "map_rank")]
+        public byte MapRank;
         [DataMember(Name = "gold")]
         public uint Gold;
 
         public PlayerProgression(
             SpacetimeDB.Identity Owner,
-            uint Level,
-            ulong Experience,
+            byte MapRank,
             uint Gold
         )
         {
             this.Owner = Owner;
-            this.Level = Level;
-            this.Experience = Experience;
+            this.MapRank = MapRank;
             this.Gold = Gold;
         }
 

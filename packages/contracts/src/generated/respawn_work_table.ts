@@ -14,4 +14,5 @@ export default __t.row({
   shipEntityId: __t.u64().primaryKey().name("ship_entity_id"),
   isPending: __t.bool().name("is_pending"),
   respawnAtTick: __t.u64().name("respawn_at_tick"),
+  optionCode: __t.u8().name("option_code"),
 });

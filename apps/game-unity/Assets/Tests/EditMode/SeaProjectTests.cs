@@ -37,10 +37,12 @@ namespace Sea.Tests
         }
 
         [Test]
-        public void Runtime_frame_policy_caps_foreground_and_background_work()
+        public void Runtime_frame_policy_follows_the_display_and_rests_in_the_background()
         {
-            Assert.That(SeaFrameRatePolicy.TargetForFocus(true), Is.EqualTo(60));
+            Assert.That(SeaFrameRatePolicy.TargetForFocus(true), Is.EqualTo(-1));
+            Assert.That(SeaFrameRatePolicy.VerticalSyncForFocus(true), Is.EqualTo(1));
             Assert.That(SeaFrameRatePolicy.TargetForFocus(false), Is.EqualTo(15));
+            Assert.That(SeaFrameRatePolicy.VerticalSyncForFocus(false), Is.EqualTo(0));
         }
 
         [Test]
@@ -50,56 +52,9 @@ namespace Sea.Tests
         }
 
         [Test]
-        public void Ship_motion_advances_and_turns_over_multiple_frames()
-        {
-            var ship = new GameObject("Moving Ship");
-
-            SeaShipMotion.Step(
-                ship.transform,
-                new Vector3(0f, 0f, 10f),
-                targetHeadingDegrees: 0f,
-                deltaTime: 0.1f,
-                movementSpeed: 5f,
-                turnSpeedDegrees: 90f);
-
-            Assert.That(ship.transform.position.z, Is.EqualTo(0.5f).Within(0.001f));
-            Assert.That(Quaternion.Angle(Quaternion.identity, ship.transform.rotation),
-                Is.EqualTo(0f).Within(0.1f));
-            Object.DestroyImmediate(ship);
-        }
-
-        [Test]
-        public void Ship_motion_does_not_slide_sideways_while_turning()
-        {
-            var ship = new GameObject("Turning Ship");
-            var initialPosition = ship.transform.position;
-            const float authoritativeHeading = 5.5f;
-            var headingRadians = authoritativeHeading * Mathf.Deg2Rad;
-            var authoritativePosition = new Vector3(
-                Mathf.Sin(headingRadians),
-                0f,
-                Mathf.Cos(headingRadians));
-
-            SeaShipMotion.Step(
-                ship.transform,
-                authoritativePosition,
-                targetHeadingDegrees: authoritativeHeading,
-                deltaTime: 0.1f,
-                movementSpeed: 5f,
-                turnSpeedDegrees: 90f);
-
-            var movementDirection = (ship.transform.position - initialPosition).normalized;
-            var headingAlignment = Vector3.Dot(movementDirection, ship.transform.forward);
-
-            Assert.That(headingAlignment, Is.GreaterThanOrEqualTo(0.9f),
-                "The ship translated sideways instead of sailing along its heading.");
-            Object.DestroyImmediate(ship);
-        }
-
-        [Test]
         public void Chart_clicks_outside_the_projected_map_are_clamped_to_valid_water()
         {
-            var clamped = SeaChartCoordinates.ClampToMap(new Vector2(-180f, 245f));
+            var clamped = SeaChartCoordinates.ClampToMap(new Vector2(-180f, 645f));
 
             Assert.That(clamped.x, Is.EqualTo(SeaChartCoordinates.MapMinimum));
             Assert.That(clamped.y, Is.EqualTo(SeaChartCoordinates.MapMaximum));
@@ -120,6 +75,9 @@ namespace Sea.Tests
             var topLeft = SeaMiniMapRules.ToWorldPosition(new Vector2(0f, 0f));
             var bottomRight = SeaMiniMapRules.ToWorldPosition(new Vector2(1f, 1f));
 
+            // The panel and the chart run the same way on x and opposite ways on the other
+            // axis, because this rule answers in world space and the minimap camera draws
+            // world +z up the screen while the chart counts y down it.
             Assert.That(topLeft.x, Is.EqualTo(SeaChartCoordinates.MapMinimum));
             Assert.That(topLeft.z, Is.EqualTo(SeaChartCoordinates.MapMaximum));
             Assert.That(bottomRight.x, Is.EqualTo(SeaChartCoordinates.MapMaximum));
@@ -133,8 +91,11 @@ namespace Sea.Tests
 
             Assert.That(SeaMiniMapRules.TryScreenToWorldPosition(
                 new Vector2(800.1f, 749.9f), pixelRect, out var topLeft), Is.True);
-            Assert.That(topLeft.x, Is.EqualTo(SeaChartCoordinates.MapMinimum).Within(0.2f));
-            Assert.That(topLeft.z, Is.EqualTo(SeaChartCoordinates.MapMaximum).Within(0.2f));
+            // A tenth of a pixel inside the corner of a 200 by 150 panel is a third of a
+            // square once it is stretched over a chart four hundred squares wide, so the
+            // tolerance is the click's own offset rather than slack in the rule.
+            Assert.That(topLeft.x, Is.EqualTo(SeaChartCoordinates.MapMinimum).Within(0.3f));
+            Assert.That(topLeft.z, Is.EqualTo(SeaChartCoordinates.MapMaximum).Within(0.3f));
             Assert.That(SeaMiniMapRules.TryScreenToWorldPosition(
                 new Vector2(799f, 750f), pixelRect, out _), Is.False);
         }
@@ -147,7 +108,14 @@ namespace Sea.Tests
 
             Assert.That(worldCamera, Is.Not.Null);
             Assert.That(worldCamera.transform.eulerAngles.x, Is.EqualTo(55f).Within(0.1f));
-            Assert.That(worldCamera.orthographicSize, Is.EqualTo(34f).Within(0.1f));
+            Assert.That(
+                worldCamera.orthographicSize,
+                Is.EqualTo(SeaChartCameraRules.DefaultZoom).Within(0.1f),
+                "The scene ships the framing the rules call default, or the first frame jumps.");
+            Assert.That(
+                worldCamera.transform.position,
+                Is.EqualTo(SeaChartCameraRules.ChartCameraStartPosition()),
+                "The scene frames the middle of the chart, not the corner the origin sits in.");
         }
 
         [Test]
@@ -159,7 +127,14 @@ namespace Sea.Tests
 
             Assert.That(miniMap, Is.Not.Null);
             Assert.That(miniMap.orthographic, Is.True);
-            Assert.That(miniMap.orthographicSize, Is.EqualTo(108f).Within(0.1f));
+            Assert.That(
+                miniMap.orthographicSize,
+                Is.EqualTo(SeaChartCameraRules.MiniMapOrthographicSize).Within(0.1f),
+                "The scene, the scene builder and this assertion all read one number now.");
+            Assert.That(
+                miniMap.transform.position,
+                Is.EqualTo(SeaChartCameraRules.MiniMapCameraPosition()),
+                "A minimap of the whole chart hangs over the middle of it.");
             Assert.That(miniMap.rect.width, Is.EqualTo(0.17f).Within(0.001f));
             Assert.That((miniMap.cullingMask & (1 << 8)), Is.Zero,
                 "Fog of war belongs to the main chart, not the strategic minimap.");
@@ -174,7 +149,9 @@ namespace Sea.Tests
 
             Assert.That(waterShader, Is.Not.Null);
             Assert.That(Shader.Find("Sea/Chart Fog"), Is.Not.Null);
-            Assert.That(SeaWorldView.VisionRadius, Is.EqualTo(44f));
+            // The server's RangeRules.ViewDistanceSquares. Fog that clears further than the
+            // server will talk about draws open water where it has nothing to draw.
+            Assert.That(SeaPresentationRules.VisionRadius, Is.EqualTo(60f));
         }
 
         [Test]
@@ -229,16 +206,91 @@ namespace Sea.Tests
         public void Chart_camera_follows_until_manual_pan_and_recenter_restores_follow()
         {
             var cameraObject = new GameObject("Chart Camera");
-            cameraObject.AddComponent<Camera>();
+            var chartCamera = cameraObject.AddComponent<Camera>();
             var controller = cameraObject.AddComponent<SeaChartCameraController>();
+            controller.Configure(chartCamera);
 
             Assert.That(controller.IsFollowingPlayer, Is.True);
             controller.SetPanInput(Vector2.right);
             Assert.That(controller.IsFollowingPlayer, Is.False);
             controller.SetPanInput(Vector2.zero);
-            Assert.That(controller.IsFollowingPlayer, Is.False);
+            Assert.That(controller.IsFollowingPlayer, Is.False, "Releasing WASD leaves the camera where it was pushed.");
             controller.Recenter();
             Assert.That(controller.IsFollowingPlayer, Is.True);
+
+            controller.BeginDrag(Vector2.zero);
+            controller.EndDrag();
+            Assert.That(controller.IsFollowingPlayer, Is.False, "A middle-mouse drag detaches the camera too.");
+            controller.Recenter();
+            Assert.That(controller.IsFollowingPlayer, Is.True);
+
+            controller.ShowChartPosition(new Vector3(20f, 0f, 20f));
+            Assert.That(controller.IsFollowingPlayer, Is.False, "Jumping the chart somewhere detaches it as well.");
+            controller.Recenter();
+            Assert.That(controller.IsFollowingPlayer, Is.True);
+            Object.DestroyImmediate(cameraObject);
+        }
+
+        [Test]
+        public void Recentering_the_chart_ends_the_pan_glide_it_was_coasting_on()
+        {
+            var cameraObject = new GameObject("Chart Camera");
+            var chartCamera = cameraObject.AddComponent<Camera>();
+            var controller = cameraObject.AddComponent<SeaChartCameraController>();
+            controller.Configure(chartCamera);
+
+            Assert.That(controller.IsGliding, Is.False);
+            controller.SetPanInput(Vector2.right);
+            controller.Pan(1f / 60f);
+            Assert.That(controller.IsGliding, Is.True, "Holding WASD builds a glide.");
+
+            controller.SetPanInput(Vector2.zero);
+            controller.Recenter();
+
+            Assert.That(controller.IsGliding, Is.False,
+                "Leftover glide would push the chart away from the ship the follow pulls it to.");
+            Assert.That(controller.IsFollowingPlayer, Is.True);
+            Object.DestroyImmediate(cameraObject);
+        }
+
+        [Test]
+        public void Chart_zoom_and_drag_keep_the_camera_attached_or_detached_as_the_player_left_it()
+        {
+            var cameraObject = new GameObject("Zooming Chart Camera");
+            var chartCamera = cameraObject.AddComponent<Camera>();
+            chartCamera.orthographic = true;
+            chartCamera.orthographicSize = SeaChartCameraRules.DefaultZoom;
+            cameraObject.transform.position = new Vector3(0f, 70f, -50f);
+            cameraObject.transform.rotation = Quaternion.Euler(55f, 0f, 0f);
+            var controller = cameraObject.AddComponent<SeaChartCameraController>();
+            controller.Configure(chartCamera);
+
+            controller.Zoom(1f);
+            Assert.That(
+                chartCamera.orthographicSize,
+                Is.LessThan(SeaChartCameraRules.DefaultZoom),
+                "Scrolling forward zooms in.");
+            Assert.That(controller.IsFollowingPlayer, Is.True, "Zooming never detaches the camera from the ship.");
+            controller.Zoom(-100f);
+            Assert.That(
+                chartCamera.orthographicSize,
+                Is.EqualTo(SeaChartCameraRules.MaximumZoom).Within(0.001f),
+                "Zooming out stops at the widest framing the ship camera allows.");
+
+            // Zoomed all the way out the footprint spans the map, so zoom back in to leave room to drag.
+            chartCamera.orthographicSize = SeaChartCameraRules.MinimumZoom;
+            controller.BeginDrag(new Vector2(100f, 100f));
+            var before = cameraObject.transform.position.x;
+            controller.DragTo(new Vector2(150f, 100f));
+            Assert.That(cameraObject.transform.position.x, Is.LessThan(before), "Dragging right slides the chart left.");
+            controller.EndDrag();
+            var released = cameraObject.transform.position.x;
+            controller.DragTo(new Vector2(300f, 100f));
+            Assert.That(
+                cameraObject.transform.position.x,
+                Is.EqualTo(released),
+                "Pointer motion after the drag ended does not move the chart.");
+            Assert.That(controller.IsFollowingPlayer, Is.False);
             Object.DestroyImmediate(cameraObject);
         }
 
@@ -253,7 +305,11 @@ namespace Sea.Tests
             cameraObject.transform.rotation = Quaternion.Euler(55f, 0f, 0f);
             var controller = cameraObject.AddComponent<SeaChartCameraController>();
             controller.Configure(chartCamera);
-            var destination = new Vector3(-46f, 0f, 43f);
+            // Thirty squares west and forty south of the middle of the chart, which is the
+            // offset this case has always used; what moved is where the middle is. A bare
+            // (-30, 40) is off the chart now and the clamp, not the navigation, would have
+            // decided where the camera ended up.
+            var destination = new Vector3(170f, 0f, 240f);
 
             controller.ShowChartPosition(destination);
 

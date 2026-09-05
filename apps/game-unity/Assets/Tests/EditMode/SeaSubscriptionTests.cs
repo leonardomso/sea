@@ -1,7 +1,14 @@
 #if UNITY_EDITOR
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using Sea.Client;
+using SpacetimeDB.Types;
 
 namespace Sea.Tests
 {
@@ -24,6 +31,10 @@ namespace Sea.Tests
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM player_clock WHERE owner = 0xabc123"));
             Assert.That(queries, Does.Contain("SELECT * FROM world_state"));
+
+            // Three charts, three rows: the crossing prompt names the chart beyond the border,
+            // and a number in its place would tell a captain nothing.
+            Assert.That(queries, Does.Contain("SELECT * FROM map_def"));
             Assert.That(queries, Does.Not.Contain("SELECT * FROM world_object"));
             Assert.That(queries.Any(query => query == "SELECT * FROM ship"), Is.False);
         }
@@ -47,6 +58,20 @@ namespace Sea.Tests
                 "SELECT * FROM ship_movement WHERE entity_id = 42"));
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM combat_event WHERE owner_entity_id = 42"));
+
+            // A route the client does not stream is a route the local ship cannot walk, and
+            // walking it is the whole of the prediction (SEA_5 12.2).
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM ship_route WHERE entity_id = 42"));
+
+            // A wreck cannot be told it may choose a berth by a table it does not stream.
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM respawn_work WHERE ship_entity_id = 42"));
+
+            // Nor can a captain be asked whether to sail off the chart. The offer row is the
+            // whole prompt, so not streaming it is the same as never being asked.
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM map_crossing_offer WHERE entity_id = 42"));
             Assert.That(queries, Has.Some.EqualTo(
                 "SELECT * FROM volley WHERE is_active = true AND " +
                 "(source_entity_id = 42 OR target_entity_id = 42)"));
@@ -61,7 +86,13 @@ namespace Sea.Tests
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM ship_movement WHERE entity_id = 42"));
             Assert.That(queries, Does.Contain(
-                "SELECT * FROM ship_status WHERE ship_entity_id = 42"));
+                "SELECT * FROM effect WHERE ship_entity_id = 42"));
+
+            // Her course, so the selected ship's route can be drawn. A route the client never
+            // streams is a line it cannot draw, and the captain is back to guessing where a
+            // ship is bound from where her bow points.
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM ship_route WHERE entity_id = 42"));
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM volley WHERE is_active = true AND " +
                 "(source_entity_id = 7 OR target_entity_id = 7 OR " +
@@ -78,9 +109,87 @@ namespace Sea.Tests
             Assert.That(queries, Has.Some.Contains("chunk_x <= 5"));
             Assert.That(queries, Has.Some.Contains("chunk_y >= 1"));
             Assert.That(queries, Has.Some.Contains("chunk_y <= 3"));
-            Assert.That(queries.All(query => query.Contains("is_active = true")), Is.True);
+            Assert.That(
+                queries.All(query =>
+                    query.Contains("is_active = true") ||
+                    query.StartsWith("SELECT * FROM chunk_movement", StringComparison.Ordinal)),
+                Is.True);
             Assert.That(queries, Has.Some.StartsWith("SELECT * FROM world_object"));
-            Assert.That(queries, Has.Some.StartsWith("SELECT * FROM ship_movement"));
+
+            // Every other hull comes off the packed chunk rows, not a movement row apiece.
+            Assert.That(queries, Has.Some.StartsWith("SELECT * FROM chunk_movement"));
+            Assert.That(queries, Has.None.StartsWith("SELECT * FROM ship_movement"));
+        }
+
+        [Test]
+        public void Spatial_subscription_radius_covers_the_fog_vision_radius()
+        {
+            var guaranteedHalfWidth =
+                SeaSubscriptionPlan.SpatialRadius * SeaSubscriptionPlan.ChunkSize;
+
+            Assert.That(
+                guaranteedHalfWidth,
+                Is.GreaterThanOrEqualTo(SeaPresentationRules.VisionRadius));
+        }
+
+        [Test]
+        public void The_shipped_map_is_small_enough_to_hold_in_one_subscription()
+        {
+            Assert.That(SeaSubscriptionPlan.CoversWholeMap, Is.True);
+        }
+
+        [Test]
+        public void A_map_past_the_chunk_budget_falls_back_to_the_chunk_window()
+        {
+            var budgetedSpan = SeaSubscriptionPlan.ChunkSize *
+                Math.Sqrt(SeaSubscriptionPlan.WholeMapChunkBudget);
+
+            Assert.That(
+                SeaSubscriptionPlan.FitsInOneSubscription(0f, (float)budgetedSpan),
+                Is.True);
+            Assert.That(
+                SeaSubscriptionPlan.FitsInOneSubscription(0f, (float)budgetedSpan + SeaSubscriptionPlan.ChunkSize),
+                Is.False);
+        }
+
+        [Test]
+        public void A_map_without_a_positive_span_is_rejected_rather_than_guessed_at()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => SeaSubscriptionPlan.FitsInOneSubscription(0f, 0f));
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => SeaSubscriptionPlan.FitsInOneSubscription(0f, float.NaN));
+        }
+
+        [Test]
+        public void The_whole_map_plan_covers_the_same_tables_as_the_chunk_window()
+        {
+            var wholeMap = SeaSubscriptionPlan.WholeMap();
+            var chunked = SeaSubscriptionPlan.Spatial(0, 0, SeaSubscriptionPlan.SpatialRadius);
+
+            Assert.That(wholeMap.Length, Is.EqualTo(chunked.Length));
+            Assert.That(
+                wholeMap.All(query =>
+                    query.Contains("is_active = true") ||
+                    query.StartsWith("SELECT * FROM chunk_movement", StringComparison.Ordinal)),
+                Is.True);
+            Assert.That(wholeMap.All(query => !query.Contains("chunk_x")), Is.True);
+            Assert.That(wholeMap, Has.Some.StartsWith("SELECT * FROM world_object"));
+            Assert.That(wholeMap, Has.Some.StartsWith("SELECT * FROM chunk_movement"));
+        }
+
+        // A chunk row is keyed by the chunk it is, so its columns cannot be asked for a chunk
+        // minus two: the window is clipped to the chart while the ship window is not.
+        [Test]
+        public void The_chunk_window_at_the_corner_of_the_chart_asks_for_no_chunk_below_zero()
+        {
+            var queries = SeaSubscriptionPlan.Spatial(chunkX: 0, chunkY: 0, radius: 2);
+            var chunkQuery = queries.Single(query =>
+                query.StartsWith("SELECT * FROM chunk_movement", StringComparison.Ordinal));
+
+            Assert.That(chunkQuery, Does.Contain("chunk_x >= 0"));
+            Assert.That(chunkQuery, Does.Contain("chunk_y >= 0"));
+            Assert.That(chunkQuery, Does.Not.Contain("-"));
         }
 
         [Test]
@@ -134,6 +243,77 @@ namespace Sea.Tests
             Assert.That(interest.TryTakeDue(0.14d, out _), Is.False);
             Assert.That(interest.TryTakeDue(0.15d, out var retried), Is.True);
             Assert.That(retried, Is.EqualTo(requested));
+        }
+
+        // The generator is the only source of table names, so the plan is checked against
+        // the bindings rather than against a hand-maintained list of query strings.
+        [Test]
+        public void Every_subscribed_table_exists_in_the_generated_bindings()
+        {
+            var generated = GeneratedTableNames();
+            Assert.That(generated, Does.Contain("world_state"));
+
+            var subscribed = SubscribedTableNames();
+            Assert.That(subscribed, Is.Not.Empty);
+            Assert.That(subscribed, Does.Contain("command_result_event"));
+            Assert.That(subscribed, Does.Contain("world_object"));
+
+            var missing = subscribed.Where(name => !generated.Contains(name)).ToArray();
+            Assert.That(
+                missing,
+                Is.Empty,
+                "Subscription plan queries tables the generated bindings do not define: "
+                    + string.Join(", ", missing));
+        }
+
+        private static SortedSet<string> SubscribedTableNames()
+        {
+            var queries = new List<string>();
+            queries.AddRange(SeaSubscriptionPlan.Initial("0xabc123"));
+            queries.AddRange(SeaSubscriptionPlan.Player(42));
+            queries.AddRange(SeaSubscriptionPlan.Focus(localShipEntityId: 7, targetEntityId: 42));
+            queries.AddRange(SeaSubscriptionPlan.Spatial(chunkX: 4, chunkY: 2, radius: 1));
+
+            var names = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (Match match in Regex.Matches(string.Join("\n", queries), @"FROM\s+([a-z_][a-z0-9_]*)"))
+            {
+                names.Add(match.Groups[1].Value);
+            }
+
+            return names;
+        }
+
+        private static SortedSet<string> GeneratedTableNames()
+        {
+            var names = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (var field in typeof(RemoteTables).GetFields(
+                BindingFlags.Public | BindingFlags.Instance))
+            {
+                var typeName = field.FieldType.Name;
+                if (typeName.EndsWith("Handle", StringComparison.Ordinal))
+                {
+                    names.Add(SnakeCase(typeName.Substring(0, typeName.Length - "Handle".Length)));
+                }
+            }
+
+            return names;
+        }
+
+        private static string SnakeCase(string pascalCase)
+        {
+            var builder = new StringBuilder(pascalCase.Length + 4);
+            for (var index = 0; index < pascalCase.Length; index++)
+            {
+                var character = pascalCase[index];
+                if (char.IsUpper(character) && index > 0)
+                {
+                    builder.Append('_');
+                }
+
+                builder.Append(char.ToLower(character, CultureInfo.InvariantCulture));
+            }
+
+            return builder.ToString();
         }
 
         [Test]

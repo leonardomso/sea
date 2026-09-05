@@ -2,6 +2,11 @@ namespace Sea.Client
 {
     public static class SeaCommandResultText
     {
+        /// <summary>
+        /// Mirrors <c>CommandRejectionCode</c> one for one. The server sends a byte and never a
+        /// string, so this table is the only place the wire code becomes something a captain can
+        /// read; a code with no entry is reported rather than hidden.
+        /// </summary>
         public static string Rejection(byte code) => code switch
         {
             1 => "stale command",
@@ -14,24 +19,36 @@ namespace Sea.Client
             8 => "players cannot be attacked",
             9 => "target concealed",
             10 => "unknown ammunition",
-            11 => "ammunition not owned",
-            12 => "no target selected",
-            13 => "target already sunk",
-            14 => "cannons disabled",
-            15 => "out of ammunition",
-            16 => "weapons reloading",
-            17 => "target out of range",
-            18 => "target outside firing arc",
-            19 => "unknown ability",
-            20 => "ability cooling down",
-            21 => "no repair kit",
-            22 => "nothing to repair",
-            23 => "target too strong to board",
-            24 => "no active channel",
-            25 => "missing resource",
-            26 => "invalid broadside side",
-            27 => "invalid weak point",
+            11 => "no target selected",
+            12 => "target already sunk",
+            13 => "magazine reloading",
+            14 => "firing too fast",
+            15 => "target out of range",
+            16 => "cannot fire in port",
+            17 => "no repair kit",
+            18 => "nothing to repair",
+            19 => "no active channel",
+            20 => "missing resource",
+            21 => "not available yet",
+            22 => "still on cooldown",
+            23 => "target is spawn shielded",
+            24 => "ship is not sunk",
+            25 => "no way through",
+            26 => "slow down",
+            27 => "no crossing here",
+            28 => "target is not damaged enough to board",
+            29 => "target was boarded too recently",
+            30 => "not enough hands to board",
+            31 => "boarders have spiked the guns",
             _ => $"rejection code {code}",
         };
+
+        /// <summary>
+        /// The keys the mechanics sheet reserves for ramming, abilities and the PvP
+        /// flag stay bound through Milestone 1 so the rebinder lists them; pressing one says so
+        /// rather than doing nothing, which reads as a broken key.
+        /// </summary>
+        public static string NotAvailableYet(string feature) =>
+            $"{feature} is not available yet.";
     }
 }

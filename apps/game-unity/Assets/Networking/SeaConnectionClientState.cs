@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using UnityEngine;
@@ -8,7 +7,6 @@ namespace Sea.Client
 {
     public sealed partial class SeaConnectionController
     {
-        private readonly Dictionary<uint, ulong> levelThresholds = new();
         private ulong worldTickAnchor;
         private uint worldTickRate = 10;
         private double worldTickAnchorTime;
@@ -16,9 +14,22 @@ namespace Sea.Client
         public event Action<Ship> ShipChanged;
         public event Action<ShipMovement> ShipMovementChanged;
         public event Action<ulong> ShipMovementLeftInterest;
+
+        /// <summary>
+        /// One chunk's ships, packed (SEA_5 §12.1). Every hull but the player's own is placed
+        /// off these rows: a chunk costs sixteen bytes a ship and one row change a tick however
+        /// many of them are under way, where a movement row apiece cost a row change each.
+        /// </summary>
+        public event Action<ChunkMovement> ChunkMovementChanged;
         public event Action<WorldObject> WorldObjectChanged;
         public event Action<Volley> VolleyChanged;
         public event Action<ulong> VolleyLeftInterest;
+
+        /// <summary>
+        /// One volley's numbers, raised the moment the server settles it. What the presentation
+        /// does with it waits on the flight time the row carries (SEA_5 8.3).
+        /// </summary>
+        public event Action<HitEvent> HitLanded;
         public event Action<Loot> LootChanged;
         public event Action<ulong> LootLeftInterest;
         public event Action<ulong> WorldTickChanged;
@@ -40,9 +51,6 @@ namespace Sea.Client
 
         public uint WorldTickRate => worldTickRate;
 
-        public bool TryGetLevelThreshold(uint level, out ulong experience) =>
-            levelThresholds.TryGetValue(level, out experience);
-
         private void RegisterClientStateCallbacks(DbConnection connection)
         {
             connection.Db.WorldObject.OnInsert += HandleWorldObjectInserted;
@@ -54,24 +62,29 @@ namespace Sea.Client
             connection.Db.ShipMovement.OnInsert += HandleShipMovementInserted;
             connection.Db.ShipMovement.OnUpdate += HandleShipMovementUpdated;
             connection.Db.ShipMovement.OnDelete += HandleShipMovementDeleted;
-            connection.Db.LevelDefinition.OnInsert += HandleLevelDefinitionInserted;
-            connection.Db.LevelDefinition.OnUpdate += HandleLevelDefinitionUpdated;
-            connection.Db.LevelDefinition.OnDelete += HandleLevelDefinitionDeleted;
+            connection.Db.ChunkMovement.OnInsert += HandleChunkMovementInserted;
+            connection.Db.ChunkMovement.OnUpdate += HandleChunkMovementUpdated;
             connection.Db.PlayerProgression.OnInsert += HandleHudRowInserted;
             connection.Db.PlayerProgression.OnUpdate += HandleHudRowUpdated;
             connection.Db.EncounterReward.OnInsert += HandleHudRowInserted;
             connection.Db.Inventory.OnInsert += HandleHudRowInserted;
             connection.Db.Inventory.OnUpdate += HandleHudRowUpdated;
             connection.Db.Inventory.OnDelete += HandleHudRowDeleted;
-            connection.Db.ShipStatus.OnInsert += HandleHudRowInserted;
-            connection.Db.ShipStatus.OnUpdate += HandleHudRowUpdated;
-            connection.Db.ShipStatus.OnDelete += HandleHudRowDeleted;
+            connection.Db.Effect.OnInsert += HandleHudRowInserted;
+            connection.Db.Effect.OnUpdate += HandleHudRowUpdated;
+            connection.Db.Effect.OnDelete += HandleHudRowDeleted;
             connection.Db.Cooldown.OnInsert += HandleHudRowInserted;
             connection.Db.Cooldown.OnUpdate += HandleHudRowUpdated;
             connection.Db.Cooldown.OnDelete += HandleHudRowDeleted;
             connection.Db.ShipChannel.OnInsert += HandleHudRowInserted;
             connection.Db.ShipChannel.OnUpdate += HandleHudRowUpdated;
             connection.Db.ShipChannel.OnDelete += HandleHudRowDeleted;
+            connection.Db.RespawnWork.OnInsert += HandleHudRowInserted;
+            connection.Db.RespawnWork.OnUpdate += HandleHudRowUpdated;
+            connection.Db.RespawnWork.OnDelete += HandleHudRowDeleted;
+            connection.Db.MapCrossingOffer.OnInsert += HandleHudRowInserted;
+            connection.Db.MapCrossingOffer.OnUpdate += HandleHudRowUpdated;
+            connection.Db.MapCrossingOffer.OnDelete += HandleHudRowDeleted;
             connection.Db.Loot.OnInsert += HandleLootInserted;
             connection.Db.Loot.OnUpdate += HandleLootUpdated;
             connection.Db.Loot.OnDelete += HandleLootDeleted;
@@ -101,26 +114,6 @@ namespace Sea.Client
             PlayerClock _oldClock,
             PlayerClock clock) => SynchronizeWorldClock(clock);
 
-        private void HandleLevelDefinitionInserted(EventContext _context, LevelDefinition definition) =>
-            StoreLevelDefinition(definition);
-
-        private void HandleLevelDefinitionUpdated(
-            EventContext _context,
-            LevelDefinition _oldDefinition,
-            LevelDefinition definition) => StoreLevelDefinition(definition);
-
-        private void HandleLevelDefinitionDeleted(EventContext _context, LevelDefinition definition)
-        {
-            levelThresholds.Remove(definition.Level);
-            NotifyHudStateChanged();
-        }
-
-        private void StoreLevelDefinition(LevelDefinition definition)
-        {
-            levelThresholds[definition.Level] = definition.RequiredExperience;
-            NotifyHudStateChanged();
-        }
-
         private void HandleHudRowInserted<TRow>(EventContext _context, TRow _row) =>
             NotifyHudStateChanged();
 
@@ -133,7 +126,13 @@ namespace Sea.Client
         private void NotifyShipChanged(Ship ship)
         {
             ShipChanged?.Invoke(ship);
-            NotifyHudStateChanged();
+            if (SeaHudViewModel.DependsOnShip(
+                    ship.EntityId,
+                    subscribedPlayerEntityId,
+                    selectedTargetEntityId))
+            {
+                NotifyHudStateChanged();
+            }
         }
 
         private void HandleShipMovementInserted(EventContext _context, ShipMovement movement) =>
@@ -147,6 +146,14 @@ namespace Sea.Client
         private void HandleShipMovementDeleted(EventContext _context, ShipMovement movement) =>
             ShipMovementLeftInterest?.Invoke(movement.EntityId);
 
+        private void HandleChunkMovementInserted(EventContext _context, ChunkMovement chunk) =>
+            ChunkMovementChanged?.Invoke(chunk);
+
+        private void HandleChunkMovementUpdated(
+            EventContext _context,
+            ChunkMovement _oldChunk,
+            ChunkMovement chunk) => ChunkMovementChanged?.Invoke(chunk);
+
         private void NotifyShipMovementChanged(ShipMovement movement)
         {
             RefreshSpatialScope(Connection, movement);
@@ -157,6 +164,8 @@ namespace Sea.Client
             WorldObjectChanged?.Invoke(worldObject);
 
         private void NotifyVolleyChanged(Volley volley) => VolleyChanged?.Invoke(volley);
+
+        private void HandleHitInserted(EventContext _context, HitEvent hit) => HitLanded?.Invoke(hit);
 
         private void HandleLootInserted(EventContext _context, Loot loot) =>
             LootChanged?.Invoke(loot);
@@ -193,7 +202,6 @@ namespace Sea.Client
 
         private void NotifyPresentationReset()
         {
-            levelThresholds.Clear();
             worldTickAnchor = 0;
             worldTickRate = 10;
             worldTickAnchorTime = 0d;

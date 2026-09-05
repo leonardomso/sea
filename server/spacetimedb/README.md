@@ -5,11 +5,15 @@ for the pinned macOS-compatible SpacetimeDB WASI toolchain.
 
 ## Ownership
 
-The module owns identity, ships, movement, targeting, combat, statuses,
-abilities, repairs, boarding, hazards, NPC decisions, loot, progression,
-death, respawn, and rewards. Clients issue `IssueShipCommand` envelopes with a
-monotonic player-scoped command ID. Expected rejection produces a typed command
-result instead of an unhandled reducer error.
+The module owns identity, ships, movement, targeting, combat, effects,
+repairs, port rules, hazards, NPC decisions, loot, progression, death,
+respawn, and rewards. The `ActivateAbility`, `StartBoarding`, and ramming
+paths exist and answer with a typed `NotAvailable` rejection until their
+milestone; see `docs/STATUS.md`.
+
+Clients issue `IssueShipCommand` envelopes with a monotonic player-scoped
+command ID. Expected rejection produces a typed command result instead of an
+unhandled reducer error.
 
 The world simulation runs at 10 Hz and NPC decisions at 2 Hz. Hot systems
 process active and due rows through indexes and spatial chunks. Dormant ships
@@ -20,7 +24,10 @@ must not create movement or AI work.
 - `spacetimedb`: schema, reducers, command policy and execution, simulation
   systems, deterministic content, events, and rewards.
 - `tests`: pure unit, property, command-matrix, and replay tests.
-- `seed/world.json`: human-readable source for the deterministic starter map.
+- `spacetimedb/Content/Data/*.json`: the embedded content (maps and sectors,
+  hulls, cannons, ammo, NPCs, stat caps); `pnpm content:generate` turns it
+  into `Generated/ContentCatalog.g.cs`. Never edit the generated file, and run
+  `pnpm quality:content` after changing the JSON.
 
 Pure domain files are linked into tests and benchmarks without depending on
 SpacetimeDB runtime types.

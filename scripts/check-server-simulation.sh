@@ -4,22 +4,23 @@ set -eu
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
-schema="$repo_root/server/spacetimedb/spacetimedb/Schema/Tables.cs"
+# The whole schema directory, not one file: the Ship table lives in ShipTable.cs so that
+# neither half runs past the 500-line limit, and the contract is the same either way.
+schema="$repo_root/server/spacetimedb/spacetimedb/Schema"
 simulation="$repo_root/server/spacetimedb/spacetimedb/Simulation"
 navigation="$repo_root/server/spacetimedb/spacetimedb/Navigation/NavigationState.cs"
 
 for required in \
-  'Accessor = "ByStatusDue"' \
-  'Accessor = "ByImpactDue"' \
+  'Accessor = "ByEffectDue"' \
+  'Accessor = "ByVolleyExpiry"' \
+  'Accessor = "ByReloading"' \
   'Accessor = "ByChannelDue"' \
   'Accessor = "ByLootExpiryDue"' \
   'Accessor = "ByRespawnDue"' \
   'Accessor = "ByEnvironmentExposure"' \
-  'Accessor = "ByActiveChunkShard"' \
-  'Accessor = "ByEnvironmentExposureHazardShard"' \
-  'Accessor = "ByMovingShard"' \
+  'Accessor = "ByActiveFaction"' \
   'Accessor = "ByShipCooldown"'; do
-  if ! grep -q "$required" "$schema"; then
+  if ! grep -R -q --include='*.cs' "$required" "$schema"; then
     echo "Missing indexed simulation contract: $required" >&2
     exit 1
   fi
@@ -47,6 +48,11 @@ fi
 
 if grep -R -n --include='*.cs' 'Loot.ByActive.Filter(true)' "$simulation"; then
   echo "Simulation hot paths must not scan every active loot row." >&2
+  exit 1
+fi
+
+if grep -n 'ActiveShipsIn' "$simulation/LootSystem.cs"; then
+  echo "Loot claims must rank rivals by published kinematics, not stale Ship rows." >&2
   exit 1
 fi
 

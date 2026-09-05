@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using System.Linq;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using UnityEngine;
@@ -13,7 +12,7 @@ namespace Sea.Client
         private static readonly ProfilerMarker NetworkingMarker =
             new("Sea.Networking.FrameTick");
 
-        [SerializeField] private string serverUrl = "http://127.0.0.1:3000";
+        [SerializeField] private string serverUrl = "http://127.0.0.1:43000";
         [SerializeField] private string databaseName = "sea-local";
         [SerializeField] private bool connectOnStart = true;
 
@@ -38,6 +37,15 @@ namespace Sea.Client
         public string ServerUrl => serverUrl;
         public string DatabaseName => databaseName;
         public string CommandStatus { get; private set; } = string.Empty;
+
+        /// <summary>
+        /// The last command the server answered and how it answered. The HUD only needs the
+        /// sentence in <see cref="CommandStatus"/>; the runtime probe needs the raw code so it
+        /// can assert the module still rejects a retired command rather than acting on it.
+        /// </summary>
+        public ulong AnsweredCommandId { get; private set; }
+
+        public byte AnsweredRejectionCode { get; private set; }
 
         public ulong IssueCommand(ShipCommand command, string description)
         {
@@ -66,10 +74,18 @@ namespace Sea.Client
 
         private void Start()
         {
-            if (connectOnStart)
+            if (!SeaRuntimeValidationRules.ShouldConnectOnStart(
+                    connectOnStart,
+                    SeaRuntimeArguments.Has(
+                        "-seaPresentationPerformanceTest",
+                        Environment.GetCommandLineArgs(),
+                        Application.absoluteURL)))
             {
-                Connect();
+                Status = "Sailing alone for the presentation benchmark";
+                return;
             }
+
+            Connect();
         }
 
         private void Update()
@@ -111,6 +127,10 @@ namespace Sea.Client
                 .WithUri(serverUrl)
                 .WithDatabaseName(databaseName)
                 .WithConfirmedReads(false);
+#if UNITY_WEBGL && !UNITY_EDITOR
+            // The SDK's Brotli decoder needs a native library the browser build lacks.
+            builder.WithCompression(Compression.None);
+#endif
 
             var token = authTokens.Token;
             attemptedWithToken = !string.IsNullOrWhiteSpace(token);
@@ -171,6 +191,7 @@ namespace Sea.Client
             connection.Db.Volley.OnDelete += HandleVolleyDeleted;
             connection.Db.PlayerCommandState.OnInsert += HandleCommandStateInserted;
             connection.Db.PlayerCommandState.OnUpdate += HandleCommandStateUpdated;
+            connection.Db.HitEvent.OnInsert += HandleHitInserted;
             connection.Db.CommandResultEvent.OnInsert += HandleCommandResult;
             connection.Db.EncounterRewardEvent.OnInsert += HandleEncounterReward;
             RegisterClientStateCallbacks(connection);
@@ -178,7 +199,7 @@ namespace Sea.Client
             initialSubscription = connection.SubscriptionBuilder()
                 .OnApplied(HandleInitialSubscriptionApplied)
                 .OnError(HandleSubscriptionError)
-                .Subscribe(SeaSubscriptionPlan.Initial(ToIdentitySqlLiteral(identity)).ToArray());
+                .Subscribe(SeaSubscriptionPlan.Initial(ToIdentitySqlLiteral(identity)));
         }
 
         private void HandleInitialSubscriptionApplied(SubscriptionEventContext context)
@@ -226,7 +247,7 @@ namespace Sea.Client
             playerSubscription = connection.SubscriptionBuilder()
                 .OnApplied(context => HandlePlayerSubscriptionApplied(context, shipEntityId))
                 .OnError(HandleSubscriptionError)
-                .Subscribe(SeaSubscriptionPlan.Player(shipEntityId).ToArray());
+                .Subscribe(SeaSubscriptionPlan.Player(shipEntityId));
         }
 
         private void HandlePlayerSubscriptionApplied(
@@ -279,6 +300,8 @@ namespace Sea.Client
             }
 
             latestCommandId = result.CommandId;
+            AnsweredCommandId = result.CommandId;
+            AnsweredRejectionCode = result.Accepted ? (byte)0 : result.RejectionCode;
             var description = string.IsNullOrEmpty(latestCommandDescription)
                 ? $"Command {result.CommandId}"
                 : latestCommandDescription;
@@ -295,7 +318,7 @@ namespace Sea.Client
                 return;
             }
 
-            CommandStatus = $"Shared reward • +{reward.Gold} gold • +{reward.Experience} XP";
+            CommandStatus = $"Shared reward • +{reward.Gold} gold";
             NotifyHudStateChanged();
         }
 
@@ -426,6 +449,8 @@ namespace Sea.Client
             subscribedPlayerEntityId = 0;
             ResetInterestSubscriptions();
             latestCommandId = 0;
+            AnsweredCommandId = 0;
+            AnsweredRejectionCode = 0;
             latestCommandDescription = string.Empty;
             CommandStatus = string.Empty;
         }

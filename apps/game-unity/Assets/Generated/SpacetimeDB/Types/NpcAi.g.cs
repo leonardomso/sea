@@ -15,8 +15,6 @@ namespace SpacetimeDB.Types
     {
         [DataMember(Name = "ship_entity_id")]
         public ulong ShipEntityId;
-        [DataMember(Name = "archetype_id")]
-        public string ArchetypeId;
         [DataMember(Name = "is_active")]
         public bool IsActive;
         [DataMember(Name = "decision_shard")]
@@ -25,27 +23,52 @@ namespace SpacetimeDB.Types
         public ulong NextDecisionTick;
         [DataMember(Name = "home_seed")]
         public ulong HomeSeed;
+        [DataMember(Name = "home_x")]
+        public float HomeX;
+        [DataMember(Name = "home_y")]
+        public float HomeY;
+        [DataMember(Name = "leader_entity_id")]
+        public ulong LeaderEntityId;
+        [DataMember(Name = "has_called_help")]
+        public bool HasCalledHelp;
+        [DataMember(Name = "next_replan_tick")]
+        public ulong NextReplanTick;
+        [DataMember(Name = "next_wander_tick")]
+        public ulong NextWanderTick;
+        [DataMember(Name = "wander_index")]
+        public ulong WanderIndex;
 
         public NpcAi(
             ulong ShipEntityId,
-            string ArchetypeId,
             bool IsActive,
             byte DecisionShard,
             ulong NextDecisionTick,
-            ulong HomeSeed
+            ulong HomeSeed,
+            float HomeX,
+            float HomeY,
+            ulong LeaderEntityId,
+            bool HasCalledHelp,
+            ulong NextReplanTick,
+            ulong NextWanderTick,
+            ulong WanderIndex
         )
         {
             this.ShipEntityId = ShipEntityId;
-            this.ArchetypeId = ArchetypeId;
             this.IsActive = IsActive;
             this.DecisionShard = DecisionShard;
             this.NextDecisionTick = NextDecisionTick;
             this.HomeSeed = HomeSeed;
+            this.HomeX = HomeX;
+            this.HomeY = HomeY;
+            this.LeaderEntityId = LeaderEntityId;
+            this.HasCalledHelp = HasCalledHelp;
+            this.NextReplanTick = NextReplanTick;
+            this.NextWanderTick = NextWanderTick;
+            this.WanderIndex = WanderIndex;
         }
 
         public NpcAi()
         {
-            this.ArchetypeId = "";
         }
     }
 }

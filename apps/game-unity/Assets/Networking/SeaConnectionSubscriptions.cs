@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using SpacetimeDB;
 using SpacetimeDB.Types;
 using UnityEngine;
@@ -17,8 +16,8 @@ namespace Sea.Client
         private SubscriptionHandle pendingSpatialSubscription;
         private SubscriptionHandle activeFocusSubscription;
         private SubscriptionHandle pendingFocusSubscription;
+        private readonly SeaFocusTargetSet focusTargets = new();
         private ulong selectedTargetEntityId;
-        private string focusKey = string.Empty;
 
         public event Action<ulong> ShipLeftInterest;
         public event Action<ulong> WorldObjectLeftInterest;
@@ -30,10 +29,7 @@ namespace Sea.Client
                 return;
             }
 
-            spatialInterest.Observe(
-                ship.ChunkX,
-                ship.ChunkY,
-                Time.realtimeSinceStartupAsDouble);
+            ObserveChunk(ship.ChunkX, ship.ChunkY);
             if (selectedTargetEntityId != ship.TargetEntityId)
             {
                 selectedTargetEntityId = ship.TargetEntityId;
@@ -48,10 +44,22 @@ namespace Sea.Client
                 return;
             }
 
-            spatialInterest.Observe(
-                movement.ChunkX,
-                movement.ChunkY,
-                Time.realtimeSinceStartupAsDouble);
+            ObserveChunk(movement.ChunkX, movement.ChunkY);
+        }
+
+        /// <summary>
+        /// Follows the local ship across chunk borders, unless the client already holds the whole
+        /// map. Resubscribing to water it is already streaming would tear the terrain down and
+        /// rebuild it identically, and throw away the motion history of every ship in view.
+        /// </summary>
+        private void ObserveChunk(int chunkX, int chunkY)
+        {
+            if (SeaSubscriptionPlan.CoversWholeMap)
+            {
+                return;
+            }
+
+            spatialInterest.Observe(chunkX, chunkY, Time.realtimeSinceStartupAsDouble);
         }
 
         private void SubscribeSpatialScope(DbConnection connection, int chunkX, int chunkY)
@@ -89,7 +97,9 @@ namespace Sea.Client
                     generation,
                     chunk,
                     error))
-                .Subscribe(SeaSubscriptionPlan.Spatial(chunk.X, chunk.Y, radius: 1).ToArray());
+                .Subscribe(SeaSubscriptionPlan.CoversWholeMap
+                    ? SeaSubscriptionPlan.WholeMap()
+                    : SeaSubscriptionPlan.Spatial(chunk.X, chunk.Y, SeaSubscriptionPlan.SpatialRadius));
             pendingSpatialSubscription = next;
         }
 
@@ -115,7 +125,11 @@ namespace Sea.Client
 
             IsSubscribed = true;
             Status = "Ready";
-            Debug.Log($"Sea client ready. Chunk {chunk.X},{chunk.Y}.", this);
+            Debug.Log(
+                SeaSubscriptionPlan.CoversWholeMap
+                    ? "Sea client ready. Whole map subscribed."
+                    : $"Sea client ready. Chunk {chunk.X},{chunk.Y}.",
+                this);
         }
 
         private void HandleSpatialSubscriptionError(
@@ -184,24 +198,21 @@ namespace Sea.Client
                 return;
             }
 
-            var targetIds = new HashSet<ulong>();
-            AddFocusTarget(targetIds, selectedTargetEntityId);
+            focusTargets.Begin();
+            AddFocusTarget(selectedTargetEntityId);
             foreach (var endpoint in relevantVolleys.Values)
             {
-                AddFocusTarget(targetIds, endpoint.SourceEntityId);
-                AddFocusTarget(targetIds, endpoint.TargetEntityId);
+                AddFocusTarget(endpoint.SourceEntityId);
+                AddFocusTarget(endpoint.TargetEntityId);
             }
 
-            var orderedTargets = targetIds.OrderBy(entityId => entityId).ToArray();
-            var nextKey = string.Join(",", orderedTargets);
-            if (string.Equals(focusKey, nextKey, StringComparison.Ordinal))
+            if (!focusTargets.Commit())
             {
                 return;
             }
 
-            focusKey = nextKey;
             var generation = focusGenerations.Begin();
-            if (orderedTargets.Length == 0)
+            if (focusTargets.Targets.Count == 0)
             {
                 UnsubscribeIfActive(activeFocusSubscription);
                 activeFocusSubscription = null;
@@ -209,7 +220,7 @@ namespace Sea.Client
                 return;
             }
 
-            StartFocusSubscription(connection, generation, orderedTargets);
+            StartFocusSubscription(connection, generation, focusTargets.Targets);
         }
 
         private void StartFocusSubscription(
@@ -224,7 +235,7 @@ namespace Sea.Client
                 .OnError((_, error) => HandleFocusSubscriptionError(generation, error))
                 .Subscribe(SeaSubscriptionPlan.Focus(
                     subscribedPlayerEntityId,
-                    targetIds).ToArray());
+                    targetIds));
             pendingFocusSubscription = next;
         }
 
@@ -273,11 +284,11 @@ namespace Sea.Client
         private void HandleWorldObjectDeleted(EventContext _context, WorldObject worldObject) =>
             WorldObjectLeftInterest?.Invoke(worldObject.EntityId);
 
-        private void AddFocusTarget(ISet<ulong> targets, ulong entityId)
+        private void AddFocusTarget(ulong entityId)
         {
-            if (entityId != 0 && entityId != subscribedPlayerEntityId)
+            if (entityId != subscribedPlayerEntityId)
             {
-                targets.Add(entityId);
+                focusTargets.Add(entityId);
             }
         }
 
@@ -296,7 +307,7 @@ namespace Sea.Client
             activeFocusSubscription = null;
             pendingFocusSubscription = null;
             selectedTargetEntityId = 0;
-            focusKey = string.Empty;
+            focusTargets.Clear();
             relevantVolleys.Clear();
             spatialInterest.Reset();
             spatialGenerations.Reset();

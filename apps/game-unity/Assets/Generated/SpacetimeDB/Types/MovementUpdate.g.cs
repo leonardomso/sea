@@ -19,25 +19,29 @@ namespace SpacetimeDB.Types
         public byte ShardId;
         [DataMember(Name = "replace_kinematics")]
         public bool ReplaceKinematics;
-        [DataMember(Name = "ship")]
-        public Ship Ship;
+        [DataMember(Name = "track")]
+        public bool Track;
+        [DataMember(Name = "kinematics")]
+        public ShipKinematics Kinematics;
 
         public MovementUpdate(
             ulong ShipEntityId,
             byte ShardId,
             bool ReplaceKinematics,
-            Ship Ship
+            bool Track,
+            ShipKinematics Kinematics
         )
         {
             this.ShipEntityId = ShipEntityId;
             this.ShardId = ShardId;
             this.ReplaceKinematics = ReplaceKinematics;
-            this.Ship = Ship;
+            this.Track = Track;
+            this.Kinematics = Kinematics;
         }
 
         public MovementUpdate()
         {
-            this.Ship = new();
+            this.Kinematics = new();
         }
     }
 }

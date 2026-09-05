@@ -25,9 +25,12 @@ namespace Sea.Client
         private SubscriptionHandle runtimeCombatTargetsSubscription;
         private ulong combatTargetId;
         private uint combatInitialHull;
-        private uint combatInitialAmmo;
+        private uint combatInitialVolleys;
+        private ulong combatInitialShotTick;
         private float nextCombatCourseTime;
         private float combatFireRequestedAt;
+        private float nextProgressReportTime;
+        private float nextRespawnRequestTime;
 
         private void Awake()
         {
@@ -79,6 +82,12 @@ namespace Sea.Client
             var ship = connection.Connection.Db.Ship.EntityId.Find(ownership.ShipEntityId);
             if (ship != null)
             {
+                ReportRuntimeProgress(ship);
+                if (RaiseTheWreck(ship))
+                {
+                    return;
+                }
+
                 if (enabledForThisRun && !movementValidated)
                 {
                     var movement = connection.Connection.Db.ShipMovement.EntityId.Find(
@@ -99,16 +108,93 @@ namespace Sea.Client
             }
         }
 
+        /// <summary>ShipMode.Sunk.</summary>
+        private const byte SunkModeCode = 2;
+
+        /// <summary>SeaGameController.HomePortRespawn.</summary>
+        private const byte HomePortRespawn = 1;
+
+        /// <summary>
+        /// A hostile shoots back, and a probe that loiters inside its reach for a minute is
+        /// going to be sunk at least once. The wreck stays on the seabed until the captain
+        /// asks for Port Lowell, so the run asks, and takes the fight up again from the
+        /// harbour with nothing carried over from the engagement that killed her.
+        /// </summary>
+        private bool RaiseTheWreck(Ship player)
+        {
+            if (player.ModeCode != SunkModeCode)
+            {
+                return false;
+            }
+
+            if (Time.unscaledTime >= nextRespawnRequestTime)
+            {
+                nextRespawnRequestTime = Time.unscaledTime + 2f;
+                Issue(
+                    new ShipCommand.ChooseRespawn(new ChooseRespawnCommand(HomePortRespawn)),
+                    "runtime choose respawn");
+            }
+
+            combatApproachRequested = false;
+            combatTargetRequested = false;
+            combatFireRequested = false;
+            combatLaunchObserved = false;
+
+            // A raised wreck is a whole hull, so the storm leg has to be sailed again from
+            // its own baseline: counting the new hull as a repair would pass the scenario on
+            // the sinking rather than on the pumps.
+            tacticalHullSampled = false;
+            tacticalStormCourseRequested = false;
+            tacticalDamageObserved = false;
+            tacticalRetreatRequested = false;
+            tacticalRepairRequested = false;
+            tacticalRepairObserved = false;
+            nextCombatCourseTime = 0f;
+            nextTacticalCourseTime = 0f;
+            return true;
+        }
+
+        // A stalled scenario is silent otherwise: the run just ends on its timeout with no
+        // hint of which leg it was still sailing. This says where it had got to, often
+        // enough to read the story off the log and rarely enough to be free.
+        private void ReportRuntimeProgress(Ship player)
+        {
+            if (Time.unscaledTime < nextProgressReportTime)
+            {
+                return;
+            }
+
+            nextProgressReportTime = Time.unscaledTime + 10f;
+            var target = combatTargetId == 0
+                ? null
+                : connection.Connection.Db.Ship.EntityId.Find(combatTargetId);
+            var range = target == null
+                ? -1f
+                : Vector2.Distance(LivePosition(player), LivePosition(target));
+            Debug.Log(
+                $"Sea runtime progress: move={movementValidated} combat={combatValidated} " +
+                $"sunk={progressionSunkObserved} loot={progressionLootObserved} " +
+                $"tacticalDamage={tacticalDamageObserved} repair={tacticalRepairObserved} " +
+                $"target={combatTargetId} range={range:F1} " +
+                $"locked={player.TargetEntityId} volleys={player.ReadyVolleys} " +
+                $"hull={player.Hull} mode={player.ModeCode}",
+                this);
+        }
+
         private void ObserveShip(Ship ship, ShipMovement movement)
         {
             var position = new Vector2(movement.PositionX, movement.PositionY);
             if (!moveRequested)
             {
                 start = position;
-                destination = new Vector2(Mathf.Min(position.x + 12f, 95f), position.y);
+                // Twelve squares east, or twelve west if east is off the chart. The edges read
+                // 95 and -95, which were the edges of a map centred on zero.
+                destination = new Vector2(
+                    Mathf.Min(position.x + 12f, SeaChartCoordinates.MapMaximum),
+                    position.y);
                 if (Mathf.Approximately(destination.x, position.x))
                 {
-                    destination.x = Mathf.Max(position.x - 12f, -95f);
+                    destination.x = Mathf.Max(position.x - 12f, SeaChartCoordinates.MapMinimum);
                 }
                 SetCourse(destination.x, destination.y);
                 moveRequested = true;
@@ -132,7 +218,9 @@ namespace Sea.Client
                     speedBeforeStop,
                     movement.Speed,
                     movement.IsMoving,
-                    ship.IsStopping))
+                    // A stop takes her way off on the tick it lands (SEA_5 4.2), so the
+                    // only stop there is to observe is the one that has already finished.
+                    isStopping: false))
             {
                 movementValidated = true;
                 MarkRuntimeMilestone(SeaRuntimeMilestone.Movement);
@@ -163,7 +251,10 @@ namespace Sea.Client
             {
                 if (!combatApproachRequested)
                 {
-                    SetCombatCourse(20f, -35f);
+                    // On the chart, not on the vanished centre-origin map this read (20, -35)
+                    // for -- a course to a square north of the northern edge, which is no course
+                    // at all, so the sweep for a target never started.
+                    SetCombatCourse(240f, 130f);
                     combatApproachRequested = true;
                 }
 
@@ -189,11 +280,9 @@ namespace Sea.Client
                         outward = new Vector2(-1f, -1f).normalized;
                     }
 
-                    var approach = targetPosition +
-                        outward * SeaRuntimeValidationRules.CombatApproachRange;
-                    SetCombatCourse(
-                        Mathf.Clamp(approach.x, -95f, 95f),
-                        Mathf.Clamp(approach.y, -95f, 95f));
+                    var approach = SeaChartCoordinates.ClampToMap(targetPosition +
+                        outward * SeaRuntimeValidationRules.CombatApproachRange);
+                    SetCombatCourse(approach.x, approach.y);
                     nextCombatCourseTime = Time.unscaledTime + 1f;
                 }
 
@@ -217,12 +306,13 @@ namespace Sea.Client
                 return;
             }
 
-            var inventory = connection.Connection.Db.Inventory.ByShip
-                .Filter(player.EntityId)
-                .FirstOrDefault(item => item.ItemId == "round");
             if (combatFireRequested)
             {
-                if (inventory != null && inventory.Quantity < combatInitialAmmo)
+                if (SeaRuntimeValidationRules.HasLaunchedVolley(
+                        combatInitialVolleys,
+                        player.ReadyVolleys,
+                        combatInitialShotTick,
+                        player.LastShotTick))
                 {
                     combatLaunchObserved = true;
                 }
@@ -233,7 +323,7 @@ namespace Sea.Client
                     {
                         combatValidated = true;
                         MarkRuntimeMilestone(SeaRuntimeMilestone.Combat);
-                        Debug.Log("Sea runtime observed authoritative manual broadside combat.", this);
+                        Debug.Log("Sea runtime observed authoritative manual magazine combat.", this);
                     }
 
                     if (progressionEnabledForThisRun)
@@ -257,40 +347,39 @@ namespace Sea.Client
                 return;
             }
 
-            var broadside = SeaRuntimeValidationRules.PlanBroadside(
+            var firing = SeaRuntimeValidationRules.PlanFire(
                 playerPosition,
                 LiveHeading(player),
                 targetPosition);
-            if (!broadside.CanFire)
+            if (!firing.CanFire)
             {
                 if (Time.unscaledTime >= nextCombatCourseTime)
                 {
-                    var desiredHeading = broadside.DesiredHeadingDegrees * Mathf.Deg2Rad;
-                    var turnDestination = playerPosition + new Vector2(
+                    // A chart bearing turned back into a chart step: north is the smaller y.
+                    var desiredHeading = firing.DesiredHeadingDegrees * Mathf.Deg2Rad;
+                    var turnDestination = SeaChartCoordinates.ClampToMap(playerPosition + new Vector2(
                         Mathf.Sin(desiredHeading),
-                        Mathf.Cos(desiredHeading)) * 10f;
-                    SetCombatCourse(
-                        Mathf.Clamp(turnDestination.x, -95f, 95f),
-                        Mathf.Clamp(turnDestination.y, -95f, 95f));
+                        0f - Mathf.Cos(desiredHeading)) * 10f);
+                    SetCombatCourse(turnDestination.x, turnDestination.y);
                     nextCombatCourseTime = Time.unscaledTime + 0.5f;
                 }
 
                 return;
             }
 
-            if (inventory == null || inventory.Quantity == 0)
+            // The racks, not the hold: ammunition is unlimited, so a reload is the only thing
+            // that keeps a shot from leaving.
+            if (player.ReadyVolleys == 0)
             {
                 return;
             }
 
-            combatInitialAmmo = inventory.Quantity;
+            combatInitialVolleys = player.ReadyVolleys;
+            combatInitialShotTick = player.LastShotTick;
             combatInitialHull = target.Hull;
             combatFireRequested = true;
             combatFireRequestedAt = Time.unscaledTime;
-            Issue(
-                new ShipCommand.FireBroadside(
-                    new FireBroadsideCommand(broadside.Side, "hull")),
-                "runtime fire broadside");
+            Issue(new ShipCommand.Fire(new FireCommand()), "runtime fire");
         }
 
         private void SetCombatCourse(float x, float y)

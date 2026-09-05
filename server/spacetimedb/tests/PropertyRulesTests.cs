@@ -11,7 +11,7 @@ public sealed class PropertyRulesTests
         var center = ChartCoordinates.CellCenter(coordinate.Column, coordinate.Row);
         return string.Equals(
             ChartCoordinates.LabelAt(center.X, center.Y),
-            $"{ChartCoordinates.ColumnLabel(coordinate.Column)} {coordinate.Row}",
+            $"{ChartCoordinates.ColumnLabel(coordinate.Column)}{coordinate.Row + 1}",
             StringComparison.Ordinal);
     }
 

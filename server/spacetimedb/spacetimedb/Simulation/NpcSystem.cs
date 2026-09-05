@@ -5,28 +5,31 @@ public static partial class Module
 {
     private static (uint Processed, uint Dormant) ProcessNpcDecisions(
         ReducerContext ctx,
-        ulong tick,
-        byte shardId)
+        TickWorld world)
     {
         var processed = 0u;
         var dormant = 0u;
-        foreach (var ai in ctx.Db.NpcAi.ByDecisionDueShard.Filter(
-                     (true, shardId, new Bound<ulong>(0, tick))))
+        for (byte shardId = 0; shardId < SimulationWorkRules.NpcShardCount; shardId++)
         {
-            processed++;
-            if (!ai.IsActive)
+            foreach (var ai in ctx.Db.NpcAi.ByDecisionDueShard.Filter(
+                         (true, shardId, new Bound<ulong>(0, world.Tick))))
             {
-                dormant++;
-            }
+                processed++;
+                if (!ai.IsActive)
+                {
+                    dormant++;
+                }
 
-            ProcessNpcDecision(ctx, ai, tick);
+                ProcessNpcDecision(ctx, world, ai);
+            }
         }
 
         return (processed, dormant);
     }
 
-    private static void ProcessNpcDecision(ReducerContext ctx, NpcAi ai, ulong tick)
+    private static void ProcessNpcDecision(ReducerContext ctx, TickWorld world, NpcAi ai)
     {
+        var tick = world.Tick;
         ai.NextDecisionTick = tick + NpcRules.DecisionIntervalTicks;
         if (ctx.Db.Ship.EntityId.Find(ai.ShipEntityId) is not Ship ship ||
             !ship.IsActive || !ship.IsAlive)
@@ -36,20 +39,33 @@ public static partial class Module
             return;
         }
 
-        var definition = ctx.Db.NpcDefinition.NpcId.Find(ai.ArchetypeId) ??
+        // Ship rows only republish kinematics on chunk changes; decisions need the
+        // live position and course or every NPC keeps re-plotting from stale points.
+        HydrateTrackedKinematics(ctx, world, ref ship);
+        var definition = Catalog.NpcByArchetypeCode[ship.ArchetypeCode] ??
             throw new InvalidOperationException("NPC content definition is missing.");
-        var target = ship.TargetEntityId == 0
-            ? default(Ship?)
-            : ctx.Db.Ship.EntityId.Find(ship.TargetEntityId);
-        var targetAvailable = target is Ship selected &&
-            selected.IsActive && selected.IsAlive &&
-            selected.FactionCode == (byte)FactionCode.Player;
-        var candidate = NpcRules.ShouldSearchForTarget(
-                targetAvailable,
-                definition.AggroRange)
-            ? FindNearestPlayer(ctx, ship, definition.AggroRange)
-            : default(Ship?);
-        ExecuteNpcDecision(ctx, ship, NpcRules.Decide(BuildNpcSnapshot(
+        var stats = Catalog.NpcStatsByArchetypeCode[ship.ArchetypeCode];
+        var target = FindHydratedShip(ctx, world, ship.TargetEntityId);
+        var targetAvailable = target is Ship selected && world.IsAttackablePlayer(ctx, selected);
+
+        // A captain sends her signal up before she acts on it, so the escorts are already under
+        // way on the decision that follows this one.
+        if (NpcRules.ShouldCallForHelp(
+                definition.CallsForHelp,
+                ai.HasCalledHelp,
+                ship.Hull,
+                ship.MaxHull))
+        {
+            ai.HasCalledHelp = true;
+        }
+
+        var orders = EscortOrders(ctx, world, ai);
+        var aggroRange = stats.AggroRangeSquares;
+        var candidate = orders.Target ??
+            (NpcRules.ShouldSearchForTarget(targetAvailable, aggroRange)
+                ? FindNearestPlayer(ctx, world, ship, aggroRange)
+                : default(Ship?));
+        var decision = NpcRules.Decide(BuildNpcSnapshot(
             ctx,
             ai,
             ship,
@@ -57,27 +73,75 @@ public static partial class Module
             target,
             candidate,
             targetAvailable,
-            tick)));
+            orders.AwaitingSignal,
+            tick,
+            world.PatrolBlockers(ctx)));
+        if (ExecuteNpcDecision(ctx, world, ship, decision))
+        {
+            StartReplanClocks(ref ai, decision, tick);
+        }
+
         ctx.Db.NpcAi.ShipEntityId.Update(ai);
+    }
+
+    /// <summary>
+    /// What an escort is doing about its captain. Until she calls it is moored and has no orders
+    /// at all; once she has, it is handed her target outright rather than left to find one, because
+    /// the automatic aggro cap is there to stop a player being swarmed by hostiles that picked the
+    /// fight themselves, and this fight was picked for them.
+    /// </summary>
+    private static (bool AwaitingSignal, Ship? Target) EscortOrders(
+        ReducerContext ctx,
+        TickWorld world,
+        NpcAi ai)
+    {
+        if (ai.LeaderEntityId == 0)
+        {
+            return (false, null);
+        }
+
+        if (ctx.Db.NpcAi.ShipEntityId.Find(ai.LeaderEntityId) is not NpcAi leader ||
+            !leader.HasCalledHelp)
+        {
+            return (true, null);
+        }
+
+        return ctx.Db.Ship.EntityId.Find(ai.LeaderEntityId) is Ship captain
+            ? (false, FindHydratedShip(ctx, world, captain.TargetEntityId))
+            : (false, null);
+    }
+
+    private static Ship? FindHydratedShip(ReducerContext ctx, TickWorld world, ulong entityId)
+    {
+        if (entityId == 0 || ctx.Db.Ship.EntityId.Find(entityId) is not Ship ship)
+        {
+            return null;
+        }
+
+        HydrateTrackedKinematics(ctx, world, ref ship);
+        return ship;
     }
 
     private static NpcSnapshot BuildNpcSnapshot(
         ReducerContext ctx,
         NpcAi ai,
         Ship ship,
-        NpcDefinition definition,
+        NpcContent definition,
         Ship? target,
         Ship? candidate,
         bool targetAvailable,
-        ulong tick) => new()
+        bool awaitingSignal,
+        ulong tick,
+        IReadOnlyCollection<NavigationBlocker> blockers) => new()
         {
-            Archetype = (ShipArchetypeCode)ship.ArchetypeCode,
             Active = ship.IsActive && ship.IsAlive,
             Mode = ResolveMode(ship),
             X = ship.PositionX,
             Y = ship.PositionY,
             HeadingDegrees = ship.HeadingDegrees,
-            HasCourse = ship.HasCourse,
+            HasRoute = ship.HasRoute,
+            CourseX = ship.DestinationX,
+            CourseY = ship.DestinationY,
             Hull = ship.Hull,
             MaximumHull = ship.MaxHull,
             HasRepairKit = NpcRules.ShouldAttemptRepair(ship.Hull, ship.MaxHull) &&
@@ -94,50 +158,111 @@ public static partial class Module
                 target.Value.PositionY)
             : float.PositiveInfinity,
             CandidateTargetId = candidate?.EntityId ?? 0,
-            DesiredRange = definition.DesiredRange,
-            PreferredAmmunition = (AmmunitionCode)definition.PreferredAmmoCode,
-            PreferredWeakPoint = (WeakPointCode)definition.PreferredWeakPointCode,
+            DesiredRange = definition.DesiredRangeSquares,
+            FleesWhenCrippled = definition.FleesWhenCrippled,
+            AwaitingSignal = awaitingSignal,
+            PreferredAmmunition = definition.PreferredAmmunition,
             SelectedAmmunition = (AmmunitionCode)ship.SelectedAmmoCode,
-            PortReady = tick >= ship.NextPortFireTick,
-            StarboardReady = tick >= ship.NextStarboardFireTick,
+            CanFire = ship.ReadyVolleys > 0 &&
+            (!ship.HasFired || tick >= ship.LastShotTick + CombatRules.FireIntervalTicks),
             DecisionSeed = ai.HomeSeed,
-            DecisionTick = tick,
+            Tick = tick,
+            NextReplanTick = ai.NextReplanTick,
+            NextWanderTick = ai.NextWanderTick,
+            Blockers = blockers,
         };
 
-    private static Ship? FindNearestPlayer(ReducerContext ctx, Ship source, float range)
+    private static Ship? FindNearestPlayer(
+        ReducerContext ctx,
+        TickWorld world,
+        Ship source,
+        float range)
     {
-        Ship? nearest = null;
-        var nearestDistance = float.PositiveInfinity;
-        var bounds = SpatialRules.BoundsAround(source.PositionX, source.PositionY, range);
-        foreach (var candidate in ActiveShipsIn(ctx, bounds))
+        // The roster is read once for the whole tick, so the hunt itself is arithmetic. Only
+        // the nearest hull in range is worth a datastore read: if she turns out to be swarmed
+        // already or sheltered, the next one in is tried, and a decision hardly ever gets
+        // past the first.
+        var players = world.ActivePlayers(ctx);
+        var refused = (Distance: -1f, EntityId: 0ul);
+        for (var probe = 0; probe < NpcRules.MaximumTargetProbes; probe++)
         {
-            if (candidate.FactionCode != (byte)FactionCode.Player || !candidate.IsAlive)
+            var index = NextPlayerInRange(players, source, range, refused);
+            if (index < 0)
             {
-                continue;
+                return null;
             }
 
-            if (!NpcRules.HasAutomaticAggroCapacity(CountNpcAttackers(ctx, candidate.EntityId)))
+            var movement = players[index];
+            refused = (
+                CombatRules.Distance(
+                    source.PositionX,
+                    source.PositionY,
+                    movement.PositionX,
+                    movement.PositionY),
+                movement.EntityId);
+            if (AcquirablePlayer(ctx, world, movement) is Ship candidate)
             {
-                continue;
+                return candidate;
             }
+        }
 
+        return null;
+    }
+
+    /// <summary>
+    /// The nearest player in range beyond the one already refused, ordered by distance and
+    /// then by entity id so every hull breaks a tie the same way.
+    /// </summary>
+    private static int NextPlayerInRange(
+        List<ShipMovement> players,
+        Ship source,
+        float range,
+        (float Distance, ulong EntityId) refused)
+    {
+        var bestIndex = -1;
+        var bestDistance = float.PositiveInfinity;
+        for (var index = 0; index < players.Count; index++)
+        {
+            var movement = players[index];
             var distance = CombatRules.Distance(
                 source.PositionX,
                 source.PositionY,
-                candidate.PositionX,
-                candidate.PositionY);
-            if (distance > range || distance > nearestDistance ||
-                distance == nearestDistance && nearest is Ship current &&
-                candidate.EntityId > current.EntityId)
+                movement.PositionX,
+                movement.PositionY);
+            if (!movement.IsAlive || distance > range ||
+                distance < refused.Distance ||
+                distance == refused.Distance && movement.EntityId <= refused.EntityId ||
+                distance > bestDistance ||
+                distance == bestDistance && movement.EntityId > players[bestIndex].EntityId)
             {
                 continue;
             }
 
-            nearest = candidate;
-            nearestDistance = distance;
+            bestIndex = index;
+            bestDistance = distance;
         }
 
-        return nearest;
+        return bestIndex;
+    }
+
+    private static Ship? AcquirablePlayer(
+        ReducerContext ctx,
+        TickWorld world,
+        ShipMovement movement)
+    {
+        // The roster was read before the tick's first decision, so it still lists a player
+        // another hull has sunk since; the fat row is the truth about who is still afloat.
+        if (!NpcRules.HasAutomaticAggroCapacity(CountNpcAttackers(ctx, movement.EntityId)) ||
+            ctx.Db.Ship.EntityId.Find(movement.EntityId) is not Ship candidate ||
+            !candidate.IsActive || !candidate.IsAlive)
+        {
+            return null;
+        }
+
+        CopyKinematics(movement, ref candidate);
+        candidate.IsActive = true;
+        candidate.IsAlive = true;
+        return world.IsAttackablePlayer(ctx, candidate) ? candidate : null;
     }
 
     private static int CountNpcAttackers(ReducerContext ctx, ulong playerEntityId)
@@ -165,26 +290,51 @@ public static partial class Module
     private static bool HasInventory(ReducerContext ctx, ulong shipEntityId, string itemId) =>
         FindInventory(ctx, shipEntityId, itemId) is Inventory item && item.Quantity > 0;
 
-    private static void ExecuteNpcDecision(
+    /// <summary>
+    /// Runs an enemy's decision through the same gate a captain's click goes through,
+    /// and answers whether it ended in a course. A refusal is simply dropped: there is
+    /// nobody to tell, and a hull that cannot be given a way through holds station
+    /// this decision and is asked again on the next one.
+    /// </summary>
+    private static bool ExecuteNpcDecision(
         ReducerContext ctx,
+        TickWorld world,
         Ship ship,
         NpcDecision decision)
     {
         var command = ToShipCommand(decision);
         if (command is null)
         {
+            return false;
+        }
+
+        var decoded = DecodeCommand(command);
+        var snapshot = BuildCommandSnapshot(ctx, world, ship, decoded);
+        var commandDecision = CommandPolicy.Evaluate(snapshot, decoded.Kind);
+        if (!commandDecision.Accepted)
+        {
+            return false;
+        }
+
+        return ApplyAcceptedCommand(ctx, world, ref ship, decoded, commandDecision).Accepted &&
+            decoded.Kind == ShipCommandKind.SetCourse;
+    }
+
+    /// <summary>
+    /// Restarts the clocks that ration A*, and only when a course was actually laid --
+    /// a hull whose way was blocked has not spent anything and is not made to wait for
+    /// it. The loiter is restarted only by a leg she chose for herself.
+    /// </summary>
+    private static void StartReplanClocks(ref NpcAi ai, NpcDecision decision, ulong tick)
+    {
+        ai.NextReplanTick = tick + NpcMovementRules.ReplanIntervalTicks;
+        if (!decision.RenewsWander)
+        {
             return;
         }
 
-        HydrateTrackedKinematics(ctx, ref ship);
-
-        var decoded = DecodeCommand(command);
-        var snapshot = BuildCommandSnapshot(ctx, ship, decoded);
-        var commandDecision = CommandPolicy.Evaluate(snapshot, decoded.Kind);
-        if (commandDecision.Accepted)
-        {
-            ApplyAcceptedCommand(ctx, ref ship, decoded, commandDecision);
-        }
+        ai.WanderIndex++;
+        ai.NextWanderTick = tick + NpcMovementRules.WanderWaitTicks(ai.ShipEntityId, ai.WanderIndex);
     }
 
     private static ShipCommand? ToShipCommand(NpcDecision decision) => decision.Action switch
@@ -204,18 +354,8 @@ public static partial class Module
         {
             AmmoId = HotPathCodes.AmmunitionId(decision.Ammunition),
         }),
-        NpcActionKind.FirePort => FireCommand("port", decision.WeakPoint),
-        NpcActionKind.FireStarboard => FireCommand("starboard", decision.WeakPoint),
+        NpcActionKind.Fire => new ShipCommand.Fire(new FireCommand()),
         NpcActionKind.StartRepair => new ShipCommand.StartRepair(new StartRepairCommand()),
         _ => null,
     };
-
-    private static ShipCommand.FireBroadside FireCommand(
-        string side,
-        WeakPointCode weakPoint) =>
-        new ShipCommand.FireBroadside(new FireBroadsideCommand
-        {
-            Side = side,
-            WeakPoint = HotPathCodes.WeakPointId(weakPoint),
-        });
 }

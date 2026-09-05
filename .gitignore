@@ -21,6 +21,7 @@ reports/
 **/bin/
 **/obj/
 packages/spacetimedb-unity/bin~/
+packages/spacetimedb-unity/bin~debug/
 packages/spacetimedb-unity/obj~/
 packages/spacetimedb-unity/tests~/obj~/
 
@@ -59,3 +60,7 @@ apps/game-unity/Assets/AddressableAssetsData/link.xml*
 !.vscode/extensions.json
 !.vscode/settings.json
 .DS_Store
+.playwright-mcp/
+
+# Per-agent build output, so parallel task agents do not share obj/ and bin/.
+.agent-artifacts/

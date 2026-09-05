@@ -43,13 +43,13 @@ namespace Sea.Tests
                 maximumCapacity: 2);
 
             Assert.That(pool.TryAcquire("player", out var player), Is.True);
-            Assert.That(pool.TryAcquire("raider", out var raider), Is.True);
-            Assert.That(pool.TryAcquire("gunship", out _), Is.False);
+            Assert.That(pool.TryAcquire("skiff", out var skiff), Is.True);
+            Assert.That(pool.TryAcquire("fancy", out _), Is.False);
 
             pool.Release(player);
             Assert.That(pool.TryAcquire("player", out var reused), Is.True);
             Assert.That(reused, Is.SameAs(player));
-            Assert.That(raider, Is.Not.SameAs(reused));
+            Assert.That(skiff, Is.Not.SameAs(reused));
             Assert.That(pool.CreatedCount, Is.EqualTo(2));
         }
 
@@ -114,28 +114,28 @@ namespace Sea.Tests
         public void Targeted_and_volley_endpoint_ships_remain_visible_at_distance()
         {
             Assert.That(
-                SeaPresentationRules.LevelFor(distance: 160f, isRelevantEndpoint: true),
-                Is.EqualTo(SeaPresentationLevel.Distant));
+                SeaPresentationRules.IsVisible(distance: 160f, isRelevantEndpoint: true),
+                Is.True);
             Assert.That(
-                SeaPresentationRules.LevelFor(distance: 160f, isRelevantEndpoint: false),
-                Is.EqualTo(SeaPresentationLevel.Hidden));
+                SeaPresentationRules.IsVisible(distance: 160f, isRelevantEndpoint: false),
+                Is.False);
         }
 
         [Test]
-        public void Interpolation_buffer_samples_uneven_ten_hertz_updates_smoothly()
+        public void Motion_timeline_interpolates_on_the_simulation_tick_axis()
         {
-            var buffer = new SeaInterpolationBuffer();
-            buffer.Push(new Vector3(0f, 0f, 0f), headingDegrees: 350f, receivedAt: 0d);
-            buffer.Push(new Vector3(10f, 0f, 0f), headingDegrees: 10f, receivedAt: 0.1d);
+            var timeline = new SeaMotionTimeline();
+            timeline.Push(10, new Vector3(0f, 0f, 0f), headingDegrees: 350f);
+            timeline.Push(11, new Vector3(10f, 0f, 0f), headingDegrees: 10f);
 
-            var first = buffer.Sample(renderedAt: 0.15d, interpolationDelay: 0.1d);
+            var first = timeline.Sample(10.5d);
             Assert.That(first.Position.x, Is.EqualTo(5f).Within(0.001f));
             Assert.That(Mathf.DeltaAngle(0f, first.HeadingDegrees), Is.EqualTo(0f).Within(0.001f));
 
-            buffer.Push(new Vector3(25f, 0f, 0f), headingDegrees: 40f, receivedAt: 0.25d);
-            var uneven = buffer.Sample(renderedAt: 0.30d, interpolationDelay: 0.1d);
-            Assert.That(uneven.Position.x, Is.EqualTo(20f).Within(0.001f));
-            Assert.That(uneven.HeadingDegrees, Is.EqualTo(30f).Within(0.001f));
+            timeline.Push(12, new Vector3(25f, 0f, 0f), headingDegrees: 40f);
+            var uneven = timeline.Sample(11.5d);
+            Assert.That(uneven.Position.x, Is.EqualTo(17.5f).Within(0.001f));
+            Assert.That(uneven.HeadingDegrees, Is.EqualTo(25f).Within(0.001f));
         }
 
         [Test]

@@ -6,7 +6,39 @@ namespace Sea.Client
 {
     public static class SeaSubscriptionPlan
     {
-        public static IReadOnlyList<string> Initial(string ownerSqlLiteral)
+        // Mirrors the server SpatialRules.ChunkSize until the world contract module owns it.
+        public const float ChunkSize = 50f;
+
+        // The window has to guarantee radius * ChunkSize units of coverage around the local ship
+        // wherever it sits inside its chunk, and that has to clear the fog vision radius: a ship
+        // the player can see but has not subscribed to is a ship that is not there. Everything
+        // beyond the fog is hidden anyway, so a wider window only streams rows nobody can see.
+        public const int SpatialRadius = 5;
+
+        // The chunk window earns its cost on a map too large to hold at once. Havenmere is not
+        // that map: 400x400 units is 64 chunks, and at sailing speed the player crosses a chunk
+        // border every couple of seconds. Each crossing resubscribed, which destroyed and
+        // rebuilt terrain meshes on the main thread and threw away the motion history of every
+        // ship in view - the freeze. Under this budget the client takes the whole map in one
+        // subscription that never changes; over it, the chunk window comes back.
+        public const int WholeMapChunkBudget = 144;
+
+        public static bool CoversWholeMap =>
+            FitsInOneSubscription(SeaChartCoordinates.MapMinimum, SeaChartCoordinates.MapMaximum);
+
+        public static bool FitsInOneSubscription(float mapMinimum, float mapMaximum)
+        {
+            var span = mapMaximum - mapMinimum;
+            if (!(span > 0f))
+            {
+                throw new ArgumentOutOfRangeException(nameof(mapMaximum));
+            }
+
+            var chunksPerAxis = (int)Math.Ceiling(span / ChunkSize);
+            return chunksPerAxis * chunksPerAxis <= WholeMapChunkBudget;
+        }
+
+        public static string[] Initial(string ownerSqlLiteral)
         {
             if (string.IsNullOrWhiteSpace(ownerSqlLiteral))
             {
@@ -17,10 +49,14 @@ namespace Sea.Client
             {
                 "SELECT * FROM world_state",
                 "SELECT * FROM environment_state",
-                "SELECT * FROM ammo_definition",
-                "SELECT * FROM ability_definition",
-                "SELECT * FROM npc_definition",
-                "SELECT * FROM level_definition",
+                "SELECT * FROM ammo_def",
+                "SELECT * FROM npc_def",
+                "SELECT * FROM hull_def",
+                "SELECT * FROM cannon_def",
+                "SELECT * FROM stat_caps",
+                "SELECT * FROM map_def",
+                $"SELECT * FROM hull WHERE owner = {ownerSqlLiteral}",
+                $"SELECT * FROM ship_stats WHERE owner = {ownerSqlLiteral}",
                 $"SELECT * FROM command_result_event WHERE owner = {ownerSqlLiteral}",
                 $"SELECT * FROM encounter_reward_event WHERE owner = {ownerSqlLiteral}",
                 $"SELECT * FROM encounter_reward WHERE owner = {ownerSqlLiteral}",
@@ -31,27 +67,36 @@ namespace Sea.Client
             };
         }
 
-        public static IReadOnlyList<string> Player(ulong shipEntityId)
+        public static string[] Player(ulong shipEntityId)
         {
             return new[]
             {
                 $"SELECT * FROM ship WHERE entity_id = {shipEntityId}",
                 $"SELECT * FROM ship_movement WHERE entity_id = {shipEntityId}",
+
+                // The course she is actually following. The prediction walks it rather than
+                // reckoning a straight line at the destination, so a route the client does not
+                // stream is a hull drawn through the land the server sailed her round.
+                $"SELECT * FROM ship_route WHERE entity_id = {shipEntityId}",
                 $"SELECT * FROM inventory WHERE ship_entity_id = {shipEntityId}",
-                $"SELECT * FROM ship_status WHERE ship_entity_id = {shipEntityId}",
+                $"SELECT * FROM effect WHERE ship_entity_id = {shipEntityId}",
                 $"SELECT * FROM cooldown WHERE ship_entity_id = {shipEntityId}",
                 $"SELECT * FROM ship_channel WHERE ship_entity_id = {shipEntityId}",
+                $"SELECT * FROM respawn_work WHERE ship_entity_id = {shipEntityId}",
+                $"SELECT * FROM map_crossing_offer WHERE entity_id = {shipEntityId}",
                 $"SELECT * FROM combat_event WHERE owner_entity_id = {shipEntityId}",
+                $"SELECT * FROM hit_event WHERE attacker_entity_id = {shipEntityId} OR " +
+                $"defender_entity_id = {shipEntityId}",
                 $"SELECT * FROM volley WHERE is_active = true AND " +
                 $"(source_entity_id = {shipEntityId} OR target_entity_id = {shipEntityId})",
             };
         }
 
-        public static IReadOnlyList<string> Focus(
+        public static string[] Focus(
             ulong localShipEntityId,
             ulong targetEntityId) => Focus(localShipEntityId, new[] { targetEntityId });
 
-        public static IReadOnlyList<string> Focus(
+        public static string[] Focus(
             ulong localShipEntityId,
             IEnumerable<ulong> targetEntityIds)
         {
@@ -94,14 +139,43 @@ namespace Sea.Client
             {
                 $"SELECT * FROM ship WHERE {targetPredicate}",
                 $"SELECT * FROM ship_movement WHERE {targetPredicate}",
-                $"SELECT * FROM ship_status WHERE {statusPredicate}",
+
+                // Her course, so it can be drawn beside the local ship's. A route the client
+                // does not stream is a line it cannot draw, and the captain is back to reading
+                // where a ship is bound off the way her bow happens to point.
+                $"SELECT * FROM ship_route WHERE {targetPredicate}",
+                $"SELECT * FROM effect WHERE {statusPredicate}",
                 $"SELECT * FROM cooldown WHERE {statusPredicate}",
                 $"SELECT * FROM ship_channel WHERE {statusPredicate}",
                 $"SELECT * FROM volley WHERE is_active = true AND ({volleyPredicate})",
             };
         }
 
-        public static IReadOnlyList<string> Spatial(int chunkX, int chunkY, int radius)
+        /// <summary>
+        /// The spatial tables without a chunk predicate. Only legal while
+        /// <see cref="CoversWholeMap"/> holds; it is the one subscription the client keeps for
+        /// the whole voyage.
+        /// </summary>
+        public static string[] WholeMap()
+        {
+            return new[]
+            {
+                "SELECT * FROM ship WHERE is_active = true",
+
+                // Where every other ship is, one row per chunk rather than one per hull
+                // (SEA_5 §12.1). There is no is_active predicate to write: a chunk is a stretch
+                // of water, and the hulls in it are the hulls the server put in it. The local
+                // ship keeps her own movement row, which carries the speed and snapshot tick
+                // her prediction needs and the packed sixteen bytes do not.
+                "SELECT * FROM chunk_movement",
+                "SELECT * FROM volley WHERE is_active = true",
+                "SELECT * FROM loot WHERE is_active = true",
+                "SELECT * FROM world_object WHERE is_active = true",
+                "SELECT * FROM current_zone WHERE is_active = true",
+            };
+        }
+
+        public static string[] Spatial(int chunkX, int chunkY, int radius)
         {
             if (radius < 0)
             {
@@ -116,10 +190,17 @@ namespace Sea.Client
                 $"chunk_x >= {minimumX} AND chunk_x <= {maximumX} " +
                 $"AND chunk_y >= {minimumY} AND chunk_y <= {maximumY}";
 
+            // A chunk row is keyed by the chunk it is, so its columns are unsigned and a window
+            // that runs off the edge of the chart has to be clipped to it rather than asking for
+            // a chunk minus two.
+            var chunkBounds =
+                $"chunk_x >= {Math.Max(0, minimumX)} AND chunk_x <= {Math.Max(0, maximumX)} " +
+                $"AND chunk_y >= {Math.Max(0, minimumY)} AND chunk_y <= {Math.Max(0, maximumY)}";
+
             return new[]
             {
                 $"SELECT * FROM ship WHERE is_active = true AND {bounds}",
-                $"SELECT * FROM ship_movement WHERE is_active = true AND {bounds}",
+                $"SELECT * FROM chunk_movement WHERE {chunkBounds}",
                 $"SELECT * FROM volley WHERE is_active = true AND {bounds}",
                 $"SELECT * FROM loot WHERE is_active = true AND {bounds}",
                 $"SELECT * FROM world_object WHERE is_active = true AND {bounds}",

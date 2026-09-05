@@ -17,15 +17,6 @@ namespace SpacetimeDB.Types
         {
             public override string RemoteTableName => "ship_channel";
 
-            public sealed class ByActiveIndex : BTreeIndexBase<bool>
-            {
-                protected override bool GetKey(ShipChannel row) => row.IsActive;
-
-                public ByActiveIndex(ShipChannelHandle table) : base(table) { }
-            }
-
-            public readonly ByActiveIndex ByActive;
-
             public sealed class ByChannelDueIndex : BTreeIndexBase<(bool IsActive, ulong NextProcessTick)>
             {
                 protected override (bool IsActive, ulong NextProcessTick) GetKey(ShipChannel row) => (row.IsActive, row.NextProcessTick);
@@ -46,7 +37,6 @@ namespace SpacetimeDB.Types
 
             internal ShipChannelHandle(DbConnection conn) : base(conn)
             {
-                ByActive = new(this);
                 ByChannelDue = new(this);
                 ShipEntityId = new(this);
             }
@@ -67,9 +57,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<ShipChannel, ulong> CompletesAtTick { get; }
         public global::SpacetimeDB.Col<ShipChannel, ulong> NextProcessTick { get; }
         public global::SpacetimeDB.Col<ShipChannel, uint> InitialHull { get; }
-        public global::SpacetimeDB.Col<ShipChannel, uint> InitialSails { get; }
-        public global::SpacetimeDB.Col<ShipChannel, uint> InitialCannons { get; }
-        public global::SpacetimeDB.Col<ShipChannel, uint> InitialCrew { get; }
+        public global::SpacetimeDB.Col<ShipChannel, uint> DamageTaken { get; }
         public global::SpacetimeDB.Col<ShipChannel, bool> IsActive { get; }
 
         public ShipChannelCols(string tableName)
@@ -82,9 +70,7 @@ namespace SpacetimeDB.Types
             CompletesAtTick = new global::SpacetimeDB.Col<ShipChannel, ulong>(tableName, "completes_at_tick");
             NextProcessTick = new global::SpacetimeDB.Col<ShipChannel, ulong>(tableName, "next_process_tick");
             InitialHull = new global::SpacetimeDB.Col<ShipChannel, uint>(tableName, "initial_hull");
-            InitialSails = new global::SpacetimeDB.Col<ShipChannel, uint>(tableName, "initial_sails");
-            InitialCannons = new global::SpacetimeDB.Col<ShipChannel, uint>(tableName, "initial_cannons");
-            InitialCrew = new global::SpacetimeDB.Col<ShipChannel, uint>(tableName, "initial_crew");
+            DamageTaken = new global::SpacetimeDB.Col<ShipChannel, uint>(tableName, "damage_taken");
             IsActive = new global::SpacetimeDB.Col<ShipChannel, bool>(tableName, "is_active");
         }
     }

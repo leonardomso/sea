@@ -1,0 +1,49 @@
+{
+  "cannons": [
+    {
+      "id": "cannon_t1",
+      "name": "Iron Cannon",
+      "tier": 1,
+      "damage": 20,
+      "reloadSeconds": 3.0,
+      "rangeSquares": 18,
+      "costGold": 500
+    },
+    {
+      "id": "cannon_t2",
+      "name": "Steel Cannon",
+      "tier": 2,
+      "damage": 32,
+      "reloadSeconds": 2.9,
+      "rangeSquares": 21,
+      "costGold": 3000
+    },
+    {
+      "id": "cannon_t3",
+      "name": "Long Cannon",
+      "tier": 3,
+      "damage": 48,
+      "reloadSeconds": 2.8,
+      "rangeSquares": 24,
+      "costGold": 15000
+    },
+    {
+      "id": "cannon_t4",
+      "name": "Culverin",
+      "tier": 4,
+      "damage": 68,
+      "reloadSeconds": 2.7,
+      "rangeSquares": 27,
+      "costGold": 50000
+    },
+    {
+      "id": "cannon_t5",
+      "name": "Basilisk",
+      "tier": 5,
+      "damage": 92,
+      "reloadSeconds": 2.6,
+      "rangeSquares": 30,
+      "costGold": 150000
+    }
+  ]
+}

@@ -41,19 +41,15 @@ namespace SpacetimeDB.Types
     {
         public global::SpacetimeDB.Col<EnvironmentState, uint> Id { get; }
         public global::SpacetimeDB.Col<EnvironmentState, ulong> Seed { get; }
-        public global::SpacetimeDB.Col<EnvironmentState, ulong> WindEpoch { get; }
+        public global::SpacetimeDB.Col<EnvironmentState, ulong> WindBand { get; }
         public global::SpacetimeDB.Col<EnvironmentState, float> WindDirectionDegrees { get; }
-        public global::SpacetimeDB.Col<EnvironmentState, float> WindStrength { get; }
-        public global::SpacetimeDB.Col<EnvironmentState, ulong> NextWindChangeTick { get; }
 
         public EnvironmentStateCols(string tableName)
         {
             Id = new global::SpacetimeDB.Col<EnvironmentState, uint>(tableName, "id");
             Seed = new global::SpacetimeDB.Col<EnvironmentState, ulong>(tableName, "seed");
-            WindEpoch = new global::SpacetimeDB.Col<EnvironmentState, ulong>(tableName, "wind_epoch");
+            WindBand = new global::SpacetimeDB.Col<EnvironmentState, ulong>(tableName, "wind_band");
             WindDirectionDegrees = new global::SpacetimeDB.Col<EnvironmentState, float>(tableName, "wind_direction_degrees");
-            WindStrength = new global::SpacetimeDB.Col<EnvironmentState, float>(tableName, "wind_strength");
-            NextWindChangeTick = new global::SpacetimeDB.Col<EnvironmentState, ulong>(tableName, "next_wind_change_tick");
         }
     }
 

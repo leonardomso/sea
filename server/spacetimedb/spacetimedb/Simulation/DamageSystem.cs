@@ -3,114 +3,111 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    private static void ResolveVolleys(
-        ReducerContext ctx,
-        ShipTickBuffer ships,
-        ulong tick)
+    /// <summary>
+    /// Volleys no longer travel: damage lands on the tick the shot is fired, so all that is left
+    /// for the tick to do is retire the rows the client has finished animating.
+    /// </summary>
+    private static void RetireVolleys(ReducerContext ctx, ulong tick)
     {
-        foreach (var volley in ctx.Db.Volley.ByImpactDue.Filter(
+        foreach (var volley in ctx.Db.Volley.ByVolleyExpiry.Filter(
                      (true, new Bound<ulong>(0, tick))))
         {
-            if (!ships.TryGet(ctx, volley.TargetEntityId, out var target) ||
-                CombatRules.ResolveVolley(volley.ImpactAtTick, tick, target.IsActive && target.IsAlive) ==
-                VolleyResolution.Harmless)
-            {
-                ctx.Db.Volley.VolleyId.Delete(volley.VolleyId);
-                continue;
-            }
-
-            var defender = target;
-            var appliedDamage = ApplyDamageToShip(
-                ctx,
-                ships,
-                volley.SourceEntityId,
-                ref defender,
-                new CombatDamage(
-                    volley.HullDamage,
-                    volley.SailDamage,
-                    volley.CannonDamage,
-                    volley.CrewDamage),
-                tick,
-                "broadside");
-            if (defender.Hull == 0)
-            {
-                AppendEvent(ctx, volley.SourceEntityId, "enemy_sunk", $"entity_id={defender.EntityId}");
-            }
-            else
-            {
-                ApplyVolleyStatus(ctx, volley, ref defender, tick);
-                AppendEvent(
-                    ctx,
-                    volley.SourceEntityId,
-                    "broadside_impact",
-                    $"entity_id={defender.EntityId},hull={appliedDamage.Hull},sails={appliedDamage.Sails},cannons={appliedDamage.Cannons},crew={appliedDamage.Crew}");
-            }
-
-            ships.Stage(defender);
             ctx.Db.Volley.VolleyId.Delete(volley.VolleyId);
         }
     }
 
-    private static CombatDamage ApplyDamageToShip(
+    /// <summary>
+    /// Subtracts one hit from a ship's single hit point pool and settles everything that follows
+    /// from it: an interrupted channel, an encounter contribution, and sinking.
+    /// </summary>
+    private static uint ApplyDamageToShip(
         ReducerContext ctx,
         ShipTickBuffer ships,
         ulong sourceEntityId,
         ref Ship defender,
-        CombatDamage incoming,
+        uint incoming,
         ulong tick,
-        string cause)
+        DamageSourceCode source)
     {
-        if (tick < defender.InvulnerableUntilTick)
+        // Port Lowell is a truce, not a shelter with a door: nothing reaches a hull inside it.
+        if (defender.IsInPort || tick < defender.InvulnerableUntilTick || incoming == 0)
         {
-            return new CombatDamage(0, 0, 0, 0);
+            return 0;
         }
 
-        var brace = HasActiveStatus(ctx, defender.EntityId, StatusCode.Brace, tick);
-        var damage = new CombatDamage(
-            TacticalRules.ApplyIncomingDamage(incoming.Hull, brace),
-            TacticalRules.ApplyIncomingDamage(incoming.Sails, brace),
-            TacticalRules.ApplyIncomingDamage(incoming.Cannons, brace),
-            TacticalRules.ApplyIncomingDamage(incoming.Crew, brace));
-        if (damage.Hull == 0 && damage.Sails == 0 &&
-            damage.Cannons == 0 && damage.Crew == 0)
-        {
-            return damage;
-        }
-
-        if (InterruptActiveChannel(ctx, defender.EntityId, tick, cause))
+        var hullBefore = defender.Hull;
+        defender.Hull = WorldRules.ApplyDamage(hullBefore, incoming);
+        var applied = hullBefore - defender.Hull;
+        defender.LastCombatTick = tick;
+        if (RecordChannelDamage(ctx, defender, applied, tick, source))
         {
             defender.ModeCode = (byte)ShipMode.Operational;
         }
-        var hullBefore = defender.Hull;
-        var sailsBefore = defender.Sails;
-        var cannonsBefore = defender.Cannons;
-        var crewBefore = defender.Crew;
-        defender.Hull = WorldRules.ApplyDamage(hullBefore, damage.Hull);
-        defender.Sails = WorldRules.ApplyDamage(sailsBefore, damage.Sails);
-        defender.Cannons = WorldRules.ApplyDamage(cannonsBefore, damage.Cannons);
-        defender.Crew = WorldRules.ApplyDamage(crewBefore, damage.Crew);
-        var applied = new CombatDamage(
-            hullBefore - defender.Hull,
-            sailsBefore - defender.Sails,
-            cannonsBefore - defender.Cannons,
-            crewBefore - defender.Crew);
-        SynchronizeDisabledSails(ctx, defender, tick);
         var sunk = hullBefore > 0 && defender.Hull == 0;
-        RecordCombatProgress(ctx, sourceEntityId, defender, applied);
+        var attackerIsPlayer = sourceEntityId != 0 &&
+            defender.FactionCode == (byte)FactionCode.Npc &&
+            ctx.Db.PlayerOwnership.ShipEntityId.Find(sourceEntityId) is not null;
+        if (attackerIsPlayer)
+        {
+            RecordContribution(ctx, defender.EncounterId, sourceEntityId, applied);
+        }
+
         if (sunk)
         {
             SettleNpcEncounter(ctx, defender, tick);
             SinkShip(ctx, ships, sourceEntityId, ref defender, tick);
         }
-        else if (sourceEntityId != 0 &&
-            defender.FactionCode == (byte)FactionCode.Npc &&
-            ctx.Db.PlayerOwnership.ShipEntityId.Find(sourceEntityId) is not null)
+        else if (attackerIsPlayer)
         {
             defender.TargetEntityId = sourceEntityId;
             defender.IsEngaged = true;
         }
 
         return applied;
+    }
+
+    /// <summary>
+    /// A hit no longer ends a repair by itself. The channel tallies what it has cost the ship, and
+    /// only enough of it, or the flames of a Fire Shot that a crew cannot work through, breaks the
+    /// attempt; the cooldown is owed all the same.
+    /// </summary>
+    private static bool RecordChannelDamage(
+        ReducerContext ctx,
+        Ship defender,
+        uint applied,
+        ulong tick,
+        DamageSourceCode source)
+    {
+        if (FindActiveChannel(ctx, defender.EntityId) is not ShipChannel channel)
+        {
+            return false;
+        }
+
+        channel.DamageTaken += applied;
+        if (!RepairRules.ShouldCancel(
+                channel.DamageTaken,
+                defender.MaxHull,
+                source == DamageSourceCode.Burning))
+        {
+            ctx.Db.ShipChannel.ShipEntityId.Update(channel);
+            return false;
+        }
+
+        InterruptActiveChannel(
+            ctx,
+            defender.EntityId,
+            tick,
+            HotPathCodes.DamageSourceId(source));
+        if (channel.ChannelTypeCode == (byte)ChannelCode.Repair)
+        {
+            SetCooldown(
+                ctx,
+                defender.EntityId,
+                CooldownCode.Repair,
+                tick + RepairRules.CooldownTicks);
+        }
+
+        return true;
     }
 
     private static void SinkShip(
@@ -122,10 +119,10 @@ public static partial class Module
     {
         defender.IsAlive = false;
         defender.IsActive = false;
-        defender.IsMoving = false;
-        defender.HasCourse = false;
-        defender.IsStopping = false;
+        ClearRoute(ctx, ref defender);
         defender.ModeCode = (byte)ShipMode.Sunk;
+        ClearEffects(ctx, defender.EntityId);
+        defender.MovementStatusMask = 0;
         ClearTargetLocks(ctx, ships, defender.EntityId);
         if (sourceEntityId != 0)
         {
@@ -133,37 +130,6 @@ public static partial class Module
         }
 
         ScheduleRespawn(ctx, ref defender, tick);
-    }
-
-    private static void ApplyVolleyStatus(
-        ReducerContext ctx,
-        Volley volley,
-        ref Ship defender,
-        ulong tick)
-    {
-        if (ctx.Db.AmmoDefinition.AmmoId.Find(volley.AmmoId) is not AmmoDefinition ammo ||
-            ammo.AppliedStatusCode == (byte)StatusCode.None)
-        {
-            return;
-        }
-
-        var statusCode = (StatusCode)ammo.AppliedStatusCode;
-        var chance = statusCode == StatusCode.Flooding ? 35u : 100u;
-        if (!TacticalRules.ShouldApplyStatus(volley.VolleyId ^ defender.EntityId, chance))
-        {
-            return;
-        }
-
-        if (ApplyStatus(
-            ctx,
-            defender.EntityId,
-            statusCode,
-            tick,
-            TacticalRules.StatusDurationTicks,
-            maximumStacks: 3))
-        {
-            defender.MovementStatusMask |= HotPathCodes.MovementMask(statusCode);
-        }
     }
 
     private static void ClearTargetLocks(
@@ -184,155 +150,88 @@ public static partial class Module
         }
     }
 
-    private static ShipStatus? FindStatus(
+    private static Effect? FindEffect(
         ReducerContext ctx,
         ulong shipEntityId,
-        StatusCode statusCode)
+        EffectCode effectCode)
     {
-        foreach (var status in ctx.Db.ShipStatus.ByShipStatus.Filter(
-                     (shipEntityId, (byte)statusCode)))
+        foreach (var effect in ctx.Db.Effect.ByShipEffect.Filter(
+                     (shipEntityId, (byte)effectCode)))
         {
-            return status;
+            return effect;
         }
 
         return null;
     }
 
-    private static bool HasActiveStatus(
+    private static bool HasActiveEffect(
         ReducerContext ctx,
         ulong shipEntityId,
-        StatusCode statusCode,
+        EffectCode effectCode,
         ulong tick) =>
-        FindStatus(ctx, shipEntityId, statusCode) is ShipStatus status &&
-        status.IsActive && tick < status.ExpiresAtTick;
+        FindEffect(ctx, shipEntityId, effectCode) is Effect effect &&
+        effect.IsActive && tick < effect.ExpiresAtTick;
 
-    private static uint ActiveStatusStacks(
+    /// <summary>
+    /// Applies one effect to one ship. The same code refreshes the row it already has — taking the
+    /// later of the two expiries — and a different code gets a row of its own, which is what makes
+    /// effects stack across ammunition types but never against themselves.
+    /// </summary>
+    private static bool ApplyEffect(
         ReducerContext ctx,
         ulong shipEntityId,
-        StatusCode statusCode,
-        ulong tick) =>
-        FindStatus(ctx, shipEntityId, statusCode) is ShipStatus status &&
-        status.IsActive && tick < status.ExpiresAtTick
-            ? status.Stacks
-            : 0;
-
-    private static bool ApplyStatus(
-        ReducerContext ctx,
-        ulong shipEntityId,
-        StatusCode statusCode,
-        ulong tick,
-        uint durationTicks,
-        uint maximumStacks)
+        ulong sourceEntityId,
+        EffectApplication application,
+        ulong tick)
     {
-        var existing = FindStatus(ctx, shipEntityId, statusCode);
-        var application = TacticalRules.ApplyStatus(
-            existing is ShipStatus row
-                ? new TacticalStatusState(
-                    row.IsActive,
-                    row.Stacks,
-                    row.ExpiresAtTick,
-                    row.ImmunityUntilTick)
-                : new TacticalStatusState(false, 0, 0, 0),
-            tick,
-            durationTicks,
-            maximumStacks);
-        if (!application.Applied)
+        if (application.Code == EffectCode.None)
         {
             return false;
         }
 
-        if (existing is ShipStatus current)
+        if (FindEffect(ctx, shipEntityId, application.Code) is Effect existing)
         {
-            current.Stacks = application.State.Stacks;
-            current.ExpiresAtTick = application.State.ExpiresAtTick;
-            current.ImmunityUntilTick = application.State.ImmunityUntilTick;
-            current.IsActive = true;
-            current.NextProcessTick = SimulationWorkRules.NextStatusProcessTick(
-                statusCode,
-                tick,
-                current.ExpiresAtTick);
-            ctx.Db.ShipStatus.StatusId.Update(current);
+            var refreshed = existing.IsActive
+                ? EffectRules.Refresh(existing.ExpiresAtTick, application.ExpiresAtTick)
+                : application.ExpiresAtTick;
+            existing.SourceEntityId = sourceEntityId;
+            existing.Magnitude = application.Magnitude;
+            existing.AppliedAtTick = tick;
+            existing.ExpiresAtTick = refreshed;
+            existing.NextProcessTick = Math.Min(application.NextProcessTick, refreshed);
+            existing.IsActive = true;
+            ctx.Db.Effect.EffectId.Update(existing);
         }
         else
         {
-            ctx.Db.ShipStatus.Insert(new ShipStatus
+            ctx.Db.Effect.Insert(new Effect
             {
                 ShipEntityId = shipEntityId,
-                StatusType = HotPathCodes.StatusId(statusCode),
-                StatusCode = (byte)statusCode,
-                Stacks = application.State.Stacks,
-                ExpiresAtTick = application.State.ExpiresAtTick,
-                ImmunityUntilTick = application.State.ImmunityUntilTick,
-                NextProcessTick = SimulationWorkRules.NextStatusProcessTick(
-                    statusCode,
-                    tick,
-                    application.State.ExpiresAtTick),
+                SourceEntityId = sourceEntityId,
+                EffectType = HotPathCodes.EffectId(application.Code),
+                EffectCode = (byte)application.Code,
+                Magnitude = application.Magnitude,
+                AppliedAtTick = tick,
+                ExpiresAtTick = application.ExpiresAtTick,
+                NextProcessTick = application.NextProcessTick,
                 IsActive = true,
             });
         }
 
         AppendEvent(
             ctx,
+            tick,
             shipEntityId,
-            "status_applied",
-            $"status={HotPathCodes.StatusId(statusCode)}");
+            "effect_applied",
+            $"effect={HotPathCodes.EffectId(application.Code)}");
         return true;
     }
 
-    private static void DeactivateStatus(
-        ReducerContext ctx,
-        ulong shipEntityId,
-        StatusCode statusCode,
-        ulong tick)
+    private static void ClearEffects(ReducerContext ctx, ulong shipEntityId)
     {
-        if (FindStatus(ctx, shipEntityId, statusCode) is not ShipStatus status ||
-            !status.IsActive)
+        foreach (var effect in ctx.Db.Effect.ByShip.Filter(shipEntityId))
         {
-            return;
-        }
-
-        status.IsActive = false;
-        status.Stacks = 0;
-        status.ImmunityUntilTick = tick + TacticalRules.StatusImmunityTicks;
-        status.NextProcessTick = ulong.MaxValue;
-        ctx.Db.ShipStatus.StatusId.Update(status);
-    }
-
-    private static void SynchronizeDisabledSails(
-        ReducerContext ctx,
-        Ship ship,
-        ulong tick)
-    {
-        if (ship.Sails == 0)
-        {
-            if (FindStatus(ctx, ship.EntityId, StatusCode.DisabledSails) is ShipStatus existing)
-            {
-                existing.IsActive = true;
-                existing.Stacks = 1;
-                existing.ExpiresAtTick = ulong.MaxValue;
-                existing.ImmunityUntilTick = 0;
-                existing.NextProcessTick = ulong.MaxValue;
-                ctx.Db.ShipStatus.StatusId.Update(existing);
-            }
-            else
-            {
-                ctx.Db.ShipStatus.Insert(new ShipStatus
-                {
-                    ShipEntityId = ship.EntityId,
-                    StatusType = "disabled_sails",
-                    StatusCode = (byte)StatusCode.DisabledSails,
-                    Stacks = 1,
-                    ExpiresAtTick = ulong.MaxValue,
-                    ImmunityUntilTick = 0,
-                    NextProcessTick = ulong.MaxValue,
-                    IsActive = true,
-                });
-            }
-        }
-        else
-        {
-            DeactivateStatus(ctx, ship.EntityId, StatusCode.DisabledSails, tick);
+            ctx.Db.Effect.EffectId.Delete(effect.EffectId);
         }
     }
-
 }

@@ -52,12 +52,14 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<RespawnWork, ulong> ShipEntityId { get; }
         public global::SpacetimeDB.Col<RespawnWork, bool> IsPending { get; }
         public global::SpacetimeDB.Col<RespawnWork, ulong> RespawnAtTick { get; }
+        public global::SpacetimeDB.Col<RespawnWork, byte> OptionCode { get; }
 
         public RespawnWorkCols(string tableName)
         {
             ShipEntityId = new global::SpacetimeDB.Col<RespawnWork, ulong>(tableName, "ship_entity_id");
             IsPending = new global::SpacetimeDB.Col<RespawnWork, bool>(tableName, "is_pending");
             RespawnAtTick = new global::SpacetimeDB.Col<RespawnWork, ulong>(tableName, "respawn_at_tick");
+            OptionCode = new global::SpacetimeDB.Col<RespawnWork, byte>(tableName, "option_code");
         }
     }
 

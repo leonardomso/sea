@@ -1,7 +1,31 @@
 # Repository instructions
 
 These instructions apply to the entire repository. `PLAN.md` is the source of
-truth for scope, phase order, acceptance gates, and commit boundaries.
+truth for scope, milestone order, acceptance gates, and commit boundaries.
+`docs/STATUS.md` is the source of truth for what is built right now, what is
+half-built, and what has not been started; read it before planning work.
+`docs/validation/milestone-1.md` holds the measured numbers behind it.
+`docs/SEA_1_KNOWLEDGE.md`, `docs/SEA_2_MATH.md`, `docs/SEA_3_MECHANICS.md`,
+`docs/SEA_4_TECHNICAL.md`, and `docs/SEA_5_PHYSICS.md` are the design of
+record: where they and the code disagree, the docs win, and
+`docs/SEA_5_GAP_ANALYSIS.md` records how each difference is resolved. When two
+of them disagree with each other, the next section settles it.
+
+### Which design document wins
+
+- `docs/SEA_5_PHYSICS.md` is authoritative for everything it covers: movement,
+  effective speed, wind, storms, currents, heading and armour faces, ranges,
+  view distance, boarding distance, map edges, NPC distances and the client
+  rate limits.
+- `docs/SEA_2_MATH.md` is authoritative wherever SEA_5 is silent: damage,
+  reload, magazine, hit points, armour values, the Combat Power budget,
+  boarding scores and haul, enemy multipliers and the economy.
+- `docs/SEA_3_MECHANICS.md` is authoritative for what an action *does* once
+  the physics have allowed it.
+- One exception: the speed bonus cap is 0.25, from `stat_caps.json`.
+
+If a number appears in two documents and this list does not settle it, the
+code does not get written until a person settles it.
 
 ## Project boundaries
 
@@ -13,6 +37,13 @@ truth for scope, phase order, acceptance gates, and commit boundaries.
 - Expected gameplay rejection returns a typed command result. It must not throw
   an unhandled reducer exception.
 - Ships may pass through one another. Islands and reefs remain blocked.
+- One map is playable: Havenmere (1/1), twenty squares by twenty. Content is
+  authored in squares of ten world units; the server stores world units.
+- Combat is the design's: a selected target, one magazine of volleys, guns that
+  bear in every direction, and armour read from the face a shot lands on. Do
+  not reintroduce broadsides, aim points, or the four damage pools.
+- Boarding, ramming, abilities, and the PvP flag stay bound to their keys and
+  are rejected with `NotAvailable` until their roadmap phase.
 - PostgreSQL, Redis, and MinIO are supporting local services and are not part of
   the combat path.
 - Do not add PvP, parties, chat, cloud deployment, bosses, quests, or economy
@@ -28,9 +59,14 @@ truth for scope, phase order, acceptance gates, and commit boundaries.
 - `packages/contracts`: generated TypeScript SpacetimeDB bindings.
 - `apps/game-unity/Assets/Generated/SpacetimeDB`: generated C# bindings.
 - `tests/integration`: tests against a published real module.
-- `tests/performance` and `tests/load`: Phase 18 performance tooling.
+- `tests/performance` and `tests/load`: capacity and performance evidence
+  tooling used by milestone gates.
 - `scripts`: canonical local commands. Extend these instead of documenting
   one-off shell procedures.
+- `.claude/skills`: SpacetimeDB reference skills (tables, indexes, reducers,
+  subscriptions, SQL, migrations, clients). Consult the `spacetimedb-tables`,
+  `spacetimedb-sql`, and `spacetimedb-clients` performance references before
+  changing schema, subscriptions, or hot reducer paths.
 
 ## Implementation rules
 
@@ -51,6 +87,10 @@ truth for scope, phase order, acceptance gates, and commit boundaries.
 - Handwritten production and test C# files must stay at or below 500 lines.
 - Treat generated C# and TypeScript bindings as generated files. Never edit
   them by hand; regenerate and commit both sides with schema changes.
+- Game content lives in `server/spacetimedb/spacetimedb/Content/Data/*.json`.
+  `server/spacetimedb/spacetimedb/Generated/ContentCatalog.g.cs` is generated
+  from it by `pnpm content:generate`; never edit it by hand, and run
+  `pnpm quality:content` before committing content changes.
 - Preserve deterministic behavior. Fixed seeds and command logs must replay to
   the same state hash.
 
@@ -64,13 +104,25 @@ pnpm server:test
 pnpm verify
 ```
 
-`pnpm verify` is the normal phase gate and requires Docker and Unity. Run
-`pnpm verify:full` only for the roadmap phases that own load, soak, mutation,
-and production performance proof.
+`pnpm verify` is the normal phase gate and requires Docker and Unity. It
+passes today. Run `pnpm verify:full` only for the roadmap sub-phases that own
+load and capacity proof; it adds a four-client shared world and a hundred-client
+scale run, and it currently fails on the second because the world tick misses
+its gate. Do not lower a gate to make it pass. Record the miss instead, the way
+`docs/validation/milestone-1.md` does.
 
-Every roadmap phase receives one conventional commit. Before committing,
+Every roadmap sub-phase receives one conventional commit. Before committing,
 review the diff for unrelated changes, secrets, debug code, generated drift,
 and unlicensed assets. Do not rewrite or discard user changes.
+
+Commit messages follow the Conventional Commits guideline:
+`type(scope): imperative summary` under 72 characters, with `feat`, `fix`,
+`refactor`, `perf`, `test`, `docs`, `chore`, `build`, or `ci` as the type and
+the area touched as the scope (`content`, `combat`, `world`, `client`,
+`server`, `domain`, `infra`, `tooling`, ...). The body explains why, wrapped
+at 72 columns. Never add AI attribution of any kind to a commit, pull request,
+or file: no "Generated with", no `Co-Authored-By` for an assistant, no session
+links, no tool badges. The same applies to pull request titles and bodies.
 
 ## Local state and assets
 

@@ -51,7 +51,9 @@ mergeInto(LibraryManager.library, {
                         uri += `&token=${token}`;
                     }
                 } else {
-                    throw new Error(`Failed to verify token: ${response.statusText}`);
+                    var rejected = new Error(`Failed to verify token: ${response.statusText}`);
+                    rejected.httpStatus = response.status;
+                    throw rejected;
                 }
             }
 
@@ -93,10 +95,12 @@ mergeInto(LibraryManager.library, {
                 }
             };
 
-            WebSocketDynCall('vi', callbackPtr, [socketId]);
+            WebSocketDynCall('vii', callbackPtr, [socketId, 0]);
         } catch (e) {
             console.error("WebSocket connection error:", e);
-            WebSocketDynCall('vi', callbackPtr, [-1]);
+            // Report the HTTP status of a rejected token so the client can tell
+            // an expired identity apart from an unreachable server.
+            WebSocketDynCall('vii', callbackPtr, [-1, e.httpStatus || 0]);
         }
     },
 

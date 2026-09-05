@@ -20,7 +20,6 @@ public static partial class Module
         public uint Id;
         public ulong Tick;
         public ulong NextEntityId;
-        public uint ActiveLootCount;
         public uint ConnectedPlayerCount;
     }
 
@@ -82,60 +81,11 @@ public static partial class Module
         public ulong DormantNpcRows;
     }
 
-    [SpacetimeDB.Table(Accessor = "SimulationDispatchState")]
-    public partial struct SimulationDispatchState
-    {
-        [PrimaryKey]
-        public uint Id;
-        public byte Slot;
-        public byte MovementShard;
-        public byte NpcShard;
-        public byte NpcAccumulator;
-    }
-
     [SpacetimeDB.Table(
         Accessor = "SimulationDispatchTimer",
         Scheduled = "RunSimulationDispatch",
         ScheduledAt = "ScheduledAt")]
     public partial struct SimulationDispatchTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "MovementSnapshotDispatchState")]
-    public partial struct MovementSnapshotDispatchState
-    {
-        [PrimaryKey]
-        public uint Id;
-        public ushort Cursor;
-    }
-
-    [SpacetimeDB.Table(
-        Accessor = "MovementSnapshotDispatchTimer",
-        Scheduled = "RunMovementSnapshotDispatch",
-        ScheduledAt = "ScheduledAt")]
-    public partial struct MovementSnapshotDispatchTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "HazardDispatchState")]
-    public partial struct HazardDispatchState
-    {
-        [PrimaryKey]
-        public uint Id;
-        public byte Cursor;
-    }
-
-    [SpacetimeDB.Table(
-        Accessor = "HazardDispatchTimer",
-        Scheduled = "RunHazardDispatch",
-        ScheduledAt = "ScheduledAt")]
-    public partial struct HazardDispatchTimer
     {
         [PrimaryKey, AutoInc]
         public ulong ScheduledId;
@@ -157,28 +107,49 @@ public static partial class Module
     public partial struct ShipKinematics
     {
         public ulong EntityId;
+        public byte FactionCode;
+        public byte MapId;
         public float PositionX;
         public float PositionY;
         public float DestinationX;
         public float DestinationY;
-        public float WaypointX;
-        public float WaypointY;
-        public bool HasWaypoint;
-        public float DesiredHeadingDegrees;
+        public int RouteIndex;
+        public bool HasRoute;
         public float HeadingDegrees;
         public float Speed;
-        public float TacticalMaximumSpeed;
-        public float TacticalAcceleration;
-        public float Deceleration;
-        public float TacticalTurnRateDegrees;
-        public float EffectiveMaximumSpeed;
-        public bool HasCourse;
-        public bool IsStopping;
+
+        // Everything SpeedRules needs, carried on the shard so the tick can work her speed
+        // out again from scratch without reading the fat row it is trying to avoid touching
+        // (SEA_5 5.1). The fat row pushes a new copy of these through CopyTacticalParameters
+        // whenever damage, a slow or the water she is in changes.
+        public float BaseSpeedSquaresPerSecond;
+        public uint Hull;
+        public uint MaxHull;
+        public byte MovementStatusMask;
+        public float MovementSlowMagnitude;
+        public byte EnvironmentExposureCode;
+        public bool IsRepairing;
+
+        // Worked out fresh every tick from the fields above.
+        public float EffectiveSpeedSquaresPerSecond;
         public bool IsMoving;
+
+        // Carried on the shard so crossing the harbour mouth is an edge the sailing step can see
+        // without reading the fat row it is trying to avoid touching.
+        public bool IsInPort;
         public float CurrentVelocityX;
         public float CurrentVelocityY;
         public int ChunkX;
         public int ChunkY;
+
+        // What the client was last told, so the shard can tell whether its reckoning has
+        // drifted far enough to be worth another row. Server-side only.
+        public ulong PublishedTick;
+        public float PublishedPositionX;
+        public float PublishedPositionY;
+        public float PublishedHeadingDegrees;
+        public float PublishedVelocityX;
+        public float PublishedVelocityY;
     }
 
     [SpacetimeDB.Table(Accessor = "MovementUpdate")]
@@ -189,82 +160,8 @@ public static partial class Module
         public ulong ShipEntityId;
         public byte ShardId;
         public bool ReplaceKinematics;
-        public Ship Ship;
+        public bool Track;
+        public ShipKinematics Kinematics;
     }
 
-    [SpacetimeDB.Table(Accessor = "SimulationTimer", Scheduled = "RunSimulationTick", ScheduledAt = "ScheduledAt")]
-    public partial struct SimulationTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "StatusTimer", Scheduled = "RunStatusTick", ScheduledAt = "ScheduledAt")]
-    public partial struct StatusTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "ChannelTimer", Scheduled = "RunChannelTick", ScheduledAt = "ScheduledAt")]
-    public partial struct ChannelTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "VolleyTimer", Scheduled = "RunVolleyTick", ScheduledAt = "ScheduledAt")]
-    public partial struct VolleyTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "RespawnTimer", Scheduled = "RunRespawnTick", ScheduledAt = "ScheduledAt")]
-    public partial struct RespawnTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "LootExpiryTimer", Scheduled = "RunLootExpiryTick", ScheduledAt = "ScheduledAt")]
-    public partial struct LootExpiryTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-    }
-
-    [SpacetimeDB.Table(Accessor = "HazardTimer", Scheduled = "RunHazardTick", ScheduledAt = "ScheduledAt")]
-    public partial struct HazardTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-        public byte HazardKindCode;
-        public byte ShardId;
-    }
-
-    [SpacetimeDB.Table(Accessor = "NpcTimer", Scheduled = "RunNpcTick", ScheduledAt = "ScheduledAt")]
-    public partial struct NpcTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-        public byte ShardId;
-    }
-
-    [SpacetimeDB.Table(Accessor = "MovementShardTimer", Scheduled = "RunMovementShard", ScheduledAt = "ScheduledAt")]
-    public partial struct MovementShardTimer
-    {
-        [PrimaryKey, AutoInc]
-        public ulong ScheduledId;
-        public ScheduleAt ScheduledAt;
-        public byte ShardId;
-    }
 }

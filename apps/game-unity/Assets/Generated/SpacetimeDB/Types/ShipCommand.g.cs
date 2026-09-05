@@ -14,10 +14,13 @@ namespace SpacetimeDB.Types
         SelectTargetCommand SelectTarget,
         ClearTargetCommand ClearTarget,
         SetAmmoCommand SetAmmo,
-        FireBroadsideCommand FireBroadside,
+        FireCommand Fire,
         ActivateAbilityCommand ActivateAbility,
         StartRepairCommand StartRepair,
         StartBoardingCommand StartBoarding,
-        CancelChannelCommand CancelChannel
+        CancelChannelCommand CancelChannel,
+        UseRepairKitCommand UseRepairKit,
+        ChooseRespawnCommand ChooseRespawn,
+        ChangeMapCommand ChangeMap
     )>;
 }

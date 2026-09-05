@@ -2,20 +2,15 @@ using UnityEngine;
 
 namespace Sea.Client
 {
-    public readonly struct RuntimeBroadsidePlan
+    public readonly struct RuntimeFirePlan
     {
-        public RuntimeBroadsidePlan(
-            bool canFire,
-            string side,
-            float desiredHeadingDegrees)
+        public RuntimeFirePlan(bool canFire, float desiredHeadingDegrees)
         {
             CanFire = canFire;
-            Side = side;
             DesiredHeadingDegrees = desiredHeadingDegrees;
         }
 
         public bool CanFire { get; }
-        public string Side { get; }
         public float DesiredHeadingDegrees { get; }
     }
 
@@ -28,14 +23,18 @@ namespace Sea.Client
         public const string RuntimeMovementSubscriptionQuery =
             "SELECT * FROM ship_movement WHERE is_active = true";
 
-        private const float SeededStormX = -72f;
-        private const float SeededStormY = 3f;
+        // The storm entity 13 carries in maps.json. The probe sails to where the module will
+        // have put it, so all four have to match that row; change one and change the other.
+        private const float SeededStormX = 56f;
+        private const float SeededStormY = 206f;
         private const float SeededStormDirectionDegrees = 72f;
-        private const float SeededStormSpeed = 1.5f;
+        private const float SeededStormSpeed = 0.5f;
         private const float SimulationTicksPerSecond = 10f;
-        private const float SafeBroadsideHalfArcDegrees = 44f;
-
-        public static RuntimeBroadsidePlan PlanBroadside(
+        /// <summary>
+        /// There is no firing arc left: the magazine bears in every direction, so the only thing
+        /// the probe still plans is the approach heading that puts the target dead ahead.
+        /// </summary>
+        public static RuntimeFirePlan PlanFire(
             Vector2 source,
             float headingDegrees,
             Vector2 target)
@@ -43,31 +42,37 @@ namespace Sea.Client
             var delta = target - source;
             if (delta.sqrMagnitude <= Mathf.Epsilon)
             {
-                return new RuntimeBroadsidePlan(false, string.Empty, headingDegrees);
+                return new RuntimeFirePlan(false, headingDegrees);
             }
 
-            var bearing = Mathf.Atan2(delta.x, delta.y) * Mathf.Rad2Deg;
-            var portError = Mathf.Abs(Mathf.DeltaAngle(headingDegrees - 90f, bearing));
-            var starboardError = Mathf.Abs(Mathf.DeltaAngle(headingDegrees + 90f, bearing));
-            var portCanFire = portError <= SafeBroadsideHalfArcDegrees;
-            var starboardCanFire = starboardError <= SafeBroadsideHalfArcDegrees;
-            if (portCanFire || starboardCanFire)
-            {
-                var side = portCanFire && (!starboardCanFire || portError <= starboardError)
-                    ? "port"
-                    : "starboard";
-                return new RuntimeBroadsidePlan(true, side, headingDegrees);
-            }
-
-            var portHeading = bearing + 90f;
-            var starboardHeading = bearing - 90f;
-            var portTurn = Mathf.Abs(Mathf.DeltaAngle(headingDegrees, portHeading));
-            var starboardTurn = Mathf.Abs(Mathf.DeltaAngle(headingDegrees, starboardHeading));
-            return new RuntimeBroadsidePlan(
-                false,
-                string.Empty,
-                portTurn <= starboardTurn ? portHeading : starboardHeading);
+            // A chart bearing: north is -y, the same way SeededStormPosition below already
+            // reckoned it. One file held both conventions until this line was fixed.
+            var bearing = Mathf.Atan2(delta.x, 0f - delta.y) * Mathf.Rad2Deg;
+            return new RuntimeFirePlan(true, bearing);
         }
+
+        /// <summary>
+        /// Proof that a volley actually left the racks. Ammunition is unlimited in Milestone 1, so
+        /// the magazine is the only thing a fired shot moves on the ship row: either a ready volley
+        /// is gone or the module stamped a newer shot tick on the hull.
+        /// </summary>
+        public static bool HasLaunchedVolley(
+            uint volleysBeforeFiring,
+            uint volleysNow,
+            ulong shotTickBeforeFiring,
+            ulong shotTickNow) =>
+            volleysNow < volleysBeforeFiring || shotTickNow > shotTickBeforeFiring;
+
+        /// <summary>
+        /// The presentation benchmark seeds its own fleet up to the platform ship budget, so a
+        /// live world would cost it hulls it has already counted: one real ship inside the ring
+        /// pushes a synthetic one past the limit, the probe never reaches its required count and
+        /// reseeds forever instead of measuring. The benchmark therefore sails alone.
+        /// </summary>
+        public static bool ShouldConnectOnStart(
+            bool connectOnStart,
+            bool presentationPerformanceRequested) =>
+            connectOnStart && !presentationPerformanceRequested;
 
         public static bool ShouldRestoreSyntheticFleet(
             int visibleCount,
@@ -128,11 +133,14 @@ namespace Sea.Client
         {
             var elapsedSeconds = worldTick / SimulationTicksPerSecond;
             var radians = SeededStormDirectionDegrees * Mathf.Deg2Rad;
+            // Mirrors the module's TacticalRules.MoveStorm. Y is subtracted because a bearing is
+            // a compass bearing and north is -y on a chart whose origin is the top-left corner;
+            // adding cos here drove the predicted storm the opposite way to the real one.
             return new Vector2(
                 WrapMapCoordinate(
                     SeededStormX + Mathf.Sin(radians) * SeededStormSpeed * elapsedSeconds),
                 WrapMapCoordinate(
-                    SeededStormY + Mathf.Cos(radians) * SeededStormSpeed * elapsedSeconds));
+                    SeededStormY - Mathf.Cos(radians) * SeededStormSpeed * elapsedSeconds));
         }
 
         private static float WrapMapCoordinate(float value)

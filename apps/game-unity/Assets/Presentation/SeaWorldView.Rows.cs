@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using SpacetimeDB.Types;
 using Unity.Jobs;
@@ -14,11 +15,7 @@ namespace Sea.Client
         private void HandleShipChanged(Ship ship)
         {
             shipRows.Upsert(ship.EntityId, ship);
-            PushMovementSample(
-                ship.EntityId,
-                ship.PositionX,
-                ship.PositionY,
-                ship.HeadingDegrees);
+            SeedMovementSample(ship);
             if (ship.EntityId == connection.LocalShipEntityId)
             {
                 localShip = ship;
@@ -31,30 +28,81 @@ namespace Sea.Client
         private void HandleShipMovementChanged(ShipMovement movement)
         {
             movementRows.Upsert(movement.EntityId, movement);
-            PushMovementSample(
-                movement.EntityId,
-                movement.PositionX,
-                movement.PositionY,
-                movement.HeadingDegrees);
+            PushMovementSample(movement);
             visibilityDirty = true;
         }
 
-        private void PushMovementSample(
-            ulong entityId,
-            float positionX,
-            float positionY,
-            float headingDegrees)
+        // A ship row places a ship before its first movement snapshot arrives; the snapshot
+        // stream owns the timeline from then on.
+        private void SeedMovementSample(Ship ship)
         {
-            if (!targets.TryGetValue(entityId, out var interpolation))
+            if (targets.ContainsKey(ship.EntityId))
             {
-                interpolation = new SeaInterpolationBuffer();
-                targets.Add(entityId, interpolation);
+                return;
             }
 
-            interpolation.Push(
-                ToWorld(positionX, positionY, ShipRootHeight),
-                headingDegrees,
-                Time.realtimeSinceStartupAsDouble);
+            var timeline = new SeaMotionTimeline();
+            var tick = snapshotClock?.IsRunning == true
+                ? (ulong)Math.Max(0d, snapshotClock.ServerTick(Time.realtimeSinceStartupAsDouble))
+                : 0UL;
+            timeline.Push(tick, ToWorld(ship.PositionX, ship.PositionY, ShipRootHeight), ship.HeadingDegrees);
+            targets.Add(ship.EntityId, timeline);
+        }
+
+        private void PushMovementSample(ShipMovement movement)
+        {
+            if (!targets.TryGetValue(movement.EntityId, out var timeline))
+            {
+                timeline = new SeaMotionTimeline();
+                targets.Add(movement.EntityId, timeline);
+            }
+
+            snapshotClock ??= new SeaSnapshotClock(
+                connection.WorldTickRate > 0 ? connection.WorldTickRate : SeaSnapshotClock.DefaultTickRate);
+            snapshotClock.Observe(movement.SnapshotTick, Time.realtimeSinceStartupAsDouble);
+            timeline.Push(
+                movement.SnapshotTick,
+                ToWorld(movement.PositionX, movement.PositionY, ShipRootHeight),
+                movement.HeadingDegrees);
+        }
+
+        /// <summary>
+        /// Every ship in one chunk, placed off one row (SEA_5 §12.1).
+        /// </summary>
+        /// <remarks>
+        /// The local ship is skipped: she is sailed by the prediction off her own movement row,
+        /// which carries her speed and the tick it was taken at, and a hundredth-of-a-square
+        /// sample laid over that would only jog her about under the captain's own hands.
+        ///
+        /// A hull the client has no ship row for yet is dropped rather than drawn. The chunk row
+        /// carries an id and a position and nothing else, so there would be no hull to put
+        /// there, no colours to fly and no name to read.
+        /// </remarks>
+        private void HandleChunkMovementChanged(ChunkMovement chunk)
+        {
+            var count = SeaChunkBlob.Count(chunk.Payload, chunk.ShipCount);
+            if (count == 0)
+            {
+                return;
+            }
+
+            snapshotClock ??= new SeaSnapshotClock(
+                connection.WorldTickRate > 0 ? connection.WorldTickRate : SeaSnapshotClock.DefaultTickRate);
+            snapshotClock.Observe(chunk.Tick, Time.realtimeSinceStartupAsDouble);
+            for (var index = 0; index < count; index++)
+            {
+                if (!SeaChunkBlob.TryUnpack(
+                        chunk.Payload, index, out var entityId, out var x, out var y, out var heading) ||
+                    entityId == playerEntityId ||
+                    !targets.TryGetValue(entityId, out var timeline))
+                {
+                    continue;
+                }
+
+                timeline.Push(chunk.Tick, ToWorld(x, y, ShipRootHeight), heading);
+            }
+
+            visibilityDirty = true;
         }
 
         private void HandleWorldObjectChanged(WorldObject entity)
@@ -112,6 +160,42 @@ namespace Sea.Client
             };
         }
 
+        /// <summary>
+        /// The server has already applied this damage; the ball is still in the air. The
+        /// presenter holds the hit until it lands, so the impact and its number arrive together
+        /// (SEA_5 §8.3).
+        /// </summary>
+        private void HandleHitLanded(HitEvent hit)
+        {
+            combatPresenter?.Hit(
+                hit.AttackerEntityId,
+                hit.DefenderEntityId,
+                hit.Damage,
+                hit.IsCritical,
+                hit.Face,
+                hit.FlightSeconds);
+        }
+
+        private Transform FindShipTransform(ulong entityId)
+        {
+            if (entityId == playerEntityId)
+            {
+                return playerObject != null ? playerObject.transform : null;
+            }
+
+            return entities.TryGetValue(entityId, out var ship) ? ship.transform : null;
+        }
+
+        private SeaShipFeedback FindShipFeedback(ulong entityId)
+        {
+            if (entityId == playerEntityId)
+            {
+                return playerFeedback;
+            }
+
+            return shipFeedback.TryGetValue(entityId, out var feedback) ? feedback : null;
+        }
+
         private void HandleVolleyChanged(Volley volley)
         {
             if (volley.IsActive)
@@ -153,12 +237,16 @@ namespace Sea.Client
                 return;
             }
 
-            var cameraTransform = Camera.main != null ? Camera.main.transform : null;
+            // Chart space, because that is what the job below measures against: the ship
+            // positions it compares this to come off the wire unconverted. Reading the camera's
+            // world z straight into a chart y made every distance wrong by twice the distance
+            // from the map's middle, so ships went visible and invisible in the wrong places.
+            var cameraTransform = ChartCameraTransform();
             var origin = cameraTransform != null
-                ? new Vector3(cameraTransform.position.x, 0f, cameraTransform.position.z)
+                ? SeaChartCoordinates.ToChart(cameraTransform.position)
                 : localShip == null
-                    ? Vector3.zero
-                    : MovementPosition(localShip);
+                    ? Vector2.zero
+                    : MovementPosition2(localShip);
             if (!visibilityDirty && (origin - previousVisibilityOrigin).sqrMagnitude < 0.25f)
             {
                 return;
@@ -185,7 +273,7 @@ namespace Sea.Client
             {
                 Positions = visibilityPositions,
                 SquaredDistances = visibilitySquaredDistances,
-                Origin = new float2(origin.x, origin.z),
+                Origin = new float2(origin.x, origin.y),
             };
             distanceJob.Schedule(trackedCount, innerloopBatchCount: 64).Complete();
             for (var index = 0; index < trackedCount; index++)
@@ -200,8 +288,7 @@ namespace Sea.Client
                 var relevant = ship.EntityId == playerEntityId ||
                     ship.EntityId == localShip?.TargetEntityId ||
                     relevantEndpointIds.Contains(ship.EntityId);
-                var level = SeaPresentationRules.LevelFor(distance, relevant);
-                if (level == SeaPresentationLevel.Hidden)
+                if (!SeaPresentationRules.IsVisible(distance, relevant))
                 {
                     continue;
                 }
@@ -209,8 +296,7 @@ namespace Sea.Client
                 visibilityCandidates.Add(new SeaVisibilityCandidate(
                     ship.EntityId,
                     distance,
-                    relevant ? 0 : 1,
-                    level));
+                    relevant ? 0 : 1));
             }
 
             visibilityCandidates.Sort(SeaVisibilityCandidateComparer.Instance);
@@ -273,8 +359,7 @@ namespace Sea.Client
                     movementRows.TryGetValue(ship.EntityId, out var latestMovement)
                         ? latestMovement.Speed
                         : ship.Speed,
-                    ship.MaximumSpeed,
-                    candidate.Level,
+                    ship.BaseSpeedSquaresPerSecond,
                     ship.FactionCode,
                     ship.ArchetypeCode);
             }
@@ -287,14 +372,21 @@ namespace Sea.Client
                 return;
             }
 
-            fogMaterial.SetVector(
-                "_PlayerPosition",
-                movementRows.TryGetValue(localShip.EntityId, out var movement)
-                    ? new Vector4(movement.PositionX, movement.PositionY, 0f, 0f)
-                    : new Vector4(localShip.PositionX, localShip.PositionY, 0f, 0f));
+            // The fog follows the rendered ship so vision reveals the chart as smoothly as the
+            // ship sails rather than in server snapshot steps.
+            var playerPosition = PlayerWorldPosition();
+            fogMaterial.SetVector("_PlayerPosition", new Vector4(playerPosition.x, playerPosition.z, 0f, 0f));
             UpdateTargetRing(localShip);
-            UpdateCourseIndicator(localShip);
+            UpdateOwnShipRing();
+            UpdateCoursePing();
+            UpdateRouteLines();
         }
+
+        // World space: the fog is a plane in the scene and its shader measures the fragment's
+        // own world xz against this.
+        private Vector3 PlayerWorldPosition() => playerObject != null
+            ? playerObject.transform.position
+            : MovementPosition(localShip);
 
         private static string ShipName(Ship ship) => ship.FactionCode == 1
             ? $"Player Ship {ship.EntityId}"
@@ -303,7 +395,7 @@ namespace Sea.Client
         private Vector3 MovementPosition(Ship ship)
         {
             var position = MovementPosition2(ship);
-            return new Vector3(position.x, 0f, position.y);
+            return SeaChartCoordinates.ToWorld(position.x, position.y, 0f);
         }
 
         private Vector2 MovementPosition2(Ship ship) =>
@@ -336,19 +428,16 @@ namespace Sea.Client
             public SeaVisibilityCandidate(
                 ulong entityId,
                 float distance,
-                int priority,
-                SeaPresentationLevel level)
+                int priority)
             {
                 EntityId = entityId;
                 Distance = distance;
                 Priority = priority;
-                Level = level;
             }
 
             public ulong EntityId { get; }
             public float Distance { get; }
             public int Priority { get; }
-            public SeaPresentationLevel Level { get; }
         }
 
         private sealed class SeaVisibilityCandidateComparer : IComparer<SeaVisibilityCandidate>

@@ -13,6 +13,7 @@
             </ui:VisualElement>
 
             <ui:VisualElement class="header-tools">
+                <ui:Button name="recenter-button" text="◎" tooltip="Center on ship (Home)" class="header-tool" />
                 <ui:Button name="navigator-button" text="N" tooltip="Coordinate navigator" class="header-tool" />
                 <ui:Button text="□" tooltip="Quests" class="header-tool" />
                 <ui:Button text="□" tooltip="Inventory" class="header-tool" />
@@ -26,29 +27,97 @@
                     <ui:Label name="connection-status" text="CONNECTING…" class="micro-label" />
                 </ui:VisualElement>
                 <ui:Label name="navigation-readout" text="—  •  000°  •  0.0 KN" class="navigation-readout" />
+                <ui:VisualElement name="wind-dial" class="wind-dial">
+                    <ui:Label name="wind-arrow" text="↑" class="wind-arrow" />
+                    <ui:Label name="wind-text" text="—" class="micro-label" />
+                </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>
 
         <ui:VisualElement name="top-coordinate-ruler" class="coordinate-ruler top-coordinate-ruler">
-            <ui:Label name="top-coordinate-0" text="—" />
-            <ui:Label name="top-coordinate-1" text="—" />
-            <ui:Label name="top-coordinate-2" text="—" />
-            <ui:Label name="top-coordinate-3" text="—" />
-            <ui:Label name="top-coordinate-4" text="—" />
-            <ui:Label name="top-coordinate-5" text="—" />
-            <ui:Label name="top-coordinate-6" text="—" />
-            <ui:Label name="top-coordinate-7" text="—" />
-            <ui:Label name="top-coordinate-8" text="—" />
+            <ui:Label name="top-coordinate-0" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-1" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-2" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-3" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-4" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-5" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-6" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-7" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-8" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-9" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-10" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-11" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-12" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-13" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-14" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-15" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-16" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-17" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-18" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-19" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-20" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-21" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-22" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-23" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-24" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-25" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-26" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-27" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-28" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-29" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-30" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-31" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-32" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-33" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-34" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-35" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-36" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-37" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-38" text="" class="coordinate-mark" />
+            <ui:Label name="top-coordinate-39" text="" class="coordinate-mark" />
         </ui:VisualElement>
 
         <ui:VisualElement name="left-coordinate-ruler" class="coordinate-ruler left-coordinate-ruler">
-            <ui:Label name="left-coordinate-0" text="—" />
-            <ui:Label name="left-coordinate-1" text="—" />
-            <ui:Label name="left-coordinate-2" text="—" />
-            <ui:Label name="left-coordinate-3" text="—" />
-            <ui:Label name="left-coordinate-4" text="—" />
-            <ui:Label name="left-coordinate-5" text="—" />
-            <ui:Label name="left-coordinate-6" text="—" />
+            <ui:Label name="left-coordinate-0" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-1" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-2" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-3" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-4" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-5" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-6" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-7" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-8" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-9" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-10" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-11" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-12" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-13" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-14" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-15" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-16" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-17" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-18" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-19" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-20" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-21" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-22" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-23" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-24" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-25" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-26" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-27" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-28" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-29" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-30" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-31" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-32" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-33" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-34" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-35" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-36" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-37" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-38" text="" class="coordinate-mark" />
+            <ui:Label name="left-coordinate-39" text="" class="coordinate-mark" />
         </ui:VisualElement>
 
         <ui:VisualElement name="mini-map-frame" class="mini-map-frame">
@@ -56,13 +125,6 @@
         </ui:VisualElement>
 
         <ui:VisualElement name="target-frame" class="target-frame chart-surface hidden">
-            <ui:Button name="port-broadside" class="broadside-side port-side">
-                <ui:Label text="Q" class="key-cap" />
-                <ui:Label text="PORT" class="broadside-name" />
-                <ui:ProgressBar name="port-reload" low-value="0" high-value="1" value="1" class="reload-gauge" />
-                <ui:Label name="port-reload-text" text="READY" class="readiness" />
-            </ui:Button>
-
             <ui:VisualElement class="target-core">
                 <ui:VisualElement class="target-heading-line">
                     <ui:Label text="◁ 100°" class="arc-mark" />
@@ -80,70 +142,64 @@
                         <ui:Label name="target-hull-text" text="—" class="instrument-value" />
                     </ui:VisualElement>
                     <ui:VisualElement class="instrument-row">
-                        <ui:Label text="SAILS" class="instrument-label" />
-                        <ui:ProgressBar name="target-sails" low-value="0" high-value="1" class="instrument-bar sails-bar" />
-                        <ui:Label name="target-sails-text" text="—" class="instrument-value" />
-                    </ui:VisualElement>
-                    <ui:VisualElement class="instrument-row">
-                        <ui:Label text="GUNS" class="instrument-label" />
-                        <ui:ProgressBar name="target-cannons" low-value="0" high-value="1" class="instrument-bar cannon-bar" />
-                        <ui:Label name="target-cannons-text" text="—" class="instrument-value" />
+                        <ui:Label text="ARMOUR" class="instrument-label" />
+                        <ui:Label name="target-armor-text" text="—" class="instrument-value" />
                     </ui:VisualElement>
                 </ui:VisualElement>
             </ui:VisualElement>
 
-            <ui:Button name="starboard-broadside" class="broadside-side starboard-side">
-                <ui:Label text="E" class="key-cap" />
-                <ui:Label text="STARBOARD" class="broadside-name" />
-                <ui:ProgressBar name="starboard-reload" low-value="0" high-value="1" value="1" class="reload-gauge" />
-                <ui:Label name="starboard-reload-text" text="READY" class="readiness" />
+            <ui:Button name="fire-control" class="broadside-side fire-control">
+                <ui:Label text="Q / SPACE" class="key-cap" />
+                <ui:Label text="FIRE" class="broadside-name" />
+                <ui:ProgressBar name="reload-gauge" low-value="0" high-value="1" value="1" class="reload-gauge" />
+                <ui:Label name="reload-text" text="READY" class="readiness" />
+                <ui:Label name="magazine-text" text="—" class="readiness" />
+                <ui:VisualElement name="magazine-dots" class="magazine-dots">
+                    <ui:VisualElement name="magazine-dot-0" class="magazine-dot" />
+                    <ui:VisualElement name="magazine-dot-1" class="magazine-dot" />
+                    <ui:VisualElement name="magazine-dot-2" class="magazine-dot" />
+                    <ui:VisualElement name="magazine-dot-3" class="magazine-dot" />
+                    <ui:VisualElement name="magazine-dot-4" class="magazine-dot" />
+                    <ui:VisualElement name="magazine-dot-5" class="magazine-dot" />
+                </ui:VisualElement>
             </ui:Button>
         </ui:VisualElement>
 
         <ui:VisualElement class="bottom-deck">
             <ui:VisualElement class="player-ledger chart-surface">
                 <ui:VisualElement class="ledger-heading">
-                    <ui:Label name="level-label" text="LEVEL 1" class="eyebrow" />
-                    <ui:Label text="CAPTAIN" class="micro-label" />
+                    <ui:Label text="MAP RANK" class="micro-label" />
+                    <ui:Label name="map-rank-label" text="1" class="instrument-value" />
+                    <ui:Label name="ship-loadout" text="—" class="data-label bronze-text" />
                 </ui:VisualElement>
                 <ui:VisualElement class="meter-heading">
                     <ui:Label text="HULL INTEGRITY" class="micro-label" />
                     <ui:Label name="hull-text" text="—" class="instrument-value" />
                 </ui:VisualElement>
                 <ui:ProgressBar name="player-hull" low-value="0" high-value="1" class="player-meter hull-bar" />
-                <ui:VisualElement class="meter-heading">
-                    <ui:Label text="EXPERIENCE" class="micro-label" />
-                    <ui:Label name="experience-text" text="—" class="instrument-value" />
+                <ui:VisualElement class="ledger-heading">
+                    <ui:Label text="COMBAT POWER" class="micro-label" />
+                    <ui:Label name="combat-power-label" text="—" class="instrument-value" />
                 </ui:VisualElement>
-                <ui:ProgressBar name="player-experience" low-value="0" high-value="1" class="player-meter xp-bar" />
                 <ui:Label name="last-action" text="Click water to set course." class="captain-log" />
             </ui:VisualElement>
 
             <ui:VisualElement class="gunnery-deck chart-surface">
                 <ui:VisualElement class="rail-heading">
                     <ui:Label text="GUNNERY DECK" class="eyebrow" />
+                    <ui:Label name="volley-text" text="—" class="micro-label" />
                     <ui:Label name="ammo-count" text="ROUND • 0" class="data-label bronze-text" />
-                </ui:VisualElement>
-                <ui:VisualElement name="weak-point-rail" class="command-rail">
-                    <ui:Label text="AIM" class="rail-label" />
-                    <ui:Button name="aim-hull" text="1" tooltip="Aim at hull" class="command-slot selected" />
-                    <ui:Button name="aim-sails" text="2" tooltip="Aim at sails" class="command-slot" />
-                    <ui:Button name="aim-cannons" text="3" tooltip="Aim at cannons" class="command-slot" />
                 </ui:VisualElement>
                 <ui:VisualElement name="ammo-rail" class="command-rail">
                     <ui:Label text="SHOT" class="rail-label" />
-                    <ui:Button name="ammo-round" text="4" tooltip="Round shot" class="command-slot selected" />
-                    <ui:Button name="ammo-chain" text="5" tooltip="Chain shot" class="command-slot" />
-                    <ui:Button name="ammo-grapeshot" text="6" tooltip="Grapeshot" class="command-slot" />
-                    <ui:Button name="ammo-incendiary" text="7" tooltip="Incendiary shot" class="command-slot" />
+                    <ui:Button name="ammo-round" text="1" tooltip="Round shot" class="command-slot selected" />
+                    <ui:Button name="ammo-chain" text="2" tooltip="Chain shot" class="command-slot" />
+                    <ui:Button name="ammo-grapeshot" text="3" tooltip="Grapeshot" class="command-slot" />
+                    <ui:Button name="ammo-incendiary" text="4" tooltip="Incendiary shot" class="command-slot" />
                 </ui:VisualElement>
                 <ui:VisualElement name="ability-rail" class="command-rail ability-rail">
-                    <ui:Button name="ability-full-sail" text="Z" tooltip="Full Sail" class="command-slot ability-slot" />
-                    <ui:Button name="ability-brace" text="X" tooltip="Brace" class="command-slot ability-slot" />
-                    <ui:Button name="ability-pump" text="C" tooltip="Emergency Pump" class="command-slot ability-slot" />
-                    <ui:Button name="ability-smoke" text="V" tooltip="Smoke Screen" class="command-slot ability-slot" />
                     <ui:Button name="repair" text="R" tooltip="Repair" class="command-slot ability-slot" />
-                    <ui:Button name="board" text="B" tooltip="Board" class="command-slot ability-slot" />
+                    <ui:Button name="repair-kit" text="K" tooltip="Repair kit" class="command-slot ability-slot" />
                 </ui:VisualElement>
             </ui:VisualElement>
 
@@ -158,6 +214,26 @@
                     <ui:Label text="TAB  CYCLE TARGET" class="micro-label" />
                     <ui:Label text="T  CLEAR TARGET" class="micro-label" />
                     <ui:Label text="SPACE  RECENTER" class="micro-label" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="wreck-prompt" class="modal-scrim hidden">
+            <ui:VisualElement class="wreck-dialog chart-surface">
+                <ui:Label text="YOUR SHIP WAS SUNK" class="dialog-title" />
+                <ui:Label name="wreck-text" text="START AGAIN AT PORT LOWELL." class="micro-label" />
+                <ui:VisualElement class="dialog-actions">
+                    <ui:Button name="respawn-button" text="START AGAIN AT PORT LOWELL" class="primary-button" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="crossing-prompt" class="modal-scrim hidden">
+            <ui:VisualElement class="wreck-dialog chart-surface">
+                <ui:Label text="THE CHART ENDS HERE" class="dialog-title" />
+                <ui:Label name="crossing-text" text="SAIL ON TO THE NEXT CHART?" class="micro-label" />
+                <ui:VisualElement class="dialog-actions">
+                    <ui:Button name="crossing-button" text="SAIL ON" class="primary-button" />
                 </ui:VisualElement>
             </ui:VisualElement>
         </ui:VisualElement>

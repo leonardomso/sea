@@ -9,19 +9,23 @@ namespace Sea.Client
         WebGL = 2,
     }
 
-    public enum SeaPresentationLevel : byte
-    {
-        Hidden = 0,
-        Distant = 1,
-        Medium = 2,
-        Near = 3,
-    }
-
     public static class SeaPresentationRules
     {
-        public const float NearDistance = 38f;
-        public const float MediumDistance = 76f;
-        public const float DistantDistance = 120f;
+        public const float VisibleDistance = 120f;
+
+        /// <summary>
+        /// How far the captain can see, in squares. Mirrors the server's
+        /// <c>RangeRules.ViewDistanceSquares</c>: the fog must clear exactly as far as the
+        /// server is willing to tell this client about, or the sea past the subscription
+        /// draws as open water with nothing in it.
+        /// </summary>
+        /// <remarks>
+        /// This read 110 as a mirror of a <c>WorldRules.VisionRadius</c> that no longer
+        /// exists; 110 was world units, which is eleven squares, and the constant kept the
+        /// number after the unit went away. It has been an orphan pointing at a deleted
+        /// server rule ever since.
+        /// </remarks>
+        public const float VisionRadius = 60f;
 
         public static int VisibleShipLimit(SeaPresentationPlatform platform) => platform switch
         {
@@ -36,26 +40,9 @@ namespace Sea.Client
             _ => SeaPresentationPlatform.Other,
         };
 
-        public static SeaPresentationLevel LevelFor(float distance, bool isRelevantEndpoint)
-        {
-            if (isRelevantEndpoint && distance > DistantDistance)
-            {
-                return SeaPresentationLevel.Distant;
-            }
+        public static bool IsVisible(float distance, bool isRelevantEndpoint) =>
+            isRelevantEndpoint || distance <= VisibleDistance;
 
-            if (distance <= NearDistance)
-            {
-                return SeaPresentationLevel.Near;
-            }
-
-            if (distance <= MediumDistance)
-            {
-                return SeaPresentationLevel.Medium;
-            }
-
-            return distance <= DistantDistance
-                ? SeaPresentationLevel.Distant
-                : SeaPresentationLevel.Hidden;
-        }
+        public static bool IsInVision(float distance) => distance <= VisionRadius;
     }
 }

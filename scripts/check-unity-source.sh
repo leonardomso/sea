@@ -13,7 +13,8 @@ test -f "$unity_root/Assets/Domain/SeaConnectionRecoveryPolicy.cs"
 test -f "$unity_root/Assets/Domain/SeaCommandResultText.cs"
 test -f "$unity_root/Assets/Networking/SeaAuthTokenStore.cs"
 test -f "$unity_root/Assets/Presentation/SeaGameController.cs"
-test -f "$unity_root/Assets/Domain/SeaShipMotion.cs"
+test -f "$unity_root/Assets/Domain/SeaSnapshotClock.cs"
+test -f "$unity_root/Assets/Domain/SeaMotionTimeline.cs"
 test -f "$unity_root/Assets/Presentation/SeaShipVisualFactory.cs"
 test -f "$unity_root/Assets/Presentation/SeaShipFeedback.cs"
 test -f "$unity_root/Assets/Presentation/SeaWorldGeometryFactory.cs"
@@ -32,9 +33,12 @@ test -f "$unity_root/Assets/Domain/SeaKeyedBoundedPool.cs"
 test -f "$unity_root/Assets/Editor/SeaOwnedAssetEditorLifecycle.cs"
 test -f "$unity_root/Assets/Editor/SeaOwnedAssetValidator.cs"
 test -f "$unity_root/Assets/Domain/SeaChartCoordinates.cs"
+test -f "$unity_root/Assets/Domain/SeaFireRepeatRules.cs"
+test -f "$unity_root/Assets/Domain/SeaFocusTargetSet.cs"
 test -f "$unity_root/Assets/Presentation/SeaChartCameraController.cs"
 test -f "$unity_root/Assets/Input/SeaInputController.cs"
 test -f "$unity_root/Assets/UI/SeaHudController.cs"
+test -f "$unity_root/Assets/UI/SeaHudSnapshotReader.cs"
 test -f "$unity_root/Assets/Domain/SeaHudViewModel.cs"
 test -f "$unity_root/Assets/Domain/SeaTacticalPresentationRules.cs"
 test -f "$unity_root/Assets/Domain/SeaRuntimeValidationRules.cs"
@@ -55,32 +59,44 @@ grep -q '^  activeInputHandler: 1$' "$unity_root/ProjectSettings/ProjectSettings
 grep -q '^using System.Collections;$' "$project_root/packages/spacetimedb-unity/src/SpacetimeDBClient.cs"
 grep -q 'DbConnection\.Builder' "$unity_root/Assets/Networking/SeaConnectionController.cs"
 grep -q 'Reducers\.IssueShipCommand' "$unity_root/Assets/Networking/SeaConnectionController.cs"
-grep -q 'new ShipCommand\.SetCourse' "$unity_root/Assets/Presentation/SeaGameController.cs"
-grep -q 'new ShipCommand\.FireBroadside' "$unity_root/Assets/Presentation/SeaGameController.cs"
-grep -q 'new ShipCommand\.ActivateAbility' "$unity_root/Assets/Presentation/SeaGameController.cs"
-grep -q 'new ShipCommand\.StartRepair' "$unity_root/Assets/Presentation/SeaGameController.cs"
-grep -q 'new ShipCommand\.StartBoarding' "$unity_root/Assets/Presentation/SeaGameController.cs"
+# Every ShipCommand variant the module publishes must be issued by runtime client code. The
+# variant list comes from the generated bindings, so a new or renamed command fails here.
+ship_commands="$(sed -n 's/^ *[A-Za-z]*Command \([A-Za-z]*\),\{0,1\}$/\1/p' "$unity_root/Assets/Generated/SpacetimeDB/Types/ShipCommand.g.cs")"
+if [ -z "$ship_commands" ]; then
+  echo "No ShipCommand variants found in the generated bindings." >&2
+  exit 1
+fi
+for command in $ship_commands; do
+  if ! grep -R -q --include='*.cs' --exclude-dir=Generated --exclude-dir=Tests "new ShipCommand\.$command" "$unity_root/Assets"; then
+    echo "Runtime Unity code never issues ShipCommand.$command." >&2
+    exit 1
+  fi
+done
 if grep -R -q --include='*.cs' -E 'Reducers\.(SetCourse|StopCourse|SelectTarget|ClearTarget|SetAmmo|FireBroadside|ActivateAbility|StartRepair|StartBoarding|CancelRepair|CancelBoarding|MoveTo)' \
   "$unity_root/Assets/Networking" "$unity_root/Assets/Presentation"; then
   echo "Runtime Unity code must use IssueShipCommand for gameplay." >&2
   exit 1
 fi
 grep -q 'FindActionMap("Gameplay"' "$unity_root/Assets/Input/SeaInputController.cs"
-grep -q 'name="port-broadside"' "$unity_root/Assets/UI/SeaHud.uxml"
+grep -q 'name="fire-control"' "$unity_root/Assets/UI/SeaHud.uxml"
+# Section 1.2 instruments: the racks are counted, and the wind is drawn rather than read.
+grep -q 'name="magazine-dots"' "$unity_root/Assets/UI/SeaHud.uxml"
+grep -q 'name="wind-arrow"' "$unity_root/Assets/UI/SeaHud.uxml"
+# The chart rulers count the squares of the map, so both edges carry twenty slots.
+for square in $(seq 0 19); do
+  grep -q "name=\"top-coordinate-$square\"" "$unity_root/Assets/UI/SeaHud.uxml"
+  grep -q "name=\"left-coordinate-$square\"" "$unity_root/Assets/UI/SeaHud.uxml"
+done
 
 if grep -R -q --include='*.cs' 'SubscribeToAllTables' \
   "$unity_root/Assets/Networking" "$unity_root/Assets/Presentation"; then
   echo "Runtime Unity code must use scoped subscriptions." >&2
   exit 1
 fi
-grep -q 'command_result_event WHERE owner' \
-  "$unity_root/Assets/Domain/SeaSubscriptionPlan.cs"
-grep -q 'world_object WHERE is_active = true AND' \
-  "$unity_root/Assets/Domain/SeaSubscriptionPlan.cs"
-
 if grep -q '\.Iter()' \
   "$unity_root"/Assets/Presentation/SeaWorldView*.cs \
-  "$unity_root/Assets/UI/SeaHudController.cs"; then
+  "$unity_root/Assets/UI/SeaHudController.cs" \
+  "$unity_root/Assets/UI/SeaHudSnapshotReader.cs"; then
   echo "World presentation and HUD updates must use row callbacks, not table iteration." >&2
   exit 1
 fi

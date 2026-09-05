@@ -12,6 +12,11 @@ namespace Sea.Client
                 SeaChartCoordinates.MapMaximum,
                 Mathf.Clamp01(normalizedPosition.x)),
             0f,
+            // This answers in WORLD space, so it answers to the minimap camera and not to the
+            // chart. That camera looks straight down, which puts world +z up the screen, so the
+            // top of the minimap -- normalised y of zero -- is the maximum world z. It is the
+            // north edge of the chart because SeaChartCoordinates.ToWorld puts north there; the
+            // lerp does not get to have an opinion about which end of the chart that is.
             Mathf.Lerp(
                 SeaChartCoordinates.MapMaximum,
                 SeaChartCoordinates.MapMinimum,
@@ -34,12 +39,86 @@ namespace Sea.Client
                 1f - (screenPosition.y - miniMapPixelRect.y) / miniMapPixelRect.height));
             return true;
         }
+
+        /// <summary>Ground corners of the chart camera footprint, for the minimap marker.</summary>
+        public static void ViewportCorners(Vector3 center, Vector2 halfExtents, Vector3[] corners)
+        {
+            corners[0] = new Vector3(center.x - halfExtents.x, center.y, center.z - halfExtents.y);
+            corners[1] = new Vector3(center.x + halfExtents.x, center.y, center.z - halfExtents.y);
+            corners[2] = new Vector3(center.x + halfExtents.x, center.y, center.z + halfExtents.y);
+            corners[3] = new Vector3(center.x - halfExtents.x, center.y, center.z + halfExtents.y);
+        }
+
+        /// <summary>
+        /// Converts a UI Toolkit panel rectangle (origin top-left, panel units) into a camera pixel
+        /// rectangle (origin bottom-left, screen pixels).
+        /// </summary>
+        public static Rect ScreenPixelRect(Rect panelBound, float panelHeight, float screenHeight)
+        {
+            var scale = panelHeight > 0f ? screenHeight / panelHeight : 1f;
+            return new Rect(
+                panelBound.x * scale,
+                screenHeight - (panelBound.y + panelBound.height) * scale,
+                panelBound.width * scale,
+                panelBound.height * scale);
+        }
     }
 
+    /// <summary>
+    /// Pure rules for the tilted orthographic ship camera. The visible ground footprint of the
+    /// camera is a rectangle of half-extents (zoom * aspect, zoom / sin(tilt)); the view stays on
+    /// the ship, and is allowed past the map edge only as far as the world still draws water.
+    /// </summary>
     public static class SeaChartCameraRules
     {
-        public const float MinimumZoom = 20f;
-        public const float MaximumZoom = 80f;
+        // A ship camera, not a chart camera. At the default zoom a 16:9 screen shows roughly
+        // 71 by 49 squares of a 400 by 400 map, close enough that sailing reads as motion past
+        // the water instead of a marker creeping over a chart.
+        public const float DefaultZoom = 20f;
+        public const float MinimumZoom = 12f;
+        public const float MaximumZoom = 45f;
+        public const float TiltDegrees = 55f;
+
+        // How far the view may carry past the map edge so the camera can stay centred on a ship
+        // sailing along it. The water and fog planes are built to the same margin, so the
+        // overshoot shows sea rather than void.
+        public const float MapMargin = 40f;
+
+        private const float MapHalfSize =
+            (SeaChartCoordinates.MapMaximum - SeaChartCoordinates.MapMinimum) / 2f;
+
+        private const float ReachHalfSize = MapHalfSize + MapMargin;
+
+        /// <summary>
+        /// The minimap shows exactly the chart, so its orthographic size is half the map. The
+        /// scene builder sets it and the scene test asserts it, both from here: they used to
+        /// carry 200 and 100 as two separate literals, and the committed scene a third, so any
+        /// two of them could disagree with nothing going red.
+        /// </summary>
+        public const float MiniMapOrthographicSize = MapHalfSize;
+
+        /// <summary>How high the minimap camera hangs over the chart.</summary>
+        public const float MiniMapHeight = 180f;
+
+        /// <summary>How high the ship camera rides, and how far back along +z it sits so the
+        /// tilt lands its gaze where it is pointed.</summary>
+        public const float ChartCameraHeight = 70f;
+        public const float ChartCameraSetback = 50f;
+
+        /// <summary>Straight down over the middle of the chart.</summary>
+        public static Vector3 MiniMapCameraPosition() => new(
+            SeaChartCoordinates.MapCentre, MiniMapHeight, SeaChartCoordinates.MapCentre);
+
+        /// <summary>The framing the scene ships with: the middle of the chart, not the origin,
+        /// which is its north-west corner and was the middle only while the map was centred on
+        /// zero.</summary>
+        public static Vector3 ChartCameraStartPosition() => new(
+            SeaChartCoordinates.MapCentre,
+            ChartCameraHeight,
+            SeaChartCoordinates.MapCentre - ChartCameraSetback);
+
+        public static Vector2 ViewHalfExtents(float zoom, float aspect) =>
+            new(zoom * aspect, zoom / Mathf.Sin(TiltDegrees * Mathf.Deg2Rad));
 
         public static float ClampZoom(float zoom) =>
             Mathf.Clamp(zoom, MinimumZoom, MaximumZoom);
@@ -51,10 +130,30 @@ namespace Sea.Client
             float deltaSeconds) =>
             new Vector3(horizontal, 0f, vertical) * unitsPerSecond * deltaSeconds;
 
-        public static Vector3 ClampCenter(Vector3 center) => new(
-            Mathf.Clamp(center.x, SeaChartCoordinates.MapMinimum, SeaChartCoordinates.MapMaximum),
+        public static Vector3 DragDelta(Vector2 screenDelta, float zoom, float pixelHeight)
+        {
+            var extents = ViewHalfExtents(zoom, 1f) * 2f / Mathf.Max(pixelHeight, 1f);
+            return new Vector3(-screenDelta.x * extents.x, 0f, -screenDelta.y * extents.y);
+        }
+
+        public static Vector3 ClampCenter(Vector3 center, Vector2 viewHalfExtents) => new(
+            ClampAxis(center.x, viewHalfExtents.x),
             center.y,
-            Mathf.Clamp(center.z, SeaChartCoordinates.MapMinimum, SeaChartCoordinates.MapMaximum));
+            ClampAxis(center.z, viewHalfExtents.y));
+
+        // The camera follows the ship right up to the map edge, because a ship pinned to the side
+        // of the screen is what made the old chart camera feel like it was not following at all.
+        // It stops only where the view would run past the water the world actually draws.
+        private static float ClampAxis(float value, float halfExtent)
+        {
+            // `reach` is a half-width and is origin-free; the clamp is what had zero baked into
+            // it, from when zero was the middle of the map rather than its north-west corner.
+            var reach = Mathf.Min(MapHalfSize, Mathf.Max(0f, ReachHalfSize - halfExtent));
+            return Mathf.Clamp(
+                value,
+                SeaChartCoordinates.MapCentre - reach,
+                SeaChartCoordinates.MapCentre + reach);
+        }
     }
 
     public sealed class SeaChartCameraController : MonoBehaviour
@@ -66,14 +165,24 @@ namespace Sea.Client
         [SerializeField] private SeaConnectionController connection;
         [SerializeField] private SeaWorldView worldView;
         [SerializeField] private float panSpeed = 45f;
+        [SerializeField] private float panSharpness = 10f;
         [SerializeField] private float zoomSpeed = 8f;
-        [SerializeField] private float followSharpness = 12f;
+        // An exponential follower trails its target by speed / sharpness for as long as the
+        // target keeps moving. At 6 a ship under full sail sat four units behind the centre of
+        // the screen for the whole voyage; at 40 the residue is under a unit, so the camera reads
+        // as locked to the ship while still easing over a respawn or a recenter.
+        [SerializeField] private float followSharpness = 40f;
 
+        private readonly SeaChartFollowState follow = new();
+        private readonly SeaChartPanMomentum panMomentum = new();
+        private SeaMiniMapViewportMarker viewportMarker;
         private Vector2 panInput;
+        private Vector2 dragAnchor;
+        private bool isDragging;
         private bool hasInitialCenter;
-        private bool isFollowingPlayer = true;
 
-        public bool IsFollowingPlayer => isFollowingPlayer;
+        public bool IsFollowingPlayer => follow.IsFollowing;
+        public bool IsGliding => panMomentum.IsGliding;
         public Camera MiniMapCamera => miniMapCamera;
 
         public void Configure(Camera camera, Camera mapCamera = null)
@@ -95,7 +204,8 @@ namespace Sea.Client
             chartCamera ??= Camera.main;
         }
 
-        private void Update()
+        // Runs after the world view has placed the ships so the follow never trails a frame.
+        private void LateUpdate()
         {
             if (chartCamera == null)
             {
@@ -103,29 +213,29 @@ namespace Sea.Client
             }
 
             using var _ = CameraMarker.Auto();
-            if (TryGetPlayerPosition(out var playerPosition))
+            var deltaTime = Time.unscaledDeltaTime;
+            chartCamera.orthographicSize = SeaChartCameraRules.ClampZoom(
+                chartCamera.orthographicSize);
+
+            var hasPlayer = TryGetPlayerPosition(out var playerPosition);
+            if (hasPlayer && !hasInitialCenter)
             {
-                if (!hasInitialCenter)
-                {
-                    CenterOn(playerPosition);
-                    hasInitialCenter = true;
-                }
-                else if (isFollowingPlayer)
-                {
-                    SmoothCenterOn(playerPosition, Time.unscaledDeltaTime);
-                }
+                CenterOn(playerPosition);
+                hasInitialCenter = true;
             }
 
-            if (panInput.sqrMagnitude > 0f)
+            Pan(deltaTime);
+            if (panInput.sqrMagnitude > 0f || isDragging)
             {
-                var zoomScale = chartCamera.orthographicSize / 45f;
-                chartCamera.transform.position += SeaChartCameraRules.PanDelta(
-                    panInput.x,
-                    panInput.y,
-                    panSpeed * zoomScale,
-                    Time.unscaledDeltaTime);
-                KeepChartInBounds();
+                follow.Interrupt();
             }
+
+            if (follow.IsFollowing && hasPlayer)
+            {
+                SmoothCenterOn(playerPosition, deltaTime);
+            }
+
+            UpdateViewportMarker(KeepChartInBounds());
         }
 
         public void SetPanInput(Vector2 value)
@@ -133,9 +243,33 @@ namespace Sea.Client
             panInput = Vector2.ClampMagnitude(value, 1f);
             if (panInput.sqrMagnitude > 0f)
             {
-                isFollowingPlayer = false;
+                follow.Interrupt();
             }
         }
+
+        public void BeginDrag(Vector2 screenPosition)
+        {
+            isDragging = true;
+            dragAnchor = screenPosition;
+            follow.Interrupt();
+        }
+
+        public void DragTo(Vector2 screenPosition)
+        {
+            if (!isDragging || chartCamera == null)
+            {
+                return;
+            }
+
+            chartCamera.transform.position += SeaChartCameraRules.DragDelta(
+                screenPosition - dragAnchor,
+                chartCamera.orthographicSize,
+                chartCamera.pixelHeight);
+            dragAnchor = screenPosition;
+            KeepChartInBounds();
+        }
+
+        public void EndDrag() => isDragging = false;
 
         public void Zoom(float scroll)
         {
@@ -143,12 +277,16 @@ namespace Sea.Client
             {
                 chartCamera.orthographicSize = SeaChartCameraRules.ClampZoom(
                     chartCamera.orthographicSize - scroll * zoomSpeed);
+                KeepChartInBounds();
             }
         }
 
+        // The glide has to end with the detour, or the follow spends the next frames
+        // pulling the chart back against velocity the player already let go of.
         public void Recenter()
         {
-            isFollowingPlayer = true;
+            panMomentum.Stop();
+            follow.Resume();
         }
 
         public void ShowChartPosition(Vector3 worldPosition)
@@ -158,9 +296,9 @@ namespace Sea.Client
                 return;
             }
 
-            isFollowingPlayer = false;
+            panMomentum.Stop();
+            follow.Interrupt();
             CenterOn(worldPosition);
-            KeepChartInBounds();
         }
 
         public bool TryShowMiniMapPosition(Vector2 screenPosition)
@@ -175,6 +313,33 @@ namespace Sea.Client
 
             ShowChartPosition(worldPosition);
             return true;
+        }
+
+        // Public so a test can drive the glide with an explicit delta; LateUpdate is at
+        // the mercy of whatever unscaled frame time the editor happens to report.
+        public void Pan(float deltaTime)
+        {
+            if (chartCamera == null)
+            {
+                return;
+            }
+
+            var zoomScale = chartCamera.orthographicSize / SeaChartCameraRules.DefaultZoom;
+            var velocity = panMomentum.Advance(
+                panInput,
+                panSpeed * zoomScale,
+                panSharpness,
+                deltaTime);
+            if (velocity == Vector2.zero)
+            {
+                return;
+            }
+
+            chartCamera.transform.position += SeaChartCameraRules.PanDelta(
+                velocity.x,
+                velocity.y,
+                1f,
+                deltaTime);
         }
 
         private bool TryGetPlayerShip(out Ship ship)
@@ -206,7 +371,7 @@ namespace Sea.Client
 
             if (TryGetPlayerShip(out var ship))
             {
-                position = new Vector3(ship.PositionX, 0f, ship.PositionY);
+                position = SeaChartCoordinates.ToWorld(ship.PositionX, ship.PositionY, 0f);
                 return true;
             }
 
@@ -227,27 +392,41 @@ namespace Sea.Client
             chartCamera.transform.position += new Vector3(delta.x, 0f, delta.z) * interpolation;
         }
 
-        private Vector3 CenterDelta(Vector3 target)
-        {
-            target = SeaChartCameraRules.ClampCenter(target);
-            var plane = new Plane(Vector3.up, Vector3.zero);
-            var centerRay = chartCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f));
-            if (!plane.Raycast(centerRay, out var distance))
-            {
-                return Vector3.zero;
-            }
+        private Vector3 CenterDelta(Vector3 target) =>
+            SeaChartCameraRules.ClampCenter(target, ViewHalfExtents()) - CurrentChartCenter();
 
-            var currentCenter = centerRay.GetPoint(distance);
-            return target - currentCenter;
-        }
+        private Vector2 ViewHalfExtents() =>
+            SeaChartCameraRules.ViewHalfExtents(chartCamera.orthographicSize, chartCamera.aspect);
 
-        private void KeepChartInBounds()
+        // Returns the chart center after the correction so the frame needs no second raycast.
+        private Vector3 KeepChartInBounds()
         {
-            var delta = CenterDelta(CurrentChartCenter());
+            var center = CurrentChartCenter();
+            var delta = SeaChartCameraRules.ClampCenter(center, ViewHalfExtents()) - center;
             if (delta.sqrMagnitude > 0.0001f)
             {
-                chartCamera.transform.position += new Vector3(delta.x, 0f, delta.z);
+                var correction = new Vector3(delta.x, 0f, delta.z);
+                chartCamera.transform.position += correction;
+                center += correction;
             }
+
+            return center;
+        }
+
+        private void UpdateViewportMarker(Vector3 chartCenter)
+        {
+            if (miniMapCamera == null)
+            {
+                return;
+            }
+
+            if (viewportMarker == null)
+            {
+                viewportMarker = new SeaMiniMapViewportMarker();
+                chartCamera.cullingMask &= ~(1 << SeaMiniMapViewportMarker.MiniMapOnlyLayer);
+            }
+
+            viewportMarker.Show(chartCenter, ViewHalfExtents());
         }
 
         private Vector3 CurrentChartCenter()

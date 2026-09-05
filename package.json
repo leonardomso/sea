@@ -38,13 +38,14 @@
     "server:build": "./scripts/spacetime.sh build --module-path server/spacetimedb/spacetimedb",
     "server:generate:csharp": "./scripts/spacetime.sh generate --yes --lang csharp --module-path server/spacetimedb/spacetimedb --out-dir apps/game-unity/Assets/Generated/SpacetimeDB",
     "server:generate:typescript": "./scripts/spacetime.sh generate --yes --lang typescript --module-path server/spacetimedb/spacetimedb --out-dir packages/contracts/src/generated",
-    "server:publish": "./scripts/spacetime.sh publish sea-local --server http://host.docker.internal:3000 --yes --module-path server/spacetimedb/spacetimedb",
+    "server:publish": "./scripts/publish-spacetime.sh",
     "server:reset": "./scripts/reset-spacetime.sh",
     "server:test": "./scripts/dotnet.sh test server/spacetimedb/tests/Sea.Server.Tests.csproj",
     "server:test:integration": "./scripts/test-server-integration.sh",
     "server:test:coverage": "./scripts/test-server-coverage.sh",
     "server:test:mutation": "./scripts/test-server-mutation.sh",
     "tools:build": "./scripts/dotnet.sh build tests/performance/Sea.Server.Benchmarks/Sea.Server.Benchmarks.csproj && ./scripts/dotnet10.sh build tests/load/Sea.LoadTests/Sea.LoadTests.csproj",
+    "perf:domain": "./scripts/dotnet.sh run -c Release --project tests/performance/Sea.Server.Benchmarks/Sea.Server.Benchmarks.csproj -- --filter '*' --inProcess --job short",
     "quality:csharp-size": "./scripts/check-csharp-size.sh",
     "quality:bindings": "./scripts/check-generated-bindings.sh",
     "quality:dotnet-format": "./scripts/check-dotnet-format.sh",
@@ -53,10 +54,12 @@
     "quality:test-foundation": "./scripts/check-test-foundation.sh",
     "quality:server-simulation": "./scripts/check-server-simulation.sh",
     "quality:scripts": "node --test scripts/lib/*.test.mjs",
-    "ci:fast": "pnpm infra:config && pnpm quality:pins && pnpm admin:check && pnpm --filter @sea/contracts run check && pnpm quality:csharp-size && pnpm quality:unity-architecture && pnpm quality:test-foundation && pnpm quality:server-simulation && pnpm unity:source-check && pnpm admin:build",
-    "check": "pnpm infra:config && pnpm quality:pins && pnpm admin:check && pnpm --filter @sea/contracts run check && pnpm quality:csharp-size && pnpm quality:unity-architecture && pnpm quality:test-foundation && pnpm quality:server-simulation && pnpm quality:scripts && pnpm quality:dotnet-format",
+    "content:generate": "node scripts/generate-content.mjs",
+    "quality:content": "./scripts/check-generated-content.sh",
+    "ci:fast": "pnpm infra:config && pnpm quality:pins && pnpm admin:check && pnpm --filter @sea/contracts run check && pnpm quality:csharp-size && pnpm quality:unity-architecture && pnpm quality:test-foundation && pnpm quality:server-simulation && pnpm unity:source-check && pnpm admin:build && pnpm quality:scripts && pnpm quality:content",
+    "check": "pnpm infra:config && pnpm quality:pins && pnpm admin:check && pnpm --filter @sea/contracts run check && pnpm quality:csharp-size && pnpm quality:unity-architecture && pnpm quality:test-foundation && pnpm quality:server-simulation && pnpm quality:scripts && pnpm quality:dotnet-format && pnpm quality:content",
     "verify": "pnpm check && pnpm server:build && pnpm quality:bindings && pnpm server:test && pnpm server:test:integration && pnpm tools:build && pnpm admin:build && pnpm admin:test:health && pnpm runtime:test:identity && pnpm runtime:test:world && pnpm runtime:test:idle && pnpm unity:verify",
-    "verify:full": "pnpm verify"
+    "verify:full": "pnpm verify && pnpm runtime:test:shared-world && pnpm runtime:test:scale-isolated"
   },
   "devDependencies": {
     "playwright-core": "1.61.0"

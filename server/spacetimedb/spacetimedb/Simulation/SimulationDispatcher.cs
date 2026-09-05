@@ -8,70 +8,65 @@ public static partial class Module
         ReducerContext ctx,
         SimulationDispatchTimer timer)
     {
-        if (ctx.Db.SimulationClock.Id.Find(1) is not SimulationClock clock ||
-            ctx.Db.SimulationDispatchState.Id.Find(1) is not SimulationDispatchState state)
+        if (ctx.Db.SimulationClock.Id.Find(1) is not SimulationClock clock)
         {
             return;
         }
 
-        switch (state.Slot)
+        if (!SimulationWorkRules.ShouldAdvanceWorld(clock.ConnectedPlayerCount))
         {
-            case 0:
-                RunWorldDueSlot(ctx, ref clock, ref state);
-                break;
-            default:
-                RunMovementSlot(ctx, clock, ref state);
-                break;
+            return;
         }
 
-        state.Slot = (byte)((state.Slot + 1) %
-            SimulationWorkRules.DispatchSlotsPerWorldTick);
-        ctx.Db.SimulationDispatchState.Id.Update(state);
-    }
-
-    private static void RunWorldDueSlot(
-        ReducerContext ctx,
-        ref SimulationClock clock,
-        ref SimulationDispatchState state)
-    {
+        Profile("start");
         clock.Tick++;
         ctx.Db.SimulationClock.Id.Update(clock);
-        UpdateWind(ctx, clock.Tick);
+        var tick = clock.Tick;
+        UpdateTimeBand(ctx, tick);
+        Profile("wind");
 
+        var world = new TickWorld(tick);
+        // Reloads run before anything stages a ship so the sweep and the tick buffer never
+        // write the same row twice.
+        ProcessReloads(ctx, tick);
+        Profile("reloads");
         var ships = new ShipTickBuffer();
-        ProcessStatuses(ctx, ships, clock.Tick);
-        ProcessChannels(ctx, ships, clock.Tick);
-        ResolveVolleys(ctx, ships, clock.Tick);
-        ProcessRespawns(ctx, ships, clock.Tick);
-        ships.Flush(ctx);
-        ProcessLootExpiry(ctx, clock.Tick);
-
-        state.NpcAccumulator += (byte)(
-            SimulationWorkRules.NpcReducerRateHz * SimulationWorkRules.NpcShardCount);
-        if (state.NpcAccumulator >= WorldRules.TickRateHz)
+        ProcessEffects(ctx, ships, tick);
+        Profile("effects");
+        ProcessChannels(ctx, ships, tick);
+        Profile("channels");
+        RetireVolleys(ctx, tick);
+        Profile("volleys");
+        ProcessRespawns(ctx, world, ships, tick);
+        Profile("respawns");
+        if (SimulationWorkRules.ShouldApplyHazards(tick))
         {
-            state.NpcAccumulator -= (byte)WorldRules.TickRateHz;
-            var work = ProcessNpcDecisions(ctx, clock.Tick, state.NpcShard);
-            RecordNpcTelemetry(ctx, clock.Tick, work);
-            state.NpcShard = (byte)((state.NpcShard + 1) %
-                SimulationWorkRules.NpcShardCount);
+            ApplyEnvironmentalHazards(ctx, ships, tick);
+        }
+
+        Profile("hazards");
+        ships.Flush(ctx, tick);
+        Profile("flush");
+        ProcessLootExpiry(ctx, tick);
+        Profile("loot");
+
+        // Decisions run before movement so a course issued this tick sails this tick.
+        RecordNpcTelemetry(ctx, tick, ProcessNpcDecisions(ctx, world));
+        Profile("npc");
+        RecordMovementTelemetry(ctx, tick, AdvanceMovingShips(ctx, world));
+        Profile("movement");
+
+        // The borders come after movement because a hull has to have finished sailing before
+        // anyone can say which one she is lying against.
+        ProcessBorderBands(ctx, world);
+        Profile("borders");
+    }
+
+    private static void Profile(string phase)
+    {
+        if (SimulationWorkRules.ProfileDispatchPhases)
+        {
+            Log.Info($"PROF {phase}");
         }
     }
-
-    private static void RunMovementSlot(
-        ReducerContext ctx,
-        SimulationClock clock,
-        ref SimulationDispatchState state)
-    {
-        var work = AdvanceMovingShips(
-            ctx,
-            new SpatialTickCache(),
-            clock.Tick,
-            state.MovementShard,
-            clock.ActiveLootCount > 0);
-        RecordMovementTelemetry(ctx, clock.Tick, work);
-        state.MovementShard = (byte)((state.MovementShard + 1) %
-            SimulationWorkRules.MovementShardCount);
-    }
-
 }

@@ -50,20 +50,32 @@ namespace SpacetimeDB.Types
     public sealed class NpcAiCols
     {
         public global::SpacetimeDB.Col<NpcAi, ulong> ShipEntityId { get; }
-        public global::SpacetimeDB.Col<NpcAi, string> ArchetypeId { get; }
         public global::SpacetimeDB.Col<NpcAi, bool> IsActive { get; }
         public global::SpacetimeDB.Col<NpcAi, byte> DecisionShard { get; }
         public global::SpacetimeDB.Col<NpcAi, ulong> NextDecisionTick { get; }
         public global::SpacetimeDB.Col<NpcAi, ulong> HomeSeed { get; }
+        public global::SpacetimeDB.Col<NpcAi, float> HomeX { get; }
+        public global::SpacetimeDB.Col<NpcAi, float> HomeY { get; }
+        public global::SpacetimeDB.Col<NpcAi, ulong> LeaderEntityId { get; }
+        public global::SpacetimeDB.Col<NpcAi, bool> HasCalledHelp { get; }
+        public global::SpacetimeDB.Col<NpcAi, ulong> NextReplanTick { get; }
+        public global::SpacetimeDB.Col<NpcAi, ulong> NextWanderTick { get; }
+        public global::SpacetimeDB.Col<NpcAi, ulong> WanderIndex { get; }
 
         public NpcAiCols(string tableName)
         {
             ShipEntityId = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "ship_entity_id");
-            ArchetypeId = new global::SpacetimeDB.Col<NpcAi, string>(tableName, "archetype_id");
             IsActive = new global::SpacetimeDB.Col<NpcAi, bool>(tableName, "is_active");
             DecisionShard = new global::SpacetimeDB.Col<NpcAi, byte>(tableName, "decision_shard");
             NextDecisionTick = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "next_decision_tick");
             HomeSeed = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "home_seed");
+            HomeX = new global::SpacetimeDB.Col<NpcAi, float>(tableName, "home_x");
+            HomeY = new global::SpacetimeDB.Col<NpcAi, float>(tableName, "home_y");
+            LeaderEntityId = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "leader_entity_id");
+            HasCalledHelp = new global::SpacetimeDB.Col<NpcAi, bool>(tableName, "has_called_help");
+            NextReplanTick = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "next_replan_tick");
+            NextWanderTick = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "next_wander_tick");
+            WanderIndex = new global::SpacetimeDB.Col<NpcAi, ulong>(tableName, "wander_index");
         }
     }
 

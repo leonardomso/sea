@@ -16,55 +16,61 @@ namespace Sea.Tests
                 Is.LessThan(SeaRuntimeValidationRules.CombatObservationRange));
         }
 
-        [TestCase(0f, -10f, 0f, "port")]
-        [TestCase(0f, 10f, 0f, "starboard")]
-        [TestCase(90f, 0f, 10f, "port")]
-        [TestCase(90f, 0f, -10f, "starboard")]
-        public void Combat_probe_selects_the_broadside_that_can_fire_now(
-            float headingDegrees,
-            float targetX,
-            float targetY,
-            string expectedSide)
-        {
-            var decision = SeaRuntimeValidationRules.PlanBroadside(
-                Vector2.zero,
-                headingDegrees,
-                new Vector2(targetX, targetY));
-
-            Assert.That(decision.CanFire, Is.True);
-            Assert.That(decision.Side, Is.EqualTo(expectedSide));
-        }
-
-        [TestCase(0f, 0f, 10f, 90f)]
-        [TestCase(0f, 0f, -10f, -90f)]
-        [TestCase(180f, 0f, 10f, 90f)]
-        public void Combat_probe_turns_by_the_shortest_route_when_neither_side_can_fire(
+        // Chart bearings: north is the smaller y, so a target ten squares up the chart is
+        // due north and answers 0. The first and last cases read the other way round, which
+        // is the compass this file's own SeededStormPosition never used.
+        [TestCase(0f, 0f, 10f, 180f)]
+        [TestCase(0f, 10f, 0f, 90f)]
+        [TestCase(90f, -10f, 0f, -90f)]
+        [TestCase(180f, 0f, -10f, 0f)]
+        public void Combat_probe_steers_at_the_target_because_every_gun_bears(
             float headingDegrees,
             float targetX,
             float targetY,
             float expectedHeading)
         {
-            var decision = SeaRuntimeValidationRules.PlanBroadside(
+            var decision = SeaRuntimeValidationRules.PlanFire(
                 Vector2.zero,
                 headingDegrees,
                 new Vector2(targetX, targetY));
 
-            Assert.That(decision.CanFire, Is.False);
+            Assert.That(decision.CanFire, Is.True);
             Assert.That(
                 Mathf.DeltaAngle(expectedHeading, decision.DesiredHeadingDegrees),
                 Is.EqualTo(0f).Within(0.001f));
         }
 
         [Test]
-        public void Combat_probe_uses_a_safe_arc_inside_the_authoritative_boundary()
+        public void Combat_probe_will_not_fire_on_a_target_sitting_on_its_own_hull()
         {
-            var inside = SeaRuntimeValidationRules.PlanBroadside(
-                Vector2.zero,
-                0f,
-                new Vector2(-1f, 1f));
+            // No bearing exists, so there is no heading to hold and nothing to shoot at; the
+            // probe keeps the heading it already had rather than snapping to zero.
+            var decision = SeaRuntimeValidationRules.PlanFire(Vector2.zero, 37f, Vector2.zero);
 
-            Assert.That(inside.CanFire, Is.False,
-                "A 45-degree offset must not race the server's 50-degree boundary.");
+            Assert.That(decision.CanFire, Is.False);
+            Assert.That(decision.DesiredHeadingDegrees, Is.EqualTo(37f));
+        }
+
+        [Test]
+        public void The_runtime_probe_reads_a_launched_volley_from_the_magazine()
+        {
+            // Milestone 1 hands out unlimited ammunition, so a spent round is no longer evidence.
+            Assert.That(
+                SeaRuntimeValidationRules.HasLaunchedVolley(3, 2, 100, 100),
+                Is.True,
+                "a ready volley left the racks");
+            Assert.That(
+                SeaRuntimeValidationRules.HasLaunchedVolley(3, 3, 100, 140),
+                Is.True,
+                "the module stamped a newer shot tick");
+            Assert.That(
+                SeaRuntimeValidationRules.HasLaunchedVolley(3, 3, 100, 100),
+                Is.False,
+                "nothing on the hull moved, so nothing was fired");
+            Assert.That(
+                SeaRuntimeValidationRules.HasLaunchedVolley(2, 3, 100, 100),
+                Is.False,
+                "a reload finishing is not a shot");
         }
 
         [TestCase(0, 100, true)]
@@ -109,8 +115,8 @@ namespace Sea.Tests
                     250,
                     center);
                 Assert.That(
-                    SeaPresentationRules.LevelFor(position.magnitude, false),
-                    Is.Not.EqualTo(SeaPresentationLevel.Hidden),
+                    SeaPresentationRules.IsVisible(position.magnitude, false),
+                    Is.True,
                     $"Synthetic ship {index} was outside the presentation radius.");
             }
         }
@@ -159,6 +165,26 @@ namespace Sea.Tests
 
             evidence.idleBytesPerFrame = 1;
             Assert.That(evidence.MeetsBudget(250), Is.False);
+        }
+
+        [Test]
+        public void Presentation_benchmark_sails_without_a_live_world()
+        {
+            Assert.That(
+                SeaRuntimeValidationRules.ShouldConnectOnStart(
+                    connectOnStart: true,
+                    presentationPerformanceRequested: false),
+                Is.True);
+            Assert.That(
+                SeaRuntimeValidationRules.ShouldConnectOnStart(
+                    connectOnStart: true,
+                    presentationPerformanceRequested: true),
+                Is.False);
+            Assert.That(
+                SeaRuntimeValidationRules.ShouldConnectOnStart(
+                    connectOnStart: false,
+                    presentationPerformanceRequested: false),
+                Is.False);
         }
 
         [Test]
@@ -221,10 +247,12 @@ namespace Sea.Tests
             var initial = SeaRuntimeValidationRules.SeededStormPosition(worldTick: 0);
             var afterTenSeconds = SeaRuntimeValidationRules.SeededStormPosition(worldTick: 100);
 
-            Assert.That(initial.x, Is.EqualTo(-72f).Within(0.001f));
-            Assert.That(initial.y, Is.EqualTo(3f).Within(0.001f));
-            Assert.That(afterTenSeconds.x, Is.EqualTo(-57.734f).Within(0.001f));
-            Assert.That(afterTenSeconds.y, Is.EqualTo(7.635f).Within(0.001f));
+            // Where maps.json stands the storm, and where a bearing of 72 carries it in ten
+            // seconds at half a square a second: east and a little north, so y falls.
+            Assert.That(initial.x, Is.EqualTo(56f).Within(0.001f));
+            Assert.That(initial.y, Is.EqualTo(206f).Within(0.001f));
+            Assert.That(afterTenSeconds.x, Is.EqualTo(60.755f).Within(0.001f));
+            Assert.That(afterTenSeconds.y, Is.EqualTo(204.455f).Within(0.001f));
         }
 
         [TestCase(true, true, 0, true)]

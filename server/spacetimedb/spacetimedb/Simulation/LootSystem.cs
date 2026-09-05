@@ -3,51 +3,55 @@ using SpacetimeDB;
 
 public static partial class Module
 {
-    private static void ProcessLootClaimsForMovingShip(
+    private static void ProcessLootClaims(
         ReducerContext ctx,
-        ShipKinematics kinematics)
+        ShipKinematics mover,
+        ulong tick)
     {
-        if (ctx.Db.Ship.EntityId.Find(kinematics.EntityId) is not Ship ship)
-        {
-            return;
-        }
-
-        CopyKinematics(kinematics, ref ship);
-        ProcessLootClaimsForMovingShip(ctx, ship);
-    }
-
-    private static void ProcessLootClaimsForMovingShip(ReducerContext ctx, Ship movingShip)
-    {
-        if (!movingShip.IsActive || !movingShip.IsAlive ||
-            movingShip.FactionCode != (byte)FactionCode.Player)
+        if (mover.FactionCode != (byte)FactionCode.Player)
         {
             return;
         }
 
         var bounds = SpatialRules.BoundsAround(
-            movingShip.PositionX,
-            movingShip.PositionY,
+            mover.PositionX,
+            mover.PositionY,
             LootRules.PickupRadius);
         foreach (var loot in ActiveLootIn(ctx, bounds))
         {
-            TryClaimLoot(ctx, loot, movingShip);
+            TryClaimLoot(ctx, loot, mover, tick);
         }
     }
 
-    private static void TryClaimLoot(ReducerContext ctx, Loot loot, Ship movingShip)
+    // The mover sails inside this tick, so its own position comes from the shard it is
+    // being integrated in; every rival is read from the thin ShipMovement row, which
+    // republishes every tick, rather than the fat Ship row, which only follows on a
+    // chunk change and would hand the loot to whoever happens to look closest in a
+    // position they left minutes ago.
+    private static void TryClaimLoot(
+        ReducerContext ctx,
+        Loot loot,
+        ShipKinematics mover,
+        ulong tick)
     {
-        var selection = new LootClaimSelection(0, float.PositiveInfinity);
+        var selection = LootRules.Consider(
+            new LootClaimSelection(0, float.PositiveInfinity),
+            new LootCandidate(
+                mover.EntityId,
+                CombatRules.Distance(
+                    loot.PositionX,
+                    loot.PositionY,
+                    mover.PositionX,
+                    mover.PositionY)));
         var bounds = SpatialRules.BoundsAround(
             loot.PositionX,
             loot.PositionY,
             LootRules.PickupRadius);
-        foreach (var ship in ActiveShipsIn(ctx, bounds))
+        foreach (var movement in ActiveMovementIn(ctx, bounds))
         {
-            var candidateShip = ship.EntityId == movingShip.EntityId
-                ? movingShip
-                : ship;
-            if (candidateShip.FactionCode != (byte)FactionCode.Player ||
-                !candidateShip.IsAlive)
+            if (movement.EntityId == mover.EntityId ||
+                movement.FactionCode != (byte)FactionCode.Player ||
+                !movement.IsAlive)
             {
                 continue;
             }
@@ -55,12 +59,12 @@ public static partial class Module
             selection = LootRules.Consider(
                 selection,
                 new LootCandidate(
-                    candidateShip.EntityId,
+                    movement.EntityId,
                     CombatRules.Distance(
-                    loot.PositionX,
-                    loot.PositionY,
-                    candidateShip.PositionX,
-                    candidateShip.PositionY)));
+                        loot.PositionX,
+                        loot.PositionY,
+                        movement.PositionX,
+                        movement.PositionY)));
         }
 
         var claimant = selection.EntityId;
@@ -70,16 +74,17 @@ public static partial class Module
         }
 
         ctx.Db.Loot.LootId.Delete(loot.LootId);
-        ChangeActiveLootCount(ctx, -1);
-        AwardProgression(
-            ctx,
-            claimant,
-            experience: loot.Quantity / 4,
-            gold: string.Equals(loot.LootType, "gold", StringComparison.Ordinal)
-                ? loot.Quantity
-                : 0);
+        var award = LootRules.GoldFromClaim(loot.LootType, loot.Quantity);
+        if (award > 0)
+        {
+            var ownership = ctx.Db.PlayerOwnership.ShipEntityId.Find(claimant) ??
+                throw new InvalidOperationException("Loot claimant ownership is missing.");
+            AwardGold(ctx, ownership.Owner, award);
+        }
+
         AppendEvent(
             ctx,
+            tick,
             claimant,
             "loot_claimed",
             $"loot_id={loot.LootId},type={loot.LootType},quantity={loot.Quantity}");
@@ -87,11 +92,8 @@ public static partial class Module
 
     private static void SpawnNpcLoot(ReducerContext ctx, Ship npc, ulong tick)
     {
-        if (ctx.Db.NpcDefinition.ArchetypeCode.Find(npc.ArchetypeCode) is not
-            NpcDefinition definition)
-        {
+        var definition = Catalog.NpcByArchetypeCode[npc.ArchetypeCode] ??
             throw new InvalidOperationException("Sunk NPC definition is missing.");
-        }
 
         ctx.Db.Loot.Insert(new Loot
         {
@@ -100,26 +102,10 @@ public static partial class Module
             ChunkX = npc.ChunkX,
             ChunkY = npc.ChunkY,
             LootType = "salvage",
-            Quantity = Math.Max(4u, definition.GoldReward / 10),
+            Quantity = Math.Max(4u, Catalog.NpcStatsByArchetypeCode[npc.ArchetypeCode].GoldReward / 10),
             IsActive = true,
             ExpiresAtTick = tick + LootRules.LifetimeTicks,
             ClaimedByEntityId = 0,
         });
-        ChangeActiveLootCount(ctx, 1);
-    }
-
-    private static void ChangeActiveLootCount(ReducerContext ctx, int delta)
-    {
-        var clock = ctx.Db.SimulationClock.Id.Find(1) ??
-            throw new InvalidOperationException("Simulation clock is missing.");
-        if (delta < 0 && clock.ActiveLootCount == 0)
-        {
-            throw new InvalidOperationException("Active loot count cannot be negative.");
-        }
-
-        clock.ActiveLootCount = delta < 0
-            ? clock.ActiveLootCount - 1
-            : checked(clock.ActiveLootCount + 1);
-        ctx.Db.SimulationClock.Id.Update(clock);
     }
 }

@@ -1,0 +1,64 @@
+{
+  "npcs": [
+    {
+      "id": "skiff",
+      "code": "Skiff",
+      "name": "Skiff",
+      "kind": "ship",
+      "tier": 1,
+      "mapId": 1,
+      "family": "sea_dogs",
+      "behavior": "aggressive",
+      "desiredRangeSquares": 14.4,
+      "preferredAmmunition": "Round",
+      "experienceReward": 25,
+      "fleesWhenCrippled": true,
+      "callsForHelp": false
+    },
+    {
+      "id": "reef_crab",
+      "code": "ReefCrab",
+      "name": "Reef Crab",
+      "kind": "monster",
+      "tier": 1,
+      "mapId": 1,
+      "family": "reef_beasts",
+      "behavior": "aggressive",
+      "desiredRangeSquares": 1.5,
+      "preferredAmmunition": "Round",
+      "experienceReward": 25,
+      "fleesWhenCrippled": false,
+      "callsForHelp": false
+    },
+    {
+      "id": "fancy",
+      "code": "Fancy",
+      "name": "Fancy",
+      "kind": "ship",
+      "tier": 2,
+      "mapId": 1,
+      "family": "sea_dogs",
+      "behavior": "aggressive",
+      "desiredRangeSquares": 14.4,
+      "preferredAmmunition": "Chain",
+      "experienceReward": 60,
+      "fleesWhenCrippled": true,
+      "callsForHelp": false
+    },
+    {
+      "id": "red_mary",
+      "code": "RedMary",
+      "name": "Red Mary",
+      "kind": "ship",
+      "tier": 4,
+      "mapId": 1,
+      "family": "sea_dogs",
+      "behavior": "aggressive",
+      "desiredRangeSquares": 14.4,
+      "preferredAmmunition": "Incendiary",
+      "experienceReward": 600,
+      "fleesWhenCrippled": false,
+      "callsForHelp": true
+    }
+  ]
+}

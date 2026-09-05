@@ -6,7 +6,6 @@ namespace Sea.Client
     {
         private void Awake()
         {
-            QualitySettings.vSyncCount = 0;
             Apply(Application.isFocused);
         }
 
@@ -17,6 +16,9 @@ namespace Sea.Client
 
         private static void Apply(bool hasFocus)
         {
+            // Both are set together: a target without its sync, or the other way about,
+            // is the judder this exists to remove. See SeaFrameRatePolicy for why.
+            QualitySettings.vSyncCount = SeaFrameRatePolicy.VerticalSyncForFocus(hasFocus);
             Application.targetFrameRate = SeaFrameRatePolicy.TargetForFocus(hasFocus);
         }
     }

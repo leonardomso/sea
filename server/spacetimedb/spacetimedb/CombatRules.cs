@@ -1,9 +1,13 @@
 namespace Sea.Server;
 
-public enum BroadsideSide
+/// <summary>
+/// Which of a hull's three armour faces a volley lands on. Math section 5.1.
+/// </summary>
+public enum ArmorFace
 {
-    Port,
-    Starboard,
+    Front,
+    Sides,
+    Back,
 }
 
 public enum FireRejection
@@ -12,55 +16,85 @@ public enum FireRejection
     SourceSunk,
     NoTarget,
     TargetSunk,
-    CannonsDisabled,
-    NoAmmunition,
     Reloading,
+    FiringTooFast,
     OutOfRange,
-    OutsideArc,
+    InPort,
+    SpawnShielded,
     Busy,
-}
 
-public enum WeakPoint
-{
-    Hull,
-    Sails,
-    Cannons,
+    /// <summary>A boarding party is on deck and the guns are spiked (SEA_3 4.3).</summary>
+    Silenced,
 }
-
-public enum VolleyResolution
-{
-    Waiting,
-    Impact,
-    Harmless,
-}
-
-public readonly record struct CombatDamage(uint Hull, uint Sails, uint Cannons, uint Crew);
 
 public readonly record struct FireRequest
 {
     public bool SourceAlive { get; init; }
     public bool TargetSelected { get; init; }
     public bool TargetAlive { get; init; }
-    public uint Cannons { get; init; }
-    public uint Ammunition { get; init; }
+
+    /// <summary>Port Lowell blocks firing: the harbour is a truce, not a firing step.</summary>
+    public bool InPort { get; init; }
+
+    /// <summary>
+    /// The spawn shield cannot be spent on the first shot. It stops a ship being hit, so letting
+    /// it shoot would make the ten seconds after a respawn a free volley.
+    /// </summary>
+    public bool SpawnShielded { get; init; }
+
+    public bool IsChanneling { get; init; }
+
+    /// <summary>
+    /// The tick her guns come back after a boarding. Zero for a ship nobody has grappled, which
+    /// is every ship most of the time, so the check costs one comparison against a field the row
+    /// already carries.
+    /// </summary>
+    public ulong SilencedUntilTick { get; init; }
+
+    public uint ReadyVolleys { get; init; }
     public ulong CurrentTick { get; init; }
-    public ulong ReadyAtTick { get; init; }
+
+    /// <summary>
+    /// False until the ship has ever fired, because tick 0 is the world's construction tick and
+    /// cannot be told apart from "no shot yet" by <see cref="LastShotTick"/> alone.
+    /// </summary>
+    public bool HasFired { get; init; }
+
+    public ulong LastShotTick { get; init; }
     public float SourceX { get; init; }
     public float SourceY { get; init; }
-    public float SourceHeadingDegrees { get; init; }
     public float TargetX { get; init; }
     public float TargetY { get; init; }
-    public float MaximumRange { get; init; }
-    public float RangeMultiplier { get; init; }
-    public BroadsideSide Side { get; init; }
-    public bool IsChanneling { get; init; }
+
+    /// <summary>
+    /// How far this volley reaches, in squares: the gun's rating with her fit's
+    /// bonus capped in and the shot's own multiplier already applied.
+    /// </summary>
+    public float RangeSquares { get; init; }
 }
+
+/// <summary>One ship's magazine: volleys ready to fire, and progress towards the next one.</summary>
+public readonly record struct MagazineState(uint ReadyVolleys, uint ReloadProgressTicks);
 
 public static class CombatRules
 {
-    public const float BroadsideArcDegrees = 100f;
-    public const float WeakPointMultiplier = 1.25f;
-    public const float ProjectileSpeed = 40f;
+    /// <summary>1.0 s at the play tick rate. The floor between two volleys, magazine or not.</summary>
+    public const uint FireIntervalTicks = WorldRules.TickRateHz;
+
+    /// <summary>15 s without firing or being fired at refills the magazine outright.</summary>
+    public const uint IdleRefillTicks = WorldRules.TickRateHz * 15;
+
+    /// <summary>
+    /// How long a fired volley stays subscribable. Damage already landed; the row exists only so
+    /// a client that is mid-frame still has something to draw the shot from.
+    /// </summary>
+    public const uint VolleyDisplayTicks = WorldRules.TickRateHz;
+
+    /// <summary>Math section 5.1: within 45 degrees of the target's heading is its bow.</summary>
+    public const float FrontArcHalfDegrees = 45f;
+
+    /// <summary>Math section 5.1: 135 degrees or more off the heading is its stern.</summary>
+    public const float BackArcThresholdDegrees = 135f;
 
     public static FireRejection ValidateFire(FireRequest request)
     {
@@ -79,146 +113,161 @@ public static class CombatRules
             return FireRejection.TargetSunk;
         }
 
-        if (request.Cannons == 0)
-        {
-            return FireRejection.CannonsDisabled;
-        }
-
         if (request.IsChanneling)
         {
             return FireRejection.Busy;
         }
 
-        if (request.Ammunition == 0)
+        if (request.InPort)
         {
-            return FireRejection.NoAmmunition;
+            return FireRejection.InPort;
         }
 
-        if (request.CurrentTick < request.ReadyAtTick)
+        if (request.SpawnShielded)
+        {
+            return FireRejection.SpawnShielded;
+        }
+
+        if (request.CurrentTick < request.SilencedUntilTick)
+        {
+            return FireRejection.Silenced;
+        }
+
+        if (request.ReadyVolleys == 0)
         {
             return FireRejection.Reloading;
         }
 
-        var range = request.MaximumRange * request.RangeMultiplier;
-        if (!WorldRules.IsInRange(
+        if (request.HasFired &&
+            request.CurrentTick < checked(request.LastShotTick + FireIntervalTicks))
+        {
+            return FireRejection.FiringTooFast;
+        }
+
+        // SEA_5 7.2's half-square of grace, which only RangeRules knows about. The
+        // check used to be a bare circle test and lost every shot at the edge.
+        return RangeRules.IsWithinRange(
+            GeometryRules.Distance(
                 request.SourceX,
                 request.SourceY,
                 request.TargetX,
-                request.TargetY,
-                range))
-        {
-            return FireRejection.OutOfRange;
-        }
-
-        return IsInsideBroadsideArc(
-            request.SourceX,
-            request.SourceY,
-            request.SourceHeadingDegrees,
-            request.TargetX,
-            request.TargetY,
-            request.Side)
+                request.TargetY),
+            request.RangeSquares)
             ? FireRejection.None
-            : FireRejection.OutsideArc;
+            : FireRejection.OutOfRange;
     }
 
-    public static bool IsInsideBroadsideArc(
-        float sourceX,
-        float sourceY,
-        float headingDegrees,
-        float targetX,
-        float targetY,
-        BroadsideSide side)
+    /// <summary>
+    /// Which face a shot lands on, from the angle between the defender's heading and the
+    /// bearing to whoever fired. There is no firing arc left in the model, so this is the only
+    /// geometry a volley needs beyond range.
+    /// </summary>
+    /// <remarks>
+    /// <paramref name="bearingToAttackerDegrees"/> must come from
+    /// <see cref="GeometryRules.HeadingTo"/> (defender position to attacker position, the
+    /// defender's own heading as the fallback), because a defender's heading is a compass
+    /// bearing and the two have to be measured off the same compass. This method takes the
+    /// bearing rather than the two positions so a boundary case can be pinned exactly: placing a
+    /// fixture with <see cref="GeometryRules.Direction"/> and reading the bearing back through
+    /// <see cref="GeometryRules.HeadingTo"/> cannot land on 45.01 degrees, because
+    /// <c>Direction</c> reads a table sampled every quarter degree.
+    /// A shot from inside the defender's own hull has no bearing; <c>HeadingTo</c> falls back to
+    /// her own heading there, so a volley at nought range lands on the bow.
+    /// </remarks>
+    public static ArmorFace FaceHit(float defenderHeadingDegrees, float bearingToAttackerDegrees)
     {
-        var targetBearing = MathF.Atan2(targetX - sourceX, targetY - sourceY) *
-            (180f / MathF.PI);
-        var broadsideCenter = headingDegrees + (side == BroadsideSide.Port ? -90f : 90f);
-        return MathF.Abs(NormalizeSignedAngle(targetBearing - broadsideCenter)) <=
-            BroadsideArcDegrees * 0.5f + 0.0001f;
-    }
+        var offset = MathF.Abs(GeometryRules.NormalizeSignedAngle(
+            bearingToAttackerDegrees - defenderHeadingDegrees));
 
-    public static ulong VolleyTravelTicks(float distance, float projectileSpeed, uint tickRateHz)
-    {
-        if (!float.IsFinite(distance) || distance < 0f)
+        if (offset <= FrontArcHalfDegrees)
         {
-            throw new ArgumentOutOfRangeException(nameof(distance));
+            return ArmorFace.Front;
         }
 
-        if (!float.IsFinite(projectileSpeed) || projectileSpeed <= 0f)
+        return offset >= BackArcThresholdDegrees ? ArmorFace.Back : ArmorFace.Sides;
+    }
+
+    public static float ArmorOn(ArmorFace face, float front, float sides, float back) => face switch
+    {
+        ArmorFace.Front => front,
+        ArmorFace.Back => back,
+        _ => sides,
+    };
+
+    /// <summary>
+    /// Math section 5.2: <c>floor(VolleyDamage x ammo multiplier x (1 - armor_face))</c>. The
+    /// armour face is already capped when the stat sheet is derived; clamping again here keeps a
+    /// hand-written NPC row from ever healing its target.
+    /// </summary>
+    public static uint ResolveDamage(uint volleyDamage, float ammoDamageMultiplier, float armorFace)
+    {
+        if (!float.IsFinite(ammoDamageMultiplier) || ammoDamageMultiplier < 0f)
         {
-            throw new ArgumentOutOfRangeException(nameof(projectileSpeed));
+            throw new ArgumentOutOfRangeException(nameof(ammoDamageMultiplier));
         }
 
-        ArgumentOutOfRangeException.ThrowIfZero(tickRateHz);
-
-        return Math.Max(1ul, (ulong)MathF.Ceiling(distance / projectileSpeed * tickRateHz));
+        var armor = float.IsFinite(armorFace) ? Math.Clamp(armorFace, 0f, 1f) : 0f;
+        var damage = volleyDamage * ammoDamageMultiplier * (1f - armor);
+        return damage <= 0f ? 0u : (uint)MathF.Floor(damage);
     }
 
-    public static VolleyResolution ResolveVolley(
-        ulong impactAtTick,
-        ulong currentTick,
-        bool targetAlive)
+    /// <summary>
+    /// Advances one ship's magazine by a single tick. Reload runs whether or not the ship fired,
+    /// so a magazine that is already full still snaps a volley back the tick after one leaves.
+    /// <paramref name="reloadTicks"/> arrives already scaled by any reload effect.
+    /// </summary>
+    public static MagazineState Advance(
+        MagazineState state,
+        uint magazineSize,
+        uint reloadTicks,
+        ulong ticksSinceCombat)
     {
-        if (currentTick < impactAtTick)
+        ArgumentOutOfRangeException.ThrowIfZero(magazineSize);
+        ArgumentOutOfRangeException.ThrowIfZero(reloadTicks);
+
+        if (ticksSinceCombat >= IdleRefillTicks)
         {
-            return VolleyResolution.Waiting;
+            return new MagazineState(magazineSize, 0);
         }
 
-        return targetAlive ? VolleyResolution.Impact : VolleyResolution.Harmless;
+        if (state.ReadyVolleys >= magazineSize)
+        {
+            return new MagazineState(magazineSize, 0);
+        }
+
+        var progress = checked(state.ReloadProgressTicks + 1);
+        return progress < reloadTicks
+            ? new MagazineState(state.ReadyVolleys, progress)
+            : new MagazineState(checked(state.ReadyVolleys + 1), 0);
     }
 
-    public static CombatDamage DamageProfile(
-        AmmunitionContent ammunition,
-        WeakPoint weakPoint,
-        uint cannonPower,
-        uint cannons,
-        uint maxCannons)
+    /// <summary>Spends one ready volley and restarts the reload behind it.</summary>
+    public static MagazineState Spend(MagazineState state)
     {
-        ArgumentNullException.ThrowIfNull(ammunition);
-        ArgumentOutOfRangeException.ThrowIfZero(maxCannons);
+        if (state.ReadyVolleys == 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(state),
+                state.ReadyVolleys,
+                "An empty magazine has no volley to spend.");
+        }
 
-        var effectiveness = (float)cannonPower / WorldRules.InitialCannonDamage *
-            cannons / maxCannons;
-        return new CombatDamage(
-            ScaleDamage(ammunition.HullDamage, effectiveness,
-                weakPoint == WeakPoint.Hull ? WeakPointMultiplier : 1f),
-            ScaleDamage(ammunition.SailDamage, effectiveness,
-                weakPoint == WeakPoint.Sails ? WeakPointMultiplier : 1f),
-            ScaleDamage(ammunition.CannonDamage, effectiveness,
-                weakPoint == WeakPoint.Cannons ? WeakPointMultiplier : 1f),
-            ScaleDamage(ammunition.CrewDamage, effectiveness, 1f));
+        return new MagazineState(state.ReadyVolleys - 1, 0);
     }
 
-    public static bool TryParseWeakPoint(string? value, out WeakPoint weakPoint) =>
-        Enum.TryParse(value, ignoreCase: true, out weakPoint) &&
-        Enum.IsDefined(weakPoint);
+    /// <summary>
+    /// The stat sheet carries reload in milliseconds because that is the number the dock shows;
+    /// the tick loop counts ticks. Rounding up keeps a fast cannon from reloading in no time at
+    /// all, which <see cref="Advance"/> rejects outright.
+    /// </summary>
+    public static uint ReloadTicks(uint reloadMilliseconds) => (uint)Math.Max(
+        1UL,
+        ((ulong)reloadMilliseconds * WorldRules.TickRateHz + 999UL) / 1000UL);
 
     public static float Distance(float sourceX, float sourceY, float targetX, float targetY)
     {
         var deltaX = targetX - sourceX;
         var deltaY = targetY - sourceY;
         return MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
-    }
-
-    private static uint ScaleDamage(uint value, float effectiveness, float aimMultiplier)
-    {
-        if (value == 0 || effectiveness <= 0f)
-        {
-            return 0;
-        }
-
-        return checked((uint)MathF.Round(
-            value * effectiveness * aimMultiplier,
-            MidpointRounding.AwayFromZero));
-    }
-
-    private static float NormalizeSignedAngle(float degrees)
-    {
-        var normalized = (degrees + 180f) % 360f;
-        if (normalized < 0f)
-        {
-            normalized += 360f;
-        }
-
-        return normalized - 180f;
     }
 }

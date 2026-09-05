@@ -15,6 +15,10 @@ namespace SpacetimeDB.Types
     {
         [DataMember(Name = "entity_id")]
         public ulong EntityId;
+        [DataMember(Name = "faction_code")]
+        public byte FactionCode;
+        [DataMember(Name = "map_id")]
+        public byte MapId;
         [DataMember(Name = "position_x")]
         public float PositionX;
         [DataMember(Name = "position_y")]
@@ -23,34 +27,34 @@ namespace SpacetimeDB.Types
         public float DestinationX;
         [DataMember(Name = "destination_y")]
         public float DestinationY;
-        [DataMember(Name = "waypoint_x")]
-        public float WaypointX;
-        [DataMember(Name = "waypoint_y")]
-        public float WaypointY;
-        [DataMember(Name = "has_waypoint")]
-        public bool HasWaypoint;
-        [DataMember(Name = "desired_heading_degrees")]
-        public float DesiredHeadingDegrees;
+        [DataMember(Name = "route_index")]
+        public int RouteIndex;
+        [DataMember(Name = "has_route")]
+        public bool HasRoute;
         [DataMember(Name = "heading_degrees")]
         public float HeadingDegrees;
         [DataMember(Name = "speed")]
         public float Speed;
-        [DataMember(Name = "tactical_maximum_speed")]
-        public float TacticalMaximumSpeed;
-        [DataMember(Name = "tactical_acceleration")]
-        public float TacticalAcceleration;
-        [DataMember(Name = "deceleration")]
-        public float Deceleration;
-        [DataMember(Name = "tactical_turn_rate_degrees")]
-        public float TacticalTurnRateDegrees;
-        [DataMember(Name = "effective_maximum_speed")]
-        public float EffectiveMaximumSpeed;
-        [DataMember(Name = "has_course")]
-        public bool HasCourse;
-        [DataMember(Name = "is_stopping")]
-        public bool IsStopping;
+        [DataMember(Name = "base_speed_squares_per_second")]
+        public float BaseSpeedSquaresPerSecond;
+        [DataMember(Name = "hull")]
+        public uint Hull;
+        [DataMember(Name = "max_hull")]
+        public uint MaxHull;
+        [DataMember(Name = "movement_status_mask")]
+        public byte MovementStatusMask;
+        [DataMember(Name = "movement_slow_magnitude")]
+        public float MovementSlowMagnitude;
+        [DataMember(Name = "environment_exposure_code")]
+        public byte EnvironmentExposureCode;
+        [DataMember(Name = "is_repairing")]
+        public bool IsRepairing;
+        [DataMember(Name = "effective_speed_squares_per_second")]
+        public float EffectiveSpeedSquaresPerSecond;
         [DataMember(Name = "is_moving")]
         public bool IsMoving;
+        [DataMember(Name = "is_in_port")]
+        public bool IsInPort;
         [DataMember(Name = "current_velocity_x")]
         public float CurrentVelocityX;
         [DataMember(Name = "current_velocity_y")]
@@ -59,56 +63,84 @@ namespace SpacetimeDB.Types
         public int ChunkX;
         [DataMember(Name = "chunk_y")]
         public int ChunkY;
+        [DataMember(Name = "published_tick")]
+        public ulong PublishedTick;
+        [DataMember(Name = "published_position_x")]
+        public float PublishedPositionX;
+        [DataMember(Name = "published_position_y")]
+        public float PublishedPositionY;
+        [DataMember(Name = "published_heading_degrees")]
+        public float PublishedHeadingDegrees;
+        [DataMember(Name = "published_velocity_x")]
+        public float PublishedVelocityX;
+        [DataMember(Name = "published_velocity_y")]
+        public float PublishedVelocityY;
 
         public ShipKinematics(
             ulong EntityId,
+            byte FactionCode,
+            byte MapId,
             float PositionX,
             float PositionY,
             float DestinationX,
             float DestinationY,
-            float WaypointX,
-            float WaypointY,
-            bool HasWaypoint,
-            float DesiredHeadingDegrees,
+            int RouteIndex,
+            bool HasRoute,
             float HeadingDegrees,
             float Speed,
-            float TacticalMaximumSpeed,
-            float TacticalAcceleration,
-            float Deceleration,
-            float TacticalTurnRateDegrees,
-            float EffectiveMaximumSpeed,
-            bool HasCourse,
-            bool IsStopping,
+            float BaseSpeedSquaresPerSecond,
+            uint Hull,
+            uint MaxHull,
+            byte MovementStatusMask,
+            float MovementSlowMagnitude,
+            byte EnvironmentExposureCode,
+            bool IsRepairing,
+            float EffectiveSpeedSquaresPerSecond,
             bool IsMoving,
+            bool IsInPort,
             float CurrentVelocityX,
             float CurrentVelocityY,
             int ChunkX,
-            int ChunkY
+            int ChunkY,
+            ulong PublishedTick,
+            float PublishedPositionX,
+            float PublishedPositionY,
+            float PublishedHeadingDegrees,
+            float PublishedVelocityX,
+            float PublishedVelocityY
         )
         {
             this.EntityId = EntityId;
+            this.FactionCode = FactionCode;
+            this.MapId = MapId;
             this.PositionX = PositionX;
             this.PositionY = PositionY;
             this.DestinationX = DestinationX;
             this.DestinationY = DestinationY;
-            this.WaypointX = WaypointX;
-            this.WaypointY = WaypointY;
-            this.HasWaypoint = HasWaypoint;
-            this.DesiredHeadingDegrees = DesiredHeadingDegrees;
+            this.RouteIndex = RouteIndex;
+            this.HasRoute = HasRoute;
             this.HeadingDegrees = HeadingDegrees;
             this.Speed = Speed;
-            this.TacticalMaximumSpeed = TacticalMaximumSpeed;
-            this.TacticalAcceleration = TacticalAcceleration;
-            this.Deceleration = Deceleration;
-            this.TacticalTurnRateDegrees = TacticalTurnRateDegrees;
-            this.EffectiveMaximumSpeed = EffectiveMaximumSpeed;
-            this.HasCourse = HasCourse;
-            this.IsStopping = IsStopping;
+            this.BaseSpeedSquaresPerSecond = BaseSpeedSquaresPerSecond;
+            this.Hull = Hull;
+            this.MaxHull = MaxHull;
+            this.MovementStatusMask = MovementStatusMask;
+            this.MovementSlowMagnitude = MovementSlowMagnitude;
+            this.EnvironmentExposureCode = EnvironmentExposureCode;
+            this.IsRepairing = IsRepairing;
+            this.EffectiveSpeedSquaresPerSecond = EffectiveSpeedSquaresPerSecond;
             this.IsMoving = IsMoving;
+            this.IsInPort = IsInPort;
             this.CurrentVelocityX = CurrentVelocityX;
             this.CurrentVelocityY = CurrentVelocityY;
             this.ChunkX = ChunkX;
             this.ChunkY = ChunkY;
+            this.PublishedTick = PublishedTick;
+            this.PublishedPositionX = PublishedPositionX;
+            this.PublishedPositionY = PublishedPositionY;
+            this.PublishedHeadingDegrees = PublishedHeadingDegrees;
+            this.PublishedVelocityX = PublishedVelocityX;
+            this.PublishedVelocityY = PublishedVelocityY;
         }
 
         public ShipKinematics()

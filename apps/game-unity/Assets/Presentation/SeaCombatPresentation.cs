@@ -114,16 +114,13 @@ namespace Sea.Client
             var root = new GameObject("Pooled Cannon Volley");
             for (var index = 0; index < 5; index++)
             {
-                var cannonball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                cannonball.name = $"Cannonball {index + 1}";
+                var cannonball = SeaPrimitive.Create(PrimitiveType.Sphere, $"Cannonball {index + 1}", material);
                 cannonball.transform.SetParent(root.transform, false);
                 cannonball.transform.localPosition = new Vector3(
                     (index - 2) * 0.18f,
                     (index % 2) * 0.10f,
                     -index * 0.16f);
                 cannonball.transform.localScale = Vector3.one * 0.24f;
-                cannonball.GetComponent<Renderer>().sharedMaterial = material;
-                DestroyObject(cannonball.GetComponent<Collider>());
 
                 var trail = cannonball.AddComponent<TrailRenderer>();
                 trail.sharedMaterial = material;
@@ -173,23 +170,6 @@ namespace Sea.Client
             cache.Capture();
             return effect;
         }
-
-        private static void DestroyObject(UnityEngine.Object value)
-        {
-            if (value == null)
-            {
-                return;
-            }
-
-            if (Application.isPlaying)
-            {
-                UnityEngine.Object.Destroy(value);
-            }
-            else
-            {
-                UnityEngine.Object.DestroyImmediate(value);
-            }
-        }
     }
 
     public sealed class SeaCombatPresenter
@@ -201,6 +181,7 @@ namespace Sea.Client
         private readonly Dictionary<ulong, ActiveVolley> active = new();
         private readonly List<ulong> stale = new();
         private readonly List<TimedEffect> effects = new();
+        private readonly SeaHitQueue hits = new();
         private readonly AudioClip cannonClip;
         private readonly AudioClip impactClip;
         private int frame;
@@ -240,12 +221,18 @@ namespace Sea.Client
             if (!active.TryGetValue(volley.VolleyId, out var presentation))
             {
                 var visual = volleyPool.Acquire();
+                var muzzle = SeaVolleyPresentationRules.LocalMuzzleOffset(
+                    source != null ? source.eulerAngles.y : 0f,
+                    new Vector2(volley.OriginX, volley.OriginY),
+                    new Vector2(volley.TargetX, volley.TargetY),
+                    2.6f);
                 var origin = source != null
-                    ? source.TransformPoint(SeaVolleyPresentationRules.LocalSideOffset(volley.Side, 2.6f) + Vector3.up * 0.7f)
-                    : new Vector3(volley.OriginX, SeaWorldView.WaterSurfaceHeight + 0.8f, volley.OriginY);
+                    ? source.TransformPoint(muzzle + Vector3.up * 0.7f)
+                    : SeaChartCoordinates.ToWorld(
+                        volley.OriginX, volley.OriginY, SeaWorldView.WaterSurfaceHeight + 0.8f);
                 presentation = new ActiveVolley(visual, origin, target, frame);
                 active.Add(volley.VolleyId, presentation);
-                sourceFeedback?.PlayBroadside(volley.Side);
+                sourceFeedback?.PlayVolley(muzzle.x / 2.6f);
                 PlayEffect(origin, cannonClip, new Color(0.28f, 0.24f, 0.20f, 1f));
             }
 
@@ -254,7 +241,7 @@ namespace Sea.Client
                 : presentation.LastPosition;
             var progress = SeaVolleyPresentationRules.Progress(
                 volley.FiredAtTick,
-                volley.ImpactAtTick,
+                volley.ExpiresAtTick,
                 currentTick);
             var position = Vector3.Lerp(presentation.Origin, destination, progress);
             position.y += Mathf.Sin(progress * Mathf.PI) * 1.7f;
@@ -266,6 +253,60 @@ namespace Sea.Client
 
             active[volley.VolleyId] = presentation.WithFrame(frame, position, target);
         }
+
+        /// <summary>
+        /// A volley landed. The server applied the damage when the trigger was pulled, so all
+        /// that is left here is to wait out the ball's flight and then show where it went home
+        /// (SEA_5 §8.3).
+        /// </summary>
+        public void Hit(
+            ulong attackerEntityId,
+            ulong defenderEntityId,
+            uint damage,
+            bool isCritical,
+            byte face,
+            float flightSeconds)
+        {
+            hits.Enqueue(new SeaPendingHit(
+                attackerEntityId,
+                defenderEntityId,
+                damage,
+                isCritical,
+                face,
+                SeaHitPresentationRules.ImpactAt(Time.unscaledTime, flightSeconds)));
+        }
+
+        /// <summary>
+        /// Shows every hit whose ball has arrived. A critical burns hotter and throws the hull
+        /// about harder, which is the only place a captain can read one until there is somewhere
+        /// to draw the number itself.
+        /// </summary>
+        public void DrainHits(Func<ulong, Transform> findShip, Func<ulong, SeaShipFeedback> findFeedback)
+        {
+            var now = Time.unscaledTime;
+            while (hits.TryTakeDue(now, out var hit))
+            {
+                var defender = findShip?.Invoke(hit.DefenderEntityId);
+                if (defender != null)
+                {
+                    PlayEffect(
+                        defender.position + Vector3.up * 0.55f,
+                        impactClip,
+                        hit.IsCritical
+                            ? new Color(1f, 0.72f, 0.32f, 1f)
+                            : new Color(0.72f, 0.91f, 1f, 1f));
+                }
+
+                findFeedback?.Invoke(hit.DefenderEntityId)
+                    ?.PlayHit(SeaHitPresentationRules.Shock(hit.Damage, hit.IsCritical));
+            }
+        }
+
+        /// <summary>
+        /// Whether a ball is still on its way to this hull. A sinking waits on this, so a hull
+        /// never goes down before the shot that sank her arrives (SEA_5 §8.3).
+        /// </summary>
+        public bool HasShotInTheAir(ulong defenderEntityId) => hits.HasShotInTheAir(defenderEntityId);
 
         public void EndFrame()
         {
@@ -305,6 +346,7 @@ namespace Sea.Client
 
             effects.Clear();
             stale.Clear();
+            hits.Clear();
         }
 
         private void PlayEffect(Vector3 position, AudioClip clip, Color color)

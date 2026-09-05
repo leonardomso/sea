@@ -3,17 +3,33 @@ using SpacetimeDB;
 
 public static partial class Module
 {
+    /// <summary>
+    /// A click is blocked only when it lands inland and there is no water within the
+    /// nudge radius SEA_5 4.1.2 allows. Water the click cannot be sailed to -- the far
+    /// side of an isthmus, a lake -- is not blocked here; that is the search's answer,
+    /// and it is NO_PATH. "Inland" is read off the chart her draught puts her on, so a
+    /// fourth rate clicking on a shoal is nudged to deep water instead of accepted and
+    /// then refused by a search that cannot cross it.
+    /// </summary>
     private static CommandSnapshot CourseSnapshot(
-        ReducerContext ctx,
+        Ship ship,
         CommandSnapshot snapshot,
-        SetCourseCommand command) => snapshot with
+        SetCourseCommand command)
+    {
+        var (clampedX, clampedY) = WorldRules.ClampToMap(command.X, command.Y);
+        return snapshot with
         {
             CourseValid = WorldRules.IsValidMove(command.X, command.Y),
-            DestinationBlocked = NavigationRules.IsDestinationBlocked(
-                command.X,
-                command.Y,
-                NavigationBlockers(ctx)),
+            DestinationBlocked = !ContentCatalog
+                .RoutingMaskFor(ship.MapId, ship.HullTier, ship.PositionX, ship.PositionY)
+                .TryNearestWater(
+                    clampedX,
+                    clampedY,
+                    PathfindingRules.NudgeSearchSquares,
+                    out _,
+                    out _),
         };
+    }
 
     private static CommandSnapshot TargetSnapshot(
         ReducerContext ctx,
@@ -24,79 +40,45 @@ public static partial class Module
         var target = ctx.Db.Ship.EntityId.Find(command.EntityId);
         var valid = target is Ship selectedShip &&
             selectedShip.IsActive && selectedShip.IsAlive;
-        var isFriendly = valid && target!.Value.FactionCode == source.FactionCode;
-        var concealed = false;
-        if (valid)
-        {
-            var world = ctx.Db.SimulationClock.Id.Find(1) ??
-                throw new InvalidOperationException("Simulation clock is missing.");
-            var selected = target!.Value;
-            concealed = !TacticalRules.CanAcquireTarget(
-                HasActiveStatus(ctx, selected.EntityId, StatusCode.SmokeScreen, world.Tick),
-                CombatRules.Distance(
-                    source.PositionX,
-                    source.PositionY,
-                    selected.PositionX,
-                    selected.PositionY));
-        }
 
         return snapshot with
         {
             TargetValid = valid,
-            TargetIsFriendly = isFriendly,
-            TargetConcealed = concealed,
+            TargetIsFriendly = valid && target!.Value.FactionCode == source.FactionCode,
         };
     }
 
+    /// <summary>
+    /// Ammunition is unlimited in Milestone 1, so selecting it only has to name a profile the
+    /// catalog knows. Stock, and a gold cost per volley, arrive with the Milestone 2 economy.
+    /// </summary>
     private static CommandSnapshot AmmoSnapshot(
-        ReducerContext ctx,
-        Ship ship,
         CommandSnapshot snapshot,
-        SetAmmoCommand command)
-    {
-        var known = !string.IsNullOrWhiteSpace(command.AmmoId) &&
-            ctx.Db.AmmoDefinition.AmmoId.Find(command.AmmoId) is not null;
-        return snapshot with
+        SetAmmoCommand command) => snapshot with
         {
-            AmmoKnown = known,
-            AmmoOwned = known && FindInventory(ctx, ship.EntityId, command.AmmoId) is not null,
+            AmmoKnown = HotPathCodes.TryParseAmmunition(command.AmmoId, out var code) &&
+                Catalog.AmmunitionByCode[(byte)code] is not null,
         };
-    }
 
     private static CommandSnapshot FireSnapshot(
         ReducerContext ctx,
+        TickWorld world,
         Ship source,
-        CommandSnapshot snapshot,
-        FireBroadsideCommand command)
+        CommandSnapshot snapshot)
     {
-        if (!Enum.TryParse<BroadsideSide>(command.Side, ignoreCase: true, out var side) ||
-            !Enum.IsDefined(side))
-        {
-            return snapshot with
-            {
-                ArgumentRejection = CommandRejectionCode.InvalidBroadsideSide,
-            };
-        }
-
-        if (!CombatRules.TryParseWeakPoint(command.WeakPoint, out _))
-        {
-            return snapshot with
-            {
-                ArgumentRejection = CommandRejectionCode.InvalidWeakPoint,
-            };
-        }
-
-        var world = ctx.Db.SimulationClock.Id.Find(1) ??
-            throw new InvalidOperationException("Simulation clock is missing.");
-        var ammunition = ctx.Db.AmmoDefinition.AmmoCode.Find(source.SelectedAmmoCode) ??
+        var ammunition = Catalog.AmmunitionByCode[source.SelectedAmmoCode] ??
             throw new InvalidOperationException("Selected ammunition definition is missing.");
         var target = source.TargetEntityId == 0
             ? default(Ship?)
             : ctx.Db.Ship.EntityId.Find(source.TargetEntityId);
-        var inventory = FindInventory(ctx, source.EntityId, ammunition.AmmoId);
-        var readyAtTick = side == BroadsideSide.Port
-            ? source.NextPortFireTick
-            : source.NextStarboardFireTick;
+        if (target is Ship tracked)
+        {
+            // The fat row republishes only on a chunk change, so admission has to range the target
+            // against its live position or a ship that sailed out would still be shootable.
+            HydrateTrackedKinematics(ctx, world, ref tracked);
+            target = tracked;
+        }
+
         return snapshot with
         {
             TargetIsFriendly = target is Ship selectedTarget &&
@@ -106,97 +88,92 @@ public static partial class Module
                 SourceAlive = source.IsActive && source.IsAlive,
                 TargetSelected = target.HasValue,
                 TargetAlive = target is Ship selected && selected.IsActive && selected.IsAlive,
-                Cannons = source.Cannons,
-                Ammunition = inventory?.Quantity ?? 0,
+                InPort = source.IsInPort,
+                SpawnShielded = world.Tick < source.InvulnerableUntilTick,
+                SilencedUntilTick = source.WeaponSilencedUntilTick,
+                IsChanneling = snapshot.HasActiveChannel,
+                ReadyVolleys = source.ReadyVolleys,
                 CurrentTick = world.Tick,
-                ReadyAtTick = readyAtTick,
+                HasFired = source.HasFired,
+                LastShotTick = source.LastShotTick,
                 SourceX = source.PositionX,
                 SourceY = source.PositionY,
-                SourceHeadingDegrees = source.HeadingDegrees,
                 TargetX = target?.PositionX ?? source.PositionX,
                 TargetY = target?.PositionY ?? source.PositionY,
-                MaximumRange = WorldRules.CannonRange,
-                RangeMultiplier = ammunition.RangeMultiplier,
-                Side = side,
-                IsChanneling = snapshot.HasActiveChannel,
+                RangeSquares = RangeRules.DebuffedSquares(source.RangeSquares, ammunition.RangePenaltySquares),
             }),
         };
     }
 
-    private static CommandSnapshot AbilitySnapshot(
+    /// <summary>
+    /// The channelled repair. It costs no kit, so what admission has to know is whether the crew
+    /// is free, whether the last repair has finished paying for itself, and whether the hull is
+    /// short of anything at all.
+    /// </summary>
+    private static CommandSnapshot RepairSnapshot(
+        ReducerContext ctx,
+        TickWorld world,
+        Ship ship,
+        CommandSnapshot snapshot) => snapshot with
+        {
+            RepairRejection = RepairRules.ValidateRepair(BuildRepairRequest(
+                ctx,
+                world,
+                ship,
+                snapshot,
+                CooldownCode.Repair)),
+        };
+
+    /// <summary>
+    /// The kit. It runs on a cooldown of its own and takes no time, so a ship already channelling,
+    /// or already casting off, may still open one.
+    /// </summary>
+    private static CommandSnapshot KitSnapshot(
+        ReducerContext ctx,
+        TickWorld world,
+        Ship ship,
+        CommandSnapshot snapshot) => snapshot with
+        {
+            KitRejection = RepairRules.ValidateKit(BuildRepairRequest(
+                ctx,
+                world,
+                ship,
+                snapshot,
+                CooldownCode.RepairKit)),
+        };
+
+    private static RepairRequest BuildRepairRequest(
+        ReducerContext ctx,
+        TickWorld world,
+        Ship ship,
+        CommandSnapshot snapshot,
+        CooldownCode cooldown)
+    {
+        var kit = FindInventory(ctx, ship.EntityId, "repair_kit");
+        return new RepairRequest(
+            ship.IsActive && ship.IsAlive,
+            !snapshot.HasActiveChannel,
+            FindCooldown(ctx, ship.EntityId, cooldown) is not Cooldown pending ||
+                world.Tick >= pending.ReadyAtTick,
+            kit is Inventory item && item.Quantity > 0,
+            ship.Hull < ship.MaxHull);
+    }
+
+    /// <summary>
+    /// A wreck may only pick a berth the port actually offers, and only while its own respawn is
+    /// still waiting on the answer.
+    /// </summary>
+    private static CommandSnapshot RespawnSnapshot(
         ReducerContext ctx,
         Ship ship,
         CommandSnapshot snapshot,
-        ActivateAbilityCommand command)
-    {
-        var world = ctx.Db.SimulationClock.Id.Find(1) ??
-            throw new InvalidOperationException("Simulation clock is missing.");
-        var knownCode = HotPathCodes.TryParseAbility(command.AbilityId, out var abilityCode);
-        var ability = !knownCode
-            ? default(AbilityDefinition?)
-            : ctx.Db.AbilityDefinition.AbilityId.Find(command.AbilityId);
-        var cooldown = FindCooldown(
-            ctx,
-            ship.EntityId,
-            HotPathCodes.CooldownFor(abilityCode));
-        return snapshot with
+        ChooseRespawnCommand command) => snapshot with
         {
-            AbilityRejection = TacticalRules.ValidateAbility(new AbilityRequest(
-                ship.IsActive && ship.IsAlive,
-                ability is not null,
-                !snapshot.HasActiveChannel,
-                world.Tick,
-                cooldown?.ReadyAtTick ?? 0)),
+            ArgumentRejection = command.OptionCode == (byte)RespawnOptionCode.HomePort
+                ? CommandRejectionCode.None
+                : CommandRejectionCode.NotAvailable,
+            RespawnPending =
+                ctx.Db.RespawnWork.ShipEntityId.Find(ship.EntityId) is RespawnWork work &&
+                work.OptionCode == (byte)RespawnOptionCode.Unchosen,
         };
-    }
-
-    private static CommandSnapshot RepairSnapshot(
-        ReducerContext ctx,
-        Ship ship,
-        CommandSnapshot snapshot)
-    {
-        var kit = FindInventory(ctx, ship.EntityId, "repair_kit");
-        return snapshot with
-        {
-            RepairRejection = TacticalRules.ValidateRepair(new RepairRequest(
-                ship.IsActive && ship.IsAlive,
-                !snapshot.HasActiveChannel,
-                kit is Inventory item && item.Quantity > 0,
-                ship.Hull < ship.MaxHull || ship.Sails < ship.MaxSails ||
-                    ship.Cannons < ship.MaxCannons || ship.Crew < ship.MaxCrew)),
-        };
-    }
-
-    private static CommandSnapshot BoardingSnapshot(
-        ReducerContext ctx,
-        Ship source,
-        CommandSnapshot snapshot)
-    {
-        var world = ctx.Db.SimulationClock.Id.Find(1) ??
-            throw new InvalidOperationException("Simulation clock is missing.");
-        var target = source.TargetEntityId == 0
-            ? default(Ship?)
-            : ctx.Db.Ship.EntityId.Find(source.TargetEntityId);
-        var cooldown = FindCooldown(ctx, source.EntityId, CooldownCode.Boarding);
-        return snapshot with
-        {
-            TargetIsFriendly = target is Ship selectedTarget &&
-                selectedTarget.FactionCode == source.FactionCode,
-            BoardingRejection = TacticalRules.ValidateBoarding(new BoardingRequest(
-                source.IsActive && source.IsAlive,
-                target is Ship selected && selected.IsActive && selected.IsAlive,
-                !snapshot.HasActiveChannel,
-                target?.Hull ?? 0,
-                target?.MaxHull ?? 0,
-                target is Ship boardingTarget
-                    ? CombatRules.Distance(
-                        source.PositionX,
-                        source.PositionY,
-                        boardingTarget.PositionX,
-                        boardingTarget.PositionY)
-                    : float.PositiveInfinity,
-                world.Tick,
-                cooldown?.ReadyAtTick ?? 0)),
-        };
-    }
 }

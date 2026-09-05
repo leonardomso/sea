@@ -1,0 +1,344 @@
+{
+  "maps": [
+    {
+      "mapId": 1,
+      "code": "1/1",
+      "name": "Havenmere",
+      "biome": "sea",
+      "mapRank": 1,
+      "width": 400,
+      "height": 400,
+      "pvpMode": "optional",
+      "materialId": "oak",
+      "portName": "Port Lowell",
+      "portX": 200,
+      "portY": 200,
+      "portRadius": 20,
+      "exits": [
+        {
+          "edge": "east",
+          "toMapId": 2
+        }
+      ],
+      "objects": [
+        {
+          "entityId": 1,
+          "kind": "harbor",
+          "x": 200,
+          "y": 200,
+          "radius": 20,
+          "blocksMovement": false
+        },
+        {
+          "entityId": 2,
+          "kind": "island",
+          "x": 270,
+          "y": 240,
+          "radius": 24,
+          "blocksMovement": true
+        },
+        {
+          "entityId": 3,
+          "kind": "reef",
+          "x": 140,
+          "y": 150,
+          "radius": 20,
+          "blocksMovement": true
+        },
+        {
+          "entityId": 4,
+          "kind": "island",
+          "x": 108,
+          "y": 286,
+          "radius": 32,
+          "blocksMovement": true
+        },
+        {
+          "entityId": 5,
+          "kind": "island",
+          "x": 322,
+          "y": 104,
+          "radius": 30,
+          "blocksMovement": true
+        },
+        {
+          "entityId": 6,
+          "kind": "island",
+          "x": 74,
+          "y": 84,
+          "radius": 22,
+          "blocksMovement": true
+        },
+        {
+          "entityId": 7,
+          "kind": "island",
+          "x": 208,
+          "y": 340,
+          "radius": 18,
+          "blocksMovement": true
+        },
+        {
+          "entityId": 8,
+          "kind": "reef",
+          "x": 248,
+          "y": 78,
+          "radius": 16,
+          "blocksMovement": true
+        },
+        {
+          "entityId": 9,
+          "kind": "reef",
+          "x": 336,
+          "y": 316,
+          "radius": 18,
+          "blocksMovement": true
+        },
+        {
+          "entityId": 11,
+          "kind": "shoal",
+          "x": 192,
+          "y": 116,
+          "radius": 30,
+          "blocksMovement": false,
+          "intensity": 0.7
+        },
+        {
+          "entityId": 12,
+          "kind": "shoal",
+          "x": 296,
+          "y": 290,
+          "radius": 24,
+          "blocksMovement": false,
+          "intensity": 0.8
+        },
+        {
+          "entityId": 13,
+          "kind": "storm",
+          "x": 56,
+          "y": 206,
+          "radius": 28,
+          "blocksMovement": false,
+          "directionDegrees": 72,
+          "movementSpeed": 0.5,
+          "intensity": 1
+        }
+      ],
+      "currents": [
+        {
+          "zoneId": 1,
+          "x": 90,
+          "y": 270,
+          "radius": 56,
+          "directionDegrees": 70,
+          "strength": 0.3
+        },
+        {
+          "zoneId": 2,
+          "x": 310,
+          "y": 110,
+          "radius": 48,
+          "directionDegrees": 235,
+          "strength": 0.3
+        }
+      ]
+    },
+    {
+      "mapId": 2,
+      "code": "1/2",
+      "name": "Gull Rocks",
+      "biome": "sea",
+      "mapRank": 2,
+      "width": 400,
+      "height": 400,
+      "pvpMode": "optional",
+      "materialId": "oak",
+      "portName": "Gull Rocks Anchorage",
+      "portX": 200,
+      "portY": 200,
+      "portRadius": 20,
+      "exits": [
+        {
+          "edge": "west",
+          "toMapId": 1
+        },
+        {
+          "edge": "east",
+          "toMapId": 3
+        }
+      ],
+      "objects": [
+        {
+          "entityId": 1,
+          "kind": "harbor",
+          "x": 200,
+          "y": 200,
+          "radius": 20,
+          "blocksMovement": false
+        },
+        {
+          "entityId": 2,
+          "kind": "island",
+          "x": 250,
+          "y": 150,
+          "radius": 26,
+          "blocksMovement": true
+        },
+        {
+          "entityId": 3,
+          "kind": "reef",
+          "x": 120,
+          "y": 280,
+          "radius": 18,
+          "blocksMovement": true
+        },
+        {
+          "entityId": 4,
+          "kind": "island",
+          "x": 320,
+          "y": 300,
+          "radius": 28,
+          "blocksMovement": true
+        },
+        {
+          "entityId": 5,
+          "kind": "shoal",
+          "x": 180,
+          "y": 120,
+          "radius": 22,
+          "blocksMovement": false,
+          "intensity": 0.6
+        },
+        {
+          "entityId": 6,
+          "kind": "storm",
+          "x": 80,
+          "y": 320,
+          "radius": 24,
+          "blocksMovement": false,
+          "directionDegrees": 45,
+          "movementSpeed": 0.4,
+          "intensity": 1
+        }
+      ],
+      "currents": [
+        {
+          "zoneId": 1,
+          "x": 100,
+          "y": 100,
+          "radius": 50,
+          "directionDegrees": 200,
+          "strength": 0.3
+        },
+        {
+          "zoneId": 2,
+          "x": 300,
+          "y": 300,
+          "radius": 45,
+          "directionDegrees": 20,
+          "strength": 0.25
+        }
+      ]
+    },
+    {
+      "mapId": 3,
+      "code": "1/3",
+      "name": "Brine Fields",
+      "biome": "sea",
+      "mapRank": 3,
+      "width": 400,
+      "height": 400,
+      "pvpMode": "optional",
+      "materialId": "oak",
+      "portName": "Brine Fields Depot",
+      "portX": 200,
+      "portY": 200,
+      "portRadius": 20,
+      "exits": [
+        {
+          "edge": "west",
+          "toMapId": 2
+        }
+      ],
+      "objects": [
+        {
+          "entityId": 1,
+          "kind": "harbor",
+          "x": 200,
+          "y": 200,
+          "radius": 20,
+          "blocksMovement": false
+        },
+        {
+          "entityId": 2,
+          "kind": "island",
+          "x": 150,
+          "y": 270,
+          "radius": 30,
+          "blocksMovement": true
+        },
+        {
+          "entityId": 3,
+          "kind": "island",
+          "x": 300,
+          "y": 120,
+          "radius": 26,
+          "blocksMovement": true
+        },
+        {
+          "entityId": 4,
+          "kind": "reef",
+          "x": 260,
+          "y": 300,
+          "radius": 20,
+          "blocksMovement": true
+        },
+        {
+          "entityId": 5,
+          "kind": "reef",
+          "x": 90,
+          "y": 140,
+          "radius": 16,
+          "blocksMovement": true
+        },
+        {
+          "entityId": 6,
+          "kind": "shoal",
+          "x": 220,
+          "y": 100,
+          "radius": 26,
+          "blocksMovement": false,
+          "intensity": 0.65
+        },
+        {
+          "entityId": 7,
+          "kind": "storm",
+          "x": 340,
+          "y": 220,
+          "radius": 26,
+          "blocksMovement": false,
+          "directionDegrees": 300,
+          "movementSpeed": 0.45,
+          "intensity": 1
+        }
+      ],
+      "currents": [
+        {
+          "zoneId": 1,
+          "x": 120,
+          "y": 320,
+          "radius": 52,
+          "directionDegrees": 110,
+          "strength": 0.3
+        },
+        {
+          "zoneId": 2,
+          "x": 330,
+          "y": 90,
+          "radius": 40,
+          "directionDegrees": 250,
+          "strength": 0.28
+        }
+      ]
+    }
+  ]
+}
