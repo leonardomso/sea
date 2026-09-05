@@ -66,6 +66,7 @@ import SectorRow from "./sector_table";
 import ShipRow from "./ship_table";
 import ShipChannelRow from "./ship_channel_table";
 import ShipMovementRow from "./ship_movement_table";
+import ShipRouteRow from "./ship_route_table";
 import ShipStatsRow from "./ship_stats_table";
 import SimulationTelemetryRow from "./simulation_telemetry_table";
 import StatCapsRow from "./stat_caps_table";
@@ -465,6 +466,17 @@ const tablesSchema = __schema({
       { name: 'ship_movement_entity_id_key', constraint: 'unique', columns: ['entityId'] },
     ],
   }, ShipMovementRow),
+  shipRoute: __table({
+    name: 'ship_route',
+    indexes: [
+      { accessor: 'EntityId', name: 'ship_route_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'entityId',
+      ] },
+    ],
+    constraints: [
+      { name: 'ship_route_entity_id_key', constraint: 'unique', columns: ['entityId'] },
+    ],
+  }, ShipRouteRow),
   shipStats: __table({
     name: 'ship_stats',
     indexes: [
@@ -612,6 +624,8 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "ShipChannel": Omit<typeof tablesSchema.schemaType.tables["shipChannel"], "accessorName"> & { readonly accessorName: "ShipChannel" };
     /** @deprecated Use `shipMovement` instead. This alias will be removed in the next major version. */
     readonly "ShipMovement": Omit<typeof tablesSchema.schemaType.tables["shipMovement"], "accessorName"> & { readonly accessorName: "ShipMovement" };
+    /** @deprecated Use `shipRoute` instead. This alias will be removed in the next major version. */
+    readonly "ShipRoute": Omit<typeof tablesSchema.schemaType.tables["shipRoute"], "accessorName"> & { readonly accessorName: "ShipRoute" };
     /** @deprecated Use `shipStats` instead. This alias will be removed in the next major version. */
     readonly "ShipStats": Omit<typeof tablesSchema.schemaType.tables["shipStats"], "accessorName"> & { readonly accessorName: "ShipStats" };
     /** @deprecated Use `simulationTelemetry` instead. This alias will be removed in the next major version. */
@@ -668,6 +682,7 @@ const tableAccessorAliases = {
   "Ship": "ship",
   "ShipChannel": "shipChannel",
   "ShipMovement": "shipMovement",
+  "ShipRoute": "shipRoute",
   "ShipStats": "shipStats",
   "SimulationTelemetry": "simulationTelemetry",
   "StatCaps": "statCaps",
@@ -746,6 +761,8 @@ export type DbView = __DbViewBase & {
   readonly "ShipChannel": __DbViewBase["shipChannel"];
   /** @deprecated Use `shipMovement` instead. This alias will be removed in the next major version. */
   readonly "ShipMovement": __DbViewBase["shipMovement"];
+  /** @deprecated Use `shipRoute` instead. This alias will be removed in the next major version. */
+  readonly "ShipRoute": __DbViewBase["shipRoute"];
   /** @deprecated Use `shipStats` instead. This alias will be removed in the next major version. */
   readonly "ShipStats": __DbViewBase["shipStats"];
   /** @deprecated Use `simulationTelemetry` instead. This alias will be removed in the next major version. */
@@ -814,6 +831,8 @@ export type Tables = __TablesBase & {
   readonly "ShipChannel": __TablesBase["shipChannel"];
   /** @deprecated Use `shipMovement` instead. This alias will be removed in the next major version. */
   readonly "ShipMovement": __TablesBase["shipMovement"];
+  /** @deprecated Use `shipRoute` instead. This alias will be removed in the next major version. */
+  readonly "ShipRoute": __TablesBase["shipRoute"];
   /** @deprecated Use `shipStats` instead. This alias will be removed in the next major version. */
   readonly "ShipStats": __TablesBase["shipStats"];
   /** @deprecated Use `simulationTelemetry` instead. This alias will be removed in the next major version. */

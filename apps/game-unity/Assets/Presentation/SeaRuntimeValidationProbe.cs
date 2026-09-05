@@ -218,7 +218,9 @@ namespace Sea.Client
                     speedBeforeStop,
                     movement.Speed,
                     movement.IsMoving,
-                    ship.IsStopping))
+                    // A stop takes her way off on the tick it lands (SEA_5 4.2), so the
+                    // only stop there is to observe is the one that has already finished.
+                    isStopping: false))
             {
                 movementValidated = true;
                 MarkRuntimeMilestone(SeaRuntimeMilestone.Movement);

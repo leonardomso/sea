@@ -16,19 +16,41 @@ public static partial class Module
         public byte FactionCode;
         public float PositionX;
         public float PositionY;
+
+        /// <summary>The chart she is on. The land mask and the route are read per map.</summary>
+        public byte MapId;
+
+        /// <summary>The last corner of her route, which is where the click landed.</summary>
         public float DestinationX;
         public float DestinationY;
-        public float WaypointX;
-        public float WaypointY;
-        public bool HasWaypoint;
+
+        /// <summary>How far down her route she is; an index into the ShipRoute points.</summary>
+        public int RouteIndex;
+
+        /// <summary>Whether she has a course at all. IsMoving is this and not frozen.</summary>
+        public bool HasRoute;
+
+        /// <summary>Bumped every time a new course is laid, so a client can tell them apart.</summary>
+        public uint RouteVersion;
+
+        /// <summary>The tick the current one-second MoveTo window opened on.</summary>
+        public ulong MoveWindowStartTick;
+
+        /// <summary>How many courses she has been given inside that window.</summary>
+        public uint MovesInWindow;
+
+        /// <summary>
+        /// How many of her commands the server has thrown away. Phase 12 turns this into
+        /// a trust score of its own; for now it is the raw feed and nothing reads it.
+        /// </summary>
+        public uint DroppedCommandCount;
+
         public float HeadingDegrees;
         public float Speed;
         public float MaximumSpeed;
-        public float Acceleration;
-        public float Deceleration;
-        public float TurnRateDegrees;
-        public bool HasCourse;
-        public bool IsStopping;
+
+        /// <summary>Her speed this tick in squares per second, wind and debuffs included.</summary>
+        public float EffectiveSpeedSquaresPerSecond;
         public bool IsMoving;
         public byte MovementShard;
         public bool IsActive;
@@ -83,6 +105,28 @@ public static partial class Module
         // Stored rather than derived: entering the port is an edge that clears effects, and the
         // damage paths that must honour it read rows the movement shard may not have republished.
         public bool IsInPort;
+    }
+
+    /// <summary>
+    /// A ship's course, corner by corner. Public because every client that can see
+    /// her draws the same line (SEA_5 4.3).
+    /// </summary>
+    /// <remarks>
+    /// The points live in their own row rather than on Ship because a course is
+    /// written once, when it is ordered, while a Ship row is written on every tick
+    /// she sails. Keeping the two apart means following a course does not rewrite
+    /// the course. The two lists are parallel and always the same length.
+    /// </remarks>
+    [SpacetimeDB.Table(Accessor = "ShipRoute", Public = true)]
+    public partial struct ShipRoute
+    {
+        [PrimaryKey]
+        public ulong EntityId;
+        public uint Version;
+#pragma warning disable MA0016 // SpacetimeDB algebraic arrays require List<T> fields.
+        public List<float> PointsX;
+        public List<float> PointsY;
+#pragma warning restore MA0016
     }
 
     [SpacetimeDB.Table(Accessor = "ShipMovement", Public = true)]

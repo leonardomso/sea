@@ -108,23 +108,23 @@ public static partial class Module
     {
         public ulong EntityId;
         public byte FactionCode;
+        public byte MapId;
         public float PositionX;
         public float PositionY;
         public float DestinationX;
         public float DestinationY;
-        public float WaypointX;
-        public float WaypointY;
-        public bool HasWaypoint;
-        public float DesiredHeadingDegrees;
+        public int RouteIndex;
+        public bool HasRoute;
         public float HeadingDegrees;
         public float Speed;
+
+        // Her rating once the debuffs on the fat row have been applied, which the shard
+        // cannot see. Wind is the one term left, and it turns with her heading, so it is
+        // applied here rather than carried.
         public float TacticalMaximumSpeed;
-        public float TacticalAcceleration;
-        public float Deceleration;
-        public float TacticalTurnRateDegrees;
-        public float EffectiveMaximumSpeed;
-        public bool HasCourse;
-        public bool IsStopping;
+
+        // Negative means "not worked out for this tick yet"; RefreshEnvironment fills it.
+        public float EffectiveSpeedSquaresPerSecond;
         public bool IsMoving;
 
         // Carried on the shard so crossing the harbour mouth is an edge the sailing step can see

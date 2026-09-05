@@ -53,6 +53,7 @@ namespace SpacetimeDB.Types
             AddTable(Ship = new(conn));
             AddTable(ShipChannel = new(conn));
             AddTable(ShipMovement = new(conn));
+            AddTable(ShipRoute = new(conn));
             AddTable(ShipStats = new(conn));
             AddTable(SimulationTelemetry = new(conn));
             AddTable(StatCaps = new(conn));
@@ -581,6 +582,7 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.Ship().ToSql(),
             new QueryBuilder().From.ShipChannel().ToSql(),
             new QueryBuilder().From.ShipMovement().ToSql(),
+            new QueryBuilder().From.ShipRoute().ToSql(),
             new QueryBuilder().From.ShipStats().ToSql(),
             new QueryBuilder().From.SimulationTelemetry().ToSql(),
             new QueryBuilder().From.StatCaps().ToSql(),
@@ -619,6 +621,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<Ship, ShipCols, ShipIxCols> Ship() => new("ship", new ShipCols("ship"), new ShipIxCols("ship"));
         public global::SpacetimeDB.Table<ShipChannel, ShipChannelCols, ShipChannelIxCols> ShipChannel() => new("ship_channel", new ShipChannelCols("ship_channel"), new ShipChannelIxCols("ship_channel"));
         public global::SpacetimeDB.Table<ShipMovement, ShipMovementCols, ShipMovementIxCols> ShipMovement() => new("ship_movement", new ShipMovementCols("ship_movement"), new ShipMovementIxCols("ship_movement"));
+        public global::SpacetimeDB.Table<ShipRoute, ShipRouteCols, ShipRouteIxCols> ShipRoute() => new("ship_route", new ShipRouteCols("ship_route"), new ShipRouteIxCols("ship_route"));
         public global::SpacetimeDB.Table<ShipStats, ShipStatsCols, ShipStatsIxCols> ShipStats() => new("ship_stats", new ShipStatsCols("ship_stats"), new ShipStatsIxCols("ship_stats"));
         public global::SpacetimeDB.Table<SimulationTelemetry, SimulationTelemetryCols, SimulationTelemetryIxCols> SimulationTelemetry() => new("simulation_telemetry", new SimulationTelemetryCols("simulation_telemetry"), new SimulationTelemetryIxCols("simulation_telemetry"));
         public global::SpacetimeDB.Table<StatCaps, StatCapsCols, StatCapsIxCols> StatCaps() => new("stat_caps", new StatCapsCols("stat_caps"), new StatCapsIxCols("stat_caps"));

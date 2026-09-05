@@ -84,19 +84,19 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Col<Ship, byte> FactionCode { get; }
         public global::SpacetimeDB.Col<Ship, float> PositionX { get; }
         public global::SpacetimeDB.Col<Ship, float> PositionY { get; }
+        public global::SpacetimeDB.Col<Ship, byte> MapId { get; }
         public global::SpacetimeDB.Col<Ship, float> DestinationX { get; }
         public global::SpacetimeDB.Col<Ship, float> DestinationY { get; }
-        public global::SpacetimeDB.Col<Ship, float> WaypointX { get; }
-        public global::SpacetimeDB.Col<Ship, float> WaypointY { get; }
-        public global::SpacetimeDB.Col<Ship, bool> HasWaypoint { get; }
+        public global::SpacetimeDB.Col<Ship, int> RouteIndex { get; }
+        public global::SpacetimeDB.Col<Ship, bool> HasRoute { get; }
+        public global::SpacetimeDB.Col<Ship, uint> RouteVersion { get; }
+        public global::SpacetimeDB.Col<Ship, ulong> MoveWindowStartTick { get; }
+        public global::SpacetimeDB.Col<Ship, uint> MovesInWindow { get; }
+        public global::SpacetimeDB.Col<Ship, uint> DroppedCommandCount { get; }
         public global::SpacetimeDB.Col<Ship, float> HeadingDegrees { get; }
         public global::SpacetimeDB.Col<Ship, float> Speed { get; }
         public global::SpacetimeDB.Col<Ship, float> MaximumSpeed { get; }
-        public global::SpacetimeDB.Col<Ship, float> Acceleration { get; }
-        public global::SpacetimeDB.Col<Ship, float> Deceleration { get; }
-        public global::SpacetimeDB.Col<Ship, float> TurnRateDegrees { get; }
-        public global::SpacetimeDB.Col<Ship, bool> HasCourse { get; }
-        public global::SpacetimeDB.Col<Ship, bool> IsStopping { get; }
+        public global::SpacetimeDB.Col<Ship, float> EffectiveSpeedSquaresPerSecond { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsMoving { get; }
         public global::SpacetimeDB.Col<Ship, byte> MovementShard { get; }
         public global::SpacetimeDB.Col<Ship, bool> IsActive { get; }
@@ -141,19 +141,19 @@ namespace SpacetimeDB.Types
             FactionCode = new global::SpacetimeDB.Col<Ship, byte>(tableName, "faction_code");
             PositionX = new global::SpacetimeDB.Col<Ship, float>(tableName, "position_x");
             PositionY = new global::SpacetimeDB.Col<Ship, float>(tableName, "position_y");
+            MapId = new global::SpacetimeDB.Col<Ship, byte>(tableName, "map_id");
             DestinationX = new global::SpacetimeDB.Col<Ship, float>(tableName, "destination_x");
             DestinationY = new global::SpacetimeDB.Col<Ship, float>(tableName, "destination_y");
-            WaypointX = new global::SpacetimeDB.Col<Ship, float>(tableName, "waypoint_x");
-            WaypointY = new global::SpacetimeDB.Col<Ship, float>(tableName, "waypoint_y");
-            HasWaypoint = new global::SpacetimeDB.Col<Ship, bool>(tableName, "has_waypoint");
+            RouteIndex = new global::SpacetimeDB.Col<Ship, int>(tableName, "route_index");
+            HasRoute = new global::SpacetimeDB.Col<Ship, bool>(tableName, "has_route");
+            RouteVersion = new global::SpacetimeDB.Col<Ship, uint>(tableName, "route_version");
+            MoveWindowStartTick = new global::SpacetimeDB.Col<Ship, ulong>(tableName, "move_window_start_tick");
+            MovesInWindow = new global::SpacetimeDB.Col<Ship, uint>(tableName, "moves_in_window");
+            DroppedCommandCount = new global::SpacetimeDB.Col<Ship, uint>(tableName, "dropped_command_count");
             HeadingDegrees = new global::SpacetimeDB.Col<Ship, float>(tableName, "heading_degrees");
             Speed = new global::SpacetimeDB.Col<Ship, float>(tableName, "speed");
             MaximumSpeed = new global::SpacetimeDB.Col<Ship, float>(tableName, "maximum_speed");
-            Acceleration = new global::SpacetimeDB.Col<Ship, float>(tableName, "acceleration");
-            Deceleration = new global::SpacetimeDB.Col<Ship, float>(tableName, "deceleration");
-            TurnRateDegrees = new global::SpacetimeDB.Col<Ship, float>(tableName, "turn_rate_degrees");
-            HasCourse = new global::SpacetimeDB.Col<Ship, bool>(tableName, "has_course");
-            IsStopping = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_stopping");
+            EffectiveSpeedSquaresPerSecond = new global::SpacetimeDB.Col<Ship, float>(tableName, "effective_speed_squares_per_second");
             IsMoving = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_moving");
             MovementShard = new global::SpacetimeDB.Col<Ship, byte>(tableName, "movement_shard");
             IsActive = new global::SpacetimeDB.Col<Ship, bool>(tableName, "is_active");

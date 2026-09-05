@@ -23,32 +23,32 @@ namespace SpacetimeDB.Types
         public float PositionX;
         [DataMember(Name = "position_y")]
         public float PositionY;
+        [DataMember(Name = "map_id")]
+        public byte MapId;
         [DataMember(Name = "destination_x")]
         public float DestinationX;
         [DataMember(Name = "destination_y")]
         public float DestinationY;
-        [DataMember(Name = "waypoint_x")]
-        public float WaypointX;
-        [DataMember(Name = "waypoint_y")]
-        public float WaypointY;
-        [DataMember(Name = "has_waypoint")]
-        public bool HasWaypoint;
+        [DataMember(Name = "route_index")]
+        public int RouteIndex;
+        [DataMember(Name = "has_route")]
+        public bool HasRoute;
+        [DataMember(Name = "route_version")]
+        public uint RouteVersion;
+        [DataMember(Name = "move_window_start_tick")]
+        public ulong MoveWindowStartTick;
+        [DataMember(Name = "moves_in_window")]
+        public uint MovesInWindow;
+        [DataMember(Name = "dropped_command_count")]
+        public uint DroppedCommandCount;
         [DataMember(Name = "heading_degrees")]
         public float HeadingDegrees;
         [DataMember(Name = "speed")]
         public float Speed;
         [DataMember(Name = "maximum_speed")]
         public float MaximumSpeed;
-        [DataMember(Name = "acceleration")]
-        public float Acceleration;
-        [DataMember(Name = "deceleration")]
-        public float Deceleration;
-        [DataMember(Name = "turn_rate_degrees")]
-        public float TurnRateDegrees;
-        [DataMember(Name = "has_course")]
-        public bool HasCourse;
-        [DataMember(Name = "is_stopping")]
-        public bool IsStopping;
+        [DataMember(Name = "effective_speed_squares_per_second")]
+        public float EffectiveSpeedSquaresPerSecond;
         [DataMember(Name = "is_moving")]
         public bool IsMoving;
         [DataMember(Name = "movement_shard")]
@@ -128,19 +128,19 @@ namespace SpacetimeDB.Types
             byte FactionCode,
             float PositionX,
             float PositionY,
+            byte MapId,
             float DestinationX,
             float DestinationY,
-            float WaypointX,
-            float WaypointY,
-            bool HasWaypoint,
+            int RouteIndex,
+            bool HasRoute,
+            uint RouteVersion,
+            ulong MoveWindowStartTick,
+            uint MovesInWindow,
+            uint DroppedCommandCount,
             float HeadingDegrees,
             float Speed,
             float MaximumSpeed,
-            float Acceleration,
-            float Deceleration,
-            float TurnRateDegrees,
-            bool HasCourse,
-            bool IsStopping,
+            float EffectiveSpeedSquaresPerSecond,
             bool IsMoving,
             byte MovementShard,
             bool IsActive,
@@ -184,19 +184,19 @@ namespace SpacetimeDB.Types
             this.FactionCode = FactionCode;
             this.PositionX = PositionX;
             this.PositionY = PositionY;
+            this.MapId = MapId;
             this.DestinationX = DestinationX;
             this.DestinationY = DestinationY;
-            this.WaypointX = WaypointX;
-            this.WaypointY = WaypointY;
-            this.HasWaypoint = HasWaypoint;
+            this.RouteIndex = RouteIndex;
+            this.HasRoute = HasRoute;
+            this.RouteVersion = RouteVersion;
+            this.MoveWindowStartTick = MoveWindowStartTick;
+            this.MovesInWindow = MovesInWindow;
+            this.DroppedCommandCount = DroppedCommandCount;
             this.HeadingDegrees = HeadingDegrees;
             this.Speed = Speed;
             this.MaximumSpeed = MaximumSpeed;
-            this.Acceleration = Acceleration;
-            this.Deceleration = Deceleration;
-            this.TurnRateDegrees = TurnRateDegrees;
-            this.HasCourse = HasCourse;
-            this.IsStopping = IsStopping;
+            this.EffectiveSpeedSquaresPerSecond = EffectiveSpeedSquaresPerSecond;
             this.IsMoving = IsMoving;
             this.MovementShard = MovementShard;
             this.IsActive = IsActive;

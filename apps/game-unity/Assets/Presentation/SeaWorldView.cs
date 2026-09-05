@@ -297,6 +297,12 @@ namespace Sea.Client
         private static SeaPredictedMotion ToMotion(SeaInterpolationSample sample) =>
             new(sample.Position, sample.HeadingDegrees);
 
+        /// <summary>Enough acceleration to reach any rated speed inside one tick.</summary>
+        private const float InstantHandlingRate = 1000f;
+
+        /// <summary>Enough turn to come onto any bearing inside one tick.</summary>
+        private const float InstantTurnDegreesPerSecond = 36000f;
+
         // The ship the player steers is drawn where the server has already agreed it is heading,
         // not a render delay behind it, so a click turns the hull on the frame it is made.
         private bool TryPredictLocalShip(
@@ -321,16 +327,25 @@ namespace Sea.Client
                     movement.HeadingDegrees,
                     movement.Speed),
                 ToWorld(localShip.DestinationX, localShip.DestinationY, ShipRootHeight),
-                localShip.HasCourse,
-                localShip.IsStopping,
+                localShip.HasRoute,
+                // A stop is instant now, so there is no state of stopping to predict.
+                false,
                 // The row carries the ship's rated figures, not the tactical ones the server
                 // sails her with under wind and effects. That difference is small and the
                 // reconcile absorbs it; refusing to reckon at all is what did not get absorbed.
+                //
+                // The handling figures are gone from the schema with the inertia model
+                // (SEA_5 4.2): the server turns a hull instantly and gives her her whole
+                // speed on the first tick. These stand in for that until Phase 13 replaces
+                // this prediction outright with the route walk the server uses. They are
+                // large rather than infinite because the rule divides by them. Note the
+                // client still reckons a straight line to the destination while the server
+                // sails a bent route round land; the reconcile absorbs the difference.
                 new SeaSailingParameters(
                     localShip.MaximumSpeed,
-                    localShip.Acceleration,
-                    localShip.Deceleration,
-                    localShip.TurnRateDegrees),
+                    InstantHandlingRate,
+                    InstantHandlingRate,
+                    InstantTurnDegreesPerSecond),
                 1f / tickRate,
                 elapsed);
             motion = new SeaPredictedMotion(
