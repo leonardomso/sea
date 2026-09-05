@@ -21,7 +21,7 @@ public sealed class ShipStatsIntegrationTests
 
         var hull = client.OwnedHull();
         Assert.Equal("hull_t1", hull.HullDefId);
-        Assert.Equal("Sloop", hull.Name);
+        Assert.Equal("Skiff", hull.Name);
         Assert.Equal("cannon_t1", hull.CannonDefId);
         Assert.Equal(8, hull.CannonCount);
 
@@ -35,9 +35,9 @@ public sealed class ShipStatsIntegrationTests
         Assert.Equal(0.15f, stats.ArmorFront, 4);
         Assert.Equal(0.08f, stats.ArmorSides, 4);
         Assert.Equal(0.03f, stats.ArmorBack, 4);
-        Assert.Equal(2.4f, stats.SpeedSquaresPerSecond, 4);
+        Assert.Equal(5.6f, stats.SpeedSquaresPerSecond, 4);
         Assert.Equal(150f, stats.TurnDegreesPerSecond, 4);
-        Assert.Equal(8, stats.RangeSquares);
+        Assert.Equal(18, stats.RangeSquares);
         Assert.Equal(0.2f, stats.RepairAmount, 4);
         Assert.Equal(3000u, stats.RepairChannelMilliseconds);
         Assert.Null(client.UnhandledReducerError);
@@ -108,7 +108,7 @@ public sealed class ShipStatsIntegrationTests
         var hull = Assert.Single(
             client.HullDefs(),
             definition => string.Equals(definition.HullDefId, "hull_t1", StringComparison.Ordinal));
-        Assert.Equal("Sloop", hull.Name);
+        Assert.Equal("Skiff", hull.Name);
         Assert.Equal(1, hull.Tier);
         Assert.Equal(1600u, hull.HitPoints);
         Assert.Equal(8, hull.CannonSlots);
@@ -120,7 +120,7 @@ public sealed class ShipStatsIntegrationTests
             definition => string.Equals(definition.CannonDefId, "cannon_t1", StringComparison.Ordinal));
         Assert.Equal(20u, cannon.Damage);
         Assert.Equal(3.0f, cannon.ReloadSeconds, 4);
-        Assert.Equal(8, cannon.RangeSquares);
+        Assert.Equal(18, cannon.RangeSquares);
 
         var ammoIds = client.AmmoDefs().Select(definition => definition.AmmoId).ToArray();
         Assert.Equal(4, ammoIds.Length);

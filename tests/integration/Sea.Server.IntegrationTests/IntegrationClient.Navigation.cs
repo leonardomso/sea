@@ -24,9 +24,35 @@ internal sealed partial class IntegrationClient
     /// </summary>
     private const float FightingRoom = 45f;
 
-    /// <summary>Inside the chart with room to spare, so a course out never leaves it.</summary>
-    private const float ChartMin = -95f;
-    private const float ChartMax = 95f;
+    /// <summary>
+    /// Inside the chart with room to spare, so a course out never leaves it. Havenmere is four
+    /// hundred squares on a side with its origin at the top-left corner (SEA_5 3.1), and the
+    /// border reads as land, so a course has to stop short of it.
+    /// </summary>
+    private const float ChartMin = 5f;
+    private const float ChartMax = 395f;
+
+    /// <summary>
+    /// Open water south-west of Port Lowell, given as an offset from the harbour so the mark
+    /// moves with it. Seventy-eight squares off the mouth: outside the thirty squares of
+    /// sheltered water, and clear of every island, reef and shoal in Content/Data/maps.json.
+    /// </summary>
+    public (float X, float Y) OpenWater()
+    {
+        var port = PortLowell();
+        return (port.X - 50f, port.Y + 60f);
+    }
+
+    /// <summary>
+    /// Open water a hundred and sixty squares north of <see cref="OpenWater"/>, on a bearing
+    /// that passes the reef at (140, 150), so the leg between them is long enough to time and
+    /// has something in the way for the router to bend around.
+    /// </summary>
+    public (float X, float Y) FarWater()
+    {
+        var port = PortLowell();
+        return (port.X - 50f, port.Y - 100f);
+    }
 
     private const byte DestinationBlockedRejection = 6;
 
@@ -186,11 +212,11 @@ internal sealed partial class IntegrationClient
         var world = FormattableString.Invariant($"world tick {worldTick}");
         var hull = FormattableString.Invariant($"hull {ship.Hull}/{ship.MaxHull}");
         var mode = FormattableString.Invariant(
-            $"mode {ship.ModeCode}, in port {ship.IsInPort}, course {ship.HasCourse}");
+            $"mode {ship.ModeCode}, in port {ship.IsInPort}, course {ship.HasRoute}");
         var row = FormattableString.Invariant(
             $"row ({ship.PositionX:0.0}, {ship.PositionY:0.0})");
         var course = FormattableString.Invariant(
-            $"dst ({ship.DestinationX:0.0}, {ship.DestinationY:0.0}), waypoint {ship.HasWaypoint} ({ship.WaypointX:0.0}, {ship.WaypointY:0.0}), speed {ship.Speed:0.00}, moving {ship.IsMoving}, stopping {ship.IsStopping}");
+            $"dst ({ship.DestinationX:0.0}, {ship.DestinationY:0.0}), leg {ship.RouteIndex} of course {ship.RouteVersion}, speed {ship.Speed:0.00}, moving {ship.IsMoving}");
         var live = FormattableString.Invariant(
             $"live ({movement?.PositionX:0.0}, {movement?.PositionY:0.0})");
         var snapshot = FormattableString.Invariant($"movement tick {movement?.SnapshotTick}");

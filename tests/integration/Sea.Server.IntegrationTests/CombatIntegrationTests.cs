@@ -5,8 +5,8 @@ using Xunit;
 namespace Sea.Server.IntegrationTests;
 
 /// <summary>
-/// End-to-end coverage of the 1b combat reducers against a live module: the magazine the fire
-/// command spends, the reload that refills it, and the retired commands the module still answers.
+/// End-to-end coverage of the combat reducers against a live module: the magazine the fire
+/// command spends, the reload that refills it, and the orders the module turns down.
 /// </summary>
 public sealed class CombatIntegrationTests
 {
@@ -14,6 +14,7 @@ public sealed class CombatIntegrationTests
     private const byte FiringTooFastRejection = 14;
     private const byte OutOfRangeRejection = 15;
     private const byte NotAvailableRejection = 21;
+    private const byte NoTargetRejection = 11;
     private const byte InPortRejection = 16;
 
     /// <summary>A hull that has just put to sea keeps its shield until the tenth second.</summary>
@@ -89,16 +90,19 @@ public sealed class CombatIntegrationTests
     }
 
     [Fact]
-    public void RetiredCommandsAnswerNotAvailableWithoutTouchingTheShip()
+    public void CommandsThatCannotBeGivenYetLeaveTheShipAlone()
     {
         using var client = IntegrationClient.Connect();
         client.LoadPlayer();
         var before = client.OwnedShip();
 
-        // Abilities and boarding left the game with 1b but stay on the wire, so a stale client
-        // gets a stable answer instead of a command the module silently reinterprets.
+        // Abilities left the game with 1b but stay on the wire, so a stale client gets a stable
+        // answer instead of a command the module silently reinterprets.
         Assert.Equal(NotAvailableRejection, client.IssueAbility(1, "full_sail").RejectionCode);
-        Assert.Equal(NotAvailableRejection, client.IssueBoarding(2).RejectionCode);
+
+        // Boarding came back with SEA_5 9, so it is answered on its merits now: a hull that has
+        // just loaded has nobody locked, and there is nothing to throw hooks at.
+        Assert.Equal(NoTargetRejection, client.IssueBoarding(2).RejectionCode);
 
         var after = client.OwnedShip();
         Assert.Null(client.UnhandledReducerError);

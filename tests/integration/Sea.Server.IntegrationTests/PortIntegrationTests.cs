@@ -20,12 +20,12 @@ public sealed class PortIntegrationTests
     private const byte CastingOffMode = 3;
     private const byte SkiffArchetype = 1;
 
-    /// <summary>Inside the four squares a skiff watches, inside the range it shoots from.</summary>
-    private const float AggroApproachUnits = 20f;
-
-    /// <summary>Open water north of Port Lowell: no island, reef or shoal is within thirty units.</summary>
-    private const float OpenWaterX = 0f;
-    private const float OpenWaterY = 40f;
+    /// <summary>
+    /// Inside the range a skiff shoots from, so it opens rather than watches. A hostile picks a
+    /// fight up inside twenty squares and stations itself at fourteen and a half, so a berth
+    /// fourteen squares off is one it answers rather than one it sits at the edge of.
+    /// </summary>
+    private const float AggroApproachSquares = 14f;
 
     /// <summary>
     /// Long enough for a skiff to work through a third of a sloop's hull, which is several
@@ -62,8 +62,9 @@ public sealed class PortIntegrationTests
     {
         using var client = Berthed();
         var berth = client.OwnedMovement();
+        var openWater = client.OpenWater();
 
-        Assert.True(client.SetCourse(OpenWaterX, OpenWaterY).Accepted);
+        Assert.True(client.SetCourse(openWater.X, openWater.Y).Accepted);
         var channel = client.ActiveChannel();
         Assert.NotNull(channel);
         Assert.Equal("cast_off", channel.ChannelType);
@@ -82,8 +83,9 @@ public sealed class PortIntegrationTests
     {
         using var client = Berthed();
         var berth = client.OwnedMovement();
+        var openWater = client.OpenWater();
 
-        Assert.True(client.SetCourse(OpenWaterX, OpenWaterY).Accepted);
+        Assert.True(client.SetCourse(openWater.X, openWater.Y).Accepted);
         Assert.NotNull(client.ActiveChannel());
         Assert.True(client.CancelChannel().Accepted);
 
@@ -91,11 +93,11 @@ public sealed class PortIntegrationTests
         var cancelled = client.OwnedShip();
         Assert.Null(client.ActiveChannel());
         Assert.Equal(OperationalMode, cancelled.ModeCode);
-        Assert.False(cancelled.HasCourse);
+        Assert.False(cancelled.HasRoute);
         Assert.True(cancelled.IsInPort);
 
         // Stopping is the other way to change one's mind, and it clears the channel just the same.
-        Assert.True(client.SetCourse(OpenWaterX, OpenWaterY).Accepted);
+        Assert.True(client.SetCourse(openWater.X, openWater.Y).Accepted);
         Assert.NotNull(client.ActiveChannel());
         Assert.True(client.StopCourse().Accepted);
         Assert.Null(client.ActiveChannel());
@@ -199,8 +201,9 @@ public sealed class PortIntegrationTests
             client.SubscribeNpcWorld();
             SailIntoGunfire(client);
             PumpUntil(client, () => IsHurtEnoughForBothRepairs(client.OwnedShip()));
-            Assert.True(client.SetCourse(0f, 0f).Accepted);
-            PumpUntil(client, () => client.OwnedShip().IsInPort && !client.OwnedShip().HasCourse);
+            var berth = client.Harbor();
+            Assert.True(client.SetCourse(berth.PositionX, berth.PositionY).Accepted);
+            PumpUntil(client, () => client.OwnedShip().IsInPort && !client.OwnedShip().HasRoute);
             return client;
         }
         catch
@@ -230,7 +233,7 @@ public sealed class PortIntegrationTests
         var nextCourseAt = TimeSpan.Zero;
         while (client.OwnedShip().Hull == client.OwnedShip().MaxHull)
         {
-            if (!client.OwnedShip().HasCourse && stopwatch.Elapsed >= nextCourseAt)
+            if (!client.OwnedShip().HasRoute && stopwatch.Elapsed >= nextCourseAt)
             {
                 var approach = ApproachTo(client.OwnedShip(), client.NpcPosition(targetId));
                 var course = client.SetCourse(approach.X, approach.Y);
@@ -262,12 +265,12 @@ public sealed class PortIntegrationTests
         var deltaX = hostile.X - own.PositionX;
         var deltaY = hostile.Y - own.PositionY;
         var distance = MathF.Sqrt(deltaX * deltaX + deltaY * deltaY);
-        if (distance <= AggroApproachUnits)
+        if (distance <= AggroApproachSquares)
         {
             return (own.PositionX, own.PositionY);
         }
 
-        var travel = (distance - AggroApproachUnits) / distance;
+        var travel = (distance - AggroApproachSquares) / distance;
         return (own.PositionX + deltaX * travel, own.PositionY + deltaY * travel);
     }
 

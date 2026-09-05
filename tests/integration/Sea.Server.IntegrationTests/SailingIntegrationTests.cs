@@ -14,10 +14,6 @@ public sealed class SailingIntegrationTests
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(90);
 
-    /// <summary>Open water north of Port Lowell, well clear of the harbour circle.</summary>
-    private const float OpenWaterX = 0f;
-    private const float OpenWaterY = 40f;
-
     /// <summary>
     /// The ship has to be at rest within this of the mark. It is the server's arrival radius
     /// with room for the drift a current adds after the step has been taken.
@@ -25,7 +21,14 @@ public sealed class SailingIntegrationTests
     private const float RestedWithin = 4f;
 
     /// <summary>
-    /// She used to orbit anything nearer than about six units off the beam forever. Every one
+    /// What the long leg is allowed to take. A hundred and sixty squares at the Skiff's rating
+    /// of 5.6 squares a second is twenty-nine seconds sailed straight; the reef in the way and
+    /// a head wind are worth the rest of it.
+    /// </summary>
+    private static readonly TimeSpan LongCourseAllowance = TimeSpan.FromSeconds(60);
+
+    /// <summary>
+    /// She used to orbit anything nearer than about six squares off the beam forever. Every one
     /// of these is a mark inside her old turning circle.
     /// </summary>
     [Theory]
@@ -44,35 +47,38 @@ public sealed class SailingIntegrationTests
         PumpUntil(client, () => !client.OwnedShip().IsMoving);
 
         var rested = client.OwnedShip();
-        Assert.False(rested.HasCourse);
+        Assert.False(rested.HasRoute);
         Assert.Equal(0f, rested.Speed);
         Assert.True(
             Distance(rested.PositionX, rested.PositionY, markX, markY) <= RestedWithin,
             $"She rested {Distance(rested.PositionX, rested.PositionY, markX, markY)} " +
-            "units off the mark.");
+            "squares off the mark.");
         Assert.Null(client.UnhandledReducerError);
     }
 
     /// <summary>
-    /// The chart is 200 units across. A hull that answers a course from one side of it to the
-    /// other inside this has handling a captain can plan around; the old figures needed better
-    /// than a third of the sea just to come to rest.
+    /// The chart is four hundred squares across. A hull that answers a leg of a hundred and
+    /// sixty of them inside the allowance has handling a captain can plan around; the old
+    /// figures needed better than a third of the sea just to come to rest.
     /// </summary>
     [Fact]
     public void ALongCourseIsAnsweredWithinTheTimeTheChartAllows()
     {
         using var client = AtSea();
+        var mark = client.FarWater();
         var stopwatch = Stopwatch.StartNew();
 
-        Assert.True(client.IssueSetCourse(9_002, OpenWaterX, -OpenWaterY).Accepted);
+        Assert.True(client.IssueSetCourse(9_002, mark.X, mark.Y).Accepted);
         PumpUntil(client, () => !client.OwnedShip().IsMoving);
 
         Assert.True(
-            stopwatch.Elapsed < TimeSpan.FromSeconds(30),
-            $"She took {stopwatch.Elapsed.TotalSeconds:0.0}s to sail eight squares.");
+            stopwatch.Elapsed < LongCourseAllowance,
+            $"She took {stopwatch.Elapsed.TotalSeconds:0.0}s to sail a hundred and sixty squares.");
         var rested = client.OwnedShip();
         Assert.True(
-            Distance(rested.PositionX, rested.PositionY, OpenWaterX, -OpenWaterY) <= RestedWithin);
+            Distance(rested.PositionX, rested.PositionY, mark.X, mark.Y) <= RestedWithin,
+            $"She rested {Distance(rested.PositionX, rested.PositionY, mark.X, mark.Y)} " +
+            "squares off the mark.");
         Assert.Null(client.UnhandledReducerError);
     }
 
@@ -93,7 +99,8 @@ public sealed class SailingIntegrationTests
             var berth = client.OwnedShip();
             client.SubscribeSpatial(berth.ChunkX, berth.ChunkY, 2);
             PumpUntil(client, client.HasHarbor);
-            client.PutToSea(OpenWaterX, OpenWaterY);
+            var openWater = client.OpenWater();
+            client.PutToSea(openWater.X, openWater.Y);
             PumpUntil(client, () => !client.OwnedShip().IsMoving);
             return client;
         }

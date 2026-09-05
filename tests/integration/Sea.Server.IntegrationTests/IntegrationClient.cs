@@ -16,6 +16,7 @@ internal sealed partial class IntegrationClient : IDisposable
     private bool subscribed;
     private bool playerSubscribed;
     private bool spatialSubscribed;
+    private (int MinimumX, int MaximumX, int MinimumY, int MaximumY)? spatialBounds;
     private bool dockSubscribed;
     private bool npcWorldSubscribed;
     private Exception? failure;
@@ -128,6 +129,7 @@ internal sealed partial class IntegrationClient : IDisposable
         var maximumY = chunkY + radius;
         var bounds = $"chunk_x >= {minimumX} AND chunk_x <= {maximumX} " +
             $"AND chunk_y >= {minimumY} AND chunk_y <= {maximumY}";
+        spatialBounds = (minimumX, maximumX, minimumY, maximumY);
         spatialSubscribed = false;
         subscriptions.Add(connection.SubscriptionBuilder()
             .OnApplied(_ => spatialSubscribed = true)
@@ -404,19 +406,25 @@ internal sealed partial class IntegrationClient : IDisposable
         .Select(ship => ship.EntityId)
         .ToArray();
 
-    public bool HasOnlyBoundedSpatialRows(int minimumChunk, int maximumChunk)
+    /// <summary>
+    /// Whether every spatial row that arrived is inside the window this client asked for. The
+    /// window is the one <see cref="SubscribeSpatial"/> used rather than a pair of numbers the
+    /// caller repeats, so a test cannot assert bounds it never subscribed to.
+    /// </summary>
+    public bool HasOnlyBoundedSpatialRows()
     {
-        if (!spatialSubscribed)
+        if (!spatialSubscribed || spatialBounds is not { } window)
         {
             return false;
         }
 
+        var (minimumX, maximumX, minimumY, maximumY) = window;
         return connection.Db.Ship.Iter().All(ship =>
-                   ship.ChunkX >= minimumChunk && ship.ChunkX <= maximumChunk &&
-                   ship.ChunkY >= minimumChunk && ship.ChunkY <= maximumChunk) &&
+                   ship.ChunkX >= minimumX && ship.ChunkX <= maximumX &&
+                   ship.ChunkY >= minimumY && ship.ChunkY <= maximumY) &&
                connection.Db.WorldObject.Iter().All(worldObject =>
-                   worldObject.ChunkX >= minimumChunk && worldObject.ChunkX <= maximumChunk &&
-                   worldObject.ChunkY >= minimumChunk && worldObject.ChunkY <= maximumChunk);
+                   worldObject.ChunkX >= minimumX && worldObject.ChunkX <= maximumX &&
+                   worldObject.ChunkY >= minimumY && worldObject.ChunkY <= maximumY);
     }
 
     public void PumpOnce() => connection.FrameTick();

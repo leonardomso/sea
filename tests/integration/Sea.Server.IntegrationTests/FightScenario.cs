@@ -21,8 +21,12 @@ internal static class FightScenario
     /// <summary>A hull that has just put to sea keeps its shield until the tenth second.</summary>
     public const byte SpawnShieldedRejection = 23;
 
-    /// <summary>Inside the tier-one cannon's reach with room for the target to manoeuvre.</summary>
-    private const float FiringRange = 24f;
+    /// <summary>
+    /// Inside the tier-one cannon's reach with room for the target to manoeuvre. A first cannon
+    /// reaches eighteen squares (Content/Data/cannons.json), so a station four squares inside
+    /// that leaves the hostile somewhere to go without sailing out from under the guns.
+    /// </summary>
+    private const float FiringRange = 14f;
 
     /// <summary>
     /// Sails every captain who is still out of reach onto the target, re-laying the course once a
@@ -68,8 +72,8 @@ internal static class FightScenario
         {
             var angle = sourceAngle + index * MathF.PI / 4f;
             var result = client.SetCourse(
-                target.PositionX + MathF.Sin(angle) * 22f,
-                target.PositionY + MathF.Cos(angle) * 22f);
+                target.PositionX + MathF.Sin(angle) * 12f,
+                target.PositionY + MathF.Cos(angle) * 12f);
             if (result.Accepted)
             {
                 return true;
@@ -161,7 +165,7 @@ internal static class FightScenario
     {
         var source = client.OwnedShip();
         var radians = Bearing(source, target) * MathF.PI / 180f;
-        var distance = MathF.Max(8f, Distance(source, target) - 20f);
+        var distance = MathF.Max(8f, Distance(source, target) - 12f);
         Assert.True(client.SetCourse(
             source.PositionX + MathF.Sin(radians) * distance,
             source.PositionY + MathF.Cos(radians) * distance).Accepted);
