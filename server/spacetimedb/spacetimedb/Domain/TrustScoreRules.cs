@@ -92,15 +92,6 @@ public static class TrustScoreRules
     /// </summary>
     public const float EdgeOfRangeToleranceSquares = 0.1f;
 
-    /// <summary>
-    /// The half-square of slack a shot at the edge is allowed (SEA_5 §15,
-    /// RANGE_GRACE). This is the same number as the grace the firing check
-    /// applies; it is written here because <c>RangeRules</c> does not carry it
-    /// yet, and it belongs on <c>RangeRules.GraceSquares</c> the moment that
-    /// constant exists.
-    /// </summary>
-    public const float RangeGraceSquares = 0.5f;
-
     public static int PenaltyFor(TrustSignal signal) => signal switch
     {
         TrustSignal.DroppedCommand => DroppedMovePenalty,
@@ -156,7 +147,7 @@ public static class TrustScoreRules
     /// penalty is five points and not a ban.
     /// </summary>
     public static bool IsEdgeOfRange(float distanceSquares, float effectiveRangeSquares) =>
-        MathF.Abs(distanceSquares - (effectiveRangeSquares - RangeGraceSquares)) <=
+        MathF.Abs(distanceSquares - (effectiveRangeSquares - RangeRules.GraceSquares)) <=
         EdgeOfRangeToleranceSquares;
 
     public static int Apply(int score, TrustSignal signal) =>
