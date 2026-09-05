@@ -138,6 +138,15 @@ public static class CombatRules
     /// bearing from the target to the shooter. There is no firing arc left in the model, so this
     /// is the only geometry a volley needs beyond range.
     /// </summary>
+    /// <remarks>
+    /// The bearing is <see cref="GeometryRules.HeadingTo"/> because a target's heading is a
+    /// compass bearing and the two have to be measured off the same compass. This kept its own
+    /// <c>atan2(dx, dy)</c>, unnegated, which answered south for a shooter due north; it read
+    /// correctly only because <c>SailingRules</c> steered by the same inverted compass, so a
+    /// hull's heading was wrong by exactly the amount that cancelled it.
+    /// A shot from inside the target's own hull has no bearing, and falls back to her heading:
+    /// a volley at nought range lands on the bow.
+    /// </remarks>
     public static ArmorFace ResolveFacing(
         float targetHeadingDegrees,
         float targetX,
@@ -145,8 +154,12 @@ public static class CombatRules
         float sourceX,
         float sourceY)
     {
-        var bearingToSource = MathF.Atan2(sourceX - targetX, sourceY - targetY) *
-            (180f / MathF.PI);
+        var bearingToSource = GeometryRules.HeadingTo(
+            targetX,
+            targetY,
+            sourceX,
+            sourceY,
+            targetHeadingDegrees);
         var offset = MathF.Abs(NormalizeSignedAngle(bearingToSource - targetHeadingDegrees));
 
         if (offset <= FrontArcHalfDegrees)

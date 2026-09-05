@@ -153,8 +153,7 @@ public static class SailingRules
         var speed = MoveTowards(state.Speed, targetSpeed, speedChange);
         var averageSpeed = (state.Speed + speed) * 0.5f;
         var travel = averageSpeed * deltaSeconds;
-        var directionX = TrigonometryRules.SinDegrees(heading);
-        var directionY = TrigonometryRules.CosDegrees(heading);
+        var (directionX, directionY) = GeometryRules.Direction(heading);
 
         if (!stopping && LastStrideCoversTheMark(
                 remainingSquared,
@@ -208,18 +207,23 @@ public static class SailingRules
         }
     }
 
+    /// <summary>
+    /// The bearing a hull has to steer to reach the mark. North is up the chart, so this is
+    /// <see cref="GeometryRules.HeadingTo"/> and nothing else: it used to keep its own
+    /// <c>atan2(dx, dy)</c>, which on a chart whose y grows south answered 0 for a mark due
+    /// south, and <see cref="StepTowardHeading"/> sailed by the same inverted compass, so the
+    /// two agreed with each other while disagreeing with every current and storm on the tick.
+    /// </summary>
+    /// <remarks>
+    /// The fallback is 0: a ship already on her mark has no bearing to steer, and answering
+    /// north there is what this has always done.
+    /// </remarks>
     public static float DesiredHeading(
         float positionX,
         float positionY,
         float destinationX,
-        float destinationY)
-    {
-        var deltaX = destinationX - positionX;
-        var deltaY = destinationY - positionY;
-        return deltaX * deltaX + deltaY * deltaY <= 0.000001f
-            ? 0f
-            : NormalizeAngle(MathF.Atan2(deltaX, deltaY) * (180f / MathF.PI));
-    }
+        float destinationY) =>
+        GeometryRules.HeadingTo(positionX, positionY, destinationX, destinationY, 0f);
 
     private static float ResolveHeading(
         float currentHeading,
@@ -229,16 +233,16 @@ public static class SailingRules
         float maximumTurn,
         out float thrustAlignment)
     {
-        var heading = NormalizeAngle(currentHeading);
+        var heading = GeometryRules.NormalizeAngle(currentHeading);
         thrustAlignment = 1f;
         if (stopping || remainingSquared <= 0.000001f)
         {
             return heading;
         }
 
-        desiredHeading = NormalizeAngle(desiredHeading);
+        desiredHeading = GeometryRules.NormalizeAngle(desiredHeading);
         heading = MoveTowardsAngle(heading, desiredHeading, maximumTurn);
-        var headingError = NormalizeSignedAngle(desiredHeading - heading);
+        var headingError = GeometryRules.NormalizeSignedAngle(desiredHeading - heading);
         thrustAlignment = MathF.Max(0f, TrigonometryRules.CosDegrees(headingError));
         return heading;
     }
@@ -265,32 +269,6 @@ public static class SailingRules
 
     private static float Square(float value) => value * value;
 
-    public static bool SegmentIntersectsCircle(
-        float startX,
-        float startY,
-        float endX,
-        float endY,
-        float centerX,
-        float centerY,
-        float radius)
-    {
-        var segmentX = endX - startX;
-        var segmentY = endY - startY;
-        var lengthSquared = segmentX * segmentX + segmentY * segmentY;
-        var projection = lengthSquared <= 0.000001f
-            ? 0f
-            : Math.Clamp(
-                ((centerX - startX) * segmentX + (centerY - startY) * segmentY) /
-                lengthSquared,
-                0f,
-                1f);
-        var closestX = startX + segmentX * projection;
-        var closestY = startY + segmentY * projection;
-        var deltaX = closestX - centerX;
-        var deltaY = closestY - centerY;
-        return deltaX * deltaX + deltaY * deltaY < radius * radius;
-    }
-
     private static float MoveTowards(float current, float target, float maximumDelta)
     {
         if (MathF.Abs(target - current) <= maximumDelta)
@@ -303,24 +281,12 @@ public static class SailingRules
 
     private static float MoveTowardsAngle(float current, float target, float maximumDelta)
     {
-        var delta = NormalizeSignedAngle(target - current);
+        var delta = GeometryRules.NormalizeSignedAngle(target - current);
         if (MathF.Abs(delta) <= maximumDelta)
         {
             return target;
         }
 
-        return NormalizeAngle(current + MathF.Sign(delta) * maximumDelta);
-    }
-
-    private static float NormalizeAngle(float angle)
-    {
-        angle %= 360f;
-        return angle < 0f ? angle + 360f : angle;
-    }
-
-    private static float NormalizeSignedAngle(float angle)
-    {
-        angle = NormalizeAngle(angle);
-        return angle > 180f ? angle - 360f : angle;
+        return GeometryRules.NormalizeAngle(current + MathF.Sign(delta) * maximumDelta);
     }
 }

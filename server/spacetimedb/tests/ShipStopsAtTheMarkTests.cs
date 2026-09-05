@@ -32,9 +32,9 @@ public sealed class ShipStopsAtTheMarkTests
         float startingSpeed,
         int tickLimit = 3_000)
     {
-        var radians = bearingDegrees * (MathF.PI / 180f);
-        var destinationX = distance * MathF.Sin(radians);
-        var destinationY = distance * MathF.Cos(radians);
+        var (directionX, directionY) = GeometryRules.Direction(bearingDegrees);
+        var destinationX = distance * directionX;
+        var destinationY = distance * directionY;
         var state = new SailingState(0f, 0f, 0f, startingSpeed);
         for (var tick = 1; tick <= tickLimit; tick++)
         {

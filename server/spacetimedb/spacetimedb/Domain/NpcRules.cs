@@ -88,9 +88,16 @@ public static class NpcRules
     private const float TurnCourseDistance = 8f;
 
     // Every idle ship sails a patrol route: a wide loop across the chart, fixed for the life of
-    // the ship by its seed. The old model kept each hull inside a forty-unit bubble around its
+    // the ship by its seed. The old model kept each hull inside a forty-square bubble around its
     // spawn, which meant the sea was full of ships that never went anywhere and a player could
     // sail the whole map without meeting one under way.
+    //
+    // These carried their figures unchanged out of the 200-unit world and into the 400-square
+    // one, so they were re-read against the new chart rather than assumed: a loop of radius 30
+    // to 75 spans a fifth to a third of a 400-square map, which is the wide circuit the
+    // paragraph above asks for, where on the old chart the same numbers were most of the sea.
+    // The old world was the mis-scaled one -- its guns reached 40% of it and its lookouts saw
+    // past the far edge -- so reading these as squares is what makes them mean what they say.
     public const float MinimumRouteRadius = 30f;
     public const float MaximumRouteRadius = 75f;
     public const float MinimumRoamLeg = 12f;
@@ -338,7 +345,7 @@ public static class NpcRules
             : MathF.Atan2(deltaY, deltaX);
     }
 
-    // Sails along the line to the target by `travel` units: forward to close a gap,
+    // Sails along the line to the target by `travel` squares: forward to close a gap,
     // backward (negative) to open one, so the ship comes to rest at its desired range.
     private static NpcDecision HoldRange(
         NpcSnapshot snapshot,

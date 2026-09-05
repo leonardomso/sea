@@ -11,13 +11,14 @@ public sealed class SailingRulesTests
         var step = SailingRules.Step(
             new SailingState(0f, 0f, 0f, 0f),
             destinationX: 0f,
-            destinationY: 100f,
+            destinationY: -100f,
             stopping: false,
             new SailingParameters(12f, 2f, 3f, 60f),
             deltaSeconds: 1f);
 
         Assert.Equal(2f, step.Speed, 3);
-        Assert.InRange(step.PositionY, 0.9f, 1.1f);
+        // Heading 0 is north, and north is up the chart, so she makes way toward smaller y.
+        Assert.InRange(step.PositionY, -1.1f, -0.9f);
         Assert.True(step.IsMoving);
     }
 
@@ -36,9 +37,9 @@ public sealed class SailingRulesTests
     }
 
     [Theory]
-    [InlineData(0f, 100f, 0f)]
+    [InlineData(0f, -100f, 0f)]
     [InlineData(100f, 0f, 90f)]
-    [InlineData(0f, -100f, 180f)]
+    [InlineData(0f, 100f, 180f)]
     [InlineData(-100f, 0f, 270f)]
     public void Desired_heading_uses_the_chart_compass(
         float destinationX,
@@ -104,14 +105,14 @@ public sealed class SailingRulesTests
         var step = SailingRules.Step(
             new SailingState(0f, 0f, 0f, 8f),
             destinationX: 0f,
-            destinationY: -100f,
+            destinationY: 100f,
             stopping: false,
             new SailingParameters(12f, 2f, 3f, 30f),
             deltaSeconds: 1f);
 
         Assert.Equal(30f, step.HeadingDegrees, 3);
         Assert.Equal(5f, step.Speed, 3);
-        Assert.True(step.PositionY > 0f,
+        Assert.True(step.PositionY < 0f,
             "A ship may coast through a turn, but it must never translate stern-first.");
     }
 
@@ -124,7 +125,7 @@ public sealed class SailingRulesTests
             var step = SailingRules.Step(
                 state,
                 destinationX: 0f,
-                destinationY: -100f,
+                destinationY: 100f,
                 stopping: false,
                 new SailingParameters(
                     12f,
@@ -148,7 +149,7 @@ public sealed class SailingRulesTests
         var step = SailingRules.Step(
             new SailingState(0f, 0f, 0f, 8f),
             destinationX: 0f,
-            destinationY: 3f,
+            destinationY: -3f,
             stopping: false,
             new SailingParameters(12f, 2f, 3f, 60f),
             deltaSeconds: 1f);
@@ -156,7 +157,7 @@ public sealed class SailingRulesTests
         Assert.True(step.Arrived);
         Assert.False(step.IsMoving);
         Assert.Equal(0f, step.PositionX, 3);
-        Assert.Equal(3f, step.PositionY, 3);
+        Assert.Equal(-3f, step.PositionY, 3);
         Assert.Equal(0f, step.Speed, 3);
     }
 
@@ -178,9 +179,9 @@ public sealed class SailingRulesTests
     [Fact]
     public void Collision_check_detects_a_course_through_a_reef()
     {
-        Assert.True(SailingRules.SegmentIntersectsCircle(
+        Assert.True(GeometryRules.SegmentIntersectsCircle(
             -10f, 0f, 10f, 0f, 0f, 0f, radius: 3f));
-        Assert.False(SailingRules.SegmentIntersectsCircle(
+        Assert.False(GeometryRules.SegmentIntersectsCircle(
             -10f, 10f, 10f, 10f, 0f, 0f, radius: 3f));
     }
 
@@ -191,10 +192,10 @@ public sealed class SailingRulesTests
 
         Assert.True(NavigationRules.TryFindDetour(
             -40f, 0f, 40f, 0f, blockers, out var waypoint));
-        Assert.False(SailingRules.SegmentIntersectsCircle(
+        Assert.False(GeometryRules.SegmentIntersectsCircle(
             -40f, 0f, waypoint.X, waypoint.Y, 0f, 0f,
             10f + WorldRules.LandHazardPadding));
-        Assert.False(SailingRules.SegmentIntersectsCircle(
+        Assert.False(GeometryRules.SegmentIntersectsCircle(
             waypoint.X, waypoint.Y, 40f, 0f, 0f, 0f,
             10f + WorldRules.LandHazardPadding));
     }

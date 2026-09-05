@@ -159,7 +159,7 @@ public static class NavigationRules
         foreach (var blocker in blockers)
         {
             var collisionRadius = blocker.Radius + WorldRules.LandHazardPadding;
-            if (!SailingRules.SegmentIntersectsCircle(
+            if (!GeometryRules.SegmentIntersectsCircle(
                     startX, startY, destinationX, destinationY,
                     blocker.X, blocker.Y, collisionRadius))
             {
@@ -220,7 +220,7 @@ public static class NavigationRules
         float endX,
         float endY,
         IReadOnlyCollection<NavigationBlocker> blockers) => blockers.All(blocker =>
-        !SailingRules.SegmentIntersectsCircle(
+        !GeometryRules.SegmentIntersectsCircle(
             startX,
             startY,
             endX,
