@@ -181,6 +181,7 @@ namespace Sea.Client
         private readonly Dictionary<ulong, ActiveVolley> active = new();
         private readonly List<ulong> stale = new();
         private readonly List<TimedEffect> effects = new();
+        private readonly SeaHitQueue hits = new();
         private readonly AudioClip cannonClip;
         private readonly AudioClip impactClip;
         private int frame;
@@ -253,6 +254,60 @@ namespace Sea.Client
             active[volley.VolleyId] = presentation.WithFrame(frame, position, target);
         }
 
+        /// <summary>
+        /// A volley landed. The server applied the damage when the trigger was pulled, so all
+        /// that is left here is to wait out the ball's flight and then show where it went home
+        /// (SEA_5 §8.3).
+        /// </summary>
+        public void Hit(
+            ulong attackerEntityId,
+            ulong defenderEntityId,
+            uint damage,
+            bool isCritical,
+            byte face,
+            float flightSeconds)
+        {
+            hits.Enqueue(new SeaPendingHit(
+                attackerEntityId,
+                defenderEntityId,
+                damage,
+                isCritical,
+                face,
+                SeaHitPresentationRules.ImpactAt(Time.unscaledTime, flightSeconds)));
+        }
+
+        /// <summary>
+        /// Shows every hit whose ball has arrived. A critical burns hotter and throws the hull
+        /// about harder, which is the only place a captain can read one until there is somewhere
+        /// to draw the number itself.
+        /// </summary>
+        public void DrainHits(Func<ulong, Transform> findShip, Func<ulong, SeaShipFeedback> findFeedback)
+        {
+            var now = Time.unscaledTime;
+            while (hits.TryTakeDue(now, out var hit))
+            {
+                var defender = findShip?.Invoke(hit.DefenderEntityId);
+                if (defender != null)
+                {
+                    PlayEffect(
+                        defender.position + Vector3.up * 0.55f,
+                        impactClip,
+                        hit.IsCritical
+                            ? new Color(1f, 0.72f, 0.32f, 1f)
+                            : new Color(0.72f, 0.91f, 1f, 1f));
+                }
+
+                findFeedback?.Invoke(hit.DefenderEntityId)
+                    ?.PlayHit(SeaHitPresentationRules.Shock(hit.Damage, hit.IsCritical));
+            }
+        }
+
+        /// <summary>
+        /// Whether a ball is still on its way to this hull. A sinking waits on this, so a hull
+        /// never goes down before the shot that sank her arrives (SEA_5 §8.3).
+        /// </summary>
+        public bool HasShotInTheAir(ulong defenderEntityId) => hits.HasShotInTheAir(defenderEntityId);
+
         public void EndFrame()
         {
             stale.Clear();
@@ -291,6 +346,7 @@ namespace Sea.Client
 
             effects.Clear();
             stale.Clear();
+            hits.Clear();
         }
 
         private void PlayEffect(Vector3 position, AudioClip clip, Color color)

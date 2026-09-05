@@ -191,6 +191,7 @@ namespace Sea.Client
             connection.Db.Volley.OnDelete += HandleVolleyDeleted;
             connection.Db.PlayerCommandState.OnInsert += HandleCommandStateInserted;
             connection.Db.PlayerCommandState.OnUpdate += HandleCommandStateUpdated;
+            connection.Db.HitEvent.OnInsert += HandleHitInserted;
             connection.Db.CommandResultEvent.OnInsert += HandleCommandResult;
             connection.Db.EncounterRewardEvent.OnInsert += HandleEncounterReward;
             RegisterClientStateCallbacks(connection);

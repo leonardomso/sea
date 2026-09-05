@@ -50,6 +50,7 @@ import EffectRow from "./effect_table";
 import EncounterRewardRow from "./encounter_reward_table";
 import EncounterRewardEventRow from "./encounter_reward_event_table";
 import EnvironmentStateRow from "./environment_state_table";
+import HitEventRow from "./hit_event_table";
 import HullRow from "./hull_table";
 import HullDefRow from "./hull_def_table";
 import InventoryRow from "./inventory_table";
@@ -220,6 +221,14 @@ const tablesSchema = __schema({
       { name: 'environment_state_id_key', constraint: 'unique', columns: ['id'] },
     ],
   }, EnvironmentStateRow),
+  hitEvent: __table({
+    name: 'hit_event',
+    indexes: [
+    ],
+    constraints: [
+    ],
+    event: true,
+  }, HitEventRow),
   hull: __table({
     name: 'hull',
     indexes: [
@@ -592,6 +601,8 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "EncounterRewardEvent": Omit<typeof tablesSchema.schemaType.tables["encounterRewardEvent"], "accessorName"> & { readonly accessorName: "EncounterRewardEvent" };
     /** @deprecated Use `environmentState` instead. This alias will be removed in the next major version. */
     readonly "EnvironmentState": Omit<typeof tablesSchema.schemaType.tables["environmentState"], "accessorName"> & { readonly accessorName: "EnvironmentState" };
+    /** @deprecated Use `hitEvent` instead. This alias will be removed in the next major version. */
+    readonly "HitEvent": Omit<typeof tablesSchema.schemaType.tables["hitEvent"], "accessorName"> & { readonly accessorName: "HitEvent" };
     /** @deprecated Use `hull` instead. This alias will be removed in the next major version. */
     readonly "Hull": Omit<typeof tablesSchema.schemaType.tables["hull"], "accessorName"> & { readonly accessorName: "Hull" };
     /** @deprecated Use `hullDef` instead. This alias will be removed in the next major version. */
@@ -666,6 +677,7 @@ const tableAccessorAliases = {
   "EncounterReward": "encounterReward",
   "EncounterRewardEvent": "encounterRewardEvent",
   "EnvironmentState": "environmentState",
+  "HitEvent": "hitEvent",
   "Hull": "hull",
   "HullDef": "hullDef",
   "Inventory": "inventory",
@@ -729,6 +741,8 @@ export type DbView = __DbViewBase & {
   readonly "EncounterRewardEvent": __DbViewBase["encounterRewardEvent"];
   /** @deprecated Use `environmentState` instead. This alias will be removed in the next major version. */
   readonly "EnvironmentState": __DbViewBase["environmentState"];
+  /** @deprecated Use `hitEvent` instead. This alias will be removed in the next major version. */
+  readonly "HitEvent": __DbViewBase["hitEvent"];
   /** @deprecated Use `hull` instead. This alias will be removed in the next major version. */
   readonly "Hull": __DbViewBase["hull"];
   /** @deprecated Use `hullDef` instead. This alias will be removed in the next major version. */
@@ -799,6 +813,8 @@ export type Tables = __TablesBase & {
   readonly "EncounterRewardEvent": __TablesBase["encounterRewardEvent"];
   /** @deprecated Use `environmentState` instead. This alias will be removed in the next major version. */
   readonly "EnvironmentState": __TablesBase["environmentState"];
+  /** @deprecated Use `hitEvent` instead. This alias will be removed in the next major version. */
+  readonly "HitEvent": __TablesBase["hitEvent"];
   /** @deprecated Use `hull` instead. This alias will be removed in the next major version. */
   readonly "Hull": __TablesBase["hull"];
   /** @deprecated Use `hullDef` instead. This alias will be removed in the next major version. */

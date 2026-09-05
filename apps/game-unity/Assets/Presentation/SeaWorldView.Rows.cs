@@ -121,6 +121,42 @@ namespace Sea.Client
             };
         }
 
+        /// <summary>
+        /// The server has already applied this damage; the ball is still in the air. The
+        /// presenter holds the hit until it lands, so the impact and its number arrive together
+        /// (SEA_5 §8.3).
+        /// </summary>
+        private void HandleHitLanded(HitEvent hit)
+        {
+            combatPresenter?.Hit(
+                hit.AttackerEntityId,
+                hit.DefenderEntityId,
+                hit.Damage,
+                hit.IsCritical,
+                hit.Face,
+                hit.FlightSeconds);
+        }
+
+        private Transform FindShipTransform(ulong entityId)
+        {
+            if (entityId == playerEntityId)
+            {
+                return playerObject != null ? playerObject.transform : null;
+            }
+
+            return entities.TryGetValue(entityId, out var ship) ? ship.transform : null;
+        }
+
+        private SeaShipFeedback FindShipFeedback(ulong entityId)
+        {
+            if (entityId == playerEntityId)
+            {
+                return playerFeedback;
+            }
+
+            return shipFeedback.TryGetValue(entityId, out var feedback) ? feedback : null;
+        }
+
         private void HandleVolleyChanged(Volley volley)
         {
             if (volley.IsActive)

@@ -38,6 +38,15 @@ public static class RangeRules
     /// </summary>
     public const float ProjectileSpeedSquaresPerSecond = 40f;
 
+    /// <summary>
+    /// How long a cannonball is in the air, in seconds. Visual only: the damage was applied when
+    /// the trigger was pulled and no amount of sailing can undo it (SEA_5 §8.3, §8.4). The client
+    /// waits this out before it draws the impact, so a shot and its number land together, and
+    /// holds a sinking for the same time so a hull never goes down before the ball reaches her.
+    /// </summary>
+    public static float FlightSeconds(float distanceSquares) =>
+        distanceSquares / ProjectileSpeedSquaresPerSecond;
+
     /// <summary>The base reach of a gun at the given tier (1-5), in squares (SEA_5 §7.1).</summary>
     public static float BaseRangeSquares(byte tier) =>
         BaseRangesByTier[Math.Clamp(tier, (byte)1, (byte)5) - 1];

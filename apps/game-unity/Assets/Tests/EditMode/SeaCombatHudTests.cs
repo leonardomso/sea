@@ -106,6 +106,80 @@ namespace Sea.Tests
             Assert.That(SeaFireRepeatRules.ShouldRepeat(false, true, 5f), Is.False);
         }
 
+        /// <summary>
+        /// SEA_5 8.3: the server settled the volley when the trigger was pulled and says how long
+        /// the ball is in the air. The number waits for it, or it appears over a hull the shot has
+        /// not reached yet.
+        /// </summary>
+        [Test]
+        public void A_hit_number_waits_for_the_ball_and_never_waits_long()
+        {
+            Assert.That(SeaHitPresentationRules.ImpactAt(10f, 0.5f), Is.EqualTo(10.5f).Within(0.0001f));
+            Assert.That(SeaHitPresentationRules.ImpactAt(10f, 0f), Is.EqualTo(10f).Within(0.0001f));
+
+            // A corrupt row or a clock that jumped must not park a number off screen forever.
+            Assert.That(
+                SeaHitPresentationRules.ImpactAt(10f, 900f),
+                Is.EqualTo(10f + SeaHitPresentationRules.MaximumHoldSeconds).Within(0.0001f));
+
+            Assert.That(SeaHitPresentationRules.IsDue(10.5f, 10.5f), Is.True);
+            Assert.That(SeaHitPresentationRules.IsDue(10.5f, 10.49f), Is.False);
+        }
+
+        [Test]
+        public void A_critical_is_marked_on_the_number_a_captain_reads()
+        {
+            Assert.That(SeaHitPresentationRules.DamageLabel(42u, isCritical: false), Is.EqualTo("-42"));
+            Assert.That(SeaHitPresentationRules.DamageLabel(42u, isCritical: true), Is.EqualTo("-42!"));
+        }
+
+        /// <summary>
+        /// The jolt saturates: a hull cannot be shaken twice as hard by twice the damage without
+        /// leaving the water, and what has to be readable off it is that she was hit.
+        /// </summary>
+        [Test]
+        public void A_hull_is_thrown_about_by_a_hit_and_never_out_of_the_water()
+        {
+            Assert.That(SeaHitPresentationRules.Shock(0u, isCritical: false), Is.EqualTo(0f));
+            Assert.That(SeaHitPresentationRules.Shock(120u, isCritical: false), Is.EqualTo(0.5f).Within(0.0001f));
+            Assert.That(
+                SeaHitPresentationRules.Shock(60u, false),
+                Is.LessThan(SeaHitPresentationRules.Shock(240u, false)));
+            Assert.That(
+                SeaHitPresentationRules.Shock(120u, isCritical: true),
+                Is.GreaterThan(SeaHitPresentationRules.Shock(120u, isCritical: false)));
+            Assert.That(SeaHitPresentationRules.Shock(uint.MaxValue, isCritical: true), Is.EqualTo(1f));
+        }
+
+        /// <summary>
+        /// Several volleys can be in the air at once and they do not necessarily land in the order
+        /// they were fired: a shot from close by arrives before one fired earlier from further off.
+        /// </summary>
+        [Test]
+        public void Shots_in_the_air_land_in_the_order_they_arrive_not_the_order_they_were_fired()
+        {
+            var queue = new SeaHitQueue();
+            queue.Enqueue(new SeaPendingHit(1UL, 9UL, 30u, false, 0, impactAtSeconds: 10.75f));
+            queue.Enqueue(new SeaPendingHit(2UL, 9UL, 10u, true, 1, impactAtSeconds: 10.25f));
+
+            Assert.That(queue.Count, Is.EqualTo(2));
+            Assert.That(queue.TryTakeDue(10f, out _), Is.False);
+
+            Assert.That(queue.TryTakeDue(10.5f, out var first), Is.True);
+            Assert.That(first.Damage, Is.EqualTo(10u));
+            Assert.That(first.IsCritical, Is.True);
+            Assert.That(queue.TryTakeDue(10.5f, out _), Is.False);
+
+            // A hull the server has already sunk waits for the ball that sank her.
+            Assert.That(queue.HasShotInTheAir(9UL), Is.True);
+            Assert.That(queue.HasShotInTheAir(8UL), Is.False);
+
+            Assert.That(queue.TryTakeDue(11f, out var second), Is.True);
+            Assert.That(second.Damage, Is.EqualTo(30u));
+            Assert.That(queue.HasShotInTheAir(9UL), Is.False);
+            Assert.That(queue.Count, Is.Zero);
+        }
+
         [Test]
         public void A_wreck_is_offered_a_berth_once_and_then_counted_back_onto_the_water()
         {

@@ -184,6 +184,17 @@ export type EnvironmentState = __Infer<typeof EnvironmentState>;
 export const FireCommand = __t.object("FireCommand", {});
 export type FireCommand = __Infer<typeof FireCommand>;
 
+export const HitEvent = __t.object("HitEvent", {
+  attackerEntityId: __t.u64(),
+  defenderEntityId: __t.u64(),
+  damage: __t.u32(),
+  isCritical: __t.bool(),
+  face: __t.u8(),
+  flightSeconds: __t.f32(),
+  tick: __t.u64(),
+});
+export type HitEvent = __Infer<typeof HitEvent>;
+
 export const Hull = __t.object("Hull", {
   hullId: __t.u64(),
   owner: __t.identity(),

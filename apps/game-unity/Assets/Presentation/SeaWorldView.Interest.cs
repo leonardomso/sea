@@ -28,6 +28,7 @@ namespace Sea.Client
             interestConnection.WorldObjectChanged += HandleWorldObjectChanged;
             interestConnection.VolleyChanged += HandleVolleyChanged;
             interestConnection.VolleyLeftInterest += HandleVolleyRemoved;
+            interestConnection.HitLanded += HandleHitLanded;
             interestConnection.WorldTickChanged += HandleWorldTickChanged;
             interestConnection.LootChanged += HandleLootChanged;
             interestConnection.LootLeftInterest += HandleLootRemoved;
@@ -49,6 +50,7 @@ namespace Sea.Client
             interestConnection.WorldObjectChanged -= HandleWorldObjectChanged;
             interestConnection.VolleyChanged -= HandleVolleyChanged;
             interestConnection.VolleyLeftInterest -= HandleVolleyRemoved;
+            interestConnection.HitLanded -= HandleHitLanded;
             interestConnection.WorldTickChanged -= HandleWorldTickChanged;
             interestConnection.LootChanged -= HandleLootChanged;
             interestConnection.LootLeftInterest -= HandleLootRemoved;

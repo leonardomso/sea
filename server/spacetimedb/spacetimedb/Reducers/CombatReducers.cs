@@ -30,6 +30,17 @@ public static partial class Module
             ammunition.DamageMultiplier,
             CombatRules.ArmorOn(facing, target.ArmorFront, target.ArmorSides, target.ArmorBack));
 
+        // SEA_5 §8.7: one volley in ten lands for half again, taken after armour so the face a
+        // shot found still decides what the crit is worth. The roll is a hash of the world seed,
+        // the tick and both hulls rather than a running generator, so a replay of the same
+        // command log crits on exactly the same volleys.
+        var isCritical = CriticalHitRules.IsCritical(
+            world.Environment(ctx)?.Seed ?? 0UL,
+            world.Tick,
+            source.EntityId,
+            target.EntityId);
+        damage = CriticalHitRules.Apply(damage, isCritical);
+
         var magazine = CombatRules.Spend(
             new MagazineState(source.ReadyVolleys, source.ReloadProgressTicks));
         source.ReadyVolleys = magazine.ReadyVolleys;
@@ -41,7 +52,7 @@ public static partial class Module
         source.IsEngaged = true;
 
         PublishVolley(ctx, world, source, target, ammunition, facing);
-        LandVolley(ctx, world, source, target, ammunition, damage);
+        LandVolley(ctx, world, source, target, ammunition, damage, isCritical, facing);
     }
 
     /// <summary>
@@ -91,10 +102,17 @@ public static partial class Module
         Ship source,
         Ship target,
         AmmunitionContent ammunition,
-        uint damage)
+        uint damage,
+        bool isCritical,
+        ArmorFace facing)
     {
         var ships = new ShipTickBuffer();
         var defender = target;
+        var distance = CombatRules.Distance(
+            source.PositionX,
+            source.PositionY,
+            defender.PositionX,
+            defender.PositionY);
         var applied = ApplyDamageToShip(
             ctx,
             ships,
@@ -106,11 +124,6 @@ public static partial class Module
 
         if (defender.IsAlive)
         {
-            var distance = CombatRules.Distance(
-                source.PositionX,
-                source.PositionY,
-                defender.PositionX,
-                defender.PositionY);
             if (EffectRules.TryResolve(ammunition, distance, world.Tick, out var application))
             {
                 ApplyEffect(ctx, defender.EntityId, source.EntityId, application, world.Tick);
@@ -124,6 +137,16 @@ public static partial class Module
 
         ships.Stage(defender);
         ships.Flush(ctx, world.Tick);
+        ctx.Db.HitEvent.Insert(new HitEvent
+        {
+            AttackerEntityId = source.EntityId,
+            DefenderEntityId = defender.EntityId,
+            Damage = applied,
+            IsCritical = isCritical,
+            Face = (byte)facing,
+            FlightSeconds = RangeRules.FlightSeconds(distance),
+            Tick = world.Tick,
+        });
         AppendEvent(
             ctx,
             world.Tick,

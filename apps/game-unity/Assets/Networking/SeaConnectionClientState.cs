@@ -17,6 +17,12 @@ namespace Sea.Client
         public event Action<WorldObject> WorldObjectChanged;
         public event Action<Volley> VolleyChanged;
         public event Action<ulong> VolleyLeftInterest;
+
+        /// <summary>
+        /// One volley's numbers, raised the moment the server settles it. What the presentation
+        /// does with it waits on the flight time the row carries (SEA_5 8.3).
+        /// </summary>
+        public event Action<HitEvent> HitLanded;
         public event Action<Loot> LootChanged;
         public event Action<ulong> LootLeftInterest;
         public event Action<ulong> WorldTickChanged;
@@ -138,6 +144,8 @@ namespace Sea.Client
             WorldObjectChanged?.Invoke(worldObject);
 
         private void NotifyVolleyChanged(Volley volley) => VolleyChanged?.Invoke(volley);
+
+        private void HandleHitInserted(EventContext _context, HitEvent hit) => HitLanded?.Invoke(hit);
 
         private void HandleLootInserted(EventContext _context, Loot loot) =>
             LootChanged?.Invoke(loot);

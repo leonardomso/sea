@@ -53,6 +53,16 @@ public sealed class RangeRulesTests
     }
 
     [Fact]
+    public void AShotIsInTheAirForTheWaterItCrosses()
+    {
+        // SEA_5 8.3: the ball is drawing time, not simulation time -- the damage was applied when
+        // the trigger was pulled. Twenty squares at forty squares a second is half a second.
+        Assert.Equal(0.5f, RangeRules.FlightSeconds(20f), 4);
+        Assert.Equal(0f, RangeRules.FlightSeconds(0f), 4);
+        Assert.Equal(0.75f, RangeRules.FlightSeconds(RangeRules.BaseRangeSquares(5)), 4);
+    }
+
+    [Fact]
     public void TheMinimapShowsTwiceAsFarAsACaptainCanSee()
     {
         Assert.Equal(120f, RangeRules.MinimapRadiusSquares, 4);

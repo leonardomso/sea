@@ -37,6 +37,7 @@ namespace SpacetimeDB.Types
             AddTable(EncounterReward = new(conn));
             AddTable(EncounterRewardEvent = new(conn));
             AddTable(EnvironmentState = new(conn));
+            AddTable(HitEvent = new(conn));
             AddTable(Hull = new(conn));
             AddTable(HullDef = new(conn));
             AddTable(Inventory = new(conn));
@@ -566,6 +567,7 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.EncounterReward().ToSql(),
             new QueryBuilder().From.EncounterRewardEvent().ToSql(),
             new QueryBuilder().From.EnvironmentState().ToSql(),
+            new QueryBuilder().From.HitEvent().ToSql(),
             new QueryBuilder().From.Hull().ToSql(),
             new QueryBuilder().From.HullDef().ToSql(),
             new QueryBuilder().From.Inventory().ToSql(),
@@ -605,6 +607,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<EncounterReward, EncounterRewardCols, EncounterRewardIxCols> EncounterReward() => new("encounter_reward", new EncounterRewardCols("encounter_reward"), new EncounterRewardIxCols("encounter_reward"));
         public global::SpacetimeDB.Table<EncounterRewardEvent, EncounterRewardEventCols, EncounterRewardEventIxCols> EncounterRewardEvent() => new("encounter_reward_event", new EncounterRewardEventCols("encounter_reward_event"), new EncounterRewardEventIxCols("encounter_reward_event"));
         public global::SpacetimeDB.Table<EnvironmentState, EnvironmentStateCols, EnvironmentStateIxCols> EnvironmentState() => new("environment_state", new EnvironmentStateCols("environment_state"), new EnvironmentStateIxCols("environment_state"));
+        public global::SpacetimeDB.Table<HitEvent, HitEventCols, HitEventIxCols> HitEvent() => new("hit_event", new HitEventCols("hit_event"), new HitEventIxCols("hit_event"));
         public global::SpacetimeDB.Table<Hull, HullCols, HullIxCols> Hull() => new("hull", new HullCols("hull"), new HullIxCols("hull"));
         public global::SpacetimeDB.Table<HullDef, HullDefCols, HullDefIxCols> HullDef() => new("hull_def", new HullDefCols("hull_def"), new HullDefIxCols("hull_def"));
         public global::SpacetimeDB.Table<Inventory, InventoryCols, InventoryIxCols> Inventory() => new("inventory", new InventoryCols("inventory"), new InventoryIxCols("inventory"));

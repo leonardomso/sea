@@ -86,6 +86,29 @@ public static partial class Module
         public ulong Tick;
     }
 
+    /// <summary>
+    /// What one volley did, as numbers rather than as text (SEA_5 §8.1). The server has already
+    /// applied the damage by the time this goes out; the flight time is only how long the client
+    /// waits before drawing the impact, so a shot and its number land together (SEA_5 §8.3).
+    /// </summary>
+    /// <remarks>
+    /// The general <see cref="CombatEvent"/> carries two strings, which is two allocations a
+    /// volley on the tick and a client that has to parse text to draw a number. It stays for the
+    /// events that are not raised per volley; a fight is the one place the cost is paid on every
+    /// shot from every hull in the chunk.
+    /// </remarks>
+    [SpacetimeDB.Table(Accessor = "HitEvent", Public = true, Event = true)]
+    public partial struct HitEvent
+    {
+        public ulong AttackerEntityId;
+        public ulong DefenderEntityId;
+        public uint Damage;
+        public bool IsCritical;
+        public byte Face;
+        public float FlightSeconds;
+        public ulong Tick;
+    }
+
 #pragma warning disable STDB_UNSTABLE
     [SpacetimeDB.ClientVisibilityFilter]
     public static readonly Filter EncounterRewardOwnerFilter = new Filter.Sql(

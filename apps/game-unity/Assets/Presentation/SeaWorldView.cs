@@ -74,6 +74,8 @@ namespace Sea.Client
         private Material targetMaterial;
         private Material ownShipMaterial;
         private SeaCombatPresenter combatPresenter;
+        private Func<ulong, Transform> findShipTransform;
+        private Func<ulong, SeaShipFeedback> findShipFeedback;
         private ulong playerEntityId;
         private ulong worldTick;
         private Ship localShip;
@@ -205,6 +207,10 @@ namespace Sea.Client
             targetMaterial = SeaMaterialFactory.Create(new Color(1f, 0.85f, 0.25f, 1f));
             ownShipMaterial = SeaMaterialFactory.Create(new Color(0.2f, 0.9f, 0.35f, 1f));
             combatPresenter = new SeaCombatPresenter(cannonballMaterial, combatEffectMaterial);
+            // Cached once: the drain runs every frame and a fresh delegate there would allocate
+            // on every one of them.
+            findShipTransform = FindShipTransform;
+            findShipFeedback = FindShipFeedback;
         }
 
         private void CreateWater()
@@ -254,16 +260,7 @@ namespace Sea.Client
             }
 
             combatPresenter.EndFrame();
-        }
-
-        private Transform FindShipTransform(ulong entityId)
-        {
-            if (entityId == playerEntityId)
-            {
-                return playerObject != null ? playerObject.transform : null;
-            }
-
-            return entities.TryGetValue(entityId, out var ship) ? ship.transform : null;
+            combatPresenter.DrainHits(findShipTransform, findShipFeedback);
         }
 
         private void UpdateEntityTransforms()
