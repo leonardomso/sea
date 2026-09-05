@@ -75,7 +75,6 @@ namespace Sea.Client
             if (weather != null)
             {
                 snapshot.WindDirectionDegrees = weather.WindDirectionDegrees;
-                snapshot.WindStrength = weather.WindStrength;
             }
 
             var world = db.WorldState.Id.Find(1);

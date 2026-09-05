@@ -199,10 +199,7 @@ public static partial class Module
         }
 
         var windMultiplier = environment is EnvironmentState wind
-            ? EnvironmentRules.WindSpeedMultiplier(
-                ship.HeadingDegrees,
-                wind.WindDirectionDegrees,
-                wind.WindStrength)
+            ? SpeedRules.WindMultiplier(ship.HeadingDegrees, wind.WindDirectionDegrees)
             : 1f;
         ship.EffectiveMaximumSpeed = ship.TacticalMaximumSpeed * windMultiplier;
     }
@@ -262,20 +259,58 @@ public static partial class Module
         ship.ChunkY = SpatialRules.ChunkCoordinate(ship.PositionY);
     }
 
-    private static void UpdateWind(ReducerContext ctx, ulong tick)
+    /// <summary>
+    /// The eight-hour boundary. Wind turns and storms are laid out again, both
+    /// from the same band number, so a replay of the same log gets the same
+    /// weather (SEA_5 12.5). This is one comparison a tick, and it does nothing
+    /// on 287,999 ticks out of 288,000.
+    /// </summary>
+    private static void UpdateTimeBand(ReducerContext ctx, ulong tick)
     {
-        if (ctx.Db.EnvironmentState.Id.Find(1) is not EnvironmentState environment ||
-            tick < environment.NextWindChangeTick)
+        if (ctx.Db.EnvironmentState.Id.Find(1) is not EnvironmentState environment)
         {
             return;
         }
 
-        environment.WindEpoch++;
-        var wind = EnvironmentRules.WindForEpoch(environment.Seed, environment.WindEpoch);
-        environment.WindDirectionDegrees = wind.DirectionDegrees;
-        environment.WindStrength = wind.Strength;
-        environment.NextWindChangeTick = tick + EnvironmentRules.WindEpochTicks;
+        var band = EnvironmentRules.WindBand(tick);
+        if (band == environment.WindBand)
+        {
+            return;
+        }
+
+        environment.WindBand = band;
+        environment.WindDirectionDegrees = EnvironmentRules.WindForBand(environment.Seed, band);
         ctx.Db.EnvironmentState.Id.Update(environment);
+        RespawnStorms(ctx, environment.Seed, band);
+    }
+
+    /// <summary>
+    /// Clears the storms the last band left and lays out the ones this band
+    /// calls for. Storms are replaced wholesale rather than aged out, so a hull
+    /// caught in one when the band turns is simply no longer in it.
+    /// </summary>
+    private static void RespawnStorms(ReducerContext ctx, ulong seed, ulong band)
+    {
+        foreach (var storm in ctx.Db.WorldObject.ByActiveKind.Filter(
+                     (true, (byte)WorldObjectCode.Storm)))
+        {
+            ctx.Db.WorldObject.EntityId.Delete(storm.EntityId);
+        }
+
+        var mapId = Catalog.Content.Maps[0].MapId;
+        foreach (var layout in EnvironmentRules.StormsForBand(seed, band, mapId))
+        {
+            InsertWorldObject(
+                ctx,
+                AllocateEntityId(ctx),
+                nameof(WorldObjectCode.Storm),
+                layout.CentreX,
+                layout.CentreY,
+                EnvironmentRules.StormRadiusSquares,
+                blocksMovement: false,
+                directionDegrees: layout.DriftDirectionDegrees,
+                movementSpeed: EnvironmentRules.StormDriftSquaresPerSecond);
+        }
     }
 
     private static (float X, float Y) CurrentVelocityAt(

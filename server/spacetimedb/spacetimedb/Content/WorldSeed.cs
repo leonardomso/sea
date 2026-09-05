@@ -202,16 +202,18 @@ public static partial class Module
     private static void SeedEnvironment(ReducerContext ctx)
     {
         const ulong seed = 0x5EA2026;
-        var wind = EnvironmentRules.WindForEpoch(seed, 0);
         ctx.Db.EnvironmentState.Insert(new EnvironmentState
         {
             Id = 1,
             Seed = seed,
-            WindEpoch = 0,
-            WindDirectionDegrees = wind.DirectionDegrees,
-            WindStrength = wind.Strength,
-            NextWindChangeTick = EnvironmentRules.WindEpochTicks,
+            WindBand = 0,
+            WindDirectionDegrees = EnvironmentRules.WindForBand(seed, 0),
         });
+
+        // Band nought's storms are laid out here rather than waiting for the
+        // first boundary, which is eight hours away: a fresh world should have
+        // the same weather as one that has been running a while.
+        RespawnStorms(ctx, seed, 0);
 
         var map = Catalog.Content.Maps[0];
         var zones = new List<CurrentZone>(map.Currents.Count);

@@ -21,7 +21,6 @@ namespace Sea.Client
         public uint ReloadMilliseconds { get; set; }
         public uint MagazineSize { get; set; }
         public float WindDirectionDegrees { get; set; }
-        public float WindStrength { get; set; }
         public float CombatPowerUsed { get; set; }
         public float CombatPowerBudget { get; set; }
         public string SelectedAmmoName { get; set; } = string.Empty;
@@ -185,14 +184,13 @@ namespace Sea.Client
         }
 
         /// <summary>
-        /// The wind reads the way a captain calls it: the point of the compass it blows towards
-        /// and the strength that decides how much of it the sails keep.
+        /// The wind reads the way a captain calls it: the point of the compass it blows
+        /// towards. There is no strength beside it any more -- SEA_5 5.1 fixes the wind at
+        /// a flat ten per cent on every map and every band, so a figure there would have
+        /// read the same number for ever and told a captain nothing.
         /// </summary>
-        private static string WindLabel(SeaHudSnapshot source) => string.Format(
-            DisplayCulture,
-            "{0}  •  {1:0.0}",
-            CompassPoint(NormalizeHeading(source.WindDirectionDegrees)),
-            source.WindStrength);
+        private static string WindLabel(SeaHudSnapshot source) =>
+            CompassPoint(NormalizeHeading(source.WindDirectionDegrees));
 
         public static string CompassPoint(float bearingDegrees)
         {

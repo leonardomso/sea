@@ -325,29 +325,6 @@ public sealed class SailingRulesTests
             () => SpawnRules.TryFindSafePosition(7, null!, out _));
     }
 
-    [Fact]
-    public void Wind_changes_deterministically_by_epoch()
-    {
-        var first = EnvironmentRules.WindForEpoch(8675309, 4);
-        var repeated = EnvironmentRules.WindForEpoch(8675309, 4);
-        var next = EnvironmentRules.WindForEpoch(8675309, 5);
-
-        Assert.Equal(first.DirectionDegrees, repeated.DirectionDegrees);
-        Assert.Equal(first.Strength, repeated.Strength);
-        Assert.NotEqual(first.DirectionDegrees, next.DirectionDegrees);
-        Assert.InRange(first.Strength, 0.2f, 0.8f);
-    }
-
-    [Fact]
-    public void Tailwind_is_faster_than_headwind()
-    {
-        var tailwind = EnvironmentRules.WindSpeedMultiplier(45f, 45f, 0.8f);
-        var headwind = EnvironmentRules.WindSpeedMultiplier(225f, 45f, 0.8f);
-
-        Assert.True(tailwind > 1f);
-        Assert.True(headwind < 1f);
-    }
-
     [Theory]
     [InlineData(0f, 0f, -1f)]      // a northward set carries her up the screen
     [InlineData(90f, 1f, 0f)]

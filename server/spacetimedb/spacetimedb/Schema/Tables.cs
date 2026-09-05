@@ -407,10 +407,15 @@ public static partial class Module
         [PrimaryKey]
         public uint Id;
         public ulong Seed;
-        public ulong WindEpoch;
+
+        /// <summary>
+        /// Which eight-hour band the weather is currently showing. It is derived
+        /// from the tick counter, so nothing schedules the next change and there
+        /// is no strength to store either: SEA_5 5.1 fixes the wind at a flat
+        /// ten per cent on every map and every band.
+        /// </summary>
+        public ulong WindBand;
         public float WindDirectionDegrees;
-        public float WindStrength;
-        public ulong NextWindChangeTick;
     }
 
     [SpacetimeDB.Table(Accessor = "CurrentZone", Public = true)]

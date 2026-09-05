@@ -13,8 +13,6 @@ import {
 export default __t.row({
   id: __t.u32().primaryKey(),
   seed: __t.u64(),
-  windEpoch: __t.u64().name("wind_epoch"),
+  windBand: __t.u64().name("wind_band"),
   windDirectionDegrees: __t.f32().name("wind_direction_degrees"),
-  windStrength: __t.f32().name("wind_strength"),
-  nextWindChangeTick: __t.u64().name("next_wind_change_tick"),
 });

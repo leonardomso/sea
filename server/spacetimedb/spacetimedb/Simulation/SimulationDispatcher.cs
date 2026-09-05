@@ -22,7 +22,7 @@ public static partial class Module
         clock.Tick++;
         ctx.Db.SimulationClock.Id.Update(clock);
         var tick = clock.Tick;
-        UpdateWind(ctx, tick);
+        UpdateTimeBand(ctx, tick);
         Profile("wind");
 
         var world = new TickWorld(tick);

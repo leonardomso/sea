@@ -75,13 +75,12 @@ namespace Sea.Tests
                 MagazineSize = 5,
                 ReadyVolleys = 2,
                 WindDirectionDegrees = 135f,
-                WindStrength = 3.4f,
             });
 
             Assert.That(model.MagazineSize, Is.EqualTo(5));
             Assert.That(model.ReadyVolleys, Is.EqualTo(2));
             Assert.That(model.WindRotationDegrees, Is.EqualTo(135f));
-            Assert.That(model.WindText, Is.EqualTo("SE  •  3.4"));
+            Assert.That(model.WindText, Is.EqualTo("SE"));
 
             // A bearing is read the way a compass is: clockwise from north, and wrapped.
             Assert.That(SeaHudViewModel.CompassPoint(0f), Is.EqualTo("N"));

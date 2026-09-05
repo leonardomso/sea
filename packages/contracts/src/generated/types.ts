@@ -176,10 +176,8 @@ export type EncounterRewardEvent = __Infer<typeof EncounterRewardEvent>;
 export const EnvironmentState = __t.object("EnvironmentState", {
   id: __t.u32(),
   seed: __t.u64(),
-  windEpoch: __t.u64(),
+  windBand: __t.u64(),
   windDirectionDegrees: __t.f32(),
-  windStrength: __t.f32(),
-  nextWindChangeTick: __t.u64(),
 });
 export type EnvironmentState = __Infer<typeof EnvironmentState>;
 
