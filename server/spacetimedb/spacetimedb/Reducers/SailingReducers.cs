@@ -87,6 +87,38 @@ public static partial class Module
         AppendEvent(ctx, world.Tick, ship.EntityId, "stop_course", "");
     }
 
+    /// <summary>
+    /// Answering the crossing prompt from SEA_5 §10.2. Her course is dropped: it was plotted
+    /// against a land mask that does not apply on the new chart, and sailing it there would
+    /// take her through an island she cannot see. Her target and whatever was stuck to her go
+    /// with it, for the same reason. Her heading is kept, so she puts out of the new chart
+    /// pointing the way she came into it.
+    /// </summary>
+    private static void ApplyChangeMap(ReducerContext ctx, TickWorld world, ref Ship ship)
+    {
+        if (ctx.Db.MapCrossingOffer.EntityId.Find(ship.EntityId) is not MapCrossingOffer offer)
+        {
+            throw new InvalidOperationException("Accepted crossing has no offer standing.");
+        }
+
+        ClearRoute(ctx, world, ref ship);
+        ClearEffects(ctx, ship.EntityId);
+        ship.MapId = offer.ToMapId;
+        ship.PositionX = offer.SpawnX;
+        ship.PositionY = offer.SpawnY;
+        ship.DestinationX = offer.SpawnX;
+        ship.DestinationY = offer.SpawnY;
+        ship.ChunkX = SpatialRules.ChunkCoordinate(offer.SpawnX);
+        ship.ChunkY = SpatialRules.ChunkCoordinate(offer.SpawnY);
+        ship.MovementStatusMask = 0;
+        ship.MovementSlowMagnitude = 0f;
+        ship.EnvironmentExposureCode = 0;
+        ship.TargetEntityId = 0;
+        ship.IsEngaged = false;
+        ctx.Db.MapCrossingOffer.EntityId.Delete(ship.EntityId);
+        AppendEvent(ctx, world.Tick, ship.EntityId, "change_map", $"map_id={offer.ToMapId}");
+    }
+
     private static void ApplySelectTarget(
         ReducerContext ctx,
         TickWorld world,

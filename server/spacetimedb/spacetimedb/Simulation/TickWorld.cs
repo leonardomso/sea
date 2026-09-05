@@ -21,12 +21,22 @@ public static partial class Module
         private CurrentFieldState? currentField;
         private bool currentFieldRead;
         private bool? hasActiveLoot;
+        private List<BorderBand>? borderBands;
 
         public TickWorld(ulong tick) => Tick = tick;
 
         public static TickWorld Open(ReducerContext ctx) => new(CurrentSimulationTick(ctx));
 
         public ulong Tick { get; }
+
+        /// <summary>
+        /// The ships found lying against a border on this tick's movement. The movement loop
+        /// records them and the crossing phase reads them, so the offer rows are written once,
+        /// after every hull has finished sailing, rather than inside the loop.
+        /// </summary>
+        public List<BorderBand> BorderBands => borderBands ??= [];
+
+        public void RecordBorderBand(BorderBand band) => BorderBands.Add(band);
 
         public List<NavigationBlocker> Blockers(ReducerContext ctx) =>
             blockers ??= NavigationBlockers(ctx);

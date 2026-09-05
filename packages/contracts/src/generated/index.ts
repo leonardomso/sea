@@ -55,6 +55,7 @@ import HullRow from "./hull_table";
 import HullDefRow from "./hull_def_table";
 import InventoryRow from "./inventory_table";
 import LootRow from "./loot_table";
+import MapCrossingOfferRow from "./map_crossing_offer_table";
 import MapDefRow from "./map_def_table";
 import NpcAiRow from "./npc_ai_table";
 import NpcDefRow from "./npc_def_table";
@@ -292,6 +293,17 @@ const tablesSchema = __schema({
       { name: 'loot_loot_id_key', constraint: 'unique', columns: ['lootId'] },
     ],
   }, LootRow),
+  mapCrossingOffer: __table({
+    name: 'map_crossing_offer',
+    indexes: [
+      { accessor: 'EntityId', name: 'map_crossing_offer_entity_id_idx_btree', algorithm: 'btree', columns: [
+        'entityId',
+      ] },
+    ],
+    constraints: [
+      { name: 'map_crossing_offer_entity_id_key', constraint: 'unique', columns: ['entityId'] },
+    ],
+  }, MapCrossingOfferRow),
   mapDef: __table({
     name: 'map_def',
     indexes: [
@@ -611,6 +623,8 @@ type __SchemaWithTableAccessorAliases = Omit<typeof tablesSchema.schemaType, "ta
     readonly "Inventory": Omit<typeof tablesSchema.schemaType.tables["inventory"], "accessorName"> & { readonly accessorName: "Inventory" };
     /** @deprecated Use `loot` instead. This alias will be removed in the next major version. */
     readonly "Loot": Omit<typeof tablesSchema.schemaType.tables["loot"], "accessorName"> & { readonly accessorName: "Loot" };
+    /** @deprecated Use `mapCrossingOffer` instead. This alias will be removed in the next major version. */
+    readonly "MapCrossingOffer": Omit<typeof tablesSchema.schemaType.tables["mapCrossingOffer"], "accessorName"> & { readonly accessorName: "MapCrossingOffer" };
     /** @deprecated Use `mapDef` instead. This alias will be removed in the next major version. */
     readonly "MapDef": Omit<typeof tablesSchema.schemaType.tables["mapDef"], "accessorName"> & { readonly accessorName: "MapDef" };
     /** @deprecated Use `npcAi` instead. This alias will be removed in the next major version. */
@@ -682,6 +696,7 @@ const tableAccessorAliases = {
   "HullDef": "hullDef",
   "Inventory": "inventory",
   "Loot": "loot",
+  "MapCrossingOffer": "mapCrossingOffer",
   "MapDef": "mapDef",
   "NpcAi": "npcAi",
   "NpcDef": "npcDef",
@@ -751,6 +766,8 @@ export type DbView = __DbViewBase & {
   readonly "Inventory": __DbViewBase["inventory"];
   /** @deprecated Use `loot` instead. This alias will be removed in the next major version. */
   readonly "Loot": __DbViewBase["loot"];
+  /** @deprecated Use `mapCrossingOffer` instead. This alias will be removed in the next major version. */
+  readonly "MapCrossingOffer": __DbViewBase["mapCrossingOffer"];
   /** @deprecated Use `mapDef` instead. This alias will be removed in the next major version. */
   readonly "MapDef": __DbViewBase["mapDef"];
   /** @deprecated Use `npcAi` instead. This alias will be removed in the next major version. */
@@ -823,6 +840,8 @@ export type Tables = __TablesBase & {
   readonly "Inventory": __TablesBase["inventory"];
   /** @deprecated Use `loot` instead. This alias will be removed in the next major version. */
   readonly "Loot": __TablesBase["loot"];
+  /** @deprecated Use `mapCrossingOffer` instead. This alias will be removed in the next major version. */
+  readonly "MapCrossingOffer": __TablesBase["mapCrossingOffer"];
   /** @deprecated Use `mapDef` instead. This alias will be removed in the next major version. */
   readonly "MapDef": __TablesBase["mapDef"];
   /** @deprecated Use `npcAi` instead. This alias will be removed in the next major version. */

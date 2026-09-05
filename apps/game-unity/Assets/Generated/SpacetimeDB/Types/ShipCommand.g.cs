@@ -20,6 +20,7 @@ namespace SpacetimeDB.Types
         StartBoardingCommand StartBoarding,
         CancelChannelCommand CancelChannel,
         UseRepairKitCommand UseRepairKit,
-        ChooseRespawnCommand ChooseRespawn
+        ChooseRespawnCommand ChooseRespawn,
+        ChangeMapCommand ChangeMap
     )>;
 }

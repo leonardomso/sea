@@ -22,6 +22,7 @@ namespace Sea.Client
         private VisualElement chartMenu;
         private VisualElement miniMapFrame;
         private VisualElement wreckPrompt;
+        private VisualElement crossingPrompt;
         private ScrollView rebindList;
         private TextField coordinateInput;
         private Label coordinateError;
@@ -199,6 +200,7 @@ namespace Sea.Client
             connectionBeacon = root.Q("connection-beacon");
             targetFrame = root.Q("target-frame");
             wreckPrompt = root.Q("wreck-prompt");
+            crossingPrompt = root.Q("crossing-prompt");
             fireControl = root.Q("fire-control");
             coordinateNavigator = root.Q("coordinate-navigator");
             chartMenu = root.Q("chart-menu");
@@ -241,6 +243,7 @@ namespace Sea.Client
             HookButton("repair", () => game?.ToggleRepair());
             HookButton("repair-kit", () => game?.UseRepairKit());
             HookButton("respawn-button", () => game?.ChooseHomePortRespawn());
+            HookButton("crossing-button", () => game?.ConfirmMapCrossing());
             coordinateInput.RegisterCallback<KeyDownEvent>(HandleCoordinateKey);
             hudDirty.Mark();
         }
@@ -290,6 +293,11 @@ namespace Sea.Client
             wreckPrompt?.EnableInClassList("hidden", !model.IsSunk);
             SetText("wreck-text", model.WreckText);
             ButtonFor("respawn-button")?.EnableInClassList("hidden", !model.CanChooseBerth);
+
+            // A border asks the same way, and the hull is held against it until it is answered,
+            // so nothing is lost by covering the chart while she decides.
+            crossingPrompt?.EnableInClassList("hidden", !model.HasCrossingOffer);
+            SetText("crossing-text", model.CrossingText);
         }
 
         /// <summary>

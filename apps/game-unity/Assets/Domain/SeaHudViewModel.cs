@@ -43,6 +43,8 @@ namespace Sea.Client
         public bool IsSunk { get; set; }
         public bool RespawnChosen { get; set; }
         public float RespawnRemainingSeconds { get; set; }
+        public bool CrossingOffered { get; set; }
+        public string CrossingMapName { get; set; } = string.Empty;
         public string LastAction { get; set; } = string.Empty;
     }
 
@@ -104,6 +106,13 @@ namespace Sea.Client
         /// <summary>The berth is only worth offering while the wreck has not asked for one.</summary>
         public bool CanChooseBerth { get; private set; }
         public string WreckText { get; private set; }
+
+        /// <summary>
+        /// Whether the border prompt of SEA_5 10.2 is standing. A wreck never sees it: she has
+        /// an order of her own left to give, and the two prompts cover the same chart.
+        /// </summary>
+        public bool HasCrossingOffer { get; private set; }
+        public string CrossingText { get; private set; }
         public string LastAction { get; private set; }
 
         public static SeaHudViewModel From(SeaHudSnapshot source)
@@ -162,6 +171,8 @@ namespace Sea.Client
                 IsSunk = source.IsSunk,
                 CanChooseBerth = source.IsSunk && !source.RespawnChosen,
                 WreckText = WreckLabel(source),
+                HasCrossingOffer = source.CrossingOffered && !source.IsSunk,
+                CrossingText = CrossingLabel(source),
                 LastAction = source.LastAction,
             };
         }
@@ -182,6 +193,19 @@ namespace Sea.Client
                 "BACK ON THE WATER IN {0:0}s",
                 Mathf.Max(0f, source.RespawnRemainingSeconds));
         }
+
+        /// <summary>
+        /// The border prompt names the chart beyond it, because "sail on?" is not a question a
+        /// captain can answer. The name is authored content and arrives on its own row, so the
+        /// prompt has to read without it as well: she is still being asked to leave this chart,
+        /// and answering does the same thing either way.
+        /// </summary>
+        private static string CrossingLabel(SeaHudSnapshot source) => string.Format(
+            DisplayCulture,
+            "SAIL ON TO {0}?",
+            (string.IsNullOrWhiteSpace(source.CrossingMapName)
+                ? "the next chart"
+                : source.CrossingMapName).ToUpperInvariant());
 
         /// <summary>
         /// The wind reads the way a captain calls it: the point of the compass it blows

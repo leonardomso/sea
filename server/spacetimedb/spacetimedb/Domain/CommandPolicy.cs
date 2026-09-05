@@ -27,6 +27,7 @@ public enum ShipCommandKind : byte
     CancelChannel = 9,
     UseRepairKit = 10,
     ChooseRespawn = 11,
+    ChangeMap = 12,
 }
 
 public enum CommandRejectionCode : byte
@@ -62,6 +63,9 @@ public enum CommandRejectionCode : byte
 
     /// <summary>More than eight courses in one second (SEA_5 4.1.8).</summary>
     RateLimited = 26,
+
+    /// <summary>She is not at a border that leads anywhere, so nothing was asked (SEA_5 10.2).</summary>
+    NoCrossingOffered = 27,
 }
 
 [Flags]
@@ -78,6 +82,7 @@ public enum CommandEffect : ushort
     CancelChannel = 1 << 7,
     UseRepairKit = 1 << 8,
     ChooseRespawn = 1 << 9,
+    ChangeMap = 1 << 10,
 }
 
 public readonly record struct CommandSnapshot
@@ -94,6 +99,13 @@ public readonly record struct CommandSnapshot
     public RepairRejection KitRejection { get; init; }
     public bool HasActiveChannel { get; init; }
     public bool RespawnPending { get; init; }
+
+    /// <summary>
+    /// Whether a "Change map" prompt is standing for this ship. The prompt is a row the tick
+    /// raises when she sails into a border band that leads somewhere, so this is the server's
+    /// own answer rather than the client's claim about what it drew.
+    /// </summary>
+    public bool CrossingOffered { get; init; }
     public CommandRejectionCode ArgumentRejection { get; init; }
 }
 
@@ -131,7 +143,7 @@ public static class CommandPolicy
         CommandSnapshot snapshot,
         ShipCommandKind command)
     {
-        if ((byte)command > (byte)ShipCommandKind.ChooseRespawn)
+        if ((byte)command > (byte)ShipCommandKind.ChangeMap)
         {
             return Reject(snapshot.Mode, CommandRejectionCode.MissingResource);
         }
@@ -230,6 +242,8 @@ public static class CommandPolicy
             ShipCommandKind.UseRepairKit => Map(snapshot.KitRejection),
             ShipCommandKind.CancelChannel when !snapshot.HasActiveChannel =>
                 CommandRejectionCode.NotChanneling,
+            ShipCommandKind.ChangeMap when !snapshot.CrossingOffered =>
+                CommandRejectionCode.NoCrossingOffered,
             _ => CommandRejectionCode.None,
         };
 
@@ -276,6 +290,7 @@ public static class CommandPolicy
         ShipCommandKind.CancelChannel => CommandEffect.CancelChannel,
         ShipCommandKind.UseRepairKit => CommandEffect.UseRepairKit,
         ShipCommandKind.ChooseRespawn => CommandEffect.ChooseRespawn,
+        ShipCommandKind.ChangeMap => CommandEffect.ChangeMap,
         _ => CommandEffect.None,
     };
 

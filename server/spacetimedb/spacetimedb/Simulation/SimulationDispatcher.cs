@@ -55,6 +55,11 @@ public static partial class Module
         Profile("npc");
         RecordMovementTelemetry(ctx, tick, AdvanceMovingShips(ctx, world));
         Profile("movement");
+
+        // The borders come after movement because a hull has to have finished sailing before
+        // anyone can say which one she is lying against.
+        ProcessBorderBands(ctx, world);
+        Profile("borders");
     }
 
     private static void Profile(string phase)

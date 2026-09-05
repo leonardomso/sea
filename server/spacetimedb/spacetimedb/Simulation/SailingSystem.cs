@@ -66,6 +66,7 @@ public static partial class Module
                 ProcessMovingShip(ctx, world, ref ship, tick, 1f / WorldRules.TickRateHz);
             }
 
+            HoldAtBorder(world, ref ship);
             UpdatePortState(ctx, world, ref ship);
             if (!ship.IsMoving && world.HasActiveLoot(ctx))
             {
@@ -103,6 +104,38 @@ public static partial class Module
         }
 
         return processed;
+    }
+
+    /// <summary>
+    /// The wall at the edge of the chart. A hull that has sailed into a crossing band is put
+    /// back on its inner line and stopped there, the way she stops when a course runs out: the
+    /// crossing itself is a question she has to answer (SEA_5 §10.2), not something the sea
+    /// does to her. She is only recorded here; the prompt is raised outside the loop.
+    /// </summary>
+    /// <remarks>
+    /// This runs once for the batch rather than once per simulated tick. A hull catching up on
+    /// several ticks sails the whole run first and is held at the end of it, which is the same
+    /// place she would have been held on the tick she reached the band: the band is six squares
+    /// and a hull makes at most a square a tick, so nothing is skipped over.
+    /// </remarks>
+    private static void HoldAtBorder(TickWorld world, ref ShipKinematics ship)
+    {
+        var edge = MapEdgeRules.EdgeAt(ship.PositionX, ship.PositionY);
+        if (edge == MapEdge.None)
+        {
+            return;
+        }
+
+        var (heldX, heldY) = MapEdgeRules.HoldInside(ship.PositionX, ship.PositionY);
+        ship.PositionX = heldX;
+        ship.PositionY = heldY;
+        ship.ChunkX = SpatialRules.ChunkCoordinate(heldX);
+        ship.ChunkY = SpatialRules.ChunkCoordinate(heldY);
+        ship.HasRoute = false;
+        ship.IsMoving = false;
+        ship.Speed = 0f;
+        world.RecordBorderBand(
+            new BorderBand(ship.EntityId, ship.FactionCode, ship.MapId, edge, heldX, heldY));
     }
 
     /// <summary>

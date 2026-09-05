@@ -28,6 +28,7 @@ public static partial class Module
         ShipCommand.ChooseRespawn(var value) => new(
             ShipCommandKind.ChooseRespawn,
             ChooseRespawn: value),
+        ShipCommand.ChangeMap => new(ShipCommandKind.ChangeMap),
         _ => throw new InvalidOperationException("Unknown ship command variant."),
     };
 
@@ -66,6 +67,14 @@ public static partial class Module
                 ship,
                 snapshot,
                 command.ChooseRespawn),
+
+            // The offer row is the whole question: it exists only while she is lying against a
+            // border that leads somewhere, so finding it is the same as asking whether she was
+            // ever asked.
+            ShipCommandKind.ChangeMap => snapshot with
+            {
+                CrossingOffered = ctx.Db.MapCrossingOffer.EntityId.Find(ship.EntityId) is not null,
+            },
             _ => snapshot,
         };
     }
@@ -120,6 +129,9 @@ public static partial class Module
                 break;
             case ShipCommandKind.ChooseRespawn:
                 ApplyChooseRespawn(ctx, world, ship, command.ChooseRespawn);
+                break;
+            case ShipCommandKind.ChangeMap:
+                ApplyChangeMap(ctx, world, ref ship);
                 break;
             default:
                 throw new InvalidOperationException("Accepted command has no executor.");

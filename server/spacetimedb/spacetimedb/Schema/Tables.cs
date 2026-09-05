@@ -136,6 +136,32 @@ public static partial class Module
 #pragma warning restore MA0016
     }
 
+    /// <summary>
+    /// A standing "change chart" prompt. One row per ship at most, and only while she is
+    /// lying against a border that leads somewhere. The row is the prompt: the client draws
+    /// it when the row appears and takes it down when the row goes, so a captain and the
+    /// server never disagree about whether she was asked.
+    /// </summary>
+    [SpacetimeDB.Table(Accessor = "MapCrossingOffer", Public = true)]
+    public partial struct MapCrossingOffer
+    {
+        [PrimaryKey]
+        public ulong EntityId;
+
+        /// <summary>The chart beyond the border.</summary>
+        public byte ToMapId;
+
+        /// <summary>Which border she is lying against, as a <see cref="MapEdge"/>.</summary>
+        public byte EdgeCode;
+
+        /// <summary>Where answering the prompt would put her, worked out when it went up.</summary>
+        public float SpawnX;
+        public float SpawnY;
+
+        /// <summary>The tick the prompt went up, so a client can tell a new one from a held one.</summary>
+        public ulong OfferedTick;
+    }
+
     [SpacetimeDB.Table(Accessor = "ShipMovement", Public = true)]
     [SpacetimeDB.Index.BTree(
         Accessor = "ByActiveChunk",

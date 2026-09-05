@@ -19,6 +19,41 @@ public static partial class ContentCatalog
     /// </summary>
     public static LandMask LandMaskFor(byte mapId) => Masks[mapId];
 
+    private static readonly Dictionary<(byte MapId, MapEdge Edge), byte> ExitsByEdge = BuildExits();
+
+    /// <summary>
+    /// The chart beyond one border of one map, or null where that border is a coast (SEA_5
+    /// §10.2). Read once a tick per hull standing in a band, so it is a lookup rather than a
+    /// walk over the chart's exit list.
+    /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <see cref="MapEdge.None"/> is open water, not a border. A caller asking about it has lost
+    /// track of where the hull is, and answering "nowhere" would read the same as a dead coast.
+    /// </exception>
+    public static byte? ExitFor(byte mapId, MapEdge edge)
+    {
+        if (edge == MapEdge.None)
+        {
+            throw new ArgumentOutOfRangeException(nameof(edge), edge, "Open water is not a border.");
+        }
+
+        return ExitsByEdge.TryGetValue((mapId, edge), out var toMapId) ? toMapId : null;
+    }
+
+    private static Dictionary<(byte, MapEdge), byte> BuildExits()
+    {
+        var exits = new Dictionary<(byte, MapEdge), byte>();
+        foreach (var map in CreateDefault().Maps)
+        {
+            foreach (var exit in map.Exits)
+            {
+                exits[(map.MapId, MapEdgeRules.Parse(exit.Edge))] = exit.ToMapId;
+            }
+        }
+
+        return exits;
+    }
+
     private static Dictionary<byte, LandMask> BuildMasks()
     {
         var masks = new Dictionary<byte, LandMask>();

@@ -54,6 +54,7 @@ namespace Sea.Client
                 "SELECT * FROM hull_def",
                 "SELECT * FROM cannon_def",
                 "SELECT * FROM stat_caps",
+                "SELECT * FROM map_def",
                 $"SELECT * FROM hull WHERE owner = {ownerSqlLiteral}",
                 $"SELECT * FROM ship_stats WHERE owner = {ownerSqlLiteral}",
                 $"SELECT * FROM command_result_event WHERE owner = {ownerSqlLiteral}",
@@ -77,6 +78,7 @@ namespace Sea.Client
                 $"SELECT * FROM cooldown WHERE ship_entity_id = {shipEntityId}",
                 $"SELECT * FROM ship_channel WHERE ship_entity_id = {shipEntityId}",
                 $"SELECT * FROM respawn_work WHERE ship_entity_id = {shipEntityId}",
+                $"SELECT * FROM map_crossing_offer WHERE entity_id = {shipEntityId}",
                 $"SELECT * FROM combat_event WHERE owner_entity_id = {shipEntityId}",
                 $"SELECT * FROM hit_event WHERE attacker_entity_id = {shipEntityId} OR " +
                 $"defender_entity_id = {shipEntityId}",

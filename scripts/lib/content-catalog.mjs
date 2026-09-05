@@ -27,6 +27,11 @@ const CURRENT_FIELDS = [
   field("strength", "float"),
 ];
 
+const MAP_EXIT_FIELDS = [
+  field("edge", "string"),
+  field("toMapId", "byte"),
+];
+
 const MAP_FIELDS = [
   field("mapId", "byte"),
   field("code", "string"),
@@ -41,6 +46,7 @@ const MAP_FIELDS = [
   field("portX", "float"),
   field("portY", "float"),
   field("portRadius", "float"),
+  field("exits", "object[]", { type: "MapExitContent", fields: MAP_EXIT_FIELDS }),
   // terrainRows, landMaskSize and landMaskBits are not authored: augmentMapsWithRasterizedTerrain
   // computes them from `objects` below, in the same rasterising pass, so the drawn coastline and
   // the grid the simulation reads can never say two different things about the same square.

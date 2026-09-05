@@ -287,6 +287,21 @@ namespace Sea.Client
                 "Return to Port Lowell");
         }
 
+        /// <summary>
+        /// Answering the border prompt of SEA_5 10.2. Which chart she is going to is not sent:
+        /// the offer standing on the server says so, and the server rejects the order outright
+        /// if no offer is standing, so a stale prompt cannot sail her anywhere.
+        /// </summary>
+        public void ConfirmMapCrossing()
+        {
+            if (!IsReady)
+            {
+                return;
+            }
+
+            Issue(new ShipCommand.ChangeMap(new ChangeMapCommand()), "Sail on to the next chart");
+        }
+
         public bool TryGetLocalShip(out Ship ship)
         {
             ship = null;

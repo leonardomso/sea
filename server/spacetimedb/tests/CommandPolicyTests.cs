@@ -352,6 +352,7 @@ public sealed class CommandPolicyTests
         KitRejection = RepairRejection.None,
         HasActiveChannel = mode is ShipMode.Repairing or ShipMode.CastingOff,
         RespawnPending = mode == ShipMode.Sunk,
+        CrossingOffered = true,
     };
 
     private static bool ExpectedAccepted(ShipMode mode, ShipCommandKind command)
@@ -419,5 +420,61 @@ public sealed class CommandPolicyTests
     public void TooManyCoursesInOneSecondAreRejectedAsRateLimited()
     {
         Assert.Equal(26, (int)CommandRejectionCode.RateLimited);
+    }
+
+    /// <summary>
+    /// SEA_5 §10.2: reaching a border raises a prompt, and the crossing happens when the captain
+    /// confirms it. Confirming with no prompt standing is not a crossing that failed -- it is an
+    /// order for something that was never offered.
+    /// </summary>
+    [Fact]
+    public void ChangingMapNeedsAnOfferStanding()
+    {
+        var offered = CommandPolicy.Evaluate(
+            ValidSnapshot(ShipMode.Operational),
+            ShipCommandKind.ChangeMap);
+
+        Assert.True(offered.Accepted);
+        Assert.Equal(CommandEffect.ChangeMap, offered.Effects);
+        Assert.Equal(ShipMode.Operational, offered.NextMode);
+    }
+
+    [Fact]
+    public void ChangingMapWithNoOfferStandingIsRefused()
+    {
+        var decision = CommandPolicy.Evaluate(
+            ValidSnapshot(ShipMode.Operational) with { CrossingOffered = false },
+            ShipCommandKind.ChangeMap);
+
+        Assert.False(decision.Accepted);
+        Assert.Equal(CommandRejectionCode.NoCrossingOffered, decision.Rejection);
+    }
+
+    /// <summary>
+    /// A hull under repair or still warping out of port is not sailing, so she is not at a border
+    /// to be asked, and an order that says otherwise is a client that lost track of her.
+    /// </summary>
+    [Theory]
+    [InlineData(ShipMode.Repairing)]
+    [InlineData(ShipMode.CastingOff)]
+    public void AShipBusyWithSomethingElseCannotCross(ShipMode mode)
+    {
+        var decision = CommandPolicy.Evaluate(
+            ValidSnapshot(ShipMode.Operational) with { Mode = mode, CrossingOffered = true },
+            ShipCommandKind.ChangeMap);
+
+        Assert.False(decision.Accepted);
+        Assert.Equal(CommandRejectionCode.ModeConflict, decision.Rejection);
+    }
+
+    [Fact]
+    public void AWreckCannotCross()
+    {
+        var decision = CommandPolicy.Evaluate(
+            ValidSnapshot(ShipMode.Operational) with { Mode = ShipMode.Sunk, CrossingOffered = true },
+            ShipCommandKind.ChangeMap);
+
+        Assert.False(decision.Accepted);
+        Assert.Equal(CommandRejectionCode.Sunk, decision.Rejection);
     }
 }

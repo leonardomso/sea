@@ -93,6 +93,72 @@ public static class MapEdgeRules
     }
 
     /// <summary>
+    /// The border a hull arrives against, having left through <paramref name="crossed"/>.
+    /// Sailing east off one chart puts her against the west border of the next, so this is the
+    /// edge she would sail back out through to come home.
+    /// </summary>
+    public static MapEdge Opposite(MapEdge crossed) => crossed switch
+    {
+        MapEdge.North => MapEdge.South,
+        MapEdge.South => MapEdge.North,
+        MapEdge.West => MapEdge.East,
+        MapEdge.East => MapEdge.West,
+        _ => throw new ArgumentOutOfRangeException(nameof(crossed), crossed, "Not a crossing."),
+    };
+
+    /// <summary>
+    /// An edge authored by name in maps.json. The names are the compass, lower case, and an
+    /// unknown one is a content error rather than an edge that quietly leads nowhere: a typo in
+    /// a chart's exits would otherwise strand a captain with no way of telling why.
+    /// </summary>
+    public static MapEdge Parse(string edge)
+    {
+        if (!TryParse(edge, out var parsed))
+        {
+            throw new ArgumentOutOfRangeException(nameof(edge), edge, "Not a border of the chart.");
+        }
+
+        return parsed;
+    }
+
+    /// <summary>
+    /// The same reading, for the content check, which has to collect a sentence about a bad
+    /// name rather than throw on it: an author wants every mistake in one report, not the
+    /// first one.
+    /// </summary>
+    public static bool TryParse(string edge, out MapEdge parsed)
+    {
+        switch (edge)
+        {
+            case "north":
+                parsed = MapEdge.North;
+                return true;
+            case "east":
+                parsed = MapEdge.East;
+                return true;
+            case "south":
+                parsed = MapEdge.South;
+                return true;
+            case "west":
+                parsed = MapEdge.West;
+                return true;
+            default:
+                parsed = MapEdge.None;
+                return false;
+        }
+    }
+
+    /// <summary>The name a border is authored under, so a report reads the way the file does.</summary>
+    public static string NameOf(MapEdge edge) => edge switch
+    {
+        MapEdge.North => "north",
+        MapEdge.East => "east",
+        MapEdge.South => "south",
+        MapEdge.West => "west",
+        _ => throw new ArgumentOutOfRangeException(nameof(edge), edge, "Not a border of the chart."),
+    };
+
+    /// <summary>
     /// Where a hull is put when she reaches a border that leads nowhere: just
     /// inside the band, not on the line. Stopping her dead on the edge would let
     /// her sit in a crossing that never fires; this reads as a coast.
@@ -100,4 +166,24 @@ public static class MapEdgeRules
     public static (float X, float Y) HoldInside(float x, float y) =>
         (Math.Clamp(x, WorldRules.MapMin + BandSquares, WorldRules.MapMax - BandSquares),
          Math.Clamp(y, WorldRules.MapMin + BandSquares, WorldRules.MapMax - BandSquares));
+
+    /// <summary>
+    /// Whether a hull is still lying against a border she was held at.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="HoldInside"/> puts her exactly on the band's inner line and
+    /// <see cref="EdgeAt"/> calls that line open water, so the crossing fires once rather
+    /// than every tick she waits there. This is the other half of that arrangement: the
+    /// prompt she was raised stands while she is on the line, and the only thing that takes
+    /// her off it is sailing. The comparison is exact because the number is exact -- the
+    /// hold writes the bound itself, not a position that drifted towards it.
+    /// </remarks>
+    public static bool IsHeldAgainst(float x, float y, MapEdge edge) => edge switch
+    {
+        MapEdge.North => y == WorldRules.MapMin + BandSquares,
+        MapEdge.South => y == WorldRules.MapMax - BandSquares,
+        MapEdge.West => x == WorldRules.MapMin + BandSquares,
+        MapEdge.East => x == WorldRules.MapMax - BandSquares,
+        _ => false,
+    };
 }

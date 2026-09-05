@@ -44,6 +44,9 @@ export const CannonDef = __t.object("CannonDef", {
 });
 export type CannonDef = __Infer<typeof CannonDef>;
 
+export const ChangeMapCommand = __t.object("ChangeMapCommand", {});
+export type ChangeMapCommand = __Infer<typeof ChangeMapCommand>;
+
 export const ChooseRespawnCommand = __t.object("ChooseRespawnCommand", {
   optionCode: __t.u8(),
 });
@@ -243,6 +246,16 @@ export const Loot = __t.object("Loot", {
   claimedByEntityId: __t.u64(),
 });
 export type Loot = __Infer<typeof Loot>;
+
+export const MapCrossingOffer = __t.object("MapCrossingOffer", {
+  entityId: __t.u64(),
+  toMapId: __t.u8(),
+  edgeCode: __t.u8(),
+  spawnX: __t.f32(),
+  spawnY: __t.f32(),
+  offeredTick: __t.u64(),
+});
+export type MapCrossingOffer = __Infer<typeof MapCrossingOffer>;
 
 export const MapDef = __t.object("MapDef", {
   mapId: __t.u8(),
@@ -511,6 +524,9 @@ export const ShipCommand = __t.enum("ShipCommand", {
   },
   get ChooseRespawn() {
     return ChooseRespawnCommand;
+  },
+  get ChangeMap() {
+    return ChangeMapCommand;
   },
 });
 export type ShipCommand = __Infer<typeof ShipCommand>;

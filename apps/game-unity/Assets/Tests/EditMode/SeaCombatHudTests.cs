@@ -202,6 +202,43 @@ namespace Sea.Tests
         }
 
         [Test]
+        public void A_border_asks_before_the_chart_is_changed_and_names_what_is_beyond_it()
+        {
+            var offered = SeaHudViewModel.From(new SeaHudSnapshot
+            {
+                CrossingOffered = true,
+                CrossingMapName = "The Broken Shoals",
+            });
+
+            Assert.That(offered.HasCrossingOffer, Is.True);
+            Assert.That(offered.CrossingText, Is.EqualTo("SAIL ON TO THE BROKEN SHOALS?"));
+
+            // The chart beyond a border is authored, so the name can be late without the
+            // prompt being wrong: she is still being asked to leave this one.
+            var unnamed = SeaHudViewModel.From(new SeaHudSnapshot { CrossingOffered = true });
+            Assert.That(unnamed.HasCrossingOffer, Is.True);
+            Assert.That(unnamed.CrossingText, Is.EqualTo("SAIL ON TO THE NEXT CHART?"));
+
+            Assert.That(SeaHudViewModel.From(new SeaHudSnapshot()).HasCrossingOffer, Is.False);
+        }
+
+        [Test]
+        public void A_sunk_captain_is_not_asked_about_a_border_as_well()
+        {
+            // Two prompts over one chart is one prompt too many, and the wreck's is the one
+            // she has to answer: the offer is withdrawn on the server the moment she goes
+            // down, but the rows arrive separately and the HUD must not flicker both.
+            var model = SeaHudViewModel.From(new SeaHudSnapshot
+            {
+                IsSunk = true,
+                CrossingOffered = true,
+            });
+
+            Assert.That(model.IsSunk, Is.True);
+            Assert.That(model.HasCrossingOffer, Is.False);
+        }
+
+        [Test]
         public void Runtime_hud_contains_the_locked_chart_combat_instruments()
         {
             var document = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>("Assets/UI/SeaHud.uxml");
@@ -255,6 +292,10 @@ namespace Sea.Tests
             Assert.That(root.Q<Button>("repair-kit").text, Is.EqualTo("K"));
             Assert.That(root.Q("wreck-prompt"), Is.Not.Null);
             Assert.That(root.Q<Button>("respawn-button"), Is.Not.Null);
+
+            // A border is the other question the chart asks, and it is asked the same way.
+            Assert.That(root.Q("crossing-prompt"), Is.Not.Null);
+            Assert.That(root.Q<Button>("crossing-button"), Is.Not.Null);
         }
     }
 }

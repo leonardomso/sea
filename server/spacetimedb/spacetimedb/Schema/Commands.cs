@@ -58,6 +58,14 @@ public static partial class Module
         public byte OptionCode;
     }
 
+    /// <summary>
+    /// Answering the crossing prompt. Which chart she is going to is not sent: the offer
+    /// standing on the server says so, and a captain who could name the chart could name one
+    /// she was never offered.
+    /// </summary>
+    [SpacetimeDB.Type]
+    public partial struct ChangeMapCommand;
+
     [SpacetimeDB.Type]
     public partial record ShipCommand : TaggedEnum<(
         SetCourseCommand SetCourse,
@@ -71,7 +79,8 @@ public static partial class Module
         StartBoardingCommand StartBoarding,
         CancelChannelCommand CancelChannel,
         UseRepairKitCommand UseRepairKit,
-        ChooseRespawnCommand ChooseRespawn)>;
+        ChooseRespawnCommand ChooseRespawn,
+        ChangeMapCommand ChangeMap)>;
 
     [SpacetimeDB.Type]
     public partial struct CommandEnvelope

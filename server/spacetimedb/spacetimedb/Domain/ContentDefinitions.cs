@@ -23,6 +23,17 @@ public sealed record CurrentContent
     public required float Strength { get; init; }
 }
 
+/// <summary>
+/// One border that leads somewhere. <see cref="Edge"/> is authored by name -- "north", "east",
+/// "south", "west" -- so maps.json reads as a chart rather than as a set of numbers, and
+/// <see cref="MapEdgeRules.Parse"/> is the one place the name becomes an edge.
+/// </summary>
+public sealed record MapExitContent
+{
+    public required string Edge { get; init; }
+    public required byte ToMapId { get; init; }
+}
+
 public sealed record MapContent
 {
     public required byte MapId { get; init; }
@@ -40,6 +51,14 @@ public sealed record MapContent
     public required float PortX { get; init; }
     public required float PortY { get; init; }
     public required float PortRadius { get; init; }
+
+    /// <summary>
+    /// Which chart lies beyond each border, for the borders that lead anywhere (SEA_5 §10.2).
+    /// An edge missing from this list is a coast: reaching it holds a hull inside the chart and
+    /// asks her nothing. The list is short -- four entries at most -- so it is authored as a
+    /// list rather than four nullable fields, and a chart with no neighbours carries none.
+    /// </summary>
+    public required IReadOnlyList<MapExitContent> Exits { get; init; }
     /// <summary>
     /// Row 0 is the northern row at world y = <see cref="WorldRules.MapMin"/> and rows run
     /// south, the same way the ruler and the world's own y axis run. There is no flip left

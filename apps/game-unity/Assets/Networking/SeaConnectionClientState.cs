@@ -73,6 +73,9 @@ namespace Sea.Client
             connection.Db.RespawnWork.OnInsert += HandleHudRowInserted;
             connection.Db.RespawnWork.OnUpdate += HandleHudRowUpdated;
             connection.Db.RespawnWork.OnDelete += HandleHudRowDeleted;
+            connection.Db.MapCrossingOffer.OnInsert += HandleHudRowInserted;
+            connection.Db.MapCrossingOffer.OnUpdate += HandleHudRowUpdated;
+            connection.Db.MapCrossingOffer.OnDelete += HandleHudRowDeleted;
             connection.Db.Loot.OnInsert += HandleLootInserted;
             connection.Db.Loot.OnUpdate += HandleLootUpdated;
             connection.Db.Loot.OnDelete += HandleLootDeleted;

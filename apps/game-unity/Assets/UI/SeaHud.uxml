@@ -228,6 +228,16 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+        <ui:VisualElement name="crossing-prompt" class="modal-scrim hidden">
+            <ui:VisualElement class="wreck-dialog chart-surface">
+                <ui:Label text="THE CHART ENDS HERE" class="dialog-title" />
+                <ui:Label name="crossing-text" text="SAIL ON TO THE NEXT CHART?" class="micro-label" />
+                <ui:VisualElement class="dialog-actions">
+                    <ui:Button name="crossing-button" text="SAIL ON" class="primary-button" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
         <ui:VisualElement name="coordinate-navigator" class="modal-scrim hidden">
             <ui:VisualElement class="coordinate-dialog chart-surface">
                 <ui:Label text="SET CHART COURSE" class="dialog-title" />

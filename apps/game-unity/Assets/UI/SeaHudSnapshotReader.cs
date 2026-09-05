@@ -88,6 +88,7 @@ namespace Sea.Client
 
             ReadTarget(db, ship, snapshot);
             ReadStatuses(db, ship, snapshot);
+            ReadCrossing(db, ship, snapshot);
             if (world != null)
             {
                 ReadChannelAndCooldowns(db, ship, snapshot);
@@ -253,6 +254,28 @@ namespace Sea.Client
                     work.RespawnAtTick,
                     connection.CurrentWorldTick,
                     connection.WorldTickRate);
+            }
+        }
+
+        /// <summary>
+        /// The border. The offer row exists only while she is lying against one that leads
+        /// somewhere, so finding it is the whole question -- the client never works out where a
+        /// border is, it is told. The chart beyond is named from its own row when that row has
+        /// arrived; the prompt reads without it.
+        /// </summary>
+        private static void ReadCrossing(RemoteTables db, Ship ship, SeaHudSnapshot snapshot)
+        {
+            var offer = db.MapCrossingOffer.EntityId.Find(ship.EntityId);
+            if (offer == null)
+            {
+                return;
+            }
+
+            snapshot.CrossingOffered = true;
+            var beyond = db.MapDef.MapId.Find(offer.ToMapId);
+            if (beyond != null)
+            {
+                snapshot.CrossingMapName = beyond.Name;
             }
         }
 

@@ -42,6 +42,7 @@ namespace SpacetimeDB.Types
             AddTable(HullDef = new(conn));
             AddTable(Inventory = new(conn));
             AddTable(Loot = new(conn));
+            AddTable(MapCrossingOffer = new(conn));
             AddTable(MapDef = new(conn));
             AddTable(NpcAi = new(conn));
             AddTable(NpcDef = new(conn));
@@ -572,6 +573,7 @@ namespace SpacetimeDB.Types
             new QueryBuilder().From.HullDef().ToSql(),
             new QueryBuilder().From.Inventory().ToSql(),
             new QueryBuilder().From.Loot().ToSql(),
+            new QueryBuilder().From.MapCrossingOffer().ToSql(),
             new QueryBuilder().From.MapDef().ToSql(),
             new QueryBuilder().From.NpcAi().ToSql(),
             new QueryBuilder().From.NpcDef().ToSql(),
@@ -612,6 +614,7 @@ namespace SpacetimeDB.Types
         public global::SpacetimeDB.Table<HullDef, HullDefCols, HullDefIxCols> HullDef() => new("hull_def", new HullDefCols("hull_def"), new HullDefIxCols("hull_def"));
         public global::SpacetimeDB.Table<Inventory, InventoryCols, InventoryIxCols> Inventory() => new("inventory", new InventoryCols("inventory"), new InventoryIxCols("inventory"));
         public global::SpacetimeDB.Table<Loot, LootCols, LootIxCols> Loot() => new("loot", new LootCols("loot"), new LootIxCols("loot"));
+        public global::SpacetimeDB.Table<MapCrossingOffer, MapCrossingOfferCols, MapCrossingOfferIxCols> MapCrossingOffer() => new("map_crossing_offer", new MapCrossingOfferCols("map_crossing_offer"), new MapCrossingOfferIxCols("map_crossing_offer"));
         public global::SpacetimeDB.Table<MapDef, MapDefCols, MapDefIxCols> MapDef() => new("map_def", new MapDefCols("map_def"), new MapDefIxCols("map_def"));
         public global::SpacetimeDB.Table<NpcAi, NpcAiCols, NpcAiIxCols> NpcAi() => new("npc_ai", new NpcAiCols("npc_ai"), new NpcAiIxCols("npc_ai"));
         public global::SpacetimeDB.Table<NpcDef, NpcDefCols, NpcDefIxCols> NpcDef() => new("npc_def", new NpcDefCols("npc_def"), new NpcDefIxCols("npc_def"));

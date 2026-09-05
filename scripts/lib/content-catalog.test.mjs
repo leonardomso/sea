@@ -34,6 +34,9 @@ const FIXTURE = {
       portX: 1.5,
       portY: 0,
       portRadius: 5,
+      // No crossings: the fixture stands one chart on its own, and an exit would have to lead
+      // to a map that is not in the list. The committed content covers the exit shape.
+      exits: [],
       terrainRows: ["."],
       // Stands in for what buildCatalog's rasteriser would have computed from `objects`; these
       // two tests exercise generic emission directly and never go through augmentation.

@@ -31,6 +31,10 @@ namespace Sea.Tests
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM player_clock WHERE owner = 0xabc123"));
             Assert.That(queries, Does.Contain("SELECT * FROM world_state"));
+
+            // Three charts, three rows: the crossing prompt names the chart beyond the border,
+            // and a number in its place would tell a captain nothing.
+            Assert.That(queries, Does.Contain("SELECT * FROM map_def"));
             Assert.That(queries, Does.Not.Contain("SELECT * FROM world_object"));
             Assert.That(queries.Any(query => query == "SELECT * FROM ship"), Is.False);
         }
@@ -58,6 +62,11 @@ namespace Sea.Tests
             // A wreck cannot be told it may choose a berth by a table it does not stream.
             Assert.That(queries, Does.Contain(
                 "SELECT * FROM respawn_work WHERE ship_entity_id = 42"));
+
+            // Nor can a captain be asked whether to sail off the chart. The offer row is the
+            // whole prompt, so not streaming it is the same as never being asked.
+            Assert.That(queries, Does.Contain(
+                "SELECT * FROM map_crossing_offer WHERE entity_id = 42"));
             Assert.That(queries, Has.Some.EqualTo(
                 "SELECT * FROM volley WHERE is_active = true AND " +
                 "(source_entity_id = 42 OR target_entity_id = 42)"));

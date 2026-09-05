@@ -8,7 +8,12 @@ namespace Sea.Server.Tests;
 public sealed class ContentValidationTests
 {
     private static readonly GameContent Catalog = ContentCatalog.CreateDefault();
-    private static readonly MapContent Map = Catalog.Maps[0];
+    /// <summary>
+    /// Havenmere with her crossings taken off. Most fixtures below stand one chart on its own,
+    /// and an exit to a chart that is not in the list would then be a fault of the fixture
+    /// rather than of the rule under test. The exit rules have their own cases.
+    /// </summary>
+    private static readonly MapContent Map = Catalog.Maps[0] with { Exits = [] };
 
     public static TheoryData<string, GameContent> RejectedContent => new()
     {
@@ -91,6 +96,40 @@ public sealed class ContentValidationTests
         { "Map 1: map rank must be positive.", Catalog with { Maps = [Map with { Code = "", MapRank = 0 }] } },
         { "Map 2: map rank must be positive.", Catalog with { Maps = [Map, Map with { MapId = 2, MapRank = 0 }] } },
         { "Map 1/1: object 1: radius must be positive.", WorldObject(item => item with { Radius = 0f }) },
+
+        // A chart's exits are the only content that talks about another chart, so they are the
+        // only content that can strand a captain somewhere she cannot leave.
+        { "Map 1/1: exit edge 'up' is not a border of the chart.", Exits(("up", 2)) },
+        { "Map 1/1: exit east is authored twice.", Exits(("east", 2), ("east", 2)) },
+        { "Map 1/1: exit east leads to map 9, which does not exist.", Exits(("east", 9)) },
+        { "Map 1/1: exit east leads back to its own chart.", Exits(("east", 1)) },
+        {
+            "Map 1/1: exit east leads to map 2, which has no exit west coming back.",
+            Catalog with
+            {
+                Maps =
+                [
+                    Map with { Exits = [new MapExitContent { Edge = "east", ToMapId = 2 }] },
+                    Map with { MapId = 2, Code = "1/2", Exits = [] },
+                ],
+            }
+        },
+    };
+
+    /// <summary>One chart on its own, carrying exactly the exits named.</summary>
+    private static GameContent Exits(params (string Edge, byte ToMapId)[] exits) => Catalog with
+    {
+        Maps =
+        [
+            Map with
+            {
+                Exits = [.. exits.Select(exit => new MapExitContent
+                {
+                    Edge = exit.Edge,
+                    ToMapId = exit.ToMapId,
+                })],
+            },
+        ],
     };
 
     public static TheoryData<string, GameContent> AcceptedContent => new()

@@ -12,6 +12,7 @@ public static partial class ContentCatalog
 
         var ids = new HashSet<byte>();
         var codes = new IdSet("map", "code");
+        var byId = MapsById(maps);
         foreach (var map in maps)
         {
             if (!ids.Add(map.MapId))
@@ -44,7 +45,81 @@ public static partial class ContentCatalog
             ValidateObjects(map, label, terrainValid, errors);
             ValidateHarbor(map, label, errors);
             ValidateCurrents(map, label, errors);
+            ValidateExits(map, label, byId, errors);
         }
+    }
+
+    private static Dictionary<byte, MapContent> MapsById(IReadOnlyList<MapContent> maps)
+    {
+        var byId = new Dictionary<byte, MapContent>();
+        foreach (var map in maps)
+        {
+            byId.TryAdd(map.MapId, map);
+        }
+
+        return byId;
+    }
+
+    /// <summary>
+    /// The exits are the only way off a chart, so a mistake in one strands a captain rather
+    /// than misplacing a rock. Each has to name a real border, name it once, lead to a chart
+    /// that exists and is not this one, and have a matching exit coming back: a crossing she
+    /// cannot sail home from is a trap, not a border.
+    /// </summary>
+    private static void ValidateExits(
+        MapContent map,
+        string label,
+        Dictionary<byte, MapContent> byId,
+        List<string> errors)
+    {
+        var seen = new HashSet<MapEdge>();
+        foreach (var exit in map.Exits)
+        {
+            if (!MapEdgeRules.TryParse(exit.Edge, out var edge))
+            {
+                errors.Add($"{label}: exit edge '{exit.Edge}' is not a border of the chart.");
+                continue;
+            }
+
+            if (!seen.Add(edge))
+            {
+                errors.Add($"{label}: exit {exit.Edge} is authored twice.");
+                continue;
+            }
+
+            if (exit.ToMapId == map.MapId)
+            {
+                errors.Add($"{label}: exit {exit.Edge} leads back to its own chart.");
+                continue;
+            }
+
+            if (!byId.TryGetValue(exit.ToMapId, out var beyond))
+            {
+                errors.Add($"{label}: exit {exit.Edge} leads to map {exit.ToMapId}, which does not exist.");
+                continue;
+            }
+
+            var back = MapEdgeRules.Opposite(edge);
+            if (!LeadsBack(beyond, back, map.MapId))
+            {
+                errors.Add(
+                    $"{label}: exit {exit.Edge} leads to map {exit.ToMapId}, which has no exit "
+                    + $"{MapEdgeRules.NameOf(back)} coming back.");
+            }
+        }
+    }
+
+    private static bool LeadsBack(MapContent beyond, MapEdge back, byte mapId)
+    {
+        foreach (var exit in beyond.Exits)
+        {
+            if (exit.ToMapId == mapId && MapEdgeRules.TryParse(exit.Edge, out var edge) && edge == back)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
